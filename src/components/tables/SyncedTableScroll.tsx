@@ -93,13 +93,13 @@ export default function SyncedTableScroll({ children, minWidth = 800, maxWidth, 
 
   return (
     <div
-      className={`min-w-0 max-w-full ${className ?? ""}`}
+      className={`min-w-0 max-w-full overflow-x-hidden ${className ?? ""}`}
       style={maxWidthCss ? { maxWidth: maxWidthCss } : undefined}
     >
       {/* Top Horizontal Scrollbar */}
       <div
         ref={topScrollbarRef}
-        className="top-horizontal-scrollbar w-full overflow-x-scroll overflow-y-hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+        className="top-horizontal-scrollbar w-full max-w-full overflow-x-auto overflow-y-hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
         style={{
           height: "24px",
           scrollbarWidth: "auto",
@@ -112,7 +112,7 @@ export default function SyncedTableScroll({ children, minWidth = 800, maxWidth, 
       {/* Table container (horizontal scrolling controlled by top scrollbar) */}
       <div
         ref={tableContainerRef}
-        className={`max-w-full overflow-x-hidden custom-scrollbar relative ${maxHeightCss ? "overflow-y-auto" : "overflow-y-visible"}`}
+        className={`min-w-0 max-w-full overflow-x-hidden custom-scrollbar relative ${maxHeightCss ? "overflow-y-auto" : "overflow-y-visible"}`}
         style={{
           ...(maxHeightCss ? { maxHeight: maxHeightCss } : {}),
         }}

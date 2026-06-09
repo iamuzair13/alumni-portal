@@ -7,6 +7,9 @@ import ApprovedLeadershipBadges from "@/components/alumni/ApprovedLeadershipBadg
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { useQuery } from "@tanstack/react-query";
+import { formatObtainedMarkDisplay } from "@/lib/leadershipMarks";
+
+const ALUMNI_PROFILE_PLACEHOLDER = "/images/person.jpg";
 
 type Props = {
   alumniId: number | null | undefined;
@@ -305,10 +308,44 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                 const docs = documentsFromItem(item);
 
                 const profMap = item?.optionalCriteriaProficiency && typeof item.optionalCriteriaProficiency === "object" ? item.optionalCriteriaProficiency : null;
+                const showAssessmentMarks =
+                  statusLower === "approved" || statusLower === "assessed" || statusLower === "rejected";
+                const photoSrc = String(item.profilePhotoUrl || "").trim() || ALUMNI_PROFILE_PLACEHOLDER;
+                const criteriaItems = Array.isArray(viewDetailsData.criteria) ? viewDetailsData.criteria : [];
+                const criteriaTotalMarks = criteriaItems.reduce((sum: number, c: { criterion_score?: number | null }) => {
+                  const m = Number(c.criterion_score);
+                  return Number.isFinite(m) && m > 0 ? sum + m : sum;
+                }, 0);
+                const criteriaTotalObtained = showAssessmentMarks
+                  ? criteriaItems.reduce((sum: number, c: { obtained_marks?: number | null }) => {
+                      const om = Number(c.obtained_marks);
+                      return Number.isFinite(om) && om >= 0 ? sum + om : sum;
+                    }, 0)
+                  : 0;
+                const strategyMarks = Number(item.strategyAssessmentMarks ?? 0);
+                const achievementMarks = Number(item.achievementAssessmentMarks ?? 0);
+                const bonusMarks = Number.isFinite(Number(item.bonusMarks))
+                  ? Number(item.bonusMarks)
+                  : strategyMarks + achievementMarks;
+                const grandObtained = criteriaTotalObtained + bonusMarks;
+                const grandMaximum = criteriaTotalMarks + 25;
 
                 return (
                   <div className="space-y-4">
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                      <div className="min-w-0 flex gap-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photoSrc}
+                          alt={`${item.name || "Alumni"} profile`}
+                          className="h-20 w-20 shrink-0 rounded-lg border border-slate-200 object-cover bg-slate-100"
+                          onError={(e) => {
+                            const img = e.currentTarget;
+                            if (!img.src.includes("/images/person.jpg")) {
+                              img.src = ALUMNI_PROFILE_PLACEHOLDER;
+                            }
+                          }}
+                        />
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-gray-900">Leadership Application Details</div>
                         <div className="mt-1 h-px bg-gray-200" />
@@ -322,6 +359,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                             </span>
                           </div>
                         </div>
+                      </div>
                       </div>
 
                       <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 ">
@@ -410,19 +448,62 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                       </div>
 
                       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="text-sm font-semibold text-gray-900">Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                          <div className="text-sm font-semibold text-gray-900">
+                            Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role
+                          </div>
+                          {showAssessmentMarks ? (
+                            <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+                              {formatObtainedMarkDisplay(strategyMarks)} / 15
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
+                          {String(item.planStrategy || "").trim() || "-"}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                          <div className="text-sm font-semibold text-gray-900">
+                            Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
+                          </div>
+                          {showAssessmentMarks ? (
+                            <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+                              {formatObtainedMarkDisplay(achievementMarks)} / 10
+                            </span>
+                          ) : null}
                         </div>
                         <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
                           {String(item.additionalAchievements || "").trim() || "-"}
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="text-sm font-semibold text-gray-900">Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role</div>
-                        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
-                          {String(item.planStrategy || "").trim() || "-"}
+                      {showAssessmentMarks ? (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm">
+                          <div className="text-sm font-semibold text-gray-900">Assessment Summary</div>
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700">
+                            <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Criteria Marks</div>
+                              <div className="mt-1 font-semibold text-gray-900 tabular-nums">
+                                {formatObtainedMarkDisplay(criteriaTotalObtained)} / {formatObtainedMarkDisplay(criteriaTotalMarks)}
+                              </div>
+                            </div>
+                            <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Bonus Marks</div>
+                              <div className="mt-1 font-semibold text-gray-900 tabular-nums">
+                                {formatObtainedMarkDisplay(bonusMarks)} / 25
+                              </div>
+                            </div>
+                            <div className="rounded-lg border border-emerald-300 bg-emerald-100/50 px-3 py-2">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Grand Total</div>
+                              <div className="mt-1 text-base font-bold text-emerald-900 tabular-nums">
+                                {formatObtainedMarkDisplay(grandObtained)} / {formatObtainedMarkDisplay(grandMaximum)}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ) : null}
 
                       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
                         <div className="text-sm font-semibold text-gray-900">Uploaded Documents</div>

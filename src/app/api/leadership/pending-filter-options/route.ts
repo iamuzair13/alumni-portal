@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isSuperAdminUser, isAdminUser } from "@/lib/alumniProfile";
+import { associationPostRoleCondition, chapterPostRoleCondition } from "@/lib/leadershipRoleSql";
 
 type OptionItem = { id: number; label: string; count: number };
 
@@ -52,33 +53,15 @@ export async function GET(req: NextRequest) {
         )`
       : sql``;
 
-    const normalizeRoleExpr = (columnExpr: any) =>
-      sql`LOWER(REGEXP_REPLACE(TRIM(COALESCE(${columnExpr}, '')), '[^a-z]+', '', 'g'))`;
+    const chapterRoleCondition =
+      role === "all"
+        ? sql``
+        : chapterPostRoleCondition(role as "president" | "vice_president" | "coordinator");
 
-    const roleMatchValuesChapter =
-      role === "vice_president"
-        ? ["vicepresident", "chaptervicepresident"]
-        : role === "coordinator"
-          ? ["coordinator", "chaptercoordinator"]
-          : role === "president"
-            ? ["president", "chapterpresident"]
-            : null;
-
-    const roleMatchValuesAssoc =
-      role === "vice_president" ? ["vicepresident"] : role === "coordinator" ? ["coordinator"] : role === "president" ? ["president"] : null;
-
-    const chapterRoleCondition = (() => {
-      if (role === "all" || !roleMatchValuesChapter || roleMatchValuesChapter.length === 0) return sql``;
-      const normalized = normalizeRoleExpr(sql`cl.post`);
-      if (roleMatchValuesChapter.length === 1) return sql` AND (${normalized} = ${roleMatchValuesChapter[0]})`;
-      return sql` AND (${normalized} = ${roleMatchValuesChapter[0]} OR ${normalized} = ${roleMatchValuesChapter[1]})`;
-    })();
-
-    const assocRoleCondition = (() => {
-      if (role === "all" || !roleMatchValuesAssoc || roleMatchValuesAssoc.length === 0) return sql``;
-      const normalized = normalizeRoleExpr(sql`ass.q3`);
-      return sql` AND (${normalized} = ${roleMatchValuesAssoc[0]})`;
-    })();
+    const assocRoleCondition =
+      role === "all"
+        ? sql``
+        : associationPostRoleCondition(role as "president" | "vice_president" | "coordinator");
 
     const hasAdditional = hasAdditionalAchievements === "1" || hasAdditionalAchievements === "true";
     const chapterAdditionalCondition = hasAdditional

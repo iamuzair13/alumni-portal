@@ -323,8 +323,8 @@ const TabButton: FC<{
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       className={`
-        group relative inline-flex h-11 w-[168px] shrink-0 items-center justify-between gap-2 rounded-xl border px-3 text-sm font-semibold
-        sm:w-[184px] sm:px-3.5 lg:w-[200px]
+        group relative inline-flex h-10 shrink-0 items-center justify-between gap-2 rounded-xl border px-3 text-sm font-semibold
+        sm:px-3.5
         shadow-sm transition-all duration-300 ease-out
         focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
         ${
@@ -343,7 +343,7 @@ const TabButton: FC<{
         />
       )}
 
-      <span className="relative z-10 min-w-0 flex-1 truncate text-left leading-none">
+      <span className="relative z-10 whitespace-nowrap text-left leading-none">
         {tab.label}
       </span>
 
@@ -498,112 +498,106 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
     setSelected(validTab);
   }, [getTabFromUrl]);
 
+  const isSecondaryNav = !showTabsContent;
+
   return (
     <>
-      {/* ── Sticky Header ── */}
-      <motion.header
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
+      {/* Sits below AppHeader (sticky topbar). Secondary mode is nav-only on pages like /leadership. */}
+      <div
         className={`
-          sticky top-0 z-[600] flex min-h-[72px] items-center border-b bg-white/95 px-4 
-          backdrop-blur-xl transition-all duration-300
+          sticky top-[68px] z-[500] w-full max-w-full overflow-x-hidden border-b bg-white/95 backdrop-blur-xl transition-shadow duration-300
+          dark:bg-gray-900/95
           ${
             isScrolled
-              ? "border-gray-200/80 shadow-lg shadow-gray-900/5 dark:border-gray-700/60 dark:shadow-black/20"
-              : "border-transparent shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:shadow-none"
+              ? "border-gray-200/80 shadow-md shadow-gray-900/5 dark:border-gray-700/60 dark:shadow-black/20"
+              : "border-gray-200/60 dark:border-gray-800/80"
           }
-          dark:bg-gray-900/95 dark:backdrop-blur-xl sm:px-6 lg:px-8
         `}
       >
-        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3">
-          {/* Section title */}
-          <div className="flex items-center justify-between  py-2 px-2 ">
-            <div className="flex items-center gap-3 ">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#183D32]/10 dark:bg-emerald-500/15">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className="text-[#183D32] dark:text-emerald-400"
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8">
+          <div className={`flex flex-col gap-3 ${isSecondaryNav ? "py-2" : "py-3"}`}>
+            {showTabsContent ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="hidden min-w-0 items-center gap-3 sm:flex">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#183D32]/10 dark:bg-emerald-500/15">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      className="text-[#183D32] dark:text-emerald-400"
+                    >
+                      <path
+                        d="M12 2L2 7L12 12L22 7L12 2Z"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M2 17L12 22L22 17"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M2 12L12 17L22 12"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <h1 className="text-sm font-bold text-gray-900 dark:text-white">Alumni Portal</h1>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Manage alumni records, events, and engagement
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("AadAlumni")}
+                  className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#183D32] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#1a4d3e] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/30 active:scale-[0.98] dark:bg-emerald-600 dark:hover:bg-emerald-500"
                 >
-                  <path
-                    d="M12 2L2 7L12 12L22 7L12 2Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M2 17L12 22L22 17"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M2 12L12 17L22 12"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+                  </svg>
+                  <span className="hidden sm:inline">Add Alumni</span>
+                  <span className="sm:hidden">Add</span>
+                </button>
               </div>
-              <div>
-                <h1 className="text-base font-bold text-gray-900 dark:text-white">
-                  Alumni Portal
-                </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Manage alumni records, events, and engagement
-                </p>
-              </div>
-            </div>
+            ) : null}
 
-            {/* Quick actions */}
-            <div className="hidden items-center gap-2 sm:flex  py-2 px-2">
-              <button
-                onClick={() => handleTabChange("AadAlumni")}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#183D32] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#1a4d3e] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/30 active:scale-[0.98] dark:bg-emerald-600 dark:hover:bg-emerald-500"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-                </svg>
-                Add Alumni
-              </button>
-            </div>
+            <nav className="min-w-0 w-full" role="tablist" aria-label="Alumni sections">
+              <div className="flex flex-wrap items-center gap-2">
+                {MENU_TABS.map((tab, idx) => {
+                  const isSelected = selected === tab.key;
+                  const counts = tab.showCounter ? tabCounts[tab.key] : undefined;
+                  const showLoader = (tabCountsLoading || tabCountsFetching) && tab.showCounter && !counts;
+
+                  return (
+                    <TabButton
+                      key={tab.key}
+                      tab={tab}
+                      isSelected={isSelected}
+                      index={idx}
+                      totalTabs={MENU_TABS.length}
+                      counts={counts}
+                      showLoader={showLoader}
+                      onSelect={handleTabChange}
+                    />
+                  );
+                })}
+              </div>
+            </nav>
           </div>
-
-          {/* Tab Navigation */}
-          <nav className="relative py-2 px-4" role="tablist" aria-label="Alumni sections">
-            <div className="flex flex-wrap items-stretch gap-2 pb-1">
-              {MENU_TABS.map((tab, idx) => {
-                const isSelected = selected === tab.key;
-                const counts = tab.showCounter ? tabCounts[tab.key] : undefined;
-                const showLoader = (tabCountsLoading || tabCountsFetching) && tab.showCounter && !counts;
-
-                return (
-                  <TabButton
-                    key={tab.key}
-                    tab={tab}
-                    isSelected={isSelected}
-                    index={idx}
-                    totalTabs={MENU_TABS.length}
-                    counts={counts}
-                    showLoader={showLoader}
-                    onSelect={handleTabChange}
-                  />
-                );
-              })}
-            </div>
-
-            {/* Underline is rendered inside the selected tab */}
-          </nav>
         </div>
-      </motion.header>
+      </div>
 
-      {/* ── Tab Content ── */}
       {showTabsContent && (
         <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
           <ComponentCard className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -668,7 +662,7 @@ const UnifiedHeaderTopbar: FC = () => {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       className={`
-        sticky top-0 z-[620] flex min-h-[68px] items-center border-b  bg-white/95
+        sticky top-0 z-[620] flex min-h-[68px] w-full max-w-full items-center overflow-x-hidden border-b bg-white/95
         backdrop-blur-xl transition-all duration-300 
         ${
           isScrolled

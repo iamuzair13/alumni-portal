@@ -1,297 +1,365 @@
-import jsPDF from "jspdf";
-import type { LeadershipScorecardPayload } from "@/lib/leadershipScorecardData";
-import { computeScorecardTotals } from "@/lib/leadershipScorecardTotals";
+import { jsPDF } from "jspdf";
+import { readFileSync } from "fs";
+import { join } from "path";
+import type { BulkScorecardCriterion, BulkScorecardPayload } from "@/lib/leadershipScorecardData";
+import { bulkScorecardRoleLabel } from "@/lib/leadershipScorecardData";
+import { formatObtainedMarkDisplay } from "@/lib/leadershipMarks";
 
-const STRATEGY_QUESTION =
-  "Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role.";
-const ACHIEVEMENT_QUESTION =
-  "Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.";
+const PDF_LOGO_MAX_BYTES = 512 * 1024;
 
-export function generateLeadershipScorecardPDF(data: LeadershipScorecardPayload): Promise<Buffer> {
+const THEME = {
+  margin: 14,
+  colors: {
+    brand: [0, 102, 51] as [number, number, number],
+    brandLight: [240, 247, 243] as [number, number, number],
+    text: [33, 33, 33] as [number, number, number],
+    muted: [100, 100, 100] as [number, number, number],
+    border: [218, 218, 218] as [number, number, number],
+    white: [255, 255, 255] as [number, number, number],
+  },
+  font: {
+    h1: 14,
+    h2: 11,
+    body: 9,
+    small: 8,
+    tiny: 7.5,
+  },
+};
+
+const QUESTIONS_COL_RATIO = 0.38;
+const MIN_APPLICANT_COL_MM = 22;
+const HEADER_ROW_H = 7;
+const CELL_PAD = 1.5;
+const TABLE_FONT = 8;
+const SECTION_GAP = 3;
+
+function getLogoBase64(): string {
+  const candidates = [
+    join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-04.png"),
+    join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-01.png"),
+    join(process.cwd(), "public", "images", "logo", "logo-white.png"),
+  ];
+  for (const logoPath of candidates) {
+    try {
+      const logoBuffer = readFileSync(logoPath);
+      if (logoBuffer.length > PDF_LOGO_MAX_BYTES) continue;
+      return `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    } catch {
+      // try next
+    }
+  }
+  return "";
+}
+
+function criterionQuestionText(c: BulkScorecardCriterion): string {
+  const label = String(c.label || "-");
+  const desc = c.description ? `Note: ${String(c.description)}` : "";
+  return [label, desc].filter(Boolean).join("\n");
+}
+
+function maxApplicantsPerPage(pageW: number, margin: number): number {
+  const usable = pageW - margin * 2;
+  const questionsW = usable * QUESTIONS_COL_RATIO;
+  const remaining = usable - questionsW;
+  return Math.max(1, Math.floor(remaining / MIN_APPLICANT_COL_MM));
+}
+
+function chunkApplicants<T>(items: T[], size: number): T[][] {
+  if (items.length === 0) return [[]];
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 28;
-      const maxWidth = pageWidth - 2 * margin;
-      let y = margin;
+      const doc = new jsPDF({ compress: true, unit: "mm", orientation: "landscape" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const m = THEME.margin;
+      const W = pageW - m * 2;
+      let y = m;
 
-      const totals = computeScorecardTotals(data);
-      const assessedByDisplay =
-        data.assessedByName?.trim() ||
-        data.assessedByEmail?.trim() ||
-        "—";
+      const pageBottom = () => pageH - m - 10;
+      const lineH = (size: number) => size * 0.38;
+      let allowVerticalPageBreak = false;
 
-      const pageBottomY = () => pageHeight - margin - 12;
-
-      const ensureSpace = (neededHeight: number) => {
-        if (y + neededHeight <= pageBottomY()) return;
-        doc.addPage();
-        y = margin;
-      };
-
-      const setTextStyle = (fontSize: number, bold: boolean = false, color: [number, number, number] = [30, 30, 30]) => {
-        doc.setFontSize(fontSize);
+      const setStyle = (size: number, bold = false, color: [number, number, number] = THEME.colors.text) => {
+        doc.setFontSize(size);
         doc.setFont("helvetica", bold ? "bold" : "normal");
         doc.setTextColor(color[0], color[1], color[2]);
       };
 
-      const textHeight = (fontSize: number) => fontSize * 0.42;
-
-      const drawWrapped = (text: string, x: number, fontSize: number, bold: boolean, maxW: number, spacing = 4) => {
-        setTextStyle(fontSize, bold);
-        const lines = doc.splitTextToSize(String(text ?? ""), maxW);
-        const h = lines.length * textHeight(fontSize);
-        ensureSpace(h + spacing);
-        doc.text(lines, x, y, { maxWidth: maxW });
-        y += h + spacing;
+      const drawPageFooter = () => {
+        const footerY = pageH - 8;
+        doc.setDrawColor(...THEME.colors.brand);
+        doc.setLineWidth(0.25);
+        doc.line(m, footerY - 3, pageW - m, footerY - 3);
+        doc.setFontSize(THEME.font.tiny);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...THEME.colors.muted);
+        const ft = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
+        const fw = doc.getTextWidth(ft);
+        doc.text(ft, (pageW - fw) / 2, footerY);
+        const pageNum = `Page ${doc.getCurrentPageInfo().pageNumber}`;
+        doc.text(pageNum, pageW - m - doc.getTextWidth(pageNum), footerY);
       };
 
-      const fieldGrid = (
-        fields: Array<{ label: string; value: string }>,
-        opts?: { fontSize?: number; colGap?: number; rowGap?: number }
-      ) => {
-        const fontSize = opts?.fontSize ?? 9.5;
-        const colGap = opts?.colGap ?? 14;
-        const rowGap = opts?.rowGap ?? 4;
-        const colW = (maxWidth - colGap) / 2;
-        const x1 = margin;
-        const x2 = margin + colW + colGap;
-
-        setTextStyle(fontSize, false, [60, 60, 60]);
-        for (let i = 0; i < fields.length; i += 2) {
-          const left = fields[i];
-          const right = fields[i + 1];
-
-          const lText = `${left.label}: ${left.value || "—"}`;
-          const rText = right ? `${right.label}: ${right.value || "—"}` : "";
-
-          const lLines = doc.splitTextToSize(lText, colW);
-          const rLines = rText ? doc.splitTextToSize(rText, colW) : [""];
-          const rowLines = Math.max(lLines.length, rLines.length, 1);
-          const rowH = rowLines * textHeight(fontSize) + rowGap;
-          ensureSpace(rowH + 1);
-
-          doc.text(lLines, x1, y, { maxWidth: colW });
-          if (rText) doc.text(rLines, x2, y, { maxWidth: colW });
-          y += rowH;
-        }
-        y += 2;
+      const ensureSpace = (need: number) => {
+        if (!allowVerticalPageBreak || y + need <= pageBottom()) return;
+        drawPageFooter();
+        doc.addPage();
+        y = m;
       };
 
-      const sectionTitle = (title: string) => {
-        const fontSize = 12;
-        setTextStyle(fontSize, true, [0, 102, 51]);
-        const lines = doc.splitTextToSize(title, maxWidth);
-        const titleH = Math.max(1, lines.length) * textHeight(fontSize);
-        ensureSpace(titleH + 14);
-        doc.text(lines, margin, y, { maxWidth });
-        y += titleH + 4;
-        doc.setDrawColor(0, 102, 51);
-        doc.setLineWidth(0.5);
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 10;
-      };
-
-      // Header
-      setTextStyle(16, true, [0, 80, 40]);
-      ensureSpace(20);
-      doc.text("Leadership Application Scorecard", margin, y);
-      y += 14;
-
-      fieldGrid(
-        [
-          { label: "Application ID", value: String(data.applicationId) },
-          { label: "Assessment Date", value: data.assessmentDate || "—" },
-          { label: "Assessed By", value: assessedByDisplay },
-          { label: "Email", value: data.applicant.email || "—" },
-          { label: "Chapter / Association", value: data.applicationTypeLabel || "—" },
-          { label: "Position Applied For", value: data.position || "—" },
-        ],
-        { fontSize: 9.2, rowGap: 3 }
-      );
-
-      y += 4;
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.3);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 12;
-
-      // Section 1: Applicant Information
-      sectionTitle("Section 1: Applicant Information");
-      fieldGrid(
-        [
-          { label: "Applicant Name", value: data.applicant.name || "—" },
-          { label: "Membership Number", value: data.applicant.membershipNumber || "—" },
-          { label: "Position Applied For", value: data.position || "—" },
-          {
-            label: "Application Type",
-            value: data.leadershipType === "chapter" ? "Chapter Leadership" : "Association Leadership",
-          },
-          { label: "Category", value: data.applicationTypeLabel || "—" },
-          { label: "Application Date", value: data.applicationDate || "—" },
-          ...(data.applicant.faculty ? [{ label: "Faculty", value: data.applicant.faculty }] : []),
-          ...(data.applicant.department ? [{ label: "Department", value: data.applicant.department }] : []),
-          ...(data.applicant.program ? [{ label: "Program", value: data.applicant.program }] : []),
-        ],
-        { fontSize: 9.5, rowGap: 3 }
-      );
-
-      // Section 2: Assessment Criteria Scorecard
-      sectionTitle("Section 2: Assessment Criteria Scorecard");
-
-      const col1 = margin;
-      const col2 = margin + maxWidth * 0.62;
-      const col3 = margin + maxWidth * 0.82;
-      const rowH = 10;
-      const tableFont = 9;
-
-      const drawTableHeader = () => {
-        ensureSpace(rowH + 4);
-        doc.setFillColor(240, 248, 244);
-        doc.rect(margin, y - 5, maxWidth, rowH, "F");
-        setTextStyle(tableFont, true);
-        doc.text("Assessment Criteria", col1 + 2, y);
-        doc.text("Obtained", col2, y, { align: "right" });
-        doc.text("Total", col3, y, { align: "right" });
-        y += rowH + 2;
-      };
-
-      drawTableHeader();
-
-      for (const row of data.criteria) {
-        if (!row.label) continue;
-        const obtained =
-          row.obtainedMarks != null && Number.isFinite(row.obtainedMarks) ? String(row.obtainedMarks) : "—";
-        const total = row.totalMarks != null && Number.isFinite(row.totalMarks) ? String(row.totalMarks) : "—";
-
-        setTextStyle(tableFont, false);
-        const labelLines = doc.splitTextToSize(row.label, maxWidth * 0.58);
-        const needed = Math.max(labelLines.length * textHeight(tableFont), rowH) + 4;
-        if (y + needed > pageBottomY()) {
+      const startApplicantBatchPage = (batchIdx: number) => {
+        if (batchIdx > 0) {
+          drawPageFooter();
           doc.addPage();
-          y = margin;
-          drawTableHeader();
+          y = m;
         }
-        doc.text(labelLines, col1 + 2, y);
-        doc.text(obtained, col2, y, { align: "right" });
-        doc.text(total, col3, y, { align: "right" });
-        y += needed;
-      }
-
-      y += 4;
-      setTextStyle(10, true);
-      drawWrapped(
-        `Assessment Subtotal: ${totals.assessmentObtained} / ${totals.assessmentMaximum}`,
-        margin,
-        10,
-        true,
-        maxWidth,
-        8
-      );
-
-      // Section 3: Bonus Assessment
-      sectionTitle("Section 3: Bonus Assessment");
-
-      const bonusBlock = (
-        subtitle: string,
-        question: string,
-        response: string | null,
-        obtained: number,
-        maximum: number
-      ) => {
-        setTextStyle(10, true, [0, 102, 51]);
-        drawWrapped(subtitle, margin, 10, true, maxWidth, 4);
-        setTextStyle(9, true);
-        drawWrapped("Question:", margin, 9, true, maxWidth, 2);
-        setTextStyle(9, false);
-        drawWrapped(question, margin, 9, false, maxWidth, 4);
-        setTextStyle(9, true);
-        drawWrapped("Applicant Response:", margin, 9, true, maxWidth, 2);
-        setTextStyle(9, false);
-        drawWrapped(response?.trim() || "—", margin, 9, false, maxWidth, 4);
-        setTextStyle(9, true);
-        drawWrapped(`Marks Awarded: ${obtained} / ${maximum}`, margin, 9, true, maxWidth, 10);
       };
 
-      bonusBlock(
-        "Strategy & Planning",
-        STRATEGY_QUESTION,
-        data.planStrategy,
-        data.strategyAssessmentMarks,
-        15
-      );
-      bonusBlock(
-        "Additional Achievements",
-        ACHIEVEMENT_QUESTION,
-        data.additionalAchievements,
-        data.achievementAssessmentMarks,
-        10
-      );
+      const drawContinuationHeader = (batchStart: number, batchEnd: number) => {
+        const barH = 10;
+        doc.setFillColor(...THEME.colors.brandLight);
+        doc.setDrawColor(...THEME.colors.brand);
+        doc.setLineWidth(0.3);
+        doc.rect(m, y, W, barH, "S");
+        setStyle(THEME.font.small, true, THEME.colors.brand);
+        doc.text(
+          `Leadership Scorecard — Applicants ${batchStart}–${batchEnd}`,
+          m + 4,
+          y + 6.5
+        );
+        y += barH + 4;
+      };
 
-      setTextStyle(10, true);
-      drawWrapped(`Bonus Marks: ${totals.bonusObtained} / ${totals.bonusMaximum}`, margin, 10, true, maxWidth, 10);
+      const drawBrandedHeader = () => {
+        const headerH = 20;
+        doc.setFillColor(...THEME.colors.brand);
+        doc.rect(m, y, W, headerH, "F");
 
-      // Section 4: Final Results
-      sectionTitle("Section 4: Final Results");
-      doc.setFillColor(248, 250, 252);
-      const boxH = 36;
-      ensureSpace(boxH + 8);
-      doc.rect(margin, y, maxWidth, boxH, "F");
-      doc.setDrawColor(255, 255, 255);
-      doc.rect(margin, y, maxWidth, boxH, "S");
-      const innerY = y + 10;
-      let lineY = innerY;
-      doc.setFillColor(255, 255, 255); // Set background to white
-      doc.rect(margin, y, maxWidth, boxH, "F"); // Overdraw white background
-      setTextStyle(10, false);
-      doc.text(`Assessment Marks: ${totals.assessmentObtained} / ${totals.assessmentMaximum}`, margin + 8, lineY);
-      lineY += 8;
-      doc.text(`Bonus Marks: ${totals.bonusObtained} / ${totals.bonusMaximum}`, margin + 8, lineY);
-      lineY += 8;
-      setTextStyle(11, true);
-      doc.text(`Grand Total: ${totals.grandObtained} / ${totals.grandMaximum}`, margin + 8, lineY);
-      y += boxH + 12;
- 
+        const titleX = m + 4;
+        doc.setFontSize(THEME.font.h1);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(255, 255, 255);
+        doc.text("Leadership Scorecard", titleX, y + 9);
+        doc.setFontSize(THEME.font.small);
+        doc.setFont("helvetica", "normal");
+        doc.text("Office of Alumni Relations — University of Lahore", titleX, y + 15);
 
-      // Section 5: Percentage
-      sectionTitle("Section 5: Percentage & Ranking");
-      const pct = totals.grandMaximum > 0 ? totals.percentage.toFixed(2) : "0.00";
-      drawWrapped(`Percentage: ${pct}%`, margin, 11, true, maxWidth, 8);
+        const logo = getLogoBase64();
+        if (logo) {
+          try {
+            const logoW = 28;
+            const logoH = 12;
+            doc.addImage(logo, "PNG", pageW - m - logoW - 2, y + 4, logoW, logoH);
+          } catch {
+            // skip logo
+          }
+        }
 
-      if (data.assessmentRemarks?.trim()) {
-        sectionTitle("Assessment Summary");
-        setTextStyle(9, false);
-        drawWrapped(data.assessmentRemarks.trim(), margin, 9, false, maxWidth, 8);
-      }
+        y += headerH + 5;
 
-      // Section 6: Signatures
-      sectionTitle("Section 6: Signatures");
-      ensureSpace(40);
-      setTextStyle(10, false);
-      doc.text("Assessed By:", margin, y);
-      doc.line(margin + 32, y, margin + 120, y);
-      y += 14;
-      doc.text("Date:", margin, y);
-      doc.line(margin + 18, y, margin + 90, y);
-      y += 20;
+        const roleLabel = bulkScorecardRoleLabel(data.role);
+        const typeLabel = data.leadershipType === "chapter" ? "Chapter" : "Association";
+        const infoPairs = [
+          { label: "Role", value: roleLabel },
+          { label: "Type", value: typeLabel },
+          ...(data.categoryLabel ? [{ label: "Category", value: data.categoryLabel }] : []),
+          { label: "Generated", value: data.generatedAt },
+          { label: "Applicants", value: String(data.applicants.length) },
+        ];
 
-      // Footer page numbers
+        const colCount = infoPairs.length;
+        const colW = (W - (colCount - 1) * 2) / colCount;
+        let maxRowH = 10;
+        infoPairs.forEach((p) => {
+          const lines = doc.splitTextToSize(p.value, colW - 4);
+          maxRowH = Math.max(maxRowH, lines.length * lineH(THEME.font.small) + 7);
+        });
+        ensureSpace(maxRowH + 4);
+
+        infoPairs.forEach((p, i) => {
+          const x = m + i * (colW + 2);
+          doc.setFillColor(250, 250, 250);
+          doc.setDrawColor(...THEME.colors.border);
+          doc.setLineWidth(0.1);
+          doc.rect(x, y, colW, maxRowH, "FD");
+          setStyle(THEME.font.tiny, true, THEME.colors.muted);
+          doc.text(p.label.toUpperCase(), x + 2.5, y + 3.5);
+          setStyle(THEME.font.small, false, THEME.colors.text);
+          doc.text(doc.splitTextToSize(p.value, colW - 4), x + 2.5, y + 7);
+        });
+        y += maxRowH + 6;
+      };
+
+      const drawSectionTitle = (title: string, opts?: { compact?: boolean }) => {
+        const barH = opts?.compact ? 5.5 : 6.5;
+        y += opts?.compact ? 0 : SECTION_GAP;
+        doc.setFillColor(...THEME.colors.brandLight);
+        doc.setDrawColor(...THEME.colors.brand);
+        doc.setLineWidth(0.3);
+        doc.rect(m, y, 2.5, barH, "F");
+        doc.rect(m, y, W, barH, "S");
+        setStyle(THEME.font.small, true, THEME.colors.brand);
+        doc.text(title.toUpperCase(), m + 5, y + 4.3);
+        y += barH + 2;
+      };
+
+      type TableContext = {
+        questionsW: number;
+        applicantW: number;
+        batch: BulkScorecardPayload["applicants"];
+        batchLabel?: string;
+      };
+
+      const drawTableHeader = (ctx: TableContext) => {
+        const totalW = ctx.questionsW + ctx.applicantW * ctx.batch.length;
+
+        doc.setFillColor(...THEME.colors.brand);
+        doc.setDrawColor(...THEME.colors.brand);
+        doc.setLineWidth(0.15);
+        doc.rect(m, y, totalW, HEADER_ROW_H, "F");
+
+        setStyle(THEME.font.small, true, THEME.colors.white);
+        doc.text("Questions", m + CELL_PAD, y + 4.8);
+
+        ctx.batch.forEach((applicant, idx) => {
+          const x = m + ctx.questionsW + idx * ctx.applicantW;
+          const nameLines = doc.splitTextToSize(applicant.name || "—", ctx.applicantW - CELL_PAD * 2);
+          const display = nameLines.slice(0, 2).join(" ");
+          doc.text(display, x + CELL_PAD, y + 4.8, { maxWidth: ctx.applicantW - CELL_PAD * 2 });
+        });
+
+        y += HEADER_ROW_H;
+      };
+
+      const drawTableRow = (
+        ctx: TableContext,
+        question: string,
+        marks: Array<number | null>,
+        shaded: boolean
+      ) => {
+        const qLines = doc.splitTextToSize(question, ctx.questionsW - CELL_PAD * 2);
+        const markLineCounts = marks.map((mark) => {
+          const text =
+            mark != null && Number.isFinite(mark) ? formatObtainedMarkDisplay(mark) : "—";
+          return doc.splitTextToSize(text, ctx.applicantW - CELL_PAD * 2).length;
+        });
+        const rowLines = Math.max(qLines.length, ...markLineCounts, 1);
+        const rowH = Math.max(HEADER_ROW_H - 1, rowLines * lineH(TABLE_FONT) + CELL_PAD * 2);
+
+        const totalW = ctx.questionsW + ctx.applicantW * ctx.batch.length;
+
+        if (shaded) {
+          doc.setFillColor(248, 250, 248);
+          doc.rect(m, y, totalW, rowH, "F");
+        }
+
+        doc.setDrawColor(...THEME.colors.border);
+        doc.setLineWidth(0.1);
+        doc.rect(m, y, totalW, rowH, "S");
+
+        doc.line(m + ctx.questionsW, y, m + ctx.questionsW, y + rowH);
+        for (let i = 1; i < ctx.batch.length; i++) {
+          const dividerX = m + ctx.questionsW + i * ctx.applicantW;
+          doc.line(dividerX, y, dividerX, y + rowH);
+        }
+
+        setStyle(TABLE_FONT, false, THEME.colors.text);
+        doc.text(qLines, m + CELL_PAD, y + CELL_PAD + lineH(TABLE_FONT));
+
+        marks.forEach((mark, idx) => {
+          const x = m + ctx.questionsW + idx * ctx.applicantW;
+          const text =
+            mark != null && Number.isFinite(mark) ? formatObtainedMarkDisplay(mark) : "—";
+          const lines = doc.splitTextToSize(text, ctx.applicantW - CELL_PAD * 2);
+          doc.text(lines, x + CELL_PAD, y + CELL_PAD + lineH(TABLE_FONT));
+        });
+
+        y += rowH;
+      };
+
+      const drawCriteriaTable = (
+        ctx: TableContext,
+        criteria: BulkScorecardCriterion[],
+        emptyMessage: string
+      ) => {
+        if (criteria.length === 0) {
+          setStyle(TABLE_FONT, false, THEME.colors.muted);
+          doc.text(emptyMessage, m, y);
+          y += 6;
+          return;
+        }
+
+        drawTableHeader(ctx);
+        criteria.forEach((criterion, idx) => {
+          const marks = ctx.batch.map((a) => a.marksByCriterionId[criterion.id] ?? null);
+          drawTableRow(ctx, criterionQuestionText(criterion), marks, idx % 2 === 1);
+        });
+      };
+
+      const drawApplicantBatchScorecard = (
+        batch: BulkScorecardPayload["applicants"],
+        batchIdx: number,
+        perPage: number
+      ) => {
+        startApplicantBatchPage(batchIdx);
+
+        if (batchIdx === 0) {
+          allowVerticalPageBreak = true;
+          drawBrandedHeader();
+          allowVerticalPageBreak = false;
+        } else {
+          const batchStart = batchIdx * perPage + 1;
+          const batchEnd = batchIdx * perPage + batch.length;
+          drawContinuationHeader(batchStart, batchEnd);
+        }
+
+        const questionsW = W * QUESTIONS_COL_RATIO;
+        const ctx: TableContext = {
+          questionsW,
+          applicantW: (W - questionsW) / Math.max(batch.length, 1),
+          batch,
+        };
+
+        drawSectionTitle("Section 1: Mandatory Criteria", { compact: batchIdx > 0 });
+        if (data.applicants.length === 0) {
+          setStyle(TABLE_FONT, false, THEME.colors.muted);
+          doc.text(
+            "No applications found for the selected role, type, and chapter or association.",
+            m,
+            y
+          );
+          y += 6;
+        } else {
+          drawCriteriaTable(ctx, data.criteria.mandatory, "No mandatory criteria defined.");
+        }
+
+        drawSectionTitle("Section 2: Optional Criteria", { compact: true });
+        if (data.applicants.length > 0) {
+          drawCriteriaTable(ctx, data.criteria.optional, "No optional criteria defined.");
+        }
+      };
+
+      const perPage = maxApplicantsPerPage(pageW, m);
+      const batches = chunkApplicants(data.applicants, perPage);
+      batches.forEach((batch, batchIdx) => {
+        drawApplicantBatchScorecard(batch, batchIdx, perPage);
+      });
+
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        setTextStyle(8, false, [120, 120, 120]);
-        doc.text(
-          `Leadership Scorecard — Application #${data.applicationId} — Page ${i} of ${pageCount}`,
-          pageWidth / 2,
-          pageHeight - 14,
-          { align: "center" }
-        );
+        drawPageFooter();
       }
 
-      const buf = Buffer.from(doc.output("arraybuffer"));
-      resolve(buf);
+      resolve(Buffer.from(doc.output("arraybuffer")));
     } catch (e) {
       reject(e);
     }

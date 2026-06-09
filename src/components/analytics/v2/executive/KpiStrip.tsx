@@ -17,6 +17,29 @@ const SPARK_COLORS: Record<KpiConfigItem["color"], string> = {
   blue: "#3b82f6",
 };
 
+const COLUMN_ACCENT: Record<KpiConfigItem["color"], string> = {
+  indigo: "border-t-indigo-500",
+  emerald: "border-t-emerald-500",
+  amber: "border-t-amber-500",
+  rose: "border-t-rose-500",
+  sky: "border-t-sky-500",
+  violet: "border-t-violet-500",
+  orange: "border-t-orange-500",
+  slate: "border-t-slate-400",
+  blue: "border-t-blue-500",
+};
+
+function KpiGroupHeader({ group }: { group: KpiConfigGroup }) {
+  return (
+    <div className="flex items-baseline gap-2 border-b border-gray-100 bg-gray-50/90 px-2.5 py-1 dark:border-gray-800 dark:bg-gray-800/40">
+      <h3 className="text-[12px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">{group.label}</h3>
+      {group.description ? (
+        <span className="hidden truncate text-[11px] text-gray-400 xl:inline dark:text-gray-500">{group.description}</span>
+      ) : null}
+    </div>
+  );
+}
+
 function InlineSparkline({ data, color }: { data: number[]; color: string }) {
   if (!data?.length || data.length < 2) return null;
   const min = Math.min(...data);
@@ -57,6 +80,41 @@ function ExpandChevron({ open }: { open: boolean }) {
   );
 }
 
+function KpiColumnSection({ group }: { group: KpiConfigGroup }) {
+  return (
+    <div className="min-w-0">
+      <KpiGroupHeader group={group} />
+      <div className="grid grid-cols-3 gap-1.5 px-2 py-2 sm:grid-cols-5">
+        {group.items.map((kpi) => (
+          <div
+            key={kpi.title}
+            className={`flex min-w-0 flex-col items-center rounded-lg border border-gray-100 border-t-[3px] bg-white/70 px-1 py-2 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900/40 ${COLUMN_ACCENT[kpi.color]}`}
+          >
+            <span className="text-[11px] font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300">{kpi.title}</span>
+            <span className="mt-1 text-base font-bold tabular-nums leading-none text-gray-900 dark:text-white">{kpi.value}</span>
+            {kpi.secondaryValue ? (
+              <span className="mt-0.5 text-[10px] font-semibold tabular-nums text-gray-500 dark:text-gray-400">{kpi.secondaryValue}</span>
+            ) : null}
+            {kpi.trend ? (
+              <div className="mt-1">
+                <TrendBadge value={kpi.trend.value} positive={kpi.trend.positive} compact />
+              </div>
+            ) : null}
+            {kpi.sparkline && kpi.sparkline.length >= 2 ? (
+              <div className="mt-1.5 w-full px-0.5">
+                <InlineSparkline data={kpi.sparkline} color={SPARK_COLORS[kpi.color]} />
+              </div>
+            ) : null}
+            {kpi.subtitle ? (
+              <span className="mt-1 line-clamp-2 w-full text-[9px] leading-snug text-gray-400 dark:text-gray-500">{kpi.subtitle}</span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function KpiTableSection({ group }: { group: KpiConfigGroup }) {
   const [expandedTitle, setExpandedTitle] = useState<string | null>(null);
 
@@ -66,12 +124,7 @@ function KpiTableSection({ group }: { group: KpiConfigGroup }) {
 
   return (
     <div className="min-w-0">
-      <div className="flex items-baseline gap-2 border-b border-gray-100 bg-gray-50/90 px-2.5 py-1 dark:border-gray-800 dark:bg-gray-800/40">
-        <h3 className="text-[12px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">{group.label}</h3>
-        {group.description ? (
-          <span className="hidden truncate text-[11px] text-gray-400 xl:inline dark:text-gray-500">{group.description}</span>
-        ) : null}
-      </div>
+      <KpiGroupHeader group={group} />
       <table className="w-full table-fixed">
         <tbody>
           {group.items.map((kpi) => {
@@ -107,7 +160,12 @@ function KpiTableSection({ group }: { group: KpiConfigGroup }) {
                     </span>
                   </td>
                   <td className="w-[28%] py-1 pr-1 text-right text-sm font-bold tabular-nums leading-none text-gray-900 dark:text-white">
-                    {kpi.value}
+                    <span className="inline-flex items-baseline justify-end gap-1.5">
+                      <span>{kpi.value}</span>
+                      {kpi.secondaryValue ? (
+                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">{kpi.secondaryValue}</span>
+                      ) : null}
+                    </span>
                   </td>
                   <td className="w-[14%] py-1 pr-1 text-right">
                     {kpi.trend ? <TrendBadge value={kpi.trend.value} positive={kpi.trend.positive} compact /> : null}
@@ -157,9 +215,13 @@ export function KpiStrip({ groups, isLoading }: { groups: KpiConfigGroup[]; isLo
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200/60 bg-white/80 shadow-sm backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/50">
       <div className="grid grid-cols-1 divide-y divide-gray-100 dark:divide-gray-800 md:grid-cols-2 md:divide-x md:divide-y">
-        {groups.map((group) => (
-          <KpiTableSection key={group.id} group={group} />
-        ))}
+        {groups.map((group) =>
+          group.layout === "columns" ? (
+            <KpiColumnSection key={group.id} group={group} />
+          ) : (
+            <KpiTableSection key={group.id} group={group} />
+          )
+        )}
       </div>
     </div>
   );

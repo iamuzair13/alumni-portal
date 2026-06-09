@@ -22,6 +22,8 @@ export type LeadershipApplicationTrace = {
   additionalFile1Url?: string | null;
   additionalFile2Url?: string | null;
   createdAt: string;
+  /** Sum of admin entered obtained marks (scored criteria); null if none recorded */
+  obtainedMarksTotal?: number | null;
   bonusMarks?: number | null;
 };
 

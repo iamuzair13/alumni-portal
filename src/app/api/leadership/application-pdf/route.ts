@@ -86,7 +86,10 @@ export async function GET(req: NextRequest) {
           cl.status,
           cl.created_at,
           cl.updated_at,
+          cl.assessed_at,
           cl.rejection_reason,
+          NULLIF(TRIM(CONCAT(COALESCE(assessor.firstname, ''), ' ', COALESCE(assessor.lastname, ''))), '') as assessor_name,
+          assessor.email as assessor_email,
           cl.additional_achievements,
           cl.plan_strategy,
           cl.strategy_assessment_marks,
@@ -121,6 +124,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
         LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
+        LEFT JOIN public.users assessor ON assessor.id = cl.assessed_by
         WHERE cl.id = ${applicationId}
           ${isAlumni && sessionAlumniId ? sql` AND cl.alumniid = ${sessionAlumniId}` : sql``}
           ${accessFilter.hasFilter && accessFilter.sql
@@ -157,6 +161,9 @@ export async function GET(req: NextRequest) {
           ass.association_id,
           ass.status,
           ass.createddatetime,
+          ass.assessed_at,
+          NULLIF(TRIM(CONCAT(COALESCE(assessor.firstname, ''), ' ', COALESCE(assessor.lastname, ''))), '') as assessor_name,
+          assessor.email as assessor_email,
           ass.additional_achievements,
           ass.plan_strategy,
           ass.strategy_assessment_marks,
@@ -190,6 +197,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
         LEFT JOIN public.tbl_faculties fac ON fac.id = ass.association_id
+        LEFT JOIN public.users assessor ON assessor.id = ass.assessed_by
         WHERE ass.id = ${applicationId}
           ${isAlumni && sessionAlumniId ? sql` AND ass.alumni_id = ${sessionAlumniId}` : sql``}
           ${accessFilter.hasFilter && accessFilter.sql
@@ -270,6 +278,12 @@ export async function GET(req: NextRequest) {
       item.image2 as string | null | undefined
     );
 
+    const applicationStatus = String(item.status ?? "pending").toLowerCase();
+    const approvedAt =
+      applicationStatus === "approved" && type === "chapter" && item.updated_at
+        ? String(item.updated_at)
+        : null;
+
     const pdf = await generateLeadershipApplicationPDF({
       leadershipType: type,
       alumniProfilePhoto,
@@ -281,7 +295,11 @@ export async function GET(req: NextRequest) {
         type === "chapter"
           ? (item.national_chapter ? String(item.national_chapter) : item.international_chapter ? String(item.international_chapter) : null)
           : (item.association_name ? String(item.association_name) : null),
-      status: String(item.status ?? "pending"),
+      status: applicationStatus,
+      assessedByName: item.assessor_name ? String(item.assessor_name) : null,
+      assessedByEmail: item.assessor_email ? String(item.assessor_email) : null,
+      assessedAt: item.assessed_at ? String(item.assessed_at) : null,
+      approvedAt,
       position,
       applicant: {
         name: String(item.alumniname ?? ""),

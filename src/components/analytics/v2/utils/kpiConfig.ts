@@ -14,6 +14,8 @@ export type KpiFacultyExpandRow = {
 export type KpiConfigItem = {
   title: string;
   value: string;
+  /** Paired rate or ratio shown beside the primary value (e.g. verification %). */
+  secondaryValue?: string;
   subtitle?: string;
   icon: React.ReactNode;
   color: "indigo" | "emerald" | "amber" | "rose" | "sky" | "violet" | "orange" | "slate" | "blue";
@@ -23,11 +25,39 @@ export type KpiConfigItem = {
   expandFaculties?: KpiFacultyExpandRow[];
 };
 
+export type KpiGroupLayout = "table" | "columns";
+
+export type AnalyticsChartType =
+  | "donut"
+  | "bar"
+  | "funnel"
+  | "treemap"
+  | "geo"
+  | "heatmap"
+  | "grouped-bar"
+  | "stacked-bar"
+  | "radar";
+
+export type ChartSeriesPoint = {
+  label: string;
+  value: number;
+  color?: string;
+  meta?: Record<string, unknown>;
+};
+
 export type KpiConfigGroup = {
   id: string;
   label: string;
   description?: string;
+  /** `columns` renders items as side-by-side tier cards (e.g. A+–D). */
+  layout?: KpiGroupLayout;
   items: KpiConfigItem[];
+  chartType?: AnalyticsChartType;
+  chartSeries?: ChartSeriesPoint[];
+  chartSeriesSecondary?: ChartSeriesPoint[];
+  chartMeta?: { primaryLabel?: string; secondaryLabel?: string };
+  insight?: string;
+  collapsible?: boolean;
 };
 
 function pct(numerator: number | null | undefined, denominator: number | null | undefined): string {
@@ -172,23 +202,21 @@ export function buildAllKpiGroups(
       description: "Database health, verification & activity",
       items: [
         { title: "Total Alumni", value: formatKpiValue(kpis?.totalAlumni), subtitle: "API aggregate", icon: DashboardIcons.entries, color: "blue", sparkline: totalSpark },
-        { title: "New Registrations", value: formatKpiValue(kpis?.totalRegistrations), subtitle: "All registrations", icon: DashboardIcons.entries, color: "indigo" },
-        { title: "Verified Alumni", value: formatKpiValue(ah?.verified), subtitle: "Identity confirmed", icon: DashboardIcons.verified, color: "emerald", sparkline: verifiedSpark, trend: verifiedSpark ? computeTrendDelta(verifiedSpark) : undefined },
-        { title: "Active Alumni", value: formatKpiValue(kpis?.activeAlumni), subtitle: "Logged into profile ≥1 time", icon: DashboardIcons.users, color: "emerald", sparkline: activeSpark, trend: activeSpark ? computeTrendDelta(activeSpark) : undefined },
-        { title: "Verification Rate", value: pct(ah?.verified, ah?.total), subtitle: "Verified / total", icon: DashboardIcons.verified, color: "emerald" },
-        { title: "Engagement Rate", value: pct(kpis?.activeAlumni, ah?.total), subtitle: "Logged-in / total", icon: DashboardIcons.users, color: "indigo" },
+        { title: "Verified Alumni", value: formatKpiValue(ah?.verified), secondaryValue: pct(ah?.verified, ah?.total), subtitle: "Identity confirmed", icon: DashboardIcons.verified, color: "emerald", sparkline: verifiedSpark, trend: verifiedSpark ? computeTrendDelta(verifiedSpark) : undefined },
+        { title: "Active Alumni", value: formatKpiValue(kpis?.activeAlumni), secondaryValue: pct(kpis?.activeAlumni, ah?.total), subtitle: "Logged into profile ≥1 time", icon: DashboardIcons.users, color: "emerald", sparkline: activeSpark, trend: activeSpark ? computeTrendDelta(activeSpark) : undefined },
       ],
     },
     {
       id: "alumni-categories",
       label: "Alumni Categories",
       description: "Tier distribution A+ through D",
+      layout: "columns",
       items: [
-        { title: "Category A+", value: formatKpiValue(ah?.category?.aPlus), subtitle: "Highest distinction", icon: DashboardIcons.star, color: "violet", sparkline: trends ? buildSparklineSeries(trends, "A_plus") : undefined },
-        { title: "Category A", value: formatKpiValue(ah?.category?.a), subtitle: "Distinguished alumni", icon: DashboardIcons.star, color: "sky", sparkline: trends ? buildSparklineSeries(trends, "A") : undefined },
-        { title: "Category B", value: formatKpiValue(ah?.category?.b), subtitle: "Active contributors", icon: DashboardIcons.star, color: "orange" },
-        { title: "Category C", value: formatKpiValue(ah?.category?.c), subtitle: "Regular members", icon: DashboardIcons.star, color: "slate" },
-        { title: "Category D", value: formatKpiValue(ah?.category?.d), subtitle: "Basic tier", icon: DashboardIcons.star, color: "rose" },
+        { title: "A+", value: formatKpiValue(ah?.category?.aPlus), subtitle: "Highest distinction", icon: DashboardIcons.star, color: "violet", sparkline: trends ? buildSparklineSeries(trends, "A_plus") : undefined },
+        { title: "A", value: formatKpiValue(ah?.category?.a), subtitle: "Distinguished alumni", icon: DashboardIcons.star, color: "sky", sparkline: trends ? buildSparklineSeries(trends, "A") : undefined },
+        { title: "B", value: formatKpiValue(ah?.category?.b), subtitle: "Active contributors", icon: DashboardIcons.star, color: "orange" },
+        { title: "C", value: formatKpiValue(ah?.category?.c), subtitle: "Regular members", icon: DashboardIcons.star, color: "slate" },
+        { title: "D", value: formatKpiValue(ah?.category?.d), subtitle: "Basic tier", icon: DashboardIcons.star, color: "rose" },
       ],
     },
     {

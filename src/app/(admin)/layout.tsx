@@ -37,7 +37,7 @@ export default function AdminLayout({
         : "lg:ml-[90px]";
 
   return (
-    <div className="min-h-screen xl:flex">
+    <div className="min-h-screen overflow-x-hidden xl:flex">
       {showSidebar ? (
         <>
           <AppSidebar />
@@ -45,11 +45,11 @@ export default function AdminLayout({
         </>
       ) : null}
       {/* Main Content Area */}
-      <div className={`flex-1 transition-all duration-300 ease-in-out ${mainContentMargin}`}>
+      <div className={`min-w-0 flex-1 overflow-x-hidden transition-all duration-300 ease-in-out ${mainContentMargin}`}>
         {/* Header */}
         <AppHeader />
         {/* Page Content */}
-        <div className="mx-auto">{children}</div>
+        <div className="mx-auto min-w-0 max-w-full">{children}</div>
       </div>
     </div>
   );

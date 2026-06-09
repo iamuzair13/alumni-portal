@@ -48,6 +48,31 @@ const TABS: { key: TabKey; label: string; shortLabel: string }[] = [
   { key: "associationMembers", label: "Association Leadership", shortLabel: "Association" },
 ];
 
+const LEADERSHIP_TAB_STYLES: Record<
+  TabKey,
+  {
+    selected: string;
+    label: string;
+    count: string;
+  }
+> = {
+  applications: {
+    selected: "bg-amber-50 border-2 border-amber-500 dark:bg-amber-900/20 shadow-sm",
+    label: "text-amber-600 dark:text-amber-400",
+    count: "text-amber-700 dark:text-amber-300",
+  },
+  chapterMembers: {
+    selected: "bg-blue-50 border-2 border-blue-500 dark:bg-blue-900/20 shadow-sm",
+    label: "text-blue-600 dark:text-blue-400",
+    count: "text-blue-700 dark:text-blue-300",
+  },
+  associationMembers: {
+    selected: "bg-violet-50 border-2 border-violet-500 dark:bg-violet-900/20 shadow-sm",
+    label: "text-violet-600 dark:text-violet-400",
+    count: "text-violet-700 dark:text-violet-300",
+  },
+};
+
 type LeadershipMember = {
   id: number;
   alumniId: number;
@@ -354,6 +379,22 @@ async function fetchCategoryOptions(input: {
   } as CategoryOptionsResponse;
 }
 
+async function fetchScorecardFilterOptions(input?: { role?: RoleFilter }) {
+  const params = new URLSearchParams();
+  if (input?.role && input.role !== "all") params.append("role", input.role);
+  params.append("status", "all");
+  const res = await fetch(`/api/leadership/pending-filter-options?${params.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch scorecard filter options");
+  const data = (await res.json()) as CategoryOptionsResponse;
+  const withCount = (items: CategoryOptionItem[]) =>
+    items.filter((item) => Number(item.count) > 0);
+  return {
+    nationalChapters: withCount(Array.isArray(data.nationalChapters) ? data.nationalChapters : []),
+    internationalChapters: withCount(Array.isArray(data.internationalChapters) ? data.internationalChapters : []),
+    associations: withCount(Array.isArray(data.associations) ? data.associations : []),
+  } as CategoryOptionsResponse;
+}
+
 async function fetchApplicationDetails(input: { type: "chapter" | "association"; applicationId: number }) {
   const params = new URLSearchParams();
   params.set("type", input.type);
@@ -381,7 +422,7 @@ export default function LeadershipPage() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const { isExporting, openExportModal, ExportModal } = useExcelExport();
-  const [selectedTab, setSelectedTab] = useState<TabKey>("chapterMembers");
+  const [selectedTab, setSelectedTab] = useState<TabKey>("applications");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [facultyFilter, setFacultyFilter] = useState("");
@@ -392,6 +433,12 @@ export default function LeadershipPage() {
   const [applicationStatusTab, setApplicationStatusTab] = useState<ApplicationStatusTab>("all");
   const [applicationRoleFilter, setApplicationRoleFilter] = useState<RoleFilter>("all");
   const [hasAdditionalAchievementsFilter, setHasAdditionalAchievementsFilter] = useState(false);
+  const [scorecardModalOpen, setScorecardModalOpen] = useState(false);
+  const [scorecardRole, setScorecardRole] = useState<"" | "president" | "vice_president" | "coordinator">("");
+  const [scorecardType, setScorecardType] = useState<"" | "chapter" | "association">("");
+  const [scorecardChapterCategory, setScorecardChapterCategory] = useState<"" | "national" | "international">("");
+  const [scorecardCategoryItemId, setScorecardCategoryItemId] = useState<number | null>(null);
+  const [scorecardGenerating, setScorecardGenerating] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [appPage, setAppPage] = useState(1);
@@ -458,7 +505,7 @@ export default function LeadershipPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(safeSearchParams.toString());
-    if (selectedTab === "chapterMembers") params.delete("tab");
+    if (selectedTab === "applications") params.delete("tab");
     else params.set("tab", selectedTab);
     if (applicationTypeFilter === "all") params.delete("type");
     else params.set("type", applicationTypeFilter);
@@ -518,13 +565,12 @@ export default function LeadershipPage() {
   const isAdmin = session?.user ? canModify(session.user) : false;
 
   const downloadLeadershipPdf = async (
-    endpoint: "application-pdf" | "application-scorecard",
     type: "chapter" | "association",
     applicationId: number,
     filenamePrefix: string
   ) => {
     const url = new URL(
-      `/api/leadership/${endpoint}`,
+      `/api/leadership/application-pdf`,
       typeof window !== "undefined" ? window.location.origin : ""
     );
     url.searchParams.set("type", type);
@@ -567,7 +613,6 @@ export default function LeadershipPage() {
     if (!selectedViewApp) return;
     try {
       await downloadLeadershipPdf(
-        "application-pdf",
         selectedViewApp.type,
         selectedViewApp.applicationId,
         "leadership-application"
@@ -577,18 +622,9 @@ export default function LeadershipPage() {
     }
   };
 
-  const handleDownloadScorecard = async (type: "chapter" | "association", applicationId: number) => {
-    try {
-      await downloadLeadershipPdf("application-scorecard", type, applicationId, "leadership-scorecard");
-      toast.success("Scorecard downloaded");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to download scorecard");
-    }
-  };
-
   const handleDownloadApplicationFromRow = async (type: "chapter" | "association", applicationId: number) => {
     try {
-      await downloadLeadershipPdf("application-pdf", type, applicationId, "leadership-application");
+      await downloadLeadershipPdf(type, applicationId, "leadership-application");
       toast.success("Application PDF downloaded");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to download application PDF");
@@ -829,6 +865,84 @@ export default function LeadershipPage() {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
+
+  const { data: scorecardOptionsData, isLoading: scorecardOptionsLoading } = useQuery({
+    queryKey: ["leadership-scorecard-options", scorecardRole],
+    queryFn: () =>
+      fetchScorecardFilterOptions(
+        scorecardRole ? { role: scorecardRole as RoleFilter } : undefined
+      ),
+    enabled: scorecardModalOpen && !!scorecardRole,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+
+  const scorecardNationalChapters = scorecardOptionsData?.nationalChapters || [];
+  const scorecardInternationalChapters = scorecardOptionsData?.internationalChapters || [];
+  const scorecardAssociations = scorecardOptionsData?.associations || [];
+
+  const scorecardFormReady =
+    !!scorecardRole &&
+    !!scorecardType &&
+    (scorecardType === "chapter"
+      ? !!scorecardChapterCategory && !!scorecardCategoryItemId
+      : !!scorecardCategoryItemId);
+
+  const handleGenerateBulkScorecard = async () => {
+    if (!scorecardFormReady) return;
+    setScorecardGenerating(true);
+    try {
+      const url = new URL("/api/leadership/bulk-scorecard", window.location.origin);
+      url.searchParams.set("role", scorecardRole);
+      url.searchParams.set("type", scorecardType);
+      if (scorecardType === "chapter") {
+        if (scorecardChapterCategory === "national" && scorecardCategoryItemId) {
+          url.searchParams.set("nationalChapterId", String(scorecardCategoryItemId));
+        } else if (scorecardChapterCategory === "international" && scorecardCategoryItemId) {
+          url.searchParams.set("internationalChapterId", String(scorecardCategoryItemId));
+        }
+      } else if (scorecardCategoryItemId) {
+        url.searchParams.set("associationId", String(scorecardCategoryItemId));
+      }
+      const res = await fetch(url.toString(), {
+        headers: { accept: "application/pdf" },
+        credentials: "include",
+      });
+      const contentType = (res.headers.get("content-type") || "").toLowerCase();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const err =
+          data && typeof data === "object" && "error" in data
+            ? String((data as { error?: unknown }).error || "")
+            : "";
+        throw new Error(err || "Failed to generate scorecard");
+      }
+      if (!contentType.includes("application/pdf")) {
+        throw new Error("Server did not return a PDF file. Please try again.");
+      }
+      const blob = await res.blob();
+      if (blob.size > 8 * 1024 * 1024) {
+        throw new Error(
+          `Downloaded file is too large (${(blob.size / (1024 * 1024)).toFixed(1)} MB).`
+        );
+      }
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      a.download = `leadership-scorecard-${scorecardType}-${scorecardRole}-${dateStamp}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+      toast.success("Scorecard downloaded");
+      setScorecardModalOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate scorecard");
+    } finally {
+      setScorecardGenerating(false);
+    }
+  };
 
   const { data: viewDetailsData, isLoading: viewDetailsLoading } = useQuery({
     queryKey: ["leadership-application-details", selectedViewApp?.type, selectedViewApp?.applicationId],
@@ -1234,15 +1348,14 @@ export default function LeadershipPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-200 dark:bg-gray-900/50 overflow-x-hidden dark:text-gray-300 dark:bg-gray-900">
-      {/* add appropria title and description here */}
-      <div className="w-full max-w-[1300px] border-b border-gray-200 dark:border-gray-700 bg-white rounded-t-lg mt-4 mx-auto flex flex-col justify-start dark:text-gray-300 dark:bg-gray-900">
-        <div className="px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Leadership Applications</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900">Manage leadership applications for chapters and associations.</p>
+    <div className="min-h-screen w-full min-w-0 overflow-x-hidden bg-slate-100 dark:bg-gray-950">
+      <div className="mx-auto flex w-full min-w-0 max-w-[1300px] flex-col bg-white dark:bg-gray-900 shadow-sm border-x border-b border-gray-200 dark:border-gray-800">
+        <div className="border-b border-gray-200 px-4 py-4 dark:border-gray-700">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Leadership Applications</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Manage leadership applications for chapters and associations.
+          </p>
         </div>
-      </div>
-      <div className="w-full max-w-[1300px] bg-white rounded-b-lg  mx-auto flex flex-col justify-start dark:text-gray-300 dark:bg-gray-900">
         {/* Tabs Section */}
         <div className="w-full px-4 py-4 ">
           <div className=" mx-auto dark:text-gray-300 dark:bg-gray-900">
@@ -1250,16 +1363,16 @@ export default function LeadershipPage() {
               {TABS.map((tab) => {
                 const isSelected = selectedTab === tab.key;
                 const statCount = tab.key === "chapterMembers" ? chapterMembersCount : tab.key === "associationMembers" ? associationMembersCount : applicationsCount;
-                const colorClass = tab.key === "chapterMembers" ? "blue" : tab.key === "associationMembers" ? "violet" : "amber";
+                const tabStyle = LEADERSHIP_TAB_STYLES[tab.key];
 
                 return (
                   <button
                     key={tab.key}
                     type="button"
-                    className={`relative rounded-lg p-3 text-center transition-all dark:text-gray-300 dark:bg-gray-900 ${
-                      isSelected 
-                        ? `bg-${colorClass}-50 border-2 border-${colorClass}-500 dark:bg-${colorClass}-900/20 shadow-sm` 
-                        : 'bg-white border border-gray-200 dark:bg-gray-800/50 dark:border-gray-700 hover:border-gray-300'
+                    className={`relative rounded-lg p-3 text-center transition-all ${
+                      isSelected
+                        ? tabStyle.selected
+                        : "border border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/50"
                     }`}
                     onClick={() => {
                       setSelectedTab(tab.key);
@@ -1276,15 +1389,19 @@ export default function LeadershipPage() {
                       setAppPage(1);
                     }}
                   >
-                    <div className={`text-xs font-bold uppercase tracking-wide mb-1 truncate dark:text-gray-300 dark:bg-gray-900 ${
-                      isSelected ? `text-${colorClass}-600 dark:text-${colorClass}-400` : 'text-gray-600 dark:text-gray-400'
-                    }`}>
+                    <div
+                      className={`mb-1 truncate text-xs font-bold uppercase tracking-wide ${
+                        isSelected ? tabStyle.label : "text-gray-600 dark:text-gray-400"
+                      }`}
+                    >
                       <span className="hidden sm:inline">{tab.label}</span>
                       <span className="sm:hidden">{tab.shortLabel}</span>
                     </div>
-                    <div className={`text-2xl font-bold dark:text-gray-300 dark:bg-gray-900 ${
-                      isSelected ? `text-${colorClass}-700 dark:text-${colorClass}-300` : 'text-gray-700 dark:text-gray-300'
-                    }`}>
+                    <div
+                      className={`text-2xl font-bold ${
+                        isSelected ? tabStyle.count : "text-gray-700 dark:text-gray-300"
+                      }`}
+                    >
                       {statCount}
                     </div>
                   </button>
@@ -1295,9 +1412,9 @@ export default function LeadershipPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="w-full px-4 py-3 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-sm backdrop-blur-sm">
-  <div className="mx-auto max-w-7xl">
-    <div className="bg-gray-50/80 dark:bg-gray-900/50 rounded-xl border border-gray-200/60 dark:border-gray-800/60 p-4 space-y-4 backdrop-blur-sm">
+        <div className="w-full min-w-0 px-4 py-3 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-sm backdrop-blur-sm">
+  <div className="mx-auto min-w-0 max-w-full">
+    <div className="min-w-0 rounded-xl border border-gray-200/60 bg-gray-50/80 p-4 space-y-4 backdrop-blur-sm dark:border-gray-800/60 dark:bg-gray-900/50">
       
       {/* Primary Controls Row */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -1342,6 +1459,23 @@ export default function LeadershipPage() {
             </select>
           )}
           
+          {selectedTab === "applications" && isAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                setScorecardRole("");
+                setScorecardType("");
+                setScorecardChapterCategory("");
+                setScorecardCategoryItemId(null);
+                setScorecardModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50 dark:bg-gray-950 dark:text-emerald-300 dark:hover:bg-emerald-950/30 text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              <DownloadIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Get ScoreCard</span>
+            </button>
+          )}
+
           <button
             onClick={handleExport}
             disabled={isExporting}
@@ -1442,7 +1576,7 @@ export default function LeadershipPage() {
           </span>
         </label>
 
-        <div className="flex flex-1 flex-wrap items-center gap-3 min-w-[340px] pl-3 border-l border-gray-200 dark:border-gray-800 animate-in fade-in slide-in-from-left-2 duration-300">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-3 border-t border-gray-200 pt-3 dark:border-gray-800 xl:w-auto xl:flex-1 xl:border-l xl:border-t-0 xl:pl-3">
           <div className="relative group flex-1 min-w-[180px] max-w-xs">
             <select
               value={applicationCategoryFilter}
@@ -1518,6 +1652,195 @@ export default function LeadershipPage() {
 </div>
 
         <ExportModal />
+
+        {scorecardModalOpen && (
+          <Modal
+            isOpen={scorecardModalOpen}
+            onClose={() => {
+              if (!scorecardGenerating) setScorecardModalOpen(false);
+            }}
+            showCloseButton={!scorecardGenerating}
+            className="max-w-md"
+          >
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Generate ScoreCard</h3>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Select role, type, and chapter or association to generate a comparison scorecard PDF.
+              </p>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Role</label>
+                  <select
+                    value={scorecardRole}
+                    onChange={(e) => {
+                      setScorecardRole(e.target.value as "" | "president" | "vice_president" | "coordinator");
+                      setScorecardChapterCategory("");
+                      setScorecardCategoryItemId(null);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  >
+                    <option value="">Select role</option>
+                    <option value="president">President</option>
+                    <option value="vice_president">Vice President</option>
+                    <option value="coordinator">Coordinator</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Type</label>
+                  <select
+                    value={scorecardType}
+                    onChange={(e) => {
+                      const next = e.target.value as "" | "chapter" | "association";
+                      setScorecardType(next);
+                      setScorecardChapterCategory("");
+                      setScorecardCategoryItemId(null);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  >
+                    <option value="">Select type</option>
+                    <option value="chapter">Chapter</option>
+                    <option value="association">Association</option>
+                  </select>
+                </div>
+
+                {scorecardType === "chapter" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                        Chapter Category
+                      </label>
+                      <select
+                        value={scorecardChapterCategory}
+                        onChange={(e) => {
+                          setScorecardChapterCategory(e.target.value as "" | "national" | "international");
+                          setScorecardCategoryItemId(null);
+                        }}
+                        disabled={!scorecardRole || scorecardOptionsLoading}
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+                      >
+                        <option value="">Select chapter category</option>
+                        <option value="national">National Chapters</option>
+                        <option value="international">International Chapters</option>
+                      </select>
+                    </div>
+                    {scorecardChapterCategory === "national" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          National Chapter
+                        </label>
+                        <select
+                          value={scorecardCategoryItemId ? String(scorecardCategoryItemId) : ""}
+                          onChange={(e) => {
+                            const next = e.target.value ? Number(e.target.value) : null;
+                            setScorecardCategoryItemId(next && Number.isFinite(next) && next > 0 ? next : null);
+                          }}
+                          disabled={!scorecardRole || scorecardOptionsLoading}
+                          className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+                        >
+                          <option value="">
+                            {scorecardOptionsLoading ? "Loading chapters..." : "Select national chapter"}
+                          </option>
+                          {scorecardNationalChapters.map((item) => (
+                            <option key={`scorecard-national-${item.id}`} value={item.id}>
+                              {item.label} ({item.count})
+                            </option>
+                          ))}
+                        </select>
+                        {!scorecardOptionsLoading && scorecardRole && scorecardNationalChapters.length === 0 && (
+                          <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                            No national chapters with applications for this role.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {scorecardChapterCategory === "international" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          International Chapter
+                        </label>
+                        <select
+                          value={scorecardCategoryItemId ? String(scorecardCategoryItemId) : ""}
+                          onChange={(e) => {
+                            const next = e.target.value ? Number(e.target.value) : null;
+                            setScorecardCategoryItemId(next && Number.isFinite(next) && next > 0 ? next : null);
+                          }}
+                          disabled={!scorecardRole || scorecardOptionsLoading}
+                          className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+                        >
+                          <option value="">
+                            {scorecardOptionsLoading ? "Loading chapters..." : "Select international chapter"}
+                          </option>
+                          {scorecardInternationalChapters.map((item) => (
+                            <option key={`scorecard-international-${item.id}`} value={item.id}>
+                              {item.label} ({item.count})
+                            </option>
+                          ))}
+                        </select>
+                        {!scorecardOptionsLoading && scorecardRole && scorecardInternationalChapters.length === 0 && (
+                          <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                            No international chapters with applications for this role.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {scorecardType === "association" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Association
+                    </label>
+                    <select
+                      value={scorecardCategoryItemId ? String(scorecardCategoryItemId) : ""}
+                      onChange={(e) => {
+                        const next = e.target.value ? Number(e.target.value) : null;
+                        setScorecardCategoryItemId(next && Number.isFinite(next) && next > 0 ? next : null);
+                      }}
+                      disabled={!scorecardRole || scorecardOptionsLoading}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+                    >
+                      <option value="">
+                        {scorecardOptionsLoading ? "Loading associations..." : "Select association"}
+                      </option>
+                      {scorecardAssociations.map((item) => (
+                        <option key={`scorecard-association-${item.id}`} value={item.id}>
+                          {item.label} ({item.count})
+                        </option>
+                      ))}
+                    </select>
+                    {!scorecardOptionsLoading && scorecardRole && scorecardAssociations.length === 0 && (
+                      <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                        No associations with applications for this role.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setScorecardModalOpen(false)}
+                  disabled={scorecardGenerating}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleGenerateBulkScorecard()}
+                  disabled={!scorecardFormReady || scorecardGenerating}
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  <DownloadIcon className={`h-4 w-4 ${scorecardGenerating ? "animate-bounce" : ""}`} />
+                  {scorecardGenerating ? "Generating…" : "Generate PDF"}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
 
         {confirmModal.isOpen && pendingAction && (
           <Modal
@@ -1978,24 +2301,6 @@ export default function LeadershipPage() {
               </div>
 
               <div className="px-6 pb-6 pt-4 flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                {pendingAction.action === "assessment" &&
-                  (() => {
-                    const s = String(pendingAction.status || approveDetailsData?.item?.status || "").toLowerCase();
-                    if (s !== "assessed" && s !== "approved" && s !== "rejected") return null;
-                    return (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleDownloadScorecard(pendingAction.type, pendingAction.applicationId)
-                        }
-                        disabled={processingIds.has(pendingAction.applicationId)}
-                        className="mr-auto inline-flex items-center gap-2 rounded-lg border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/30 disabled:opacity-50"
-                      >
-                        <DownloadIcon className="h-4 w-4" />
-                        Download Scorecard
-                      </button>
-                    );
-                  })()}
                 <button
                   type="button"
                   onClick={() => {
@@ -2090,10 +2395,10 @@ export default function LeadershipPage() {
         )}
 
         {/* Table Section */}
-        <div className="w-full px-4 pb-8">
-          <div className="mx-auto">
-            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800/50">
-              <SyncedTableScroll minWidth={800} maxHeight={750}>
+        <div className="w-full min-w-0 px-4 pb-8">
+          <div className="mx-auto min-w-0 max-w-full">
+            <div className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800/50">
+              <SyncedTableScroll minWidth={1100} maxHeight={750}>
                 {selectedTab === "applications" ? (
                   applicationsLoading ? (
                     <ApplicationsTable
@@ -2109,7 +2414,6 @@ export default function LeadershipPage() {
                         setSelectedViewApp({ type: app.type, applicationId: app.id });
                         viewModal.openModal();
                       }}
-                      onDownloadScorecard={(type, applicationId) => void handleDownloadScorecard(type, applicationId)}
                       onDownloadApplication={(type, applicationId) => void handleDownloadApplicationFromRow(type, applicationId)}
                       processingIds={processingIds}
                       sortKey={sortKey}
@@ -2143,7 +2447,6 @@ export default function LeadershipPage() {
                         setSelectedViewApp({ type: app.type, applicationId: app.id });
                         viewModal.openModal();
                       }}
-                      onDownloadScorecard={(type, applicationId) => void handleDownloadScorecard(type, applicationId)}
                       onDownloadApplication={(type, applicationId) => void handleDownloadApplicationFromRow(type, applicationId)}
                       processingIds={processingIds}
                       sortKey={sortKey}
@@ -2276,6 +2579,30 @@ export default function LeadershipPage() {
                           ? item.optionalCriteriaProficiency
                           : null;
 
+                      const criteriaItems = Array.isArray(viewDetailsData.criteria)
+                        ? (viewDetailsData.criteria as ApplicationDetailsCriterion[])
+                        : [];
+                      const showAssessmentMarks =
+                        statusLower === "approved" || statusLower === "assessed" || statusLower === "rejected";
+                      const criteriaTotalMarks = criteriaItems.reduce((sum, c) => {
+                        const m = Number(c.criterion_score);
+                        return Number.isFinite(m) && m > 0 ? sum + m : sum;
+                      }, 0);
+                      const criteriaTotalObtained = showAssessmentMarks
+                        ? criteriaItems.reduce((sum, c) => {
+                            const om = Number(c.obtained_marks);
+                            return Number.isFinite(om) && om >= 0 ? sum + om : sum;
+                          }, 0)
+                        : 0;
+                      const strategyMarks = Number(item.strategyAssessmentMarks ?? 0);
+                      const achievementMarks = Number(item.achievementAssessmentMarks ?? 0);
+                      const bonusMarks = Number.isFinite(Number(item.bonusMarks))
+                        ? Number(item.bonusMarks)
+                        : strategyMarks + achievementMarks;
+                      const grandObtained = criteriaTotalObtained + bonusMarks;
+                      const grandMaximum = criteriaTotalMarks + 25;
+                      const photoSrc = String(item.profilePhotoUrl || "").trim() || ALUMNI_PROFILE_PLACEHOLDER;
+
                       return (
                         <div className="space-y-4">
                           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -2316,40 +2643,36 @@ export default function LeadershipPage() {
                                 <DownloadIcon className="h-4 w-4" />
                                 Download PDF
                               </button>
-                              {isAdmin &&
-                                (statusLower === "assessed" ||
-                                  statusLower === "approved" ||
-                                  statusLower === "rejected") && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      void handleDownloadScorecard(
-                                        selectedViewApp.type,
-                                        selectedViewApp.applicationId
-                                      )
-                                    }
-                                    className="inline-flex items-center gap-2 rounded-lg border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:bg-gray-900 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
-                                  >
-                                    <DownloadIcon className="h-4 w-4" />
-                                    Download Scorecard
-                                  </button>
-                                )}
                             </div>
                           </div>
 
                           <div className="max-h-[75vh] overflow-y-auto pr-1 space-y-4">
                             <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
                               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Personal Information</div>
-                              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700 dark:text-gray-300">
-                                <div><span className="font-medium">Full Name:</span> {item.name || "-"}</div>
-                                <div><span className="font-medium">SAP ID:</span> {item.sapId || "-"}</div>
-                                <div><span className="font-medium">Gender:</span> {item.gender || "-"}</div>
-                                <div><span className="font-medium">Faculty:</span> {item.faculty || "-"}</div>
-                                <div><span className="font-medium">Department:</span> {item.department || "-"}</div>
-                                <div><span className="font-medium">Program:</span> {item.program || "-"}</div>
-                                <div><span className="font-medium">Passing Year:</span> {item.passingYear ?? "-"}</div>
-                                <div><span className="font-medium">Email:</span> {item.email || "-"}</div>
-                                <div><span className="font-medium">Phone:</span> {item.phone || "-"}</div>
+                              <div className="mt-3 flex flex-col sm:flex-row gap-4">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={photoSrc}
+                                  alt={`${item.name || "Alumni"} profile`}
+                                  className="h-24 w-24 shrink-0 rounded-lg border border-gray-200 object-cover bg-gray-100 dark:border-gray-600 dark:bg-gray-800"
+                                  onError={(e) => {
+                                    const img = e.currentTarget;
+                                    if (!img.src.includes("/images/person.jpg")) {
+                                      img.src = ALUMNI_PROFILE_PLACEHOLDER;
+                                    }
+                                  }}
+                                />
+                                <div className="min-w-0 flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                  <div><span className="font-medium">Full Name:</span> {item.name || "-"}</div>
+                                  <div><span className="font-medium">SAP ID:</span> {item.sapId || "-"}</div>
+                                  <div><span className="font-medium">Gender:</span> {item.gender || "-"}</div>
+                                  <div><span className="font-medium">Faculty:</span> {item.faculty || "-"}</div>
+                                  <div><span className="font-medium">Department:</span> {item.department || "-"}</div>
+                                  <div><span className="font-medium">Program:</span> {item.program || "-"}</div>
+                                  <div><span className="font-medium">Passing Year:</span> {item.passingYear ?? "-"}</div>
+                                  <div><span className="font-medium">Email:</span> {item.email || "-"}</div>
+                                  <div><span className="font-medium">Phone:</span> {item.phone || "-"}</div>
+                                </div>
                               </div>
                             </div>
 
@@ -2375,18 +2698,8 @@ export default function LeadershipPage() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                   {(() => {
-                                    const items = Array.isArray(viewDetailsData.criteria) ? viewDetailsData.criteria : [];
-                                    const showObtained = statusLower === "approved" || statusLower === "assessed";
-                                    const totalMarks = items.reduce((sum, c) => {
-                                      const m = Number((c as ApplicationDetailsCriterion).criterion_score);
-                                      return Number.isFinite(m) && m > 0 ? sum + m : sum;
-                                    }, 0);
-                                    const totalObtained = showObtained
-                                      ? items.reduce((sum, c) => {
-                                          const om = Number((c as ApplicationDetailsCriterion).obtained_marks);
-                                          return Number.isFinite(om) && om >= 0 ? sum + om : sum;
-                                        }, 0)
-                                      : 0;
+                                    const items = criteriaItems;
+                                    const showObtained = showAssessmentMarks;
 
                                     return (
                                       <>
@@ -2471,12 +2784,22 @@ export default function LeadershipPage() {
                                         })}
 
                                         <tr className="bg-gray-50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
-                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Result</td>
+                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Criteria Result</td>
                                           <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
-                                            {totalMarks > 0 ? formatObtainedMarkDisplay(totalMarks) : "-"}
+                                            {criteriaTotalMarks > 0 ? formatObtainedMarkDisplay(criteriaTotalMarks) : "-"}
                                           </td>
                                           <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
-                                            {showObtained && totalMarks > 0 ? formatObtainedMarkDisplay(totalObtained) : "—"}
+                                            {showObtained && criteriaTotalMarks > 0
+                                              ? formatObtainedMarkDisplay(criteriaTotalObtained)
+                                              : "—"}
+                                          </td>
+                                          <td className="px-4 py-3" />
+                                        </tr>
+                                        <tr className="bg-gray-50 dark:bg-gray-900/20 border-t border-gray-200 dark:border-gray-700">
+                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Bonus Marks</td>
+                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">25</td>
+                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                                            {showObtained ? formatObtainedMarkDisplay(bonusMarks) : "—"}
                                           </td>
                                           <td className="px-4 py-3" />
                                         </tr>
@@ -2490,19 +2813,62 @@ export default function LeadershipPage() {
                           </div>
 
                           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
-                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role
+                              </div>
+                              {showAssessmentMarks ? (
+                                <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                  {formatObtainedMarkDisplay(strategyMarks)} / 15
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm text-gray-800 dark:text-gray-200 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
+                              {String(item.planStrategy || "").trim() || "No plan/strategy provided."}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
+                              </div>
+                              {showAssessmentMarks ? (
+                                <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                  {formatObtainedMarkDisplay(achievementMarks)} / 10
+                                </span>
+                              ) : null}
                             </div>
                             <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm text-gray-800 dark:text-gray-200 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
                               {String(item.additionalAchievements || "").trim() || "No additional achievements provided."}
                             </div>
                           </div>
 
-                          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
-                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role</div>
-                            <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm text-gray-800 dark:text-gray-200 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
-                              {String(item.planStrategy || "").trim() || "No plan/strategy provided."}
+                          {showAssessmentMarks ? (
+                            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/80 dark:bg-emerald-950/20 p-6 shadow-sm">
+                              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Assessment Summary</div>
+                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700 dark:text-gray-300">
+                                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 px-3 py-2">
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Criteria Marks</div>
+                                  <div className="mt-1 font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+                                    {formatObtainedMarkDisplay(criteriaTotalObtained)} / {formatObtainedMarkDisplay(criteriaTotalMarks)}
+                                  </div>
+                                </div>
+                                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 px-3 py-2">
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bonus Marks</div>
+                                  <div className="mt-1 font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+                                    {formatObtainedMarkDisplay(bonusMarks)} / 25
+                                  </div>
+                                </div>
+                                <div className="rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-100/50 dark:bg-emerald-900/30 px-3 py-2">
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">Grand Total</div>
+                                  <div className="mt-1 text-base font-bold text-emerald-900 dark:text-emerald-100 tabular-nums">
+                                    {formatObtainedMarkDisplay(grandObtained)} / {formatObtainedMarkDisplay(grandMaximum)}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
+                          ) : null}
 
                           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
                             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Uploaded Documents</div>
@@ -2569,11 +2935,9 @@ function ApplicationActionsDropdown({
   processingIds,
   canAssess,
   canFinalize,
-  canDownloadScorecard,
   status,
   onViewApplication,
   onAction,
-  onDownloadScorecard,
   onDownloadApplication,
 }: {
   app: LeadershipApplication;
@@ -2583,11 +2947,9 @@ function ApplicationActionsDropdown({
   processingIds: Set<number>;
   canAssess: boolean;
   canFinalize: boolean;
-  canDownloadScorecard: boolean;
   status: string;
   onViewApplication: (app: LeadershipApplication) => void;
   onAction: (action: "assessment" | "approve" | "unapprove" | "delete", id: number, type: "chapter" | "association") => Promise<void>;
-  onDownloadScorecard: (type: "chapter" | "association", applicationId: number) => void;
   onDownloadApplication: (type: "chapter" | "association", applicationId: number) => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -2686,21 +3048,6 @@ function ApplicationActionsDropdown({
                 <DownloadIcon className="h-4 w-4 text-blue-600" />
                 Download Application
               </button>
-
-              {canDownloadScorecard && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onDownloadScorecard(app.type, app.id);
-                    onClose();
-                  }}
-                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
-                >
-                  <DownloadIcon className="h-4 w-4 text-emerald-600" />
-                  Download Scorecard
-                </button>
-              )}
 
               {canFinalize && (
                 <>
@@ -2810,7 +3157,6 @@ function ApplicationsTable({
   onAction,
   onViewAdditionalAchievements,
   onViewApplication,
-  onDownloadScorecard,
   onDownloadApplication,
   processingIds,
   sortKey,
@@ -2823,7 +3169,6 @@ function ApplicationsTable({
   onAction: (action: "assessment" | "approve" | "unapprove" | "delete", id: number, type: "chapter" | "association") => Promise<void>;
   onViewAdditionalAchievements: (app: LeadershipApplication) => void;
   onViewApplication: (app: LeadershipApplication) => void;
-  onDownloadScorecard: (type: "chapter" | "association", applicationId: number) => void;
   onDownloadApplication: (type: "chapter" | "association", applicationId: number) => void;
   processingIds: Set<number>;
   sortKey: SortKey;
@@ -2839,17 +3184,17 @@ function ApplicationsTable({
 
   if (loading) {
     return (
-      <Table className="min-w-full w-full table-fixed">
+      <Table className="w-full min-w-[1100px]">
         <TableHeader className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
           <TableRow className="border-b border-gray-200 dark:border-gray-700">
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[170px]">SAP / Reg No</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[360px]">Name</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell w-[220px]">Email</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[110px]">Obtained marks</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[240px]">Type</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[220px]">Role</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[120px]">Bonus Marks</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">Status</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[140px]">SAP / Reg No</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 min-w-[220px]">Name</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell w-[180px]">Email</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[100px]">Obtained marks</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[100px]">Bonus Marks</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[180px]">Type</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">Role</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[130px]">Status</TableCell>
             {isAdmin && (
               <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50 w-[180px]">
                 <span className="hidden sm:inline">Actions</span>
@@ -2861,13 +3206,14 @@ function ApplicationsTable({
         <TableBody>
           {Array.from({ length: 5 }).map((_, i) => (
             <TableRow key={`skeleton-${i}`}>
-              <TableCell className="px-4 py-4 w-[170px]"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4 w-[360px]"><div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4 hidden lg:table-cell w-[220px]"><div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4 w-[110px]"><div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4 w-[240px]"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4 w-[220px]"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4 w-[120px]"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[140px]"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 min-w-[220px]"><div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 hidden lg:table-cell w-[180px]"><div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[100px]"><div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[100px]"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[180px]"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[160px]"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[130px]"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 w-[160px]"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               {isAdmin && (
                 <TableCell className="px-4 py-4 sticky right-0 bg-white dark:bg-gray-800 w-[120px]"><div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded ml-auto" /></TableCell>
@@ -2889,38 +3235,38 @@ function ApplicationsTable({
   }
 
   return (
-    <Table className="min-w-full w-full table-fixed">
+    <Table className="w-full min-w-[1100px]">
       <TableHeader className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
         <TableRow className="border-b border-gray-200 dark:border-gray-700">
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[170px]">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[140px]">
             <button type="button" onClick={() => onSort("sapId")} className="hover:underline">
               SAP / Reg No{sortIndicator("sapId")}
             </button>
           </TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[360px]">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 min-w-[220px]">
             <button type="button" onClick={() => onSort("name")} className="hover:underline">
               Name{sortIndicator("name")}
             </button>
           </TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell w-[220px]">Email</TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[110px]">Obtained marks</TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[120px]">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell w-[180px]">Email</TableCell>
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[100px]">Obtained marks</TableCell>
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[100px]">
             <button type="button" onClick={() => onSort("bonusMarks")} className="hover:underline">
               Bonus Marks{sortIndicator("bonusMarks")}
             </button>
           </TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[240px]">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[180px]">
             <button type="button" onClick={() => onSort("type")} className="hover:underline">
               Type{sortIndicator("type")}
             </button>
           </TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[220px]">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">
             <button type="button" onClick={() => onSort("position")} className="hover:underline">
               Role{sortIndicator("position")}
             </button>
           </TableCell>
           
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[130px]">
             <button type="button" onClick={() => onSort("status")} className="hover:underline">
               Status{sortIndicator("status")}
             </button>
@@ -2936,10 +3282,10 @@ function ApplicationsTable({
       <TableBody>
         {applications.map((app) => (
           <TableRow key={`${app.type}-${app.id}`} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-            <TableCell className="px-4 py-3 text-sm w-[170px]">
+            <TableCell className="px-4 py-3 text-sm w-[140px]">
               <span className="font-mono text-xs truncate block min-w-0 max-w-full">{identifierText(app)}</span>
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm w-[360px]">
+            <TableCell className="px-4 py-3 text-sm min-w-[220px]">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <span className="font-medium truncate block min-w-0 max-w-full">{app.name || "-"}</span>
@@ -2986,7 +3332,7 @@ function ApplicationsTable({
                 ) : null}
               </div>
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm hidden lg:table-cell w-[220px]">
+            <TableCell className="px-4 py-3 text-sm hidden lg:table-cell w-[180px]">
               <a
                 href={app.email ? `mailto:${app.email}` : "#"}
                 className="text-blue-600 hover:underline truncate block min-w-0 max-w-full"
@@ -2994,28 +3340,28 @@ function ApplicationsTable({
                 {app.email || "-"}
               </a>
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm w-[110px] tabular-nums">
+            <TableCell className="px-4 py-3 text-sm w-[100px] tabular-nums">
               {app.obtainedMarksTotal != null && Number.isFinite(app.obtainedMarksTotal) ? (
                 <span className="font-medium text-gray-900 dark:text-gray-100">{formatObtainedMarkDisplay(app.obtainedMarksTotal)}</span>
               ) : (
                 <span className="text-gray-400 dark:text-gray-500">—</span>
               )}
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm w-[120px]">
+            <TableCell className="px-4 py-3 text-sm w-[100px]">
               <span className="font-medium text-gray-900 dark:text-gray-100">
                 {formatObtainedMarkDisplay(Number(app.bonusMarks ?? 0))}
               </span>
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm w-[240px]">
+            <TableCell className="px-4 py-3 text-sm w-[180px]">
               <div className="truncate min-w-0">
                 {app.type === "chapter" ? "Chapter" : "Association"} - {String(app.categoryName || "-")}
               </div>
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm w-[220px]">
+            <TableCell className="px-4 py-3 text-sm w-[160px]">
               <LeadershipRoleBadge type={app.type} position={app.position} />
             </TableCell>
            
-            <TableCell className="px-4 py-3 text-sm w-[160px]">
+            <TableCell className="px-4 py-3 text-sm w-[130px]">
               <span
                 className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
                   String(app.status || "").toLowerCase() === "approved"
@@ -3043,8 +3389,6 @@ function ApplicationsTable({
                   const rowKey = `${app.type}-${app.id}`;
                   const canAssess = status !== "approved" && status !== "rejected";
                   const canFinalize = status === "assessed";
-                  const canDownloadScorecard =
-                    status === "assessed" || status === "approved" || status === "rejected";
                   return (
                     <ApplicationActionsDropdown
                       app={app}
@@ -3054,11 +3398,9 @@ function ApplicationsTable({
                       processingIds={processingIds}
                       canAssess={canAssess}
                       canFinalize={canFinalize}
-                      canDownloadScorecard={canDownloadScorecard}
                       status={status}
                       onViewApplication={onViewApplication}
                       onAction={onAction}
-                      onDownloadScorecard={onDownloadScorecard}
                       onDownloadApplication={onDownloadApplication}
                     />
                   );

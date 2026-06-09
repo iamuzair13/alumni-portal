@@ -24,7 +24,7 @@ export function sanitizePdfText(value: unknown, maxLen = 12_000): string {
   return s;
 }
 
-// Helper function to get logo as base64 (skips oversized assets that inflate PDF file size)
+// ─── Logo Helper ─────────────────────────────────────────────────────────────
 function getLogoBase64(variant: "light" | "dark" = "dark"): string {
   const lightCandidates = [
     join(process.cwd(), "public", "images", "logo", "logo-white.png"),
@@ -47,6 +47,7 @@ function getLogoBase64(variant: "light" | "dark" = "dark"): string {
   return "";
 }
 
+// ─── Interfaces (unchanged for compatibility) ────────────────────────────────
 export interface ScholarshipApplicationData {
   alumniName: string;
   discountType: string;
@@ -56,7 +57,7 @@ export interface ScholarshipApplicationData {
   kinshipRelation?: string | null;
   kinshipFirstName?: string | null;
   kinshipLastName?: string | null;
-  kinshipName?: string | null; // Keep for backward compatibility
+  kinshipName?: string | null;
 }
 
 export interface ScholarshipLetterPDFData {
@@ -69,15 +70,10 @@ export interface ScholarshipLetterPDFData {
   requestedDiscount: string;
   documentsAttached: string[];
   sapCode: string;
-  /** Alumni passing-out year from profile (e.g. tbl_alumni.yearofending) */
   passingOutYear?: string | null;
-  /** Admission reference / application ID entered on the scholarship form */
   admissionApplicationRef?: string | null;
-  /** e.g. AS-S-2026-001 / AS-K-2026-001 — shown next to Application Date when category applies */
   scholarshipApplicationPdfId?: string | null;
-  /** Stored discount category (`discount_type`); drives banner Self vs Kinship title */
   discountType?: string | null;
-  // Optional fields to support enhanced tabular layout
   requestedProgramDegree?: string;
   faculty?: string;
   department?: string;
@@ -131,798 +127,6 @@ export interface MembershipFormPDFData {
   cnicDocSubmitted: string;
 }
 
-export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new jsPDF({ compress: true });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 18;
-      const maxWidth = pageWidth - margin * 2;
-      let y = margin;
-
-      const clamp = (text: string | null | undefined) => {
-        const value = String(text || "").replace(/\s+/g, " ").trim();
-        return value || "Data unavailable";
-      };
-
-      const normalizeAdminVerified = (raw: unknown): "YES" | "NO" | null => {
-        const s = String(raw ?? "")
-          .trim()
-          .toUpperCase();
-        if (s === "YES" || s === "Y") return "YES";
-        if (s === "NO" || s === "N") return "NO";
-        return null;
-      };
-
-      /** Match uploaded doc rows by label keywords; show a single Yes/No from admin verification only. */
-      const findChecklistValue = (keywords: string[]) => {
-        const docs = data.uploadedDocuments || [];
-        for (const d of docs) {
-          const label = String(d.label || "")
-            .trim()
-            .toLowerCase();
-          if (!label) continue;
-          if (!keywords.some((k) => label.includes(k))) continue;
-          const v = normalizeAdminVerified(d.adminVerified);
-          if (v === "YES") return "Yes";
-          if (v === "NO") return "No";
-          return "—";
-        }
-        return "—";
-      };
-
-      // Section header greens (lighter than brand green 0, 102, 51). (d) uses a brighter band per official layout.
-      const sectionGreen1: [number, number, number] = [150, 205, 175];
-      const sectionGreen2: [number, number, number] = [195, 230, 210];
-      const sectionGreenDocs: [number, number, number] = [115, 198, 155];
-
-      const headerBandH = 22;
-      doc.setFillColor(0, 102, 51);
-      doc.rect(margin, y, maxWidth, headerBandH, "F");
-      const logoBase64 = getLogoBase64("light");
-      if (logoBase64) {
-        try {
-          doc.addImage(logoBase64, "PNG", margin + 2, y + 5, 30, 12, "uol-logo", "FAST");
-        } catch {
-          // ignore logo rendering failure
-        }
-      }
-      doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      const headerTitle =
-        isScholarshipKinshipCategory(data.discountType)
-          ? "ALUMNI SCHOLARSHIP APPLICATION (KINSHIP)"
-          : isScholarshipFeeDiscountFlow(data.discountType)
-            ? "ALUMNI SCHOLARSHIP APPLICATION (SELF)"
-            : "ALUMNI SCHOLARSHIP APPLICATION";
-      let headerFontSize = 10;
-      doc.setFontSize(headerFontSize);
-      let headerTitleW = doc.getTextWidth(headerTitle);
-      while (headerTitleW > maxWidth - 8 && headerFontSize > 7) {
-        headerFontSize -= 0.5;
-        doc.setFontSize(headerFontSize);
-        headerTitleW = doc.getTextWidth(headerTitle);
-      }
-      doc.text(headerTitle, margin + Math.max(0, (maxWidth - headerTitleW) / 2), y + headerBandH / 2 + 3.2);
-      doc.setTextColor(0, 0, 0);
-      y += headerBandH + 3;
-
-      const outerX = margin;
-      const outerY = y;
-      const outerW = maxWidth;
-      const rowHeights = {
-        date: 8,
-        section: 8,
-        normal: 8,
-        docsRow: 8,
-      };
-
-      const c1 = outerW * 0.26;
-      const c2 = outerW * 0.24;
-      const c3 = outerW * 0.26;
-      const c4 = outerW - c1 - c2 - c3;
-      const x2 = outerX + c1;
-      const x3 = x2 + c2;
-      const x4 = x3 + c3;
-      const toCellLines = (text: string, width: number, bold = false, maxLines = 3) => {
-        let fontSize = 9;
-        const shown = clamp(text);
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.setFontSize(fontSize);
-        let lines = doc.splitTextToSize(shown, Math.max(8, width - 3));
-        while (lines.length > maxLines && fontSize > 7) {
-          fontSize -= 0.5;
-          doc.setFontSize(fontSize);
-          lines = doc.splitTextToSize(shown, Math.max(8, width - 3));
-        }
-        const shownLines = lines.slice(0, maxLines);
-        if (lines.length > maxLines) {
-          const last = shownLines[shownLines.length - 1] || "";
-          shownLines[shownLines.length - 1] = `${last.slice(0, Math.max(0, last.length - 2))}..`;
-        }
-        return { lines: shownLines as string[], fontSize };
-      };
-
-      const drawCellText = (
-        text: string,
-        x: number,
-        rowY: number,
-        w: number,
-        h: number,
-        bold = false,
-        center = false,
-        prepared?: { lines: string[]; fontSize: number },
-        centerPad?: { x?: number; y?: number }
-      ) => {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        if (center) {
-          doc.setFontSize(9);
-          const shown = clamp(text);
-          const tw = doc.getTextWidth(shown);
-          const px = centerPad?.x ?? 1.5;
-          const py = centerPad?.y ?? 0;
-          doc.text(
-            shown,
-            x + px + Math.max(0, (w - 2 * px - tw) / 2),
-            rowY + h / 2 + 2.2 + py
-          );
-          return;
-        }
-        const cell = prepared || toCellLines(text, w, bold, 3);
-        doc.setFontSize(cell.fontSize);
-        const lineH = cell.fontSize * 0.38;
-        const textBlockH = Math.max(1, cell.lines.length) * lineH;
-        const textY = rowY + Math.max(2.6, (h - textBlockH) / 2) + lineH;
-        doc.text(cell.lines, x + 1.5, textY, { maxWidth: w - 2.5 });
-      };
-
-      let rowY = outerY;
-      doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(0.25);
-
-      const fillRgb = (rgb: [number, number, number]) => {
-        doc.setFillColor(rgb[0], rgb[1], rgb[2]);
-      };
-
-      const drawSectionHeader = (letter: string, title: string, shade: 1 | 2 | "docs") => {
-        const rgb = shade === "docs" ? sectionGreenDocs : shade === 1 ? sectionGreen1 : sectionGreen2;
-        fillRgb(rgb);
-        doc.rect(outerX, rowY, outerW, rowHeights.section, "FD");
-        doc.setTextColor(0, 0, 0);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        const midY = rowY + rowHeights.section / 2 + 2.2;
-        doc.text(`(${letter})`, outerX + 2, midY);
-        const t = title;
-        const tw = doc.getTextWidth(t);
-        doc.text(t, outerX + Math.max(0, (outerW - tw) / 2), midY);
-        rowY += rowHeights.section;
-      };
-
-      const drawFourColRow = (l1: string, v1: string, l2: string, v2: string) => {
-        const c1Lines = toCellLines(l1, c1, true, 2);
-        const c2Lines = toCellLines(v1, c2, false, 3);
-        const c3Lines = toCellLines(l2, c3, true, 2);
-        const c4Lines = toCellLines(v2, c4, false, 3);
-        const maxFont = Math.max(c1Lines.fontSize, c2Lines.fontSize, c3Lines.fontSize, c4Lines.fontSize);
-        const lineH = maxFont * 0.38;
-        const rowH =
-          Math.max(
-            c1Lines.lines.length,
-            c2Lines.lines.length,
-            c3Lines.lines.length,
-            c4Lines.lines.length,
-            1
-          ) *
-            lineH +
-          5;
-        const finalH = Math.max(rowHeights.normal, rowH);
-        doc.rect(outerX, rowY, c1, finalH);
-        doc.rect(x2, rowY, c2, finalH);
-        doc.rect(x3, rowY, c3, finalH);
-        doc.rect(x4, rowY, c4, finalH);
-        drawCellText(l1, outerX, rowY, c1, finalH, true, false, c1Lines);
-        drawCellText(v1, x2, rowY, c2, finalH, false, false, c2Lines);
-        drawCellText(l2, x3, rowY, c3, finalH, true, false, c3Lines);
-        drawCellText(v2, x4, rowY, c4, finalH, false, false, c4Lines);
-        rowY += finalH;
-      };
-
-      // Application date + optional application reference (tabular row aligned with sections below)
-      const pdfAppId = String(data.scholarshipApplicationPdfId || "").trim();
-      if (pdfAppId) {
-        drawFourColRow("Application Date:", data.dateFormatted, "Application ID:", pdfAppId);
-      } else {
-        doc.rect(outerX, rowY, c1, rowHeights.date);
-        doc.rect(x2, rowY, outerW - c1, rowHeights.date);
-        drawCellText("Application Date:", outerX, rowY, c1, rowHeights.date, true);
-        drawCellText(data.dateFormatted, x2, rowY, outerW - c1, rowHeights.date, false);
-        rowY += rowHeights.date;
-      }
-
-      drawSectionHeader("a", "Alumni Details", 1);
-      drawFourColRow("Name:", data.studentName || "Missing", "Father's Name:", data.fatherName || "Missing");
-      drawFourColRow("DOB:", data.dob || "Missing", "CNIC:", data.cnic || "Missing");
-
-      const drawSpanRow = (label: string, value: string) => {
-        const lbl = toCellLines(label, c1, true, 2);
-        const val = toCellLines(value, c2 + c3 + c4, false, 3);
-        const h = Math.max(
-          rowHeights.docsRow,
-          Math.max(lbl.lines.length, val.lines.length, 1) * Math.max(lbl.fontSize, val.fontSize) * 0.38 + 5
-        );
-        doc.rect(outerX, rowY, c1, h);
-        doc.rect(x2, rowY, c2 + c3 + c4, h);
-        drawCellText(label, outerX, rowY, c1, h, true, false, lbl);
-        drawCellText(value, x2, rowY, c2 + c3 + c4, h, false, false, val);
-        rowY += h;
-      };
-
-      drawSectionHeader("b", data.isKinship ? "Alumni Educational Record" : "Program Applied For", 2);
-      drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
-      drawFourColRow(
-        "Department:",
-        data.department || "Missing",
-        "Program:",
-        data.isKinship ? data.program || "Missing" : data.requestedProgramDegree || "Missing",
-      );
-      if (data.isKinship) {
-        drawFourColRow("SAP ID:", data.sapCode || "Missing", "CGPA/Grade:", data.cgpaLastDegree || "Missing");
-        drawFourColRow(
-          "Passing Out Year:",
-          data.passingOutYear?.trim() ? String(data.passingOutYear) : "Missing",
-          "Discount Category:",
-          data.scholarshipType?.trim() ? data.scholarshipType : "Missing",
-        );
-        drawSpanRow("Applying For:", data.applyingFor || "Missing");
-      } else {
-        drawFourColRow(
-          "Discount Category:",
-          data.scholarshipType?.trim() ? data.scholarshipType : "Missing",
-          "Admission Reference No:",
-          data.admissionApplicationRef?.trim() ? data.admissionApplicationRef : "Missing",
-        );
-      }
-
-      drawSectionHeader(
-        "c",
-        data.isKinship
-          ? "Kin Details - Previous Educational Record & Program Applied For"
-          : "Previous UOL Education Record",
-        1,
-      );
-      if (data.isKinship) {
-        drawFourColRow(
-          "Name:",
-          data.kinshipDetails?.kinName || "Missing",
-          "Father's Name:",
-          data.kinshipDetails?.kinFatherName || "Missing",
-        );
-        drawFourColRow(
-          "Campus:",
-          data.kinshipDetails?.kinCampus || "Missing",
-          "Faculty:",
-          data.kinshipDetails?.kinFaculty || "Missing",
-        );
-        drawFourColRow(
-          "Department:",
-          data.kinshipDetails?.kinDepartment || "Missing",
-          "Program:",
-          data.kinshipDetails?.kinProgram || "Missing",
-        );
-        drawFourColRow(
-          "Admission Ref No:",
-          data.kinshipDetails?.kinAdmissionRefNo || "Missing",
-          "Last Degree/Certificate:",
-          data.kinshipDetails?.kinLastDegreeCertificate || "Missing",
-        );
-        drawSpanRow("Passing Out Year:", data.kinshipDetails?.kinPassingOutYear || "Missing");
-      } else {
-        drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
-        drawFourColRow("Department:", data.department || "Missing", "Program:", data.previousDegree || "Missing");
-        drawFourColRow("Sap ID:", data.sapCode || "Missing", "CGPA/Grade:", data.cgpaLastDegree || "Missing");
-        const passingYearPdf =
-          data.passingOutYear != null && String(data.passingOutYear).trim() !== ""
-            ? String(data.passingOutYear).trim()
-            : "";
-        const passingYearVal = passingYearPdf !== "" ? passingYearPdf : "Missing";
-        drawSpanRow("Passing Out Year:", passingYearVal);
-      }
-
-      drawSectionHeader("d", "Documents Checklist", "docs");
-      const leftW = c1 + c2;
-      const rightW = c3 + c4;
-
-      const drawDocRow = (leftLabel: string, leftValue: string, rightLabel: string, rightValue: string) => {
-        const c1Lines = toCellLines(leftLabel, c1, true, 2);
-        const c2Lines = toCellLines(leftValue, c2, false, 3);
-        const c3Lines = toCellLines(rightLabel, c3, true, 2);
-        const c4Lines = toCellLines(rightValue, c4, false, 3);
-        const maxFont = Math.max(c1Lines.fontSize, c2Lines.fontSize, c3Lines.fontSize, c4Lines.fontSize);
-        const lineH = maxFont * 0.38;
-        const rowH =
-          Math.max(
-            c1Lines.lines.length,
-            c2Lines.lines.length,
-            c3Lines.lines.length,
-            c4Lines.lines.length,
-            1
-          ) *
-            lineH +
-          5;
-        const finalH = Math.max(rowHeights.docsRow, rowH);
-        doc.rect(outerX, rowY, c1, finalH);
-        doc.rect(x2, rowY, c2, finalH);
-        doc.rect(x3, rowY, c3, finalH);
-        doc.rect(x4, rowY, c4, finalH);
-        drawCellText(leftLabel, outerX, rowY, c1, finalH, true, false, c1Lines);
-        drawCellText(leftValue, x2, rowY, c2, finalH, false, false, c2Lines);
-        drawCellText(rightLabel, x3, rowY, c3, finalH, true, false, c3Lines);
-        drawCellText(rightValue, x4, rowY, c4, finalH, false, false, c4Lines);
-        rowY += finalH;
-      };
-
-      if (data.isKinship) {
-        drawDocRow(
-          "Copy of Admission Letter:",
-          findChecklistValue(["copy of admission letter", "kinship-admission-letter", "admission letter"]),
-          "Academic Certificates/Transcripts (Kin):",
-          findChecklistValue(["academic certificates/transcripts (kin)", "kinship-academic-certificates"])
-        );
-        drawDocRow(
-          "Alumni Card:",
-          findChecklistValue(["alumni card", "kinship-alumni-card"]),
-          "FRC:",
-          findChecklistValue(["frc", "kinship-frc"])
-        );
-        drawDocRow(
-          "CNIC Copy (Kin):",
-          findChecklistValue(["cnic copy (kinship)", "kinship-cnic-kin"]),
-          "CNIC Copy (Alumni):",
-          findChecklistValue(["cnic copy (alumni)", "kinship-cnic-alumni"])
-        );
-      } else {
-        drawDocRow(
-          "Copy of Admission Letter:",
-          findChecklistValue(["admission letter"]),
-          "Academic Transcripts & Certificates:",
-          findChecklistValue(["transcripts", "certificate"])
-        );
-        drawDocRow(
-          "Alumni Card:",
-          findChecklistValue(["alumni card", "alumni proof"]),
-          "Curriculum Vitae (CV) :",
-          findChecklistValue(["curriculum vitae", "cv"])
-        );
-        drawSpanRow("CNIC Copy:", findChecklistValue(["cnic"]));
-      }
-
-      
-
-   
-
-      rowY += 4;
-
-      drawSectionHeader("e", "Review & Approval", 2);
-
-      const sigBlockH = 34;
-      doc.rect(outerX, rowY, leftW, sigBlockH);
-      doc.rect(x3, rowY, rightW, sigBlockH);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Reviewed By (ARO):", outerX + 2, rowY + 5.5);
-      doc.text("Approved By (Competent Authority):", x3 + 2, rowY + 5.5);
-      rowY += sigBlockH;
-
-      doc.rect(outerX, outerY, outerW, rowY - outerY);
-
-      // Ensure no accidental second page is left around.
-      const pages = doc.getNumberOfPages();
-      if (pages > 1) {
-        for (let i = pages; i > 1; i -= 1) {
-          doc.deletePage(i);
-        }
-      }
-
-      const pdfOutput = doc.output("arraybuffer");
-      resolve(Buffer.from(pdfOutput));
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-
-export function generateScholarshipPDF(data: ScholarshipApplicationData): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new jsPDF({ compress: true });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 50;
-      const maxWidth = pageWidth - 2 * margin;
-      let yPosition = margin;
-
-      // Add logo on top right
-      const logoBase64 = getLogoBase64();
-      if (logoBase64) {
-        try {
-          const logoWidth = 40;
-          const logoHeight = 20;
-          const logoX = pageWidth - margin - logoWidth;
-          const logoY = margin;
-          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight, "uol-logo", "FAST");
-          yPosition = logoY + logoHeight + 15;
-        } catch {
-          yPosition = margin + 10;
-        }
-      } else {
-        yPosition = margin + 10;
-      }
-
-      // Draw a line under the header
-      doc.setDrawColor(0, 102, 51); // Green color matching logo
-      doc.setLineWidth(0.5);
-      doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 15;
-
-      // Header text (left aligned)
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 102, 51); // Green color
-      doc.text("Alumni Scholarship Application", margin, yPosition);
-      yPosition += 10;
-
-      // Date (right aligned)
-      const date = new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0); // Black
-      const dateText = `Date: ${date}`;
-      const dateWidth = doc.getTextWidth(dateText);
-      doc.text(dateText, pageWidth - margin - dateWidth, yPosition);
-      yPosition += 20;
-
-      // Helper function to add text with word wrapping
-      const addText = (text: string, fontSize: number, isBold: boolean = false, align: "left" | "center" | "right" = "left", spacing: number = 5) => {
-        doc.setFontSize(fontSize);
-        doc.setFont("helvetica", isBold ? "bold" : "normal");
-        doc.setTextColor(0, 0, 0); // Black
-        const lines = doc.splitTextToSize(text, maxWidth);
-        const xPos = align === "center" ? pageWidth / 2 : align === "right" ? pageWidth - margin : margin;
-        doc.text(lines, xPos, yPosition, { align, maxWidth });
-        yPosition += lines.length * (fontSize * 0.4) + spacing;
-      };
-
-      // Salutation
-      addText("Dear Concern,", 12, false, "left", 8);
-
-      // Main content
-      addText(
-        `I, ${data.alumniName}, an alumnus of UOL, am applying for ${discountCategoryLabel(data.discountType, data.applyingFor)}.`,
-        12,
-        false,
-        "left",
-        8,
-      );
-
-      // Conditional content based on discount type
-      if (isScholarshipKinshipCategory(data.discountType)) {
-        const relation = data.kinshipRelation || "family member";
-        // Use firstName and lastName if available, otherwise fall back to kinshipName
-        const firstName = data.kinshipFirstName || "";
-        const lastName = data.kinshipLastName || "";
-        const name = firstName && lastName 
-          ? `${firstName} ${lastName}` 
-          : data.kinshipName || "beneficiary";
-        const discountPercent =
-          scholarshipFeeDiscountPercentForPdf(
-            data.discountType,
-            data.applyingFor,
-            data.appliedDiscountPercent,
-          ) ??
-          (data.appliedDiscountPercent != null && Number.isFinite(Number(data.appliedDiscountPercent))
-            ? `${Number(data.appliedDiscountPercent)}%`
-            : "15%");
-        const pronoun = relation.toLowerCase().includes("sister")
-          ? "She"
-          : relation.toLowerCase().includes("brother")
-          ? "He"
-          : "She/He";
-        addText(`I am applying for my ${relation}, ${name}. ${pronoun} can avail ${discountPercent} discount.`, 12, false, "left", 8);
-      } else if (isScholarshipFeeDiscountFlow(data.discountType)) {
-        const discountPercent = scholarshipFeeDiscountPercentForPdf(
-          data.discountType,
-          data.applyingFor,
-          data.appliedDiscountPercent,
-        );
-        const level = String(data.applyingFor || "").trim() || "selected";
-        if (discountPercent) {
-          addText(`I can avail ${discountPercent} discount for my ${level} program.`, 12, false, "left", 8);
-        }
-      } else if (data.discountType === "masters-collaboration") {
-        addText("I am eligible to apply for the Masters Scholarship via UOL International Collaborations.", 12, false, "left", 8);
-      }
-
-      addText(`Degree Title: ${data.degreeTitle}`, 12, false, "left", 8);
-      addText("Please approve so that the applicant can proceed with the admission process.", 12, false, "left", 15);
-      
-      // Closing
-      addText("Regards,", 12, false, "left", 8);
-      addText(data.alumniName, 12, true, "left", 10);
-
-      // Add footer line
-      const footerY = pageHeight - 30;
-      doc.setDrawColor(0, 102, 51);
-      doc.setLineWidth(0.5);
-      doc.line(margin, footerY, pageWidth - margin, footerY);
-      
-      // Footer text
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100); // Gray
-  
-      const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
-      const footerWidth = doc.getTextWidth(footerText);
-      doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
-
-      // Convert to buffer
-      const pdfOutput = doc.output("arraybuffer");
-      const buffer = Buffer.from(pdfOutput);
-      resolve(buffer);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-/** Tabular membership application form PDF (Gym / Pool / Cricket Club). */
-export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new jsPDF({ compress: true });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 18;
-      const maxWidth = pageWidth - margin * 2;
-      let y = margin;
-
-      const clamp = (text: string | null | undefined) => {
-        const value = String(text || "").replace(/\s+/g, " ").trim();
-        return value || "Missing";
-      };
-
-      const sectionGreen1: [number, number, number] = [150, 205, 175];
-      const sectionGreen2: [number, number, number] = [195, 230, 210];
-      const sectionGreenDocs: [number, number, number] = [115, 198, 155];
-
-      const headerBandH = 22;
-      doc.setFillColor(0, 102, 51);
-      doc.rect(margin, y, maxWidth, headerBandH, "F");
-      const logoBase64 = getLogoBase64("light");
-      if (logoBase64) {
-        try {
-          doc.addImage(logoBase64, "PNG", margin + 2, y + 5, 30, 12, "uol-logo", "FAST");
-        } catch {
-          // ignore logo rendering failure
-        }
-      }
-      doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
-      let headerFontSize = 10;
-      const headerTitle = clamp(data.headerTitle);
-      doc.setFontSize(headerFontSize);
-      let headerTitleW = doc.getTextWidth(headerTitle);
-      while (headerTitleW > maxWidth - 8 && headerFontSize > 7) {
-        headerFontSize -= 0.5;
-        doc.setFontSize(headerFontSize);
-        headerTitleW = doc.getTextWidth(headerTitle);
-      }
-      doc.text(headerTitle, margin + Math.max(0, (maxWidth - headerTitleW) / 2), y + headerBandH / 2 + 3.2);
-      doc.setTextColor(0, 0, 0);
-      y += headerBandH + 3;
-
-      const outerX = margin;
-      const outerY = y;
-      const outerW = maxWidth;
-      const rowHeights = { date: 8, section: 8, normal: 8, docsRow: 8 };
-
-      const c1 = outerW * 0.26;
-      const c2 = outerW * 0.24;
-      const c3 = outerW * 0.26;
-      const c4 = outerW - c1 - c2 - c3;
-      const x2 = outerX + c1;
-      const x3 = x2 + c2;
-      const x4 = x3 + c3;
-
-      const toCellLines = (text: string, width: number, bold = false, maxLines = 3) => {
-        let fontSize = 9;
-        const shown = clamp(text);
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.setFontSize(fontSize);
-        let lines = doc.splitTextToSize(shown, Math.max(8, width - 3));
-        while (lines.length > maxLines && fontSize > 7) {
-          fontSize -= 0.5;
-          doc.setFontSize(fontSize);
-          lines = doc.splitTextToSize(shown, Math.max(8, width - 3));
-        }
-        const shownLines = lines.slice(0, maxLines);
-        if (lines.length > maxLines) {
-          const last = shownLines[shownLines.length - 1] || "";
-          shownLines[shownLines.length - 1] = `${last.slice(0, Math.max(0, last.length - 2))}..`;
-        }
-        return { lines: shownLines as string[], fontSize };
-      };
-
-      const drawCellText = (
-        text: string,
-        x: number,
-        rowY: number,
-        w: number,
-        h: number,
-        bold = false,
-        center = false,
-        prepared?: { lines: string[]; fontSize: number },
-      ) => {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        if (center) {
-          doc.setFontSize(9);
-          const shown = clamp(text);
-          const tw = doc.getTextWidth(shown);
-          doc.text(shown, x + 1.5 + Math.max(0, (w - 3 - tw) / 2), rowY + h / 2 + 2.2);
-          return;
-        }
-        const cell = prepared || toCellLines(text, w, bold, 3);
-        doc.setFontSize(cell.fontSize);
-        const lineH = cell.fontSize * 0.38;
-        const textBlockH = Math.max(1, cell.lines.length) * lineH;
-        const textY = rowY + Math.max(2.6, (h - textBlockH) / 2) + lineH;
-        doc.text(cell.lines, x + 1.5, textY, { maxWidth: w - 2.5 });
-      };
-
-      let rowY = outerY;
-      doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(0.25);
-
-      const fillRgb = (rgb: [number, number, number]) => {
-        doc.setFillColor(rgb[0], rgb[1], rgb[2]);
-      };
-
-      const drawSectionHeader = (letter: string, title: string, shade: 1 | 2 | "docs") => {
-        const rgb = shade === "docs" ? sectionGreenDocs : shade === 1 ? sectionGreen1 : sectionGreen2;
-        fillRgb(rgb);
-        doc.rect(outerX, rowY, outerW, rowHeights.section, "FD");
-        doc.setTextColor(0, 0, 0);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        const midY = rowY + rowHeights.section / 2 + 2.2;
-        doc.text(`(${letter})`, outerX + 2, midY);
-        const tw = doc.getTextWidth(title);
-        doc.text(title, outerX + Math.max(0, (outerW - tw) / 2), midY);
-        rowY += rowHeights.section;
-      };
-
-      const drawFourColRow = (l1: string, v1: string, l2: string, v2: string) => {
-        const c1Lines = toCellLines(l1, c1, true, 2);
-        const c2Lines = toCellLines(v1, c2, false, 3);
-        const c3Lines = toCellLines(l2, c3, true, 2);
-        const c4Lines = toCellLines(v2, c4, false, 3);
-        const maxFont = Math.max(c1Lines.fontSize, c2Lines.fontSize, c3Lines.fontSize, c4Lines.fontSize);
-        const lineH = maxFont * 0.38;
-        const rowH =
-          Math.max(c1Lines.lines.length, c2Lines.lines.length, c3Lines.lines.length, c4Lines.lines.length, 1) *
-            lineH +
-          5;
-        const finalH = Math.max(rowHeights.normal, rowH);
-        doc.rect(outerX, rowY, c1, finalH);
-        doc.rect(x2, rowY, c2, finalH);
-        doc.rect(x3, rowY, c3, finalH);
-        doc.rect(x4, rowY, c4, finalH);
-        drawCellText(l1, outerX, rowY, c1, finalH, true, false, c1Lines);
-        drawCellText(v1, x2, rowY, c2, finalH, false, false, c2Lines);
-        drawCellText(l2, x3, rowY, c3, finalH, true, false, c3Lines);
-        drawCellText(v2, x4, rowY, c4, finalH, false, false, c4Lines);
-        rowY += finalH;
-      };
-
-      const drawSpanRow = (label: string, value: string) => {
-        const lbl = toCellLines(label, c1, true, 2);
-        const val = toCellLines(value, c2 + c3 + c4, false, 3);
-        const h =
-          Math.max(rowHeights.docsRow, Math.max(lbl.lines.length, val.lines.length, 1) * Math.max(lbl.fontSize, val.fontSize) * 0.38 + 5);
-        doc.rect(outerX, rowY, c1, h);
-        doc.rect(x2, rowY, c2 + c3 + c4, h);
-        drawCellText(label, outerX, rowY, c1, h, true, false, lbl);
-        drawCellText(value, x2, rowY, c2 + c3 + c4, h, false, false, val);
-        rowY += h;
-      };
-
-      const pdfAppId = String(data.applicationRef || "").trim();
-      if (pdfAppId) {
-        drawFourColRow("Application Date:", data.dateFormatted, "Application ID:", pdfAppId);
-      } else {
-        doc.rect(outerX, rowY, c1, rowHeights.date);
-        doc.rect(x2, rowY, outerW - c1, rowHeights.date);
-        drawCellText("Application Date:", outerX, rowY, c1, rowHeights.date, true);
-        drawCellText(data.dateFormatted, x2, rowY, outerW - c1, rowHeights.date, false);
-        rowY += rowHeights.date;
-      }
-
-      drawSectionHeader("a", "Alumni Personal Details", 1);
-      drawFourColRow("Name:", data.studentName, "Father's Name:", data.fatherName);
-      drawFourColRow("DOB:", data.dob, "CNIC:", data.cnic);
-
-      drawSectionHeader("b", "Alumni Education Details", 2);
-      drawFourColRow("Campus:", data.campus, "Faculty:", data.faculty);
-      drawFourColRow("Department:", data.department, "Program:", data.program);
-      drawFourColRow("SAP ID:", data.sapCode, "CGPA:", data.cgpa);
-      drawSpanRow("Passing Out Year:", data.passingOutYear);
-
-      drawSectionHeader("c", "Membership Details", 1);
-      drawFourColRow("Applying For:", data.applyingFor, "Discount Type:", data.discountType);
-      drawFourColRow(
-        "Membership Type:",
-        data.membershipType,
-        "Membership Start Date:",
-        data.membershipStartDate,
-      );
-      drawSpanRow("Preferred Timing:", data.preferredTiming);
-
-      drawSectionHeader("d", "Medical & Fitness Information", 2);
-      drawFourColRow("Medical Conditions:", data.medicalConditions, "Physical Disability:", data.physicalDisability);
-      drawSpanRow("Allergies:", data.allergies);
-
-      drawSectionHeader("e", "Emergency Contact", 1);
-      drawFourColRow(
-        "Contact Name:",
-        data.emergencyContactName,
-        "Relationship:",
-        data.emergencyContactRelationship,
-      );
-      drawSpanRow("Contact Number:", data.emergencyContactNumber);
-
-      drawSectionHeader("f", "Documents Checklist", "docs");
-      drawFourColRow("Alumni Card:", data.alumniCardSubmitted, "CNIC:", data.cnicDocSubmitted);
-
-      rowY += 4;
-
-      const leftW = c1 + c2;
-      const rightW = c3 + c4;
-      const sigBlockH = 34;
-      doc.rect(outerX, rowY, leftW, sigBlockH);
-      doc.rect(x3, rowY, rightW, sigBlockH);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Reviewed By (ARO):", outerX + 2, rowY + 5.5);
-      doc.text("Approved By (Competent Authority):", x3 + 2, rowY + 5.5);
-      rowY += sigBlockH;
-
-      doc.rect(outerX, outerY, outerW, rowY - outerY);
-
-      const pages = doc.getNumberOfPages();
-      if (pages > 1) {
-        for (let i = pages; i > 1; i -= 1) {
-          doc.deletePage(i);
-        }
-      }
-
-      resolve(Buffer.from(doc.output("arraybuffer")));
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-
-/** @deprecated Use generateMembershipFormPDF */
-export function generateMembershipPDF(data: MembershipFormPDFData): Promise<Buffer> {
-  return generateMembershipFormPDF(data);
-}
-
 export interface UpskillApplicationData {
   alumniName: string;
   courseName: string;
@@ -947,7 +151,6 @@ export interface LeadershipApplicationPDFData {
     department?: string | null;
     program?: string | null;
   };
-  /** Profile photo (tbl_alumni image2/image1) or placeholder for PDF header */
   alumniProfilePhoto?: PdfEmbedImage | null;
   roleDescription?: string | null;
   officeTermGovernanceHtml?: string | null;
@@ -976,121 +179,984 @@ export interface LeadershipApplicationPDFData {
   createdAt?: string | null;
   updatedAt?: string | null;
   rejectionReason?: string | null;
+  assessedByName?: string | null;
+  assessedByEmail?: string | null;
+  assessedAt?: string | null;
+  approvedAt?: string | null;
 }
 
+// ─── Modern Design System ────────────────────────────────────────────────────
+const THEME = {
+  margin: 14,
+  colors: {
+    brand: [0, 102, 51] as [number, number, number],
+    brandLight: [240, 247, 243] as [number, number, number],
+    brandAccent: [0, 102, 51] as [number, number, number],
+    text: [33, 33, 33] as [number, number, number],
+    muted: [100, 100, 100] as [number, number, number],
+    border: [218, 218, 218] as [number, number, number],
+    white: [255, 255, 255] as [number, number, number],
+    success: [0, 128, 0] as [number, number, number],
+    danger: [200, 50, 50] as [number, number, number],
+  },
+  font: {
+    h1: 14,
+    h2: 11,
+    body: 9,
+    small: 8,
+    tiny: 7.5,
+  },
+};
+
+const clamp = (text: unknown): string => {
+  const value = String(text ?? "").replace(/\s+/g, " ").trim();
+  return value || "—";
+};
+
+const normalizeAdminVerified = (raw: unknown): "YES" | "NO" | null => {
+  const s = String(raw ?? "").trim().toUpperCase();
+  if (s === "YES" || s === "Y") return "YES";
+  if (s === "NO" || s === "N") return "NO";
+  return null;
+};
+
+function formatLeadershipDate(value: unknown): string {
+  if (!value) return "—";
+  try {
+    const d = new Date(String(value));
+    if (Number.isNaN(d.getTime())) return clamp(value);
+    return d.toLocaleDateString("en-PK", { year: "numeric", month: "long", day: "numeric" });
+  } catch {
+    return clamp(value);
+  }
+}
+
+function formatLeadershipStatus(status: unknown): string {
+  const s = String(status || "pending").toLowerCase();
+  if (s === "approved") return "Approved";
+  if (s === "assessed") return "Assessed";
+  if (s === "rejected") return "Not Approved";
+  return "Pending";
+}
+
+function stripHtmlForPdf(html: unknown, maxLen = 20_000): string {
+  const stripped = String(html || "")
+    .replace(/\u00a0/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\r\n/g, "\n")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/?p\b[^>]*>/gi, "\n")
+    .replace(/<\/?div\b[^>]*>/gi, "\n")
+    .replace(/<\/?h[1-6]\b[^>]*>/gi, "\n\n")
+    .replace(/<li\b[^>]*>/gi, "\n• ")
+    .replace(/<\/?(ul|ol)\b[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return sanitizePdfText(stripped, maxLen) || "—";
+}
+
+function proficiencyLabelForPdf(value: number | null | undefined): string {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1) return "";
+  const m = Math.min(5, Math.max(1, Math.round(n)));
+  const map = ["", "Beginner", "Basic", "Intermediate", "Advanced", "Expert"];
+  return map[m] || "";
+}
+
+const LEADERSHIP_PLAN_STRATEGY_QUESTION =
+  "Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role.";
+
+const LEADERSHIP_ADDITIONAL_ACHIEVEMENTS_QUESTION =
+  "Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.";
+
+function fileNameFromUrlPdf(url: string): string {
+  try {
+    const u = String(url || "").trim();
+    if (!u) return "";
+    const path = u.split("?")[0].split("#")[0];
+    const parts = path.split("/").filter(Boolean);
+    const last = parts[parts.length - 1] || "";
+    return last ? decodeURIComponent(last) : "";
+  } catch {
+    return "";
+  }
+}
+
+// ─── 1. Scholarship Letter PDF (Tabular) ─────────────────────────────────────
+export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new jsPDF({ compress: true, unit: "mm" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const m = THEME.margin;
+      const W = pageW - m * 2;
+      let y = m;
+
+      // ── Header ──
+      const headerH = 18;
+      doc.setFillColor(...THEME.colors.brand);
+      doc.rect(m, y, W, headerH, "F");
+
+      const logoBase64 = getLogoBase64("light");
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", m + 3, y + 3, 26, 9, "uol-logo", "FAST");
+        } catch {}
+      }
+
+      const headerTitle = isScholarshipKinshipCategory(data.discountType)
+        ? "ALUMNI SCHOLARSHIP APPLICATION (KINSHIP)"
+        : isScholarshipFeeDiscountFlow(data.discountType)
+          ? "ALUMNI SCHOLARSHIP APPLICATION (SELF)"
+          : "ALUMNI SCHOLARSHIP APPLICATION";
+
+      doc.setTextColor(...THEME.colors.white);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      let tw = doc.getTextWidth(headerTitle);
+      let fs = 11;
+      while (tw > W - 10 && fs > 7.5) {
+        fs -= 0.5;
+        doc.setFontSize(fs);
+        tw = doc.getTextWidth(headerTitle);
+      }
+      doc.text(headerTitle, m + Math.max(0, (W - tw) / 2), y + headerH / 2 + 3.5);
+      y += headerH + 5;
+
+      // ── Helpers ──
+      const colW = W / 2;
+
+      const textHeight = (txt: string, width: number, fontSize: number) => {
+        doc.setFontSize(fontSize);
+        return doc.splitTextToSize(txt, width).length * fontSize * 0.38;
+      };
+
+      const drawRule = (yy: number) => {
+        doc.setDrawColor(...THEME.colors.border);
+        doc.setLineWidth(0.15);
+        doc.line(m, yy, m + W, yy);
+      };
+
+      const drawFieldPair = (
+        label1: string,
+        value1: string | null | undefined,
+        label2: string,
+        value2: string | null | undefined
+      ) => {
+        const v1 = clamp(value1);
+        const v2 = clamp(value2);
+        const h1 = textHeight(v1, colW - 5, THEME.font.body);
+        const h2 = textHeight(v2, colW - 5, THEME.font.body);
+        const h = Math.max(9, h1 + 5, h2 + 5);
+
+        drawRule(y + h);
+
+        // Label 1
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(THEME.font.small);
+        doc.setTextColor(...THEME.colors.muted);
+        doc.text(clamp(label1).toUpperCase(), m + 1, y + 3.2);
+
+        // Value 1
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(THEME.font.body);
+        doc.setTextColor(...THEME.colors.text);
+        doc.text(doc.splitTextToSize(v1, colW - 5), m + 1, y + 6.5);
+
+        // Label 2
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(THEME.font.small);
+        doc.setTextColor(...THEME.colors.muted);
+        doc.text(clamp(label2).toUpperCase(), m + colW + 1, y + 3.2);
+
+        // Value 2
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(THEME.font.body);
+        doc.setTextColor(...THEME.colors.text);
+        doc.text(doc.splitTextToSize(v2, colW - 5), m + colW + 1, y + 6.5);
+
+        y += h;
+      };
+
+      const drawFullRow = (label: string, value: string | null | undefined) => {
+        const v = clamp(value);
+        const h = Math.max(9, textHeight(v, W - 5, THEME.font.body) + 5);
+        drawRule(y + h);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(THEME.font.small);
+        doc.setTextColor(...THEME.colors.muted);
+        doc.text(clamp(label).toUpperCase(), m + 1, y + 3.2);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(THEME.font.body);
+        doc.setTextColor(...THEME.colors.text);
+        doc.text(doc.splitTextToSize(v, W - 5), m + 1, y + 6.5);
+
+        y += h;
+      };
+
+      const drawSection = (letter: string, title: string) => {
+        const h = 6.5;
+        doc.setFillColor(...THEME.colors.brandLight);
+        doc.rect(m, y, W, h, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(THEME.font.small);
+        doc.setTextColor(...THEME.colors.brand);
+        doc.text(`(${letter})  ${title.toUpperCase()}`, m + 2, y + 4.2);
+        y += h + 2.5;
+      };
+
+      const findChecklistValue = (keywords: string[]) => {
+        const docs = data.uploadedDocuments || [];
+        for (const d of docs) {
+          const label = String(d.label || "").trim().toLowerCase();
+          if (!label) continue;
+          if (!keywords.some((k) => label.includes(k))) continue;
+          const v = normalizeAdminVerified(d.adminVerified);
+          if (v === "YES") return "Yes";
+          if (v === "NO") return "No";
+          return "—";
+        }
+        return "—";
+      };
+
+      // ── Meta ──
+      const pdfAppId = String(data.scholarshipApplicationPdfId || "").trim();
+      if (pdfAppId) {
+        drawFieldPair("Application Date", data.dateFormatted, "Application ID", pdfAppId);
+      } else {
+        drawFullRow("Application Date", data.dateFormatted);
+      }
+
+      // ── Section A ──
+      drawSection("a", "Alumni Details");
+      drawFieldPair("Name", data.studentName, "Father's Name", data.fatherName);
+      drawFieldPair("Date of Birth", data.dob, "CNIC", data.cnic);
+
+      // ── Section B ──
+      drawSection("b", data.isKinship ? "Alumni Educational Record" : "Program Applied For");
+      drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
+      drawFieldPair("Department", data.department, "Program", data.isKinship ? data.program : data.requestedProgramDegree);
+
+      if (data.isKinship) {
+        drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
+        drawFieldPair("Passing Out Year", data.passingOutYear, "Discount Category", data.scholarshipType);
+        drawFullRow("Applying For", data.applyingFor);
+      } else {
+        drawFieldPair("Discount Category", data.scholarshipType, "Admission Reference No", data.admissionApplicationRef);
+      }
+
+      // ── Section C ──
+      drawSection(
+        "c",
+        data.isKinship
+          ? "Kin Details — Previous Educational Record & Program Applied For"
+          : "Previous UOL Education Record"
+      );
+
+      if (data.isKinship) {
+        drawFieldPair("Name", data.kinshipDetails?.kinName, "Father's Name", data.kinshipDetails?.kinFatherName);
+        drawFieldPair("Campus", data.kinshipDetails?.kinCampus, "Faculty", data.kinshipDetails?.kinFaculty);
+        drawFieldPair("Department", data.kinshipDetails?.kinDepartment, "Program", data.kinshipDetails?.kinProgram);
+        drawFieldPair("Admission Ref No", data.kinshipDetails?.kinAdmissionRefNo, "Last Degree / Certificate", data.kinshipDetails?.kinLastDegreeCertificate);
+        drawFullRow("Passing Out Year", data.kinshipDetails?.kinPassingOutYear);
+      } else {
+        drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
+        drawFieldPair("Department", data.department, "Program", data.previousDegree);
+        drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
+        drawFullRow("Passing Out Year", data.passingOutYear);
+      }
+
+      // ── Section D ──
+      drawSection("d", "Documents Checklist");
+
+      const docItems = data.isKinship
+        ? [
+            { label: "Copy of Admission Letter", value: findChecklistValue(["copy of admission letter", "kinship-admission-letter", "admission letter"]) },
+            { label: "Academic Certificates / Transcripts (Kin)", value: findChecklistValue(["academic certificates/transcripts (kin)", "kinship-academic-certificates"]) },
+            { label: "Alumni Card", value: findChecklistValue(["alumni card", "kinship-alumni-card"]) },
+            { label: "FRC", value: findChecklistValue(["frc", "kinship-frc"]) },
+            { label: "CNIC Copy (Kin)", value: findChecklistValue(["cnic copy (kinship)", "kinship-cnic-kin"]) },
+            { label: "CNIC Copy (Alumni)", value: findChecklistValue(["cnic copy (alumni)", "kinship-cnic-alumni"]) },
+          ]
+        : [
+            { label: "Copy of Admission Letter", value: findChecklistValue(["admission letter"]) },
+            { label: "Academic Transcripts & Certificates", value: findChecklistValue(["transcripts", "certificate"]) },
+            { label: "Alumni Card", value: findChecklistValue(["alumni card", "alumni proof"]) },
+            { label: "Curriculum Vitae (CV)", value: findChecklistValue(["curriculum vitae", "cv"]) },
+            { label: "CNIC Copy", value: findChecklistValue(["cnic"]) },
+          ];
+
+      // Compact checklist table
+      const docColLabelW = W * 0.72;
+      const docColStatusW = W - docColLabelW;
+
+      // Header
+      let rowH = 6.5;
+      doc.setFillColor(...THEME.colors.brandLight);
+      doc.rect(m, y, docColLabelW, rowH, "F");
+      doc.rect(m + docColLabelW, y, docColStatusW, rowH, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(THEME.font.small);
+      doc.setTextColor(...THEME.colors.text);
+      doc.text("DOCUMENT", m + 2, y + 4.2);
+      doc.text("STATUS", m + docColLabelW + 2, y + 4.2);
+      y += rowH;
+
+      docItems.forEach((item, i) => {
+        rowH = 6.5;
+        if (i % 2 === 1) {
+          doc.setFillColor(250, 250, 250);
+          doc.rect(m, y, W, rowH, "F");
+        }
+        doc.setDrawColor(...THEME.colors.border);
+        doc.setLineWidth(0.1);
+        doc.line(m, y + rowH, m + W, y + rowH);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(THEME.font.small);
+        doc.setTextColor(...THEME.colors.text);
+        doc.text(clamp(item.label), m + 2, y + 4.2);
+
+        const val = clamp(item.value);
+        if (val === "Yes") doc.setTextColor(...THEME.colors.success);
+        else if (val === "No") doc.setTextColor(...THEME.colors.danger);
+        else doc.setTextColor(...THEME.colors.muted);
+        doc.text(val, m + docColLabelW + 2, y + 4.2);
+        doc.setTextColor(...THEME.colors.text);
+
+        y += rowH;
+      });
+
+      y += 4;
+
+      // ── Section E ──
+      drawSection("e", "Review & Approval");
+
+      const sigH = 18;
+      const sigCol = W / 2;
+      doc.setDrawColor(...THEME.colors.border);
+      doc.setLineWidth(0.2);
+      doc.rect(m, y, sigCol - 2, sigH);
+      doc.rect(m + sigCol + 2, y, sigCol - 2, sigH);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(THEME.font.small);
+      doc.setTextColor(...THEME.colors.muted);
+      doc.text("Reviewed By (ARO)", m + 2, y + 4.5);
+      doc.text("Approved By (Competent Authority)", m + sigCol + 4, y + 4.5);
+      y += sigH;
+
+      // Footer
+      const footerY = pageH - 10;
+      doc.setDrawColor(...THEME.colors.brand);
+      doc.setLineWidth(0.4);
+      doc.line(m, footerY - 4, m + W, footerY - 4);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(THEME.font.tiny);
+      doc.setTextColor(...THEME.colors.muted);
+      const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
+      const fw = doc.getTextWidth(footerText);
+      doc.text(footerText, m + (W - fw) / 2, footerY);
+
+      // Safety: enforce max 2 pages (delete accidental extras)
+      const pages = doc.getNumberOfPages();
+      if (pages > 2) {
+        for (let i = pages; i > 2; i--) doc.deletePage(i);
+      }
+
+      resolve(Buffer.from(doc.output("arraybuffer")));
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+// ─── 2. Scholarship Letter (Narrative) ───────────────────────────────────────
+export function generateScholarshipPDF(data: ScholarshipApplicationData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new jsPDF({ compress: true, unit: "mm" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const m = 45; // wider margins for letter style
+      const W = pageW - m * 2;
+      let y = m;
+
+      // Logo
+      const logoBase64 = getLogoBase64();
+      if (logoBase64) {
+        try {
+          const lw = 35;
+          const lh = 16;
+          doc.addImage(logoBase64, "PNG", pageW - m - lw, y, lw, lh, "uol-logo", "FAST");
+          y += lh + 10;
+        } catch {
+          y += 10;
+        }
+      }
+
+      // Brand line
+      doc.setDrawColor(...THEME.colors.brand);
+      doc.setLineWidth(0.5);
+      doc.line(m, y, pageW - m, y);
+      y += 12;
+
+      // Title
+      doc.setFontSize(THEME.font.h1);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...THEME.colors.brand);
+      doc.text("Alumni Scholarship Application", m, y);
+      y += 8;
+
+      // Date
+      const dateStr = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      doc.setFontSize(THEME.font.body);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...THEME.colors.muted);
+      const dateTxt = `Date: ${dateStr}`;
+      const dw = doc.getTextWidth(dateTxt);
+      doc.text(dateTxt, pageW - m - dw, y);
+      y += 18;
+
+      // Body helper
+      const addParagraph = (text: string, bold = false, spacing = 6) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(THEME.font.body);
+        doc.setTextColor(...THEME.colors.text);
+        const lines = doc.splitTextToSize(text, W);
+        doc.text(lines, m, y, { maxWidth: W });
+        y += lines.length * (THEME.font.body * 0.42) + spacing;
+      };
+
+      addParagraph("Dear Concern,", false, 8);
+
+      const levelLabel = discountCategoryLabel(data.discountType, data.applyingFor);
+      addParagraph(
+        `I, ${data.alumniName}, an alumnus of UOL, am applying for ${levelLabel}.`,
+        false,
+        8
+      );
+
+      if (isScholarshipKinshipCategory(data.discountType)) {
+        const relation = data.kinshipRelation || "family member";
+        const firstName = data.kinshipFirstName || "";
+        const lastName = data.kinshipLastName || "";
+        const name = firstName && lastName ? `${firstName} ${lastName}` : data.kinshipName || "beneficiary";
+        const discountPercent =
+          scholarshipFeeDiscountPercentForPdf(data.discountType, data.applyingFor, data.appliedDiscountPercent) ??
+          (data.appliedDiscountPercent != null && Number.isFinite(Number(data.appliedDiscountPercent))
+            ? `${Number(data.appliedDiscountPercent)}%`
+            : "15%");
+        const pronoun = relation.toLowerCase().includes("sister") ? "She" : relation.toLowerCase().includes("brother") ? "He" : "She/He";
+        addParagraph(
+          `I am applying for my ${relation}, ${name}. ${pronoun} can avail ${discountPercent} discount.`,
+          false,
+          8
+        );
+      } else if (isScholarshipFeeDiscountFlow(data.discountType)) {
+        const discountPercent = scholarshipFeeDiscountPercentForPdf(data.discountType, data.applyingFor, data.appliedDiscountPercent);
+        const level = String(data.applyingFor || "").trim() || "selected";
+        if (discountPercent) {
+          addParagraph(`I can avail ${discountPercent} discount for my ${level} program.`, false, 8);
+        }
+      } else if (data.discountType === "masters-collaboration") {
+        addParagraph(
+          "I am eligible to apply for the Masters Scholarship via UOL International Collaborations.",
+          false,
+          8
+        );
+      }
+
+      addParagraph(`Degree Title: ${data.degreeTitle}`, false, 8);
+      addParagraph("Please approve so that the applicant can proceed with the admission process.", false, 14);
+
+      addParagraph("Regards,", false, 8);
+      addParagraph(data.alumniName, true, 10);
+
+      // Footer
+      const fy = pageH - 25;
+      doc.setDrawColor(...THEME.colors.brand);
+      doc.setLineWidth(0.3);
+      doc.line(m, fy, pageW - m, fy);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(THEME.font.tiny);
+      doc.setTextColor(...THEME.colors.muted);
+      const ft = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
+      const fw = doc.getTextWidth(ft);
+      doc.text(ft, (pageW - fw) / 2, fy + 6);
+
+      resolve(Buffer.from(doc.output("arraybuffer")));
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+// ─── 3. Membership Form PDF (Tabular) ────────────────────────────────────────
+export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new jsPDF({ compress: true, unit: "mm" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const m = THEME.margin;
+      const W = pageW - m * 2;
+      let y = m;
+
+      // Header
+      const headerH = 18;
+      doc.setFillColor(...THEME.colors.brand);
+      doc.rect(m, y, W, headerH, "F");
+      const logoBase64 = getLogoBase64("light");
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", m + 3, y + 3, 26, 9, "uol-logo", "FAST");
+        } catch {}
+      }
+      doc.setTextColor(...THEME.colors.white);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      const hTitle = clamp(data.headerTitle).toUpperCase();
+      let tw = doc.getTextWidth(hTitle);
+      let fs = 11;
+      while (tw > W - 10 && fs > 7.5) {
+        fs -= 0.5;
+        doc.setFontSize(fs);
+        tw = doc.getTextWidth(hTitle);
+      }
+      doc.text(hTitle, m + Math.max(0, (W - tw) / 2), y + headerH / 2 + 3.5);
+      y += headerH + 5;
+
+      // Helpers
+      const colW = W / 2;
+      const textHeight = (txt: string, width: number, fontSize: number) => {
+        doc.setFontSize(fontSize);
+        return doc.splitTextToSize(txt, width).length * fontSize * 0.38;
+      };
+      const drawRule = (yy: number) => {
+        doc.setDrawColor(...THEME.colors.border);
+        doc.setLineWidth(0.15);
+        doc.line(m, yy, m + W, yy);
+      };
+      const drawFieldPair = (
+        label1: string,
+        value1: string | null | undefined,
+        label2: string,
+        value2: string | null | undefined
+      ) => {
+        const v1 = clamp(value1);
+        const v2 = clamp(value2);
+        const h = Math.max(9, textHeight(v1, colW - 5, THEME.font.body) + 5, textHeight(v2, colW - 5, THEME.font.body) + 5);
+        drawRule(y + h);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(THEME.font.small);
+        doc.setTextColor(...THEME.colors.muted);
+        doc.text(clamp(label1).toUpperCase(), m + 1, y + 3.2);
+        doc.text(clamp(label2).toUpperCase(), m + colW + 1, y + 3.2);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(THEME.font.body);
+        doc.setTextColor(...THEME.colors.text);
+        doc.text(doc.splitTextToSize(v1, colW - 5), m + 1, y + 6.5);
+        doc.text(doc.splitTextToSize(v2, colW - 5), m + colW + 1, y + 6.5);
+        y += h;
+      };
+      const drawFullRow = (label: string, value: string | null | undefined) => {
+        const v = clamp(value);
+        const h = Math.max(9, textHeight(v, W - 5, THEME.font.body) + 5);
+        drawRule(y + h);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(THEME.font.small);
+        doc.setTextColor(...THEME.colors.muted);
+        doc.text(clamp(label).toUpperCase(), m + 1, y + 3.2);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(THEME.font.body);
+        doc.setTextColor(...THEME.colors.text);
+        doc.text(doc.splitTextToSize(v, W - 5), m + 1, y + 6.5);
+        y += h;
+      };
+      const drawSection = (letter: string, title: string) => {
+        const h = 6.5;
+        doc.setFillColor(...THEME.colors.brandLight);
+        doc.rect(m, y, W, h, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(THEME.font.small);
+        doc.setTextColor(...THEME.colors.brand);
+        doc.text(`(${letter})  ${title.toUpperCase()}`, m + 2, y + 4.2);
+        y += h + 2.5;
+      };
+
+      // Meta
+      const appRef = String(data.applicationRef || "").trim();
+      if (appRef) {
+        drawFieldPair("Application Date", data.dateFormatted, "Application ID", appRef);
+      } else {
+        drawFullRow("Application Date", data.dateFormatted);
+      }
+
+      // Sections
+      drawSection("a", "Alumni Personal Details");
+      drawFieldPair("Name", data.studentName, "Father's Name", data.fatherName);
+      drawFieldPair("Date of Birth", data.dob, "CNIC", data.cnic);
+
+      drawSection("b", "Alumni Education Details");
+      drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
+      drawFieldPair("Department", data.department, "Program", data.program);
+      drawFieldPair("SAP ID", data.sapCode, "CGPA", data.cgpa);
+      drawFullRow("Passing Out Year", data.passingOutYear);
+
+      drawSection("c", "Membership Details");
+      drawFieldPair("Applying For", data.applyingFor, "Discount Type", data.discountType);
+      drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
+      drawFullRow("Preferred Timing", data.preferredTiming);
+
+      drawSection("d", "Medical & Fitness Information");
+      drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
+      drawFullRow("Allergies", data.allergies);
+
+      drawSection("e", "Emergency Contact");
+      drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
+      drawFullRow("Contact Number", data.emergencyContactNumber);
+
+      drawSection("f", "Documents Checklist");
+      drawFieldPair("Alumni Card", data.alumniCardSubmitted, "CNIC", data.cnicDocSubmitted);
+
+      y += 4;
+
+      // Signatures
+      const sigH = 18;
+      const sigCol = W / 2;
+      doc.setDrawColor(...THEME.colors.border);
+      doc.setLineWidth(0.2);
+      doc.rect(m, y, sigCol - 2, sigH);
+      doc.rect(m + sigCol + 2, y, sigCol - 2, sigH);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(THEME.font.small);
+      doc.setTextColor(...THEME.colors.muted);
+      doc.text("Reviewed By (ARO)", m + 2, y + 4.5);
+      doc.text("Approved By (Competent Authority)", m + sigCol + 4, y + 4.5);
+      y += sigH;
+
+      // Footer
+      const footerY = pageH - 10;
+      doc.setDrawColor(...THEME.colors.brand);
+      doc.setLineWidth(0.4);
+      doc.line(m, footerY - 4, m + W, footerY - 4);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(THEME.font.tiny);
+      doc.setTextColor(...THEME.colors.muted);
+      const ft = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
+      const fw = doc.getTextWidth(ft);
+      doc.text(ft, m + (W - fw) / 2, footerY);
+
+      const pages = doc.getNumberOfPages();
+      if (pages > 2) {
+        for (let i = pages; i > 2; i--) doc.deletePage(i);
+      }
+
+      resolve(Buffer.from(doc.output("arraybuffer")));
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+/** @deprecated Use generateMembershipFormPDF */
+export function generateMembershipPDF(data: MembershipFormPDFData): Promise<Buffer> {
+  return generateMembershipFormPDF(data);
+}
+
+// ─── 4. Leadership Application PDF ───────────────────────────────────────────
 export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 30;
-      const maxWidth = pageWidth - 2 * margin;
-      let y = margin;
+      const doc = new jsPDF({ compress: true, unit: "mm" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const m = THEME.margin;
+      const W = pageW - m * 2;
+      const footerReserve = 12;
+      let y = m;
 
-      const pageBottomY = () => pageHeight - margin;
+      const statusLower = String(data.status || "pending").toLowerCase();
+      const showAssessmentMarks =
+        statusLower === "approved" || statusLower === "assessed" || statusLower === "rejected";
 
-      const ensureSpace = (neededHeight: number) => {
-        if (y + neededHeight <= pageBottomY()) return;
+      const pageBottom = () => pageH - m - footerReserve;
+
+      const drawPageFooter = () => {
+        const footerY = pageH - 8;
+        doc.setDrawColor(...THEME.colors.brand);
+        doc.setLineWidth(0.25);
+        doc.line(m, footerY - 3, pageW - m, footerY - 3);
+        doc.setFontSize(THEME.font.tiny);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...THEME.colors.muted);
+        const ft = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
+        const fw = doc.getTextWidth(ft);
+        doc.text(ft, (pageW - fw) / 2, footerY);
+        const pageNum = `Page ${doc.getCurrentPageInfo().pageNumber}`;
+        doc.text(pageNum, pageW - m - doc.getTextWidth(pageNum), footerY);
+      };
+
+      const ensureSpace = (need: number) => {
+        if (y + need <= pageBottom()) return;
+        drawPageFooter();
         doc.addPage();
-        y = margin;
+        y = m;
       };
 
-      const hLine = (gapTop: number = 8, gapBottom: number = 10) => {
-        ensureSpace(gapTop + gapBottom + 2);
-        y += gapTop;
-        doc.setDrawColor(210, 210, 210);
-        doc.setLineWidth(0.3);
-        doc.line(margin, y, pageWidth - margin, y);
-        y += gapBottom;
-      };
-
-      const setTextStyle = (fontSize: number, bold: boolean = false, color: [number, number, number] = [0, 0, 0]) => {
-        doc.setFontSize(fontSize);
+      const setStyle = (size: number, bold = false, color: [number, number, number] = THEME.colors.text) => {
+        doc.setFontSize(size);
         doc.setFont("helvetica", bold ? "bold" : "normal");
         doc.setTextColor(color[0], color[1], color[2]);
       };
 
-      const textHeight = (fontSize: number) => fontSize * 0.42;
+      const lineH = (size: number) => size * 0.42;
 
-      const drawWrappedText = (text: string, x: number, fontSize: number, bold: boolean, maxW: number, spacing: number = 4) => {
-        setTextStyle(fontSize, bold);
-        const lines = doc.splitTextToSize(String(text ?? ""), maxW);
-        const height = lines.length * textHeight(fontSize);
-        ensureSpace(height + spacing);
-        doc.text(lines, x, y, { maxWidth: maxW });
-        y += height + spacing;
+      const drawSectionTitle = (title: string) => {
+        ensureSpace(10);
+        const barH = 6.5;
+        doc.setFillColor(...THEME.colors.brandLight);
+        doc.setDrawColor(...THEME.colors.brand);
+        doc.setLineWidth(0.3);
+        doc.rect(m, y, 2.5, barH, "F");
+        doc.rect(m, y, W, barH, "S");
+        setStyle(THEME.font.small, true, THEME.colors.brand);
+        doc.text(title.toUpperCase(), m + 5, y + 4.3);
+        y += barH + 4;
       };
 
-      const sectionTitle = (title: string) => {
-        const fontSize = 12;
-        const rightPadding = 10;
-        const maxW = maxWidth - rightPadding;
-        setTextStyle(fontSize, true);
-        const lines = doc.splitTextToSize(String(title ?? ""), Math.max(10, maxW));
-        const titleH = Math.max(1, lines.length) * textHeight(fontSize);
-
-        // total needed height: title block + gap + underline + bottom gap
-        const needed = titleH + 4 + 2 + 10;
-        ensureSpace(needed);
-
-        doc.text(lines, margin, y, { maxWidth: maxW });
-        y += titleH + 4;
-        doc.setDrawColor(0, 102, 51);
-        doc.setLineWidth(0.4);
-        doc.line(margin, y, pageWidth - margin - rightPadding, y);
-        y += 10;
-      };
-
-      const fieldPairGrid = (left: Array<{ label: string; value: string }>, right: Array<{ label: string; value: string }>) => {
-        const colGap = 14;
-        const colW = (maxWidth - colGap) / 2;
-        const x1 = margin;
-        const x2 = margin + colW + colGap;
-        const fontSize = 10.5;
-
-        const measureLines = (txt: string) => doc.splitTextToSize(txt, colW).length;
-        const rows = Math.max(left.length, right.length);
-        for (let i = 0; i < rows; i++) {
-          const l = left[i] ?? { label: "", value: "" };
-          const r = right[i] ?? { label: "", value: "" };
-          const lText = l.label ? `${l.label}: ${l.value || "-"}` : "";
-          const rText = r.label ? `${r.label}: ${r.value || "-"}` : "";
-          const rowLines = Math.max(measureLines(lText), measureLines(rText), 1);
-          const rowH = rowLines * textHeight(fontSize) + 3;
+      const drawInfoGrid = (pairs: Array<{ label: string; value: string }>, cols = 2) => {
+        const gap = 3;
+        const colWidth = (W - (cols - 1) * gap) / cols;
+        const rows = Math.ceil(pairs.length / cols);
+        for (let r = 0; r < rows; r++) {
+          const rowPairs = pairs.slice(r * cols, r * cols + cols);
+          let rowH = 0;
+          rowPairs.forEach((p) => {
+            const lines = doc.splitTextToSize(clamp(p.value), colWidth - 6);
+            rowH = Math.max(rowH, lines.length * lineH(THEME.font.body) + 7);
+          });
+          rowH = Math.max(10, rowH);
           ensureSpace(rowH + 2);
-          if (lText) {
-            setTextStyle(fontSize, false);
-            doc.text(doc.splitTextToSize(lText, colW), x1, y, { maxWidth: colW });
-          }
-          if (rText) {
-            setTextStyle(fontSize, false);
-            doc.text(doc.splitTextToSize(rText, colW), x2, y, { maxWidth: colW });
-          }
-          y += rowH;
+
+          rowPairs.forEach((p, i) => {
+            const x = m + i * (colWidth + gap);
+            doc.setFillColor(250, 250, 250);
+            doc.setDrawColor(...THEME.colors.border);
+            doc.setLineWidth(0.1);
+            doc.rect(x, y, colWidth, rowH, "FD");
+            setStyle(THEME.font.tiny, true, THEME.colors.muted);
+            doc.text(clamp(p.label).toUpperCase(), x + 2.5, y + 3.5);
+            setStyle(THEME.font.body, false, THEME.colors.text);
+            doc.text(doc.splitTextToSize(clamp(p.value), colWidth - 6), x + 2.5, y + 7);
+          });
+          y += rowH + 2;
         }
-        y += 4;
       };
 
-      const ratingLabel = (value: number | null | undefined) => {
-        const n = Number(value);
-        if (!Number.isFinite(n) || n < 1) return "";
-        const m = Math.min(5, Math.max(1, Math.round(n)));
-        if (m === 1) return "Beginner";
-        if (m === 2) return "Basic";
-        if (m === 3) return "Intermediate";
-        if (m === 4) return "Advanced";
-        return "Expert";
+      const drawTextBlock = (text: string, maxWidth = W) => {
+        ensureSpace(12);
+        setStyle(THEME.font.body, false, THEME.colors.text);
+        const lines = doc.splitTextToSize(text, maxWidth);
+        ensureSpace(lines.length * lineH(THEME.font.body) + 4);
+        doc.text(lines, m, y);
+        y += lines.length * lineH(THEME.font.body) + 4;
+      };
+
+      // ── Branded header ──
+      const headerH = 22;
+      doc.setFillColor(...THEME.colors.brand);
+      doc.rect(m, y, W, headerH, "F");
+
+      const photoW = 18;
+      const photoH = 22;
+      const profilePhoto = data.alumniProfilePhoto;
+      if (profilePhoto?.dataUrl) {
+        try {
+          doc.setDrawColor(255, 255, 255);
+          doc.setFillColor(255, 255, 255);
+          doc.rect(m + 2, y + 2, photoW, photoH - 4, "F");
+          doc.addImage(
+            profilePhoto.dataUrl,
+            profilePhoto.format,
+            m + 2.5,
+            y + 2.5,
+            photoW - 1,
+            photoH - 5,
+            "alumni-profile-photo",
+            "FAST"
+          );
+        } catch {
+          // skip photo on failure
+        }
+      }
+
+      const titleX = m + (profilePhoto?.dataUrl ? photoW + 6 : 4);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 255, 255);
+      doc.text("Leadership Application", titleX, y + 10);
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "normal");
+      doc.text("Office of Alumni Relations — University of Lahore", titleX, y + 15.5);
+
+      const logoBase64 = getLogoBase64("light");
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", pageW - m - 34, y + 4, 32, 14, "uol-logo", "FAST");
+        } catch {
+          // skip logo on failure
+        }
+      }
+
+      y += headerH + 6;
+
+      // ── Application overview ──
+      const appType = data.leadershipType === "chapter" ? "Chapter" : "Association";
+      const catName = (() => {
+        const t = String(data.categoryType || "").toLowerCase();
+        const name = String(data.categoryName || "").trim();
+        if (!name) return "—";
+        if (t === "national") return `National Chapter — ${name}`;
+        if (t === "international") return `International Chapter — ${name}`;
+        if (t === "association") return `Association — ${name}`;
+        return name;
+      })();
+
+      const sapOrReg =
+        String(data.applicant.sapId || "").trim() ||
+        String(data.applicant.registrationNo || "").trim() ||
+        "—";
+
+      drawInfoGrid(
+        [
+          { label: "Application Type", value: appType },
+          { label: "Chapter / Association", value: catName },
+          { label: "Role Applied For", value: data.position },
+          { label: "Application Date", value: formatLeadershipDate(data.createdAt) },
+          { label: "Application Status", value: formatLeadershipStatus(data.status) },
+          { label: "SAP / Reg No", value: sapOrReg },
+        ],
+        2
+      );
+
+      y += 2;
+
+      // ── Personal information ──
+      drawSectionTitle("Personal Information");
+      drawInfoGrid(
+        [
+          { label: "Full Name", value: data.applicant.name },
+          { label: "Gender", value: data.applicant.gender || "—" },
+          { label: "Faculty", value: data.applicant.faculty || "—" },
+          { label: "Department", value: data.applicant.department || "—" },
+          { label: "Program", value: data.applicant.program || "—" },
+          { label: "Passing Year", value: data.applicant.passingYear ? String(data.applicant.passingYear) : "—" },
+          { label: "Phone", value: data.applicant.phone || "—" },
+          { label: "Email", value: data.applicant.email || "—" },
+        ],
+        2
+      );
+
+      // ── Role description ──
+      drawSectionTitle("Role Description");
+      drawTextBlock(stripHtmlForPdf(data.roleDescription));
+
+      // ── Criteria table ──
+      drawSectionTitle("Criteria Assessment");
+
+      const cW = {
+        req: W * 0.50,
+        marks: W * 0.12,
+        obtained: W * 0.14,
+        alumni: W * 0.24,
+      };
+      const cX = {
+        req: m,
+        marks: m + cW.req,
+        obtained: m + cW.req + cW.marks,
+        alumni: m + cW.req + cW.marks + cW.obtained,
+      };
+
+      const drawTableHeader = () => {
+        ensureSpace(9);
+        const hh = 7;
+        doc.setFillColor(...THEME.colors.brand);
+        doc.setDrawColor(...THEME.colors.brand);
+        doc.setLineWidth(0.15);
+        doc.rect(m, y, W, hh, "F");
+        doc.line(cX.marks, y, cX.marks, y + hh);
+        doc.line(cX.obtained, y, cX.obtained, y + hh);
+        doc.line(cX.alumni, y, cX.alumni, y + hh);
+        setStyle(THEME.font.tiny, true, THEME.colors.white);
+        doc.text("Requirement", cX.req + 2, y + 4.5);
+        doc.text("Marks", cX.marks + 2, y + 4.5);
+        doc.text("Obtained", cX.obtained + 2, y + 4.5);
+        doc.text("Alumni Response", cX.alumni + 2, y + 4.5);
+        y += hh;
+      };
+
+      const drawTableRow = (
+        cells: { req: string; marks: string; obtained: string; alumni: string },
+        shaded = false
+      ) => {
+        const reqLines = doc.splitTextToSize(cells.req, cW.req - 4);
+        const marksLines = doc.splitTextToSize(cells.marks, cW.marks - 3);
+        const obtainedLines = doc.splitTextToSize(cells.obtained, cW.obtained - 3);
+        const alumniLines = doc.splitTextToSize(cells.alumni, cW.alumni - 4);
+        const lines = Math.max(reqLines.length, marksLines.length, obtainedLines.length, alumniLines.length, 1);
+        const rowH = lines * lineH(THEME.font.tiny) + 5;
+
+        if (y + rowH > pageBottom()) {
+          drawPageFooter();
+          doc.addPage();
+          y = m;
+          drawTableHeader();
+        }
+
+        if (shaded) {
+          doc.setFillColor(248, 250, 248);
+          doc.rect(m, y, W, rowH, "F");
+        }
+        doc.setDrawColor(...THEME.colors.border);
+        doc.setLineWidth(0.1);
+        doc.line(m, y + rowH, m + W, y + rowH);
+        doc.line(cX.marks, y, cX.marks, y + rowH);
+        doc.line(cX.obtained, y, cX.obtained, y + rowH);
+        doc.line(cX.alumni, y, cX.alumni, y + rowH);
+
+        setStyle(THEME.font.tiny, false, THEME.colors.text);
+        doc.text(reqLines, cX.req + 2, y + 4, { maxWidth: cW.req - 4 });
+        doc.text(marksLines, cX.marks + 2, y + 4, { maxWidth: cW.marks - 3 });
+        doc.text(obtainedLines, cX.obtained + 2, y + 4, { maxWidth: cW.obtained - 3 });
+        doc.text(alumniLines, cX.alumni + 2, y + 4, { maxWidth: cW.alumni - 4 });
+        y += rowH;
       };
 
       const proficiencyMap = (() => {
         try {
-          const raw = data.optionalCriteriaProficiency as unknown;
+          const raw = data.optionalCriteriaProficiency;
           let obj: unknown = raw;
           if (typeof obj === "string") {
             const s = obj.trim();
             if (!s) return {} as Record<string, number>;
-            obj = JSON.parse(s) as unknown;
+            obj = JSON.parse(s);
           }
           if (!obj || typeof obj !== "object") return {} as Record<string, number>;
           const rec = obj as Record<string, unknown>;
@@ -1108,512 +1174,367 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         }
       })();
 
-      const normalizeHtml = (html: string) => {
-        const stripped = String(html || "")
-          .replace(/\u00a0/g, " ")
-          .replace(/&nbsp;/gi, " ")
-          .replace(/&#160;/gi, " ")
-          .replace(/&amp;/gi, "&")
-          .replace(/&lt;/gi, "<")
-          .replace(/&gt;/gi, ">")
-          .replace(/&quot;/gi, "\"")
-          .replace(/&#39;/gi, "'")
-          .replace(/\r\n/g, "\n")
-          .replace(/<br\s*\/?\s*>/gi, "\n")
-          .replace(/<\/?p\b[^>]*>/gi, "\n")
-          .replace(/<\/?div\b[^>]*>/gi, "\n")
-          .replace(/<\/?h[1-6]\b[^>]*>/gi, "\n")
-          .replace(/<li\b[^>]*>/gi, "\n• ")
-          .replace(/<\/?(ul|ol)\b[^>]*>/gi, "\n")
-          .replace(/<strong\b[^>]*>/gi, "**")
-          .replace(/<\/?strong>/gi, "**")
-          .replace(/<b\b[^>]*>/gi, "**")
-          .replace(/<\/?b>/gi, "**")
-          .replace(/<[^>]+>/g, "")
-          .replace(/[ \t]{2,}/g, " ")
-          .replace(/\n[ \t]+/g, "\n")
-          .replace(/\n{3,}/g, "\n\n")
-          .trim();
-        return sanitizePdfText(stripped, 20_000);
-      };
-
-      const drawInlineBoldLine = (line: string, x: number, fontSize: number, maxW: number, baseBold: boolean = false) => {
-        const parts = String(line || "").split("**");
-        const outLines: Array<Array<{ t: string; b: boolean }>> = [[]];
-        let bold = false;
-
-        for (let i = 0; i < parts.length; i++) {
-          const t = parts[i];
-          if (t) outLines[outLines.length - 1].push({ t, b: bold });
-          bold = !bold;
-        }
-
-        const tokens = outLines[0];
-        const words: Array<{ t: string; b: boolean }> = [];
-        tokens.forEach((tk) => {
-          tk.t.split(/(\s+)/).forEach((w) => {
-            if (w) words.push({ t: w, b: tk.b });
-          });
-        });
-
-        const lines: Array<Array<{ t: string; b: boolean }>> = [[]];
-        let curW = 0;
-        for (const w of words) {
-          setTextStyle(fontSize, baseBold || w.b);
-          const wW = doc.getTextWidth(w.t);
-          if (curW + wW > maxW && lines[lines.length - 1].length > 0) {
-            lines.push([]);
-            curW = 0;
-          }
-          lines[lines.length - 1].push(w);
-          curW += wW;
-        }
-
-        ensureSpace(lines.length * textHeight(fontSize) + 2);
-        for (const ln of lines) {
-          let xPos = x;
-          for (const w of ln) {
-            setTextStyle(fontSize, baseBold || w.b);
-            doc.text(w.t, xPos, y);
-            xPos += doc.getTextWidth(w.t);
-          }
-          y += textHeight(fontSize);
-        }
-        y += 2;
-      };
-
-      const drawRichTextBlock = (htmlOrText: string, maxW: number, fontSize: number = 10.5, baseBold: boolean = false) => {
-        const txt = normalizeHtml(htmlOrText);
-        if (!txt) {
-          drawWrappedText("-", margin, fontSize, baseBold, maxW, 6);
-          return;
-        }
-        const lines = txt.split("\n");
-        for (const rawLine of lines) {
-          const line = rawLine.trimEnd();
-          if (!line.trim()) {
-            y += 4;
-            continue;
-          }
-          drawInlineBoldLine(line, margin, fontSize, maxW, baseBold);
-        }
-        y += 2;
-      };
-
-      const photoW = 28;
-      const photoH = 36;
-      const photoX = margin;
-      const photoY = margin;
-      let headerBottom = margin + photoH;
-
-      const profilePhoto = data.alumniProfilePhoto;
-      if (profilePhoto?.dataUrl) {
-        try {
-          doc.setDrawColor(210, 210, 210);
-          doc.setFillColor(248, 248, 248);
-          doc.rect(photoX, photoY, photoW, photoH, "FD");
-          doc.addImage(
-            profilePhoto.dataUrl,
-            profilePhoto.format,
-            photoX + 1,
-            photoY + 1,
-            photoW - 2,
-            photoH - 2,
-            "alumni-profile-photo",
-            "FAST"
-          );
-        } catch {
-          doc.setFillColor(245, 245, 245);
-          doc.rect(photoX, photoY, photoW, photoH, "F");
-          setTextStyle(8, false, [120, 120, 120]);
-          doc.text("No photo", photoX + photoW / 2, photoY + photoH / 2, { align: "center" });
-        }
-      }
-
-      const logoBase64 = getLogoBase64();
-      const logoWidth = 40;
-      const logoHeight = 20;
-      const logoX = pageWidth - margin - logoWidth;
-      const logoY = margin;
-      if (logoBase64) {
-        try {
-          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight, "uol-logo", "FAST");
-          headerBottom = Math.max(headerBottom, logoY + logoHeight);
-        } catch {
-          headerBottom = Math.max(headerBottom, logoY + logoHeight);
-        }
-      }
-
-      const titleX = photoX + photoW + 10;
-      const titleY = photoY + 14;
-      setTextStyle(14, true, [0, 102, 51]);
-      doc.text("Leadership Application", titleX, titleY);
-      headerBottom = Math.max(headerBottom, titleY + 8);
-
-      y = headerBottom + 8;
-      hLine(0, 10);
-
-      const planStrategyText = sanitizePdfText(data.planStrategy, 12_000) || "No response provided";
-      const additionalAchievementsText = sanitizePdfText(data.additionalAchievements, 12_000) || "No response provided";
-      const roleDescriptionText = sanitizePdfText(data.roleDescription, 20_000) || "-";
-
-      
-
-      const headerLeft: Array<{ label: string; value: string }> = [
-        { label: "Application Type", value: data.leadershipType === "chapter" ? "Chapter" : "Association" },
-        {
-          label: "Chapter/Association Name",
-          value: (() => {
-            const t = String(data.categoryType || "").toLowerCase();
-            const name = String(data.categoryName || "").trim();
-            if (!name) return "-";
-            if (t === "national") return `National Chapter - ${name}`;
-            if (t === "international") return `International Chapter - ${name}`;
-            if (t === "association") return `Association - ${name}`;
-            return name;
-          })(),
-        },
-        { label: "Role Applied For", value: String(data.position || "-") },
-      ];
-      const headerRight: Array<{ label: string; value: string }> = [
-        { label: "Application Date", value: String(data.createdAt || "-") },
-        { label: "Application Status", value: String(data.status || "pending") },
-      ];
-      fieldPairGrid(headerLeft, headerRight);
-      hLine(2, 10);
-
-      sectionTitle("Personal Information");
-      fieldPairGrid(
-        [
-          { label: "Full Name", value: String(data.applicant.name || "-") },
-          { label: "Gender", value: String(data.applicant.gender || "-") },
-          { label: "Department", value: String(data.applicant.department || "-") },
-          { label: "Passing Year", value: data.applicant.passingYear ? String(data.applicant.passingYear) : "-" },
-          { label: "Phone", value: String(data.applicant.phone || "-") },
-        ],
-        [
-          { label: "SAP ID", value: String(data.applicant.sapId || "-") },
-          { label: "Faculty", value: String(data.applicant.faculty || "-") },
-          { label: "Program", value: String(data.applicant.program || "-") },
-          { label: "Email", value: String(data.applicant.email || "-") },
-        ]
-      );
-      hLine(0, 10);
-
-      sectionTitle("Role Description");
-      drawRichTextBlock(roleDescriptionText, maxWidth);
-      hLine(0, 10);
-      sectionTitle("Criteria");
-      const applicationApproved = String(data.status || "").toLowerCase() === "approved";
-      const tableColW = {
-        req: maxWidth * 0.50,
-        marks: maxWidth * 0.14,
-        obtained: maxWidth * 0.16,
-        alumni: maxWidth * 0.20,
-      };
-      const tableX = {
-        req: margin,
-        marks: margin + tableColW.req,
-        obtained: margin + tableColW.req + tableColW.marks,
-        alumni: margin + tableColW.req + tableColW.marks + tableColW.obtained,
-      };
-      const tableFont = 9.5;
-
-      const drawTableHeader = () => {
-        ensureSpace(18);
-        doc.setFillColor(245, 245, 245);
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.2);
-        const headerH = 10;
-        doc.rect(margin, y, maxWidth, headerH, "F");
-        doc.rect(margin, y, maxWidth, headerH);
-        doc.line(tableX.marks, y, tableX.marks, y + headerH);
-        doc.line(tableX.obtained, y, tableX.obtained, y + headerH);
-        doc.line(tableX.alumni, y, tableX.alumni, y + headerH);
-        setTextStyle(tableFont, true);
-        doc.text("Requirement", tableX.req + 2, y + 7);
-        doc.text("Marks", tableX.marks + 2, y + 7);
-        doc.text("Obtained", tableX.obtained + 2, y + 7);
-        doc.text("Alumni", tableX.alumni + 2, y + 7);
-        y += headerH;
-      };
-
-      const drawTableRow = (cells: { req: string; marks: string; obtained: string; alumni: string }) => {
-        const reqLines = doc.splitTextToSize(cells.req, tableColW.req - 4);
-        const marksLines = doc.splitTextToSize(cells.marks, tableColW.marks - 4);
-        const obtainedLines = doc.splitTextToSize(cells.obtained, tableColW.obtained - 4);
-        const alumniLines = doc.splitTextToSize(cells.alumni, tableColW.alumni - 4);
-        const lines = Math.max(
-          reqLines.length,
-          marksLines.length,
-          obtainedLines.length,
-          alumniLines.length,
-          1
-        );
-        const rowH = lines * textHeight(tableFont) + 6;
-        if (y + rowH > pageBottomY()) {
-          doc.addPage();
-          y = margin;
-          drawTableHeader();
-        }
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.2);
-        doc.rect(margin, y, maxWidth, rowH);
-        doc.line(tableX.marks, y, tableX.marks, y + rowH);
-        doc.line(tableX.obtained, y, tableX.obtained, y + rowH);
-        doc.line(tableX.alumni, y, tableX.alumni, y + rowH);
-        setTextStyle(tableFont, false);
-        doc.text(reqLines, tableX.req + 2, y + 5, { maxWidth: tableColW.req - 4 });
-        doc.text(marksLines, tableX.marks + 2, y + 5, { maxWidth: tableColW.marks - 4 });
-        doc.text(obtainedLines, tableX.obtained + 2, y + 5, { maxWidth: tableColW.obtained - 4 });
-        doc.text(alumniLines, tableX.alumni + 2, y + 5, { maxWidth: tableColW.alumni - 4 });
-        y += rowH;
-      };
-
       let criteriaTotalMarks = 0;
       let criteriaTotalObtained = 0;
+
       if (!data.criteria || data.criteria.length === 0) {
-        drawWrappedText("No criteria found.", margin, 10.5, false, maxWidth, 10);
+        setStyle(THEME.font.body, false, THEME.colors.muted);
+        doc.text("No criteria found.", m, y);
+        y += 6;
       } else {
         drawTableHeader();
         let totalMarks = 0;
         let totalObtained = 0;
 
-        data.criteria.forEach((c) => {
+        data.criteria.forEach((c, idx) => {
           const alumniResp = String(c.alumniResponse ?? "").toUpperCase();
-          const alumniSelected = alumniResp === "YES" || alumniResp === "NO" ? alumniResp : c.alumniConfirmed ? "YES" : "NO";
-          const marksRaw = c.criterionScore;
-          const marksNum = Number.isFinite(Number(marksRaw)) ? normalizeObtainedMark(Number(marksRaw)) : NaN;
+          const alumniSelected =
+            alumniResp === "YES" || alumniResp === "NO" ? alumniResp : c.alumniConfirmed ? "YES" : "NO";
+          const marksNum = Number.isFinite(Number(c.criterionScore))
+            ? normalizeObtainedMark(Number(c.criterionScore))
+            : NaN;
           const marksCell =
             Number.isFinite(marksNum) && marksNum > 0 ? formatObtainedMarkDisplay(marksNum) : "N/A";
 
           const obtainedStored = c.obtainedMarks;
-          const obtainedCell =
-            !applicationApproved
-              ? "—"
-              : Number.isFinite(Number(obtainedStored))
-                ? formatObtainedMarkDisplay(Number(obtainedStored))
-                : "—";
+          const obtainedCell = !showAssessmentMarks
+            ? "—"
+            : Number.isFinite(Number(obtainedStored))
+              ? formatObtainedMarkDisplay(Number(obtainedStored))
+              : "—";
 
           if (Number.isFinite(marksNum) && marksNum > 0) {
             totalMarks += marksNum;
-            if (applicationApproved && Number.isFinite(Number(obtainedStored))) {
+            if (showAssessmentMarks && Number.isFinite(Number(obtainedStored))) {
               totalObtained += normalizeObtainedMark(Number(obtainedStored));
             }
           }
 
-          let alumniCell = alumniSelected;
+          let alumniCell = alumniSelected === "YES" ? "Yes" : "No";
           if (alumniSelected === "YES" && !c.isMandatory) {
             const rating = Number(proficiencyMap[String(c.id)] ?? 0);
             const safeRating = Number.isFinite(rating) ? Math.min(5, Math.max(0, Math.round(rating))) : 0;
             if (safeRating >= 1) {
-              const stars = Array.from({ length: safeRating }).map(() => "*").join(" ");
-              const label = ratingLabel(safeRating) || "";
-              alumniCell = label ? `YES\n${stars}\n${label}` : `YES\n${stars}`;
+              const label = proficiencyLabelForPdf(safeRating);
+              alumniCell = label ? `Yes (${safeRating}/5 — ${label})` : `Yes (${safeRating}/5)`;
             } else {
-              alumniCell = "YES\nNo rating";
+              alumniCell = "Yes (no rating)";
             }
           }
 
           const criterionText = (() => {
-            const base = String(c.label || "-") + (c.description ? `\n${String(c.description)}` : "");
-            if (!c.hasTextbox) return base;
+            const label = String(c.label || "-");
+            const desc = c.description ? `Note: ${String(c.description)}` : "";
+            const parts = [label, desc].filter(Boolean);
+            if (!c.hasTextbox) return parts.join("\n");
             const response =
               c.alumniTextResponse && String(c.alumniTextResponse).trim()
                 ? sanitizePdfText(c.alumniTextResponse, 6_000)
                 : "No response provided";
-            const label = String(c.textboxLabel || "Response");
-            return `${base}\n${label}: ${response}`;
+            const tbLabel = String(c.textboxLabel || "Response");
+            return [...parts, `${tbLabel}: ${response}`].join("\n");
           })();
 
-          drawTableRow({
-            req: criterionText,
-            marks: marksCell,
-            obtained: obtainedCell,
-            alumni: alumniCell,
-          });
+          drawTableRow(
+            { req: criterionText, marks: marksCell, obtained: obtainedCell, alumni: alumniCell },
+            idx % 2 === 1
+          );
         });
+
         criteriaTotalMarks = totalMarks;
         criteriaTotalObtained = totalObtained;
-        y += 10;
 
         if (totalMarks > 0) {
-          ensureSpace(14);
-          setTextStyle(10.5, true);
+          ensureSpace(9);
+          doc.setFillColor(...THEME.colors.brandLight);
+          doc.setDrawColor(...THEME.colors.border);
+          doc.setLineWidth(0.15);
+          const resultH = 7;
+          doc.rect(m, y, W, resultH, "FD");
+          setStyle(THEME.font.small, true, THEME.colors.brand);
           doc.text(
-            `Result — Total marks: ${formatObtainedMarkDisplay(totalMarks)} | Total obtained marks: ${applicationApproved ? formatObtainedMarkDisplay(totalObtained) : "—"}`,
-            margin,
-            y
+            `Criteria Total: ${formatObtainedMarkDisplay(totalMarks)}   |   Obtained: ${
+              showAssessmentMarks ? formatObtainedMarkDisplay(totalObtained) : "—"
+            }`,
+            m + 2,
+            y + 4.5
           );
-          y += 10;
+          y += resultH + 4;
         }
       }
 
-      const strategyMarks = Number.isFinite(Number(data.strategyAssessmentMarks)) ? normalizeObtainedMark(Number(data.strategyAssessmentMarks)) : 0;
-      const achievementsMarks = Number.isFinite(Number(data.achievementAssessmentMarks)) ? normalizeObtainedMark(Number(data.achievementAssessmentMarks)) : 0;
+      // ── Bonus assessment ──
+      const strategyMarks = Number.isFinite(Number(data.strategyAssessmentMarks))
+        ? normalizeObtainedMark(Number(data.strategyAssessmentMarks))
+        : 0;
+      const achievementsMarks = Number.isFinite(Number(data.achievementAssessmentMarks))
+        ? normalizeObtainedMark(Number(data.achievementAssessmentMarks))
+        : 0;
       const bonusMarks = Number.isFinite(Number(data.bonusMarks))
         ? normalizeObtainedMark(Number(data.bonusMarks))
         : normalizeObtainedMark(strategyMarks + achievementsMarks);
+
+      drawSectionTitle("Bonus Assessment");
+
+      const planStrategyText = sanitizePdfText(data.planStrategy, 12_000) || "No response provided";
+      const additionalAchievementsText = sanitizePdfText(data.additionalAchievements, 12_000) || "No response provided";
+      const halfW = (W - 4) / 2;
+      const boxPad = 3;
+
+      const measureBonusBox = (question: string, answer: string, width: number) => {
+        const innerW = width - boxPad * 2;
+        const qLines = doc.splitTextToSize(question, innerW);
+        const aLines = doc.splitTextToSize(answer, innerW);
+        const questionH = qLines.length * lineH(THEME.font.tiny);
+        const maxMarksH = lineH(THEME.font.tiny) + 1;
+        const answerH = aLines.length * lineH(THEME.font.tiny);
+        return questionH + maxMarksH + answerH + boxPad * 2 + 4;
+      };
+
+      const drawBonusBox = (
+        x: number,
+        question: string,
+        maxMarks: number,
+        answer: string,
+        width: number,
+        height: number
+      ) => {
+        const innerW = width - boxPad * 2;
+        doc.setFillColor(252, 252, 252);
+        doc.setDrawColor(...THEME.colors.border);
+        doc.setLineWidth(0.15);
+        doc.rect(x, y, width, height, "FD");
+
+        let innerY = y + boxPad;
+        setStyle(THEME.font.tiny, true, THEME.colors.brand);
+        const qLines = doc.splitTextToSize(question, innerW);
+        doc.text(qLines, x + boxPad, innerY);
+        innerY += qLines.length * lineH(THEME.font.tiny) + 1;
+
+        setStyle(THEME.font.tiny, false, THEME.colors.muted);
+        doc.text(`(Maximum marks: ${maxMarks})`, x + boxPad, innerY);
+        innerY += lineH(THEME.font.tiny) + 2;
+
+        setStyle(THEME.font.tiny, false, THEME.colors.text);
+        doc.text(doc.splitTextToSize(answer, innerW), x + boxPad, innerY);
+      };
+
+      const boxH = Math.max(
+        measureBonusBox(LEADERSHIP_PLAN_STRATEGY_QUESTION, planStrategyText, halfW),
+        measureBonusBox(LEADERSHIP_ADDITIONAL_ACHIEVEMENTS_QUESTION, additionalAchievementsText, halfW),
+        28
+      );
+      ensureSpace(boxH + 14);
+
+      drawBonusBox(m, LEADERSHIP_PLAN_STRATEGY_QUESTION, 15, planStrategyText, halfW, boxH);
+      drawBonusBox(m + halfW + 4, LEADERSHIP_ADDITIONAL_ACHIEVEMENTS_QUESTION, 10, additionalAchievementsText, halfW, boxH);
+
+      y += boxH + 4;
+      setStyle(THEME.font.body, false, THEME.colors.text);
+      doc.text(`Strategy: ${formatObtainedMarkDisplay(strategyMarks)} / 15`, m, y);
+      doc.text(`Achievements: ${formatObtainedMarkDisplay(achievementsMarks)} / 10`, m + halfW + 4, y);
+      y += 5;
+      setStyle(THEME.font.body, true, THEME.colors.brand);
+      doc.text(`Bonus Marks Total: ${formatObtainedMarkDisplay(bonusMarks)} / 25`, m, y);
+      y += 8;
+
+      // ── Assessment summary ──
+      drawSectionTitle("Assessment Summary");
       const grandObtained = normalizeObtainedMark(criteriaTotalObtained + bonusMarks);
       const grandMaximum = normalizeObtainedMark(criteriaTotalMarks + 25);
 
-      hLine(0, 10);
-      sectionTitle("Bonus Assessment");
-      drawWrappedText("Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role.", margin, 10.5, true, maxWidth, 3);
-      drawRichTextBlock(planStrategyText, maxWidth, 10.5, false);
-      drawWrappedText(`Marks Awarded: ${formatObtainedMarkDisplay(strategyMarks)} / 15`, margin, 10.5, false, maxWidth, 8);
-      hLine(0, 8);
-      drawWrappedText("Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.", margin, 10.5, true, maxWidth, 3);
-      drawRichTextBlock(additionalAchievementsText, maxWidth, 10.5, false);
-      drawWrappedText(`Marks Awarded: ${formatObtainedMarkDisplay(achievementsMarks)} / 10`, margin, 10.5, false, maxWidth, 8);
-      drawWrappedText(`Bonus Marks: ${formatObtainedMarkDisplay(bonusMarks)} / 25`, margin, 10.5, true, maxWidth, 10);
+      ensureSpace(22);
+      doc.setFillColor(...THEME.colors.brandLight);
+      doc.setDrawColor(...THEME.colors.brand);
+      doc.setLineWidth(0.2);
+      const summaryH = 18;
+      doc.rect(m, y, W, summaryH, "FD");
+      setStyle(THEME.font.body, false, THEME.colors.text);
+      doc.text(
+        `Assessment Marks: ${showAssessmentMarks ? formatObtainedMarkDisplay(criteriaTotalObtained) : "—"} / ${formatObtainedMarkDisplay(criteriaTotalMarks)}`,
+        m + 3,
+        y + 6
+      );
+      doc.text(`Bonus Marks: ${formatObtainedMarkDisplay(bonusMarks)} / 25`, m + 3, y + 11);
+      setStyle(THEME.font.body, true, THEME.colors.brand);
+      doc.text(
+        `Grand Total: ${showAssessmentMarks ? formatObtainedMarkDisplay(grandObtained) : "—"} / ${formatObtainedMarkDisplay(grandMaximum)}`,
+        m + 3,
+        y + 16
+      );
+      y += summaryH + 6;
 
-      hLine(0, 10);
-      sectionTitle("Assessment Summary");
-      drawWrappedText(`Assessment Marks: ${applicationApproved ? formatObtainedMarkDisplay(criteriaTotalObtained) : "—"} / ${formatObtainedMarkDisplay(criteriaTotalMarks)}`, margin, 10.5, false, maxWidth, 4);
-      drawWrappedText(`Bonus Marks: ${formatObtainedMarkDisplay(bonusMarks)} / 25`, margin, 10.5, false, maxWidth, 4);
-      drawWrappedText(`Grand Total: ${applicationApproved ? formatObtainedMarkDisplay(grandObtained) : "—"} / ${formatObtainedMarkDisplay(grandMaximum)}`, margin, 10.5, true, maxWidth, 8);
-
-      hLine(0, 10);
-      sectionTitle("Uploaded Documents");
-
-      const fileNameFromUrlPdf = (url: string) => {
-        try {
-          const u = String(url || "").trim();
-          if (!u) return "";
-          const path = u.split("?")[0].split("#")[0];
-          const parts = path.split("/").filter(Boolean);
-          const last = parts[parts.length - 1] || "";
-          return last ? decodeURIComponent(last) : "";
-        } catch {
-          return "";
-        }
-      };
-
+      // ── Uploaded documents ──
+      drawSectionTitle("Uploaded Documents");
       const uploaded = Array.isArray(data.uploadedDocuments) ? data.uploadedDocuments : [];
       if (!uploaded.length) {
-        drawWrappedText("-", margin, 10.5, false, maxWidth, 6);
+        setStyle(THEME.font.body, false, THEME.colors.muted);
+        doc.text("No documents uploaded.", m, y);
+        y += 5;
       } else {
-        uploaded.forEach((d) => {
+        uploaded.forEach((d, idx) => {
           const label = String(d.label || "Document");
           const fileName = fileNameFromUrlPdf(String(d.url || ""));
           const value = fileName || String(d.url || "-");
-          drawWrappedText(`${label}: ${value}`, margin, 10.5, false, maxWidth, 4);
+          ensureSpace(8);
+          if (idx % 2 === 0) {
+            doc.setFillColor(252, 252, 252);
+            doc.rect(m, y - 1, W, 7, "F");
+          }
+          setStyle(THEME.font.tiny, true, THEME.colors.muted);
+          doc.text(`${label}:`, m + 2, y + 3);
+          const lw = doc.getTextWidth(`${label}:`);
+          setStyle(THEME.font.tiny, false, THEME.colors.text);
+          const valLines = doc.splitTextToSize(value, W - lw - 8);
+          doc.text(valLines, m + lw + 4, y + 3);
+          y += Math.max(valLines.length * lineH(THEME.font.tiny), 5) + 1;
         });
       }
 
-      const footerY = pageHeight - 18;
-      doc.setDrawColor(210, 210, 210);
-      doc.setLineWidth(0.3);
-      doc.line(margin, footerY - 6, pageWidth - margin, footerY - 6);
-      setTextStyle(9, false, [100, 100, 100]);
-      const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
-      const footerWidth = doc.getTextWidth(footerText);
-      doc.text(footerText, (pageWidth - footerWidth) / 2, footerY);
+      // ── Signatures ──
+      drawSectionTitle("Signatures");
+      const sigGap = 8;
+      const sigColW = (W - sigGap) / 2;
+      const sigBoxH = 30;
+      ensureSpace(sigBoxH + 4);
 
-      const pdfOutput = doc.output("arraybuffer");
-      const buffer = Buffer.from(pdfOutput);
-      resolve(buffer);
+      const drawSignatureBox = (
+        x: number,
+        title: string,
+        name: string | null | undefined,
+        dateValue: string | null | undefined
+      ) => {
+        doc.setFillColor(252, 252, 252);
+        doc.setDrawColor(...THEME.colors.border);
+        doc.setLineWidth(0.2);
+        doc.rect(x, y, sigColW, sigBoxH, "FD");
+
+        setStyle(THEME.font.small, true, THEME.colors.brand);
+        doc.text(title, x + 3, y + 5);
+
+        const displayName = String(name || "").trim();
+        const nameY = y + 12;
+        if (displayName) {
+          setStyle(THEME.font.body, false, THEME.colors.text);
+          const nameLines = doc.splitTextToSize(displayName, sigColW - 6);
+          doc.text(nameLines, x + 3, nameY);
+        }
+
+        const lineY = y + 20;
+        doc.setDrawColor(...THEME.colors.muted);
+        doc.setLineWidth(0.25);
+        doc.line(x + 3, lineY, x + sigColW - 3, lineY);
+
+        setStyle(THEME.font.tiny, false, THEME.colors.muted);
+        doc.text("Signature", x + 3, lineY - 1.5);
+
+        const dateText = dateValue ? formatLeadershipDate(dateValue) : "____________________";
+        setStyle(THEME.font.tiny, false, THEME.colors.text);
+        doc.text(`Date: ${dateText}`, x + 3, y + 26);
+      };
+
+      const assessedByDisplay =
+        String(data.assessedByName || "").trim() ||
+        String(data.assessedByEmail || "").trim() ||
+        null;
+
+      drawSignatureBox(m, "Assessed by", assessedByDisplay, data.assessedAt);
+      drawSignatureBox(
+        m + sigColW + sigGap,
+        "Approved by",
+        null,
+        statusLower === "approved" ? data.approvedAt : null
+      );
+
+      y += sigBoxH + 6;
+
+      // Footers on all pages
+      const totalPages = doc.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        drawPageFooter();
+      }
+
+      resolve(Buffer.from(doc.output("arraybuffer")));
     } catch (error) {
       reject(error);
     }
   });
 }
 
+// ─── 5. Upskill PDF (Letter) ─────────────────────────────────────────────────
 export function generateUpskillPDF(data: UpskillApplicationData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 50;
-      const maxWidth = pageWidth - 2 * margin;
-      let yPosition = margin;
+      const doc = new jsPDF({ compress: true, unit: "mm" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const m = 45;
+      const W = pageW - m * 2;
+      let y = m;
 
-      // Add logo on top right
       const logoBase64 = getLogoBase64();
       if (logoBase64) {
         try {
-          const logoWidth = 40;
-          const logoHeight = 20;
-          const logoX = pageWidth - margin - logoWidth;
-          const logoY = margin;
-          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
-          yPosition = logoY + logoHeight + 15;
+          const lw = 35;
+          const lh = 16;
+          doc.addImage(logoBase64, "PNG", pageW - m - lw, y, lw, lh, "uol-logo", "FAST");
+          y += lh + 10;
         } catch {
-          yPosition = margin + 10;
+          y += 10;
         }
-      } else {
-        yPosition = margin + 10;
       }
 
-      // Draw a line under the header
-      doc.setDrawColor(0, 102, 51); // Green color matching logo
+      doc.setDrawColor(...THEME.colors.brand);
       doc.setLineWidth(0.5);
-      doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 15;
+      doc.line(m, y, pageW - m, y);
+      y += 12;
 
-      // Header text (left aligned)
-      doc.setFontSize(18);
+      doc.setFontSize(THEME.font.h1);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 102, 51); // Green color
-      doc.text("Upskill & Reskill Course Application", margin, yPosition);
-      yPosition += 10;
+      doc.setTextColor(...THEME.colors.brand);
+      doc.text("Upskill & Reskill Course Application", m, y);
+      y += 8;
 
-      // Date (right aligned)
-      const date = new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      doc.setFontSize(11);
+      const dateStr = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      doc.setFontSize(THEME.font.body);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0); // Black
-      const dateText = `Date: ${date}`;
-      const dateWidth = doc.getTextWidth(dateText);
-      doc.text(dateText, pageWidth - margin - dateWidth, yPosition);
-      yPosition += 20;
+      doc.setTextColor(...THEME.colors.muted);
+      const dw = doc.getTextWidth(`Date: ${dateStr}`);
+      doc.text(`Date: ${dateStr}`, pageW - m - dw, y);
+      y += 18;
 
-      // Helper function to add text with word wrapping
-      const addText = (text: string, fontSize: number, isBold: boolean = false, align: "left" | "center" | "right" = "left", spacing: number = 5) => {
-        doc.setFontSize(fontSize);
-        doc.setFont("helvetica", isBold ? "bold" : "normal");
-        doc.setTextColor(0, 0, 0); // Black
-        const lines = doc.splitTextToSize(text, maxWidth);
-        const xPos = align === "center" ? pageWidth / 2 : align === "right" ? pageWidth - margin : margin;
-        doc.text(lines, xPos, yPosition, { align, maxWidth });
-        yPosition += lines.length * (fontSize * 0.4) + spacing;
+      const addParagraph = (text: string, bold = false, spacing = 6) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(THEME.font.body);
+        doc.setTextColor(...THEME.colors.text);
+        const lines = doc.splitTextToSize(text, W);
+        doc.text(lines, m, y, { maxWidth: W });
+        y += lines.length * (THEME.font.body * 0.42) + spacing;
       };
 
-      // Salutation
-      addText("Dear Concern,", 12, false, "left", 8);
+      addParagraph("Dear Concern,", false, 8);
+      addParagraph(
+        `I, ${data.alumniName}, an alumnus of UOL, am applying for the ${data.courseName} offered by the ${data.departmentName} with 15% discount.`,
+        false,
+        8
+      );
+      addParagraph("Please approve my application so I can proceed with enrollment in this course/program.", false, 14);
+      addParagraph("Regards,", false, 8);
+      addParagraph(data.alumniName, true, 10);
 
-      // Main content
-      addText(`I, ${data.alumniName}, an alumnus of UOL, am applying for the ${data.courseName} offered by the ${data.departmentName} with 15% discount.`, 12, false, "left", 8);
-      addText("Please approve my application so I can proceed with enrollment in this course/program.", 12, false, "left", 15);
-      
-      // Closing
-      addText("Regards,", 12, false, "left", 8);
-      addText(data.alumniName, 12, true, "left", 10);
-
-      // Add footer line
-      const footerY = pageHeight - 30;
-      doc.setDrawColor(0, 102, 51);
-      doc.setLineWidth(0.5);
-      doc.line(margin, footerY, pageWidth - margin, footerY);
-      
-      // Footer text
-      doc.setFontSize(9);
+      const fy = pageH - 25;
+      doc.setDrawColor(...THEME.colors.brand);
+      doc.setLineWidth(0.3);
+      doc.line(m, fy, pageW - m, fy);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100); // Gray
-      const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
-      const footerWidth = doc.getTextWidth(footerText);
-      doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
+      doc.setFontSize(THEME.font.tiny);
+      doc.setTextColor(...THEME.colors.muted);
+      const ft = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
+      const fw = doc.getTextWidth(ft);
+      doc.text(ft, (pageW - fw) / 2, fy + 6);
 
-      // Convert to buffer
-      const pdfOutput = doc.output("arraybuffer");
-      const buffer = Buffer.from(pdfOutput);
-      resolve(buffer);
+      resolve(Buffer.from(doc.output("arraybuffer")));
     } catch (error) {
       reject(error);
     }

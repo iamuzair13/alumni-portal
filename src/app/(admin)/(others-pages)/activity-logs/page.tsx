@@ -164,7 +164,7 @@ export default function ActivityLogsPage() {
   }
 
     return (
-    <ComponentCard title="Activity logs" desc="Super Admin view to determine activities and logins.">
+    <ComponentCard title="Activity logs" description="Super Admin view to determine activities and logins.">
       <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300 dark:bg-gray-900">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-2">

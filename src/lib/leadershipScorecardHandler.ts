@@ -2,13 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
-import { fetchLeadershipScorecardPayload } from "@/lib/leadershipScorecardData";
-import { generateLeadershipScorecardPDF } from "@/lib/scorecardGenerator";
+import { fetchBulkLeadershipScorecardPayload } from "@/lib/leadershipScorecardData";
+import { generateBulkLeadershipScorecardPDF } from "@/lib/scorecardGenerator";
 
-export async function handleLeadershipScorecardDownload(
+const VALID_ROLES = new Set(["president", "vice_president", "coordinator"]);
+const VALID_TYPES = new Set(["chapter", "association"]);
+
+function parsePositiveInt(value: string | null): number | null {
+  if (!value) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.trunc(n);
+}
+
+export async function handleBulkLeadershipScorecardDownload(
   req: NextRequest,
-  type: "chapter" | "association",
-  applicationId: number
+  role: string,
+  type: string
 ): Promise<NextResponse> {
   const session = await auth();
   if (!session?.user) {
@@ -19,37 +29,68 @@ export async function handleLeadershipScorecardDownload(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const payload = await fetchLeadershipScorecardPayload({
-    session,
-    type,
-    applicationId,
-  });
-
-  if (!payload) {
-    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+  if (!VALID_ROLES.has(role)) {
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
 
-  const pdfBuffer = await generateLeadershipScorecardPDF(payload);
+  if (!VALID_TYPES.has(type)) {
+    return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+  }
+
+  const nationalChapterId = parsePositiveInt(req.nextUrl.searchParams.get("nationalChapterId"));
+  const internationalChapterId = parsePositiveInt(req.nextUrl.searchParams.get("internationalChapterId"));
+  const associationId = parsePositiveInt(req.nextUrl.searchParams.get("associationId"));
+
+  if (type === "chapter") {
+    if (!nationalChapterId && !internationalChapterId) {
+      return NextResponse.json({ error: "Chapter selection is required" }, { status: 400 });
+    }
+    if (nationalChapterId && internationalChapterId) {
+      return NextResponse.json({ error: "Provide only one chapter filter" }, { status: 400 });
+    }
+  } else if (!associationId) {
+    return NextResponse.json({ error: "Association selection is required" }, { status: 400 });
+  }
+
+  const payload = await fetchBulkLeadershipScorecardPayload({
+    session,
+    role: role as "president" | "vice_president" | "coordinator",
+    type: type as "chapter" | "association",
+    nationalChapterId,
+    internationalChapterId,
+    associationId,
+  });
+
+  const pdfBuffer = await generateBulkLeadershipScorecardPDF(payload);
 
   await logAdminAction({
     session,
     req,
     input: {
-      action: "leadership.scorecard_download",
-      entityType: "leadership_application",
-      entityId: `${type}:${applicationId}`,
+      action: "leadership.bulk_scorecard_download",
+      entityType: "leadership_scorecard",
+      entityId: `${type}:${role}`,
       success: true,
       metadata: {
-        action: "SCORECARD_DOWNLOADED",
-        applicationId,
+        action: "BULK_SCORECARD_DOWNLOADED",
+        role,
         leadershipType: type,
+        nationalChapterId,
+        internationalChapterId,
+        associationId,
+        categoryLabel: payload.categoryLabel,
+        applicantCount: payload.applicants.length,
         downloadedBy: (session.user as { email?: string }).email ?? null,
         downloadedAt: new Date().toISOString(),
       },
     },
   });
 
-  const filename = `leadership-scorecard-${type}-${applicationId}.pdf`;
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  const slug = payload.categoryLabel
+    ? payload.categoryLabel.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()
+    : type;
+  const filename = `leadership-scorecard-${type}-${role}-${slug}-${dateStamp}.pdf`;
   return new NextResponse(new Uint8Array(pdfBuffer), {
     status: 200,
     headers: {

@@ -3,160 +3,148 @@ import type { Session } from "next-auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { normalizeObtainedMark } from "@/lib/leadershipMarks";
+import { associationPostRoleCondition, chapterPostRoleCondition } from "@/lib/leadershipRoleSql";
 
-export type LeadershipScorecardCriterion = {
+export type BulkScorecardCriterion = {
+  id: number;
   label: string;
-  obtainedMarks: number | null;
-  totalMarks: number | null;
+  description: string | null;
+  criterionScore: number | null;
 };
 
-export type LeadershipScorecardPayload = {
+export type BulkScorecardApplicant = {
   applicationId: number;
-  leadershipType: "chapter" | "association";
+  name: string;
   status: string;
-  applicant: {
-    name: string;
-    membershipNumber: string;
-    sapId: string;
-    registrationNo: string | null;
-    email: string;
-    faculty: string | null;
-    department: string | null;
-    program: string | null;
-  };
-  position: string;
-  applicationTypeLabel: string;
-  categoryName: string | null;
-  applicationDate: string | null;
-  assessmentDate: string | null;
-  assessedByName: string | null;
-  assessedByEmail: string | null;
-  criteria: LeadershipScorecardCriterion[];
-  planStrategy: string | null;
-  additionalAchievements: string | null;
-  strategyAssessmentMarks: number;
-  achievementAssessmentMarks: number;
-  bonusMarks: number;
-  assessmentRemarks: string | null;
+  marksByCriterionId: Record<number, number | null>;
 };
 
-function inferRoleNameFromPosition(position: string): "president" | "vice_president" | "coordinator" {
-  const s = String(position || "").toLowerCase();
-  if (s.includes("vice")) return "vice_president";
-  if (s.includes("coordinator")) return "coordinator";
-  return "president";
+export type BulkScorecardPayload = {
+  role: "president" | "vice_president" | "coordinator";
+  leadershipType: "chapter" | "association";
+  generatedAt: string;
+  categoryLabel?: string | null;
+  criteria: {
+    mandatory: BulkScorecardCriterion[];
+    optional: BulkScorecardCriterion[];
+  };
+  applicants: BulkScorecardApplicant[];
+};
+
+const ROLE_LABELS: Record<BulkScorecardPayload["role"], string> = {
+  president: "President",
+  vice_president: "Vice President",
+  coordinator: "Coordinator",
+};
+
+export function bulkScorecardRoleLabel(role: BulkScorecardPayload["role"]): string {
+  return ROLE_LABELS[role] ?? role;
 }
 
-function formatDisplayDate(value: unknown): string | null {
-  if (!value) return null;
-  try {
-    const d = new Date(value as string);
-    if (Number.isNaN(d.getTime())) return null;
-    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).replace(/ /g, "-");
-  } catch {
-    return null;
-  }
+function mapCriterionRow(row: Record<string, unknown>): BulkScorecardCriterion {
+  const scoreRaw = row.criterion_score;
+  const scoreNum = Number(scoreRaw);
+  return {
+    id: Number(row.id),
+    label: String(row.label ?? ""),
+    description: row.description ? String(row.description) : null,
+    criterionScore: Number.isFinite(scoreNum) && scoreNum > 0 ? normalizeObtainedMark(scoreNum) : null,
+  };
 }
 
-function categoryLabel(type: "chapter" | "association", categoryType: string | null, categoryName: string | null): string {
-  if (type === "association") return categoryName ? `Association — ${categoryName}` : "Association";
-  const t = String(categoryType || "").toLowerCase();
-  const name = String(categoryName || "").trim();
-  if (t === "national") return name ? `National Chapter — ${name}` : "National Chapter";
-  if (t === "international") return name ? `International Chapter — ${name}` : "International Chapter";
-  return name || "Chapter";
-}
-
-const assessorNameSql = sql`NULLIF(TRIM(CONCAT(COALESCE(assessor.firstname, ''), ' ', COALESCE(assessor.lastname, ''))), '') as assessor_name`;
-
-export async function fetchLeadershipScorecardPayload(input: {
+export async function fetchBulkLeadershipScorecardPayload(input: {
   session: Session;
-  type: "chapter" | "association";
-  applicationId: number;
-  isAlumniSelfService?: boolean;
-}): Promise<LeadershipScorecardPayload | null> {
-  const { session, type, applicationId } = input;
+  role: BulkScorecardPayload["role"];
+  type: BulkScorecardPayload["leadershipType"];
+  nationalChapterId?: number | null;
+  internationalChapterId?: number | null;
+  associationId?: number | null;
+}): Promise<BulkScorecardPayload> {
+  const { session, role, type } = input;
+  const nationalChapterId =
+    input.nationalChapterId && Number.isFinite(input.nationalChapterId) && input.nationalChapterId > 0
+      ? input.nationalChapterId
+      : null;
+  const internationalChapterId =
+    input.internationalChapterId && Number.isFinite(input.internationalChapterId) && input.internationalChapterId > 0
+      ? input.internationalChapterId
+      : null;
+  const associationId =
+    input.associationId && Number.isFinite(input.associationId) && input.associationId > 0
+      ? input.associationId
+      : null;
+
+  let categoryLabel: string | null = null;
+
   const isSuperAdmin = isSuperAdminUser(session?.user);
   const isAdmin = isAdminUser(session?.user);
   const isViewer = isViewerUser(session?.user);
-  const isStaff = isSuperAdmin || isAdmin || isViewer;
-  const isAlumni = !isStaff || Boolean(input.isAlumniSelfService);
-
-  const sessionAlumniIdRaw = (session.user as { userId?: number | null })?.userId;
-  const sessionAlumniId =
-    sessionAlumniIdRaw && Number.isFinite(Number(sessionAlumniIdRaw)) ? Number(sessionAlumniIdRaw) : null;
-
-  const shouldApplyFilter = !isAlumni && !isSuperAdmin && !isAdmin;
+  const shouldApplyFilter = !isSuperAdmin && !isAdmin;
   const accessFilter = shouldApplyFilter
     ? await buildAccessFilterSQL(session, "")
     : { sql: null, hasFilter: false };
 
-  if (type === "chapter") {
-    const [hasAssessedByCol, hasAssessedAtCol, hasAssessmentRemarksCol] = await Promise.all([
-      sql/* sql */`
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = 'chapter_leadership' AND column_name = 'assessed_by'
-        LIMIT 1
-      `,
-      sql/* sql */`
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = 'chapter_leadership' AND column_name = 'assessed_at'
-        LIMIT 1
-      `,
-      sql/* sql */`
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = 'chapter_leadership' AND column_name = 'assessment_remarks'
-        LIMIT 1
-      `,
-    ]);
-    const chapterAssessedAtSelect = hasAssessedAtCol?.[0] ? sql`cl.assessed_at` : sql`NULL::timestamptz as assessed_at`;
-    const chapterAssessmentRemarksSelect = hasAssessmentRemarksCol?.[0]
-      ? sql`cl.assessment_remarks`
-      : sql`NULL::text as assessment_remarks`;
-    const chapterAssessorJoin =
-      hasAssessedByCol?.[0]
-        ? sql`LEFT JOIN public.users assessor ON assessor.id = cl.assessed_by`
-        : sql``;
-    const chapterAssessorSelect = hasAssessedByCol?.[0]
-      ? sql`${assessorNameSql}, assessor.email as assessor_email`
-      : sql`NULL::text as assessor_name, NULL::text as assessor_email`;
+  const criteriaRows = await sql/* sql */`
+    SELECT
+      c.id,
+      c.label,
+      c.description,
+      c.criterion_score,
+      c.is_mandatory,
+      c.sort_order
+    FROM public.leadership_roles lr
+    JOIN public.leadership_role_criteria c ON c.role_id = lr.id
+    WHERE lr.leadership_type = ${type}
+      AND lr.role_name = ${role}
+    ORDER BY c.sort_order ASC, c.id ASC
+  `;
 
-    const rows = await sql/* sql */`
+  const allCriteria = (criteriaRows as Array<Record<string, unknown>>).map(mapCriterionRow);
+  const mandatory = allCriteria.filter((_, idx) =>
+    Boolean((criteriaRows as Array<Record<string, unknown>>)[idx]?.is_mandatory)
+  );
+  const optional = allCriteria.filter((_, idx) =>
+    !Boolean((criteriaRows as Array<Record<string, unknown>>)[idx]?.is_mandatory)
+  );
+
+  const applicants: BulkScorecardApplicant[] = [];
+
+  if (type === "chapter") {
+    const chapterId = nationalChapterId ?? internationalChapterId;
+    if (chapterId) {
+      const chapterMeta = await sql/* sql */`
+        SELECT
+          TRIM(COALESCE(c.national_chapter, '')) AS national_chapter,
+          TRIM(COALESCE(c.international_chapter, '')) AS international_chapter
+        FROM public.tblchapters c
+        WHERE c.id = ${chapterId}
+        LIMIT 1
+      `;
+      if (chapterMeta?.length) {
+        const row = chapterMeta[0] as Record<string, unknown>;
+        const national = String(row.national_chapter || "").trim();
+        const international = String(row.international_chapter || "").trim();
+        categoryLabel = national || international || null;
+      }
+    }
+
+    const chapterCategoryCondition = nationalChapterId
+      ? sql` AND cl.chapter_id = ${nationalChapterId} AND TRIM(COALESCE(ch.national_chapter, '')) <> ''`
+      : internationalChapterId
+        ? sql` AND cl.chapter_id = ${internationalChapterId} AND TRIM(COALESCE(ch.international_chapter, '')) <> ''`
+        : sql``;
+
+    const chapterRows = await sql/* sql */`
       SELECT
         cl.id as application_id,
-        cl.post,
         cl.status,
-        cl.created_at,
-        ${chapterAssessedAtSelect},
-        ${chapterAssessmentRemarksSelect},
-        cl.plan_strategy,
-        cl.additional_achievements,
-        cl.strategy_assessment_marks,
-        cl.achievement_assessment_marks,
-        cl.bonus_marks,
-        ch.national_chapter,
-        ch.international_chapter,
-        a.alumniid,
-        a.sapid,
-        a.registrationno,
-        a.alumniname,
-        a.personalemail,
-        a.officialemail,
-        a.universityemail,
-        f.faculty_name as facultyname,
-        d.department_name as departmentname,
-        p.program_name as program_name,
-        a.degreetitle,
-        ${chapterAssessorSelect}
+        a.alumniname
       FROM public.chapter_leadership cl
       LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
-      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
-      LEFT JOIN public.tbl_departments d ON d.id = a.department
-      LEFT JOIN public.tbl_programs p ON p.id = a.program
       LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
-      ${chapterAssessorJoin}
-      WHERE cl.id = ${applicationId}
-        ${isAlumni && sessionAlumniId ? sql` AND cl.alumniid = ${sessionAlumniId}` : sql``}
+      WHERE 1=1
+        ${chapterPostRoleCondition(role)}
+        ${chapterCategoryCondition}
         ${accessFilter.hasFilter && accessFilter.sql
           ? sql` AND EXISTS (
               SELECT 1 FROM public.tbl_alumni a_filter
@@ -164,245 +152,126 @@ export async function fetchLeadershipScorecardPayload(input: {
                 AND (${accessFilter.sql})
             )`
           : sql``}
-      LIMIT 1
+      ORDER BY a.alumniname ASC NULLS LAST, cl.id ASC
     `;
 
-    if (!rows?.length) return null;
+    const applicationIds = (chapterRows as Array<Record<string, unknown>>).map((r) =>
+      Number(r.application_id)
+    );
 
-    const r = rows[0] as Record<string, unknown>;
-    const position = String(r.post ?? "");
-    const roleName = inferRoleNameFromPosition(position);
-    const categoryType = r.national_chapter ? "national" : r.international_chapter ? "international" : null;
-    const categoryName = r.national_chapter
-      ? String(r.national_chapter)
-      : r.international_chapter
-        ? String(r.international_chapter)
-        : null;
-
-    const criteriaRows = await sql/* sql */`
-      SELECT
-        c.label,
-        c.criterion_score,
-        ad.obtained_marks
-      FROM public.leadership_roles lr
-      JOIN public.leadership_role_criteria c ON c.role_id = lr.id
-      LEFT JOIN public.leadership_criteria_confirmations ad
-        ON ad.leadership_type = 'chapter'
-       AND ad.chapter_application_id = ${applicationId}
-       AND ad.criterion_id = c.id
-       AND ad.actor_type = 'admin'
-      WHERE lr.leadership_type = 'chapter'
-        AND lr.role_name = ${roleName}
-      ORDER BY c.sort_order ASC, c.id ASC
-    `;
-
-    const reg = r.registrationno ? String(r.registrationno) : null;
-    const sap = String(r.sapid ?? "");
-
-    return {
-      applicationId,
-      leadershipType: "chapter",
-      status: String(r.status ?? "pending"),
-      applicant: {
-        name: String(r.alumniname ?? ""),
-        membershipNumber: reg || sap || "-",
-        sapId: sap,
-        registrationNo: reg,
-        email:
-          (r.personalemail ? String(r.personalemail) : null) ||
-          (r.officialemail ? String(r.officialemail) : null) ||
-          (r.universityemail ? String(r.universityemail) : null) ||
-          "",
-        faculty: r.facultyname ? String(r.facultyname) : null,
-        department: r.departmentname ? String(r.departmentname) : null,
-        program: r.program_name ? String(r.program_name) : r.degreetitle ? String(r.degreetitle) : null,
-      },
-      position,
-      applicationTypeLabel: categoryLabel("chapter", categoryType, categoryName),
-      categoryName,
-      applicationDate: formatDisplayDate(r.created_at),
-      assessmentDate: formatDisplayDate(r.assessed_at),
-      assessedByName: r.assessor_name ? String(r.assessor_name) : null,
-      assessedByEmail: r.assessor_email ? String(r.assessor_email) : null,
-      criteria: (criteriaRows as Array<Record<string, unknown>>).map((c) => {
-        const max = Number(c.criterion_score);
-        const obtainedRaw = c.obtained_marks;
-        const hasMax = Number.isFinite(max) && max > 0;
-        const obtained =
-          obtainedRaw != null && obtainedRaw !== "" && Number.isFinite(Number(obtainedRaw))
-            ? normalizeObtainedMark(Number(obtainedRaw))
+    const marksByApplication = new Map<number, Record<number, number | null>>();
+    if (applicationIds.length > 0) {
+      const marksRows = await sql/* sql */`
+        SELECT chapter_application_id, criterion_id, obtained_marks
+        FROM public.leadership_criteria_confirmations
+        WHERE leadership_type = 'chapter'
+          AND chapter_application_id = ANY(${applicationIds})
+          AND actor_type = 'admin'
+      `;
+      for (const m of marksRows as Array<Record<string, unknown>>) {
+        const appId = Number(m.chapter_application_id);
+        if (!marksByApplication.has(appId)) marksByApplication.set(appId, {});
+        const map = marksByApplication.get(appId)!;
+        const criterionId = Number(m.criterion_id);
+        const raw = m.obtained_marks;
+        map[criterionId] =
+          raw != null && raw !== "" && Number.isFinite(Number(raw))
+            ? normalizeObtainedMark(Number(raw))
             : null;
-        return {
-          label: String(c.label ?? ""),
-          obtainedMarks: hasMax ? obtained : null,
-          totalMarks: hasMax ? normalizeObtainedMark(max) : null,
-        };
-      }),
-      planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
-      additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
-      strategyAssessmentMarks: Number.isFinite(Number(r.strategy_assessment_marks))
-        ? normalizeObtainedMark(Number(r.strategy_assessment_marks))
-        : 0,
-      achievementAssessmentMarks: Number.isFinite(Number(r.achievement_assessment_marks))
-        ? normalizeObtainedMark(Number(r.achievement_assessment_marks))
-        : 0,
-      bonusMarks: Number.isFinite(Number(r.bonus_marks))
-        ? normalizeObtainedMark(Number(r.bonus_marks))
-        : 0,
-      assessmentRemarks: r.assessment_remarks ? String(r.assessment_remarks) : null,
-    };
+      }
+    }
+
+    for (const row of chapterRows as Array<Record<string, unknown>>) {
+      const applicationId = Number(row.application_id);
+      applicants.push({
+        applicationId,
+        name: String(row.alumniname ?? "Unknown"),
+        status: String(row.status ?? "pending"),
+        marksByCriterionId: marksByApplication.get(applicationId) ?? {},
+      });
+    }
+  } else {
+    if (associationId) {
+      const assocMeta = await sql/* sql */`
+        SELECT TRIM(COALESCE(f.faculty_name, '')) AS association_name
+        FROM public.tbl_faculties f
+        WHERE f.id = ${associationId}
+        LIMIT 1
+      `;
+      if (assocMeta?.length) {
+        categoryLabel = String((assocMeta[0] as Record<string, unknown>).association_name || "").trim() || null;
+      }
+    }
+
+    const associationFilterCondition = associationId ? sql` AND ass.association_id = ${associationId}` : sql``;
+
+    const associationRows = await sql/* sql */`
+      SELECT
+        ass.id as application_id,
+        ass.status,
+        a.alumniname
+      FROM public.tblalumniassociation ass
+      LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
+      WHERE 1=1
+        ${associationPostRoleCondition(role)}
+        ${associationFilterCondition}
+        ${accessFilter.hasFilter && accessFilter.sql
+          ? sql` AND EXISTS (
+              SELECT 1 FROM public.tbl_alumni a_filter
+              WHERE a_filter.alumniid = ass.alumni_id
+                AND (${accessFilter.sql})
+            )`
+          : sql``}
+      ORDER BY a.alumniname ASC NULLS LAST, ass.id ASC
+    `;
+
+    const applicationIds = (associationRows as Array<Record<string, unknown>>).map((r) =>
+      Number(r.application_id)
+    );
+
+    const marksByApplication = new Map<number, Record<number, number | null>>();
+    if (applicationIds.length > 0) {
+      const marksRows = await sql/* sql */`
+        SELECT association_application_id, criterion_id, obtained_marks
+        FROM public.leadership_criteria_confirmations
+        WHERE leadership_type = 'association'
+          AND association_application_id = ANY(${applicationIds})
+          AND actor_type = 'admin'
+      `;
+      for (const m of marksRows as Array<Record<string, unknown>>) {
+        const appId = Number(m.association_application_id);
+        if (!marksByApplication.has(appId)) marksByApplication.set(appId, {});
+        const map = marksByApplication.get(appId)!;
+        const criterionId = Number(m.criterion_id);
+        const raw = m.obtained_marks;
+        map[criterionId] =
+          raw != null && raw !== "" && Number.isFinite(Number(raw))
+            ? normalizeObtainedMark(Number(raw))
+            : null;
+      }
+    }
+
+    for (const row of associationRows as Array<Record<string, unknown>>) {
+      const applicationId = Number(row.application_id);
+      applicants.push({
+        applicationId,
+        name: String(row.alumniname ?? "Unknown"),
+        status: String(row.status ?? "pending"),
+        marksByCriterionId: marksByApplication.get(applicationId) ?? {},
+      });
+    }
   }
 
-  const [hasAssocAssessedByCol, hasAssocAssessedAtCol, hasAssocAssessmentRemarksCol] = await Promise.all([
-    sql/* sql */`
-      SELECT 1 FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'tblalumniassociation' AND column_name = 'assessed_by'
-      LIMIT 1
-    `,
-    sql/* sql */`
-      SELECT 1 FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'tblalumniassociation' AND column_name = 'assessed_at'
-      LIMIT 1
-    `,
-    sql/* sql */`
-      SELECT 1 FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'tblalumniassociation' AND column_name = 'assessment_remarks'
-      LIMIT 1
-    `,
-  ]);
-  const assocAssessedAtSelect = hasAssocAssessedAtCol?.[0] ? sql`ass.assessed_at` : sql`NULL::timestamp as assessed_at`;
-  const assocAssessmentRemarksSelect = hasAssocAssessmentRemarksCol?.[0]
-    ? sql`ass.assessment_remarks`
-    : sql`NULL::text as assessment_remarks`;
-  const assocAssessorJoin = hasAssocAssessedByCol?.[0]
-    ? sql`LEFT JOIN public.users assessor ON assessor.id = ass.assessed_by`
-    : sql``;
-  const assocAssessorSelect = hasAssocAssessedByCol?.[0]
-    ? sql`${assessorNameSql}, assessor.email as assessor_email`
-    : sql`NULL::text as assessor_name, NULL::text as assessor_email`;
-
-  const rows = await sql/* sql */`
-    SELECT
-      ass.id as application_id,
-      ass.q3 as role,
-      ass.status,
-      ass.createddatetime,
-      ${assocAssessedAtSelect},
-      ${assocAssessmentRemarksSelect},
-      ass.plan_strategy,
-      ass.additional_achievements,
-      ass.strategy_assessment_marks,
-      ass.achievement_assessment_marks,
-      ass.bonus_marks,
-      fac.faculty_name as association_name,
-      a.alumniid,
-      a.sapid,
-      a.registrationno,
-      a.alumniname,
-      a.personalemail,
-      a.officialemail,
-      a.universityemail,
-      f.faculty_name as facultyname,
-      d.department_name as departmentname,
-      p.program_name as program_name,
-      a.degreetitle,
-      ${assocAssessorSelect}
-    FROM public.tblalumniassociation ass
-    LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
-    LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
-    LEFT JOIN public.tbl_departments d ON d.id = a.department
-    LEFT JOIN public.tbl_programs p ON p.id = a.program
-    LEFT JOIN public.tbl_faculties fac ON fac.id = ass.association_id
-    ${assocAssessorJoin}
-    WHERE ass.id = ${applicationId}
-      ${isAlumni && sessionAlumniId ? sql` AND ass.alumni_id = ${sessionAlumniId}` : sql``}
-      ${accessFilter.hasFilter && accessFilter.sql
-        ? sql` AND EXISTS (
-            SELECT 1 FROM public.tbl_alumni a_filter
-            WHERE a_filter.alumniid = ass.alumni_id
-              AND (${accessFilter.sql})
-          )`
-        : sql``}
-    LIMIT 1
-  `;
-
-  if (!rows?.length) return null;
-
-  const r = rows[0] as Record<string, unknown>;
-  const position = String(r.role ?? "");
-  const roleName = inferRoleNameFromPosition(position);
-  const categoryName = r.association_name ? String(r.association_name) : null;
-
-  const criteriaRows = await sql/* sql */`
-    SELECT
-      c.label,
-      c.criterion_score,
-      ad.obtained_marks
-    FROM public.leadership_roles lr
-    JOIN public.leadership_role_criteria c ON c.role_id = lr.id
-    LEFT JOIN public.leadership_criteria_confirmations ad
-      ON ad.leadership_type = 'association'
-     AND ad.association_application_id = ${applicationId}
-     AND ad.criterion_id = c.id
-     AND ad.actor_type = 'admin'
-    WHERE lr.leadership_type = 'association'
-      AND lr.role_name = ${roleName}
-    ORDER BY c.sort_order ASC, c.id ASC
-  `;
-
-  const reg = r.registrationno ? String(r.registrationno) : null;
-  const sap = String(r.sapid ?? "");
-
   return {
-    applicationId,
-    leadershipType: "association",
-    status: String(r.status ?? "pending"),
-    applicant: {
-      name: String(r.alumniname ?? ""),
-      membershipNumber: reg || sap || "-",
-      sapId: sap,
-      registrationNo: reg,
-      email:
-        (r.personalemail ? String(r.personalemail) : null) ||
-        (r.officialemail ? String(r.officialemail) : null) ||
-        (r.universityemail ? String(r.universityemail) : null) ||
-        "",
-      faculty: r.facultyname ? String(r.facultyname) : null,
-      department: r.departmentname ? String(r.departmentname) : null,
-      program: r.program_name ? String(r.program_name) : r.degreetitle ? String(r.degreetitle) : null,
-    },
-    position,
-    applicationTypeLabel: categoryLabel("association", "association", categoryName),
-    categoryName,
-    applicationDate: formatDisplayDate(r.createddatetime),
-    assessmentDate: formatDisplayDate(r.assessed_at),
-    assessedByName: r.assessor_name ? String(r.assessor_name) : null,
-    assessedByEmail: r.assessor_email ? String(r.assessor_email) : null,
-    criteria: (criteriaRows as Array<Record<string, unknown>>).map((c) => {
-      const max = Number(c.criterion_score);
-      const obtainedRaw = c.obtained_marks;
-      const hasMax = Number.isFinite(max) && max > 0;
-      const obtained =
-        obtainedRaw != null && obtainedRaw !== "" && Number.isFinite(Number(obtainedRaw))
-          ? normalizeObtainedMark(Number(obtainedRaw))
-          : null;
-      return {
-        label: String(c.label ?? ""),
-        obtainedMarks: hasMax ? obtained : null,
-        totalMarks: hasMax ? normalizeObtainedMark(max) : null,
-      };
+    role,
+    leadershipType: type,
+    generatedAt: new Date().toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
     }),
-    planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
-    additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
-    strategyAssessmentMarks: Number.isFinite(Number(r.strategy_assessment_marks))
-      ? normalizeObtainedMark(Number(r.strategy_assessment_marks))
-      : 0,
-    achievementAssessmentMarks: Number.isFinite(Number(r.achievement_assessment_marks))
-      ? normalizeObtainedMark(Number(r.achievement_assessment_marks))
-      : 0,
-    bonusMarks: Number.isFinite(Number(r.bonus_marks)) ? normalizeObtainedMark(Number(r.bonus_marks)) : 0,
-    assessmentRemarks: r.assessment_remarks ? String(r.assessment_remarks) : null,
+    categoryLabel,
+    criteria: { mandatory, optional },
+    applicants,
   };
 }
-
-export { computeScorecardTotals } from "@/lib/leadershipScorecardTotals";

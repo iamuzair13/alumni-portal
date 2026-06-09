@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isSuperAdminUser, isAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { publicUploadsUrlFromStored } from "@/lib/uploadsImageUrl";
+import { associationPostRoleCondition, chapterPostRoleCondition } from "@/lib/leadershipRoleSql";
 
 // Get all pending leadership applications
 export async function GET(req: NextRequest) {
@@ -142,36 +143,11 @@ export async function GET(req: NextRequest) {
         )`
       : sql``;
 
-    const normalizeRoleExpr = (columnExpr: any) =>
-      // lower + trim + remove all non-letters, so "Vice President" -> "vicepresident" and "President" -> "president"
-      sql`LOWER(REGEXP_REPLACE(TRIM(COALESCE(${columnExpr}, '')), '[^a-z]+', '', 'g'))`;
+    const chapterRoleCondition =
+      role === "all" ? sql`` : chapterPostRoleCondition(role as "president" | "vice_president" | "coordinator");
 
-    const roleMatchValuesChapter =
-      role === "vice_president"
-        ? ["vicepresident", "chaptervicepresident"]
-        : role === "coordinator"
-          ? ["coordinator", "chaptercoordinator"]
-          : role === "president"
-            ? ["president", "chapterpresident"]
-            : null;
-
-    const roleMatchValuesAssoc =
-      role === "vice_president" ? ["vicepresident"] : role === "coordinator" ? ["coordinator"] : role === "president" ? ["president"] : null;
-
-    const chapterRoleCondition = (() => {
-      if (role === "all" || !roleMatchValuesChapter || roleMatchValuesChapter.length === 0) return sql``;
-
-      const normalized = normalizeRoleExpr(sql`cl.post`);
-      if (roleMatchValuesChapter.length === 1) return sql` AND (${normalized} = ${roleMatchValuesChapter[0]})`;
-      return sql` AND (${normalized} = ${roleMatchValuesChapter[0]} OR ${normalized} = ${roleMatchValuesChapter[1]})`;
-    })();
-
-    const assocRoleCondition = (() => {
-      if (role === "all" || !roleMatchValuesAssoc || roleMatchValuesAssoc.length === 0) return sql``;
-
-      const normalized = normalizeRoleExpr(sql`ass.q3`);
-      return sql` AND (${normalized} = ${roleMatchValuesAssoc[0]})`;
-    })();
+    const assocRoleCondition =
+      role === "all" ? sql`` : associationPostRoleCondition(role as "president" | "vice_president" | "coordinator");
 
     const hasAdditional = hasAdditionalAchievements.toLowerCase() === "1" || hasAdditionalAchievements.toLowerCase() === "true";
     const chapterAdditionalCondition = hasAdditional
