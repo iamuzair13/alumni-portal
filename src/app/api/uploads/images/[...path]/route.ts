@@ -79,7 +79,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ path?: stri
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(new Uint8Array(fileBuffer), {
       status: 200,
       headers: {
         "Content-Type": contentTypeFromFilename(filename),
