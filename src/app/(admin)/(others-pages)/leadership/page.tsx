@@ -21,7 +21,12 @@ import LeadershipRoleBadge from "@/components/ui/LeadershipRoleBadge";
 import { getLeadershipApplications } from "@/app/queries/leadership-applications";
 import { clampObtainedMark, formatObtainedMarkDisplay, normalizeObtainedMark } from "@/lib/leadershipMarks";
 import { twMerge } from "tailwind-merge"; 
-import { Loader2, FileText, Eye, Download } from "lucide-react"; 
+import { Loader2, FileText, Eye, Download } from "lucide-react";
+import {
+  downloadStoredUploadUrl,
+  resolveStoredUploadUrl,
+  viewStoredUploadUrl,
+} from "@/lib/uploadsImageUrl";
 
 type RoleCriterion = {
   id: number;
@@ -333,7 +338,7 @@ function AssessmentApplicantSummary({
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <a
-                    href={d.url}
+                    href={viewDocumentUrl(d.url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-white hover:text-gray-900 hover:shadow-sm dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
@@ -343,7 +348,7 @@ function AssessmentApplicantSummary({
                   </a>
                   <button
                     type="button"
-                    onClick={() => downloadDocumentUrl(d.url, name !== "—" ? name : undefined)}
+                    onClick={() => downloadDocumentUrl(d.url)}
                     className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-gray-900 shadow-sm ring-1 ring-gray-200 transition-all hover:bg-gray-50 hover:ring-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700 dark:hover:ring-gray-600"
                   >
                     <Download className="h-3.5 w-3.5" />
@@ -425,9 +430,9 @@ function starsText(value: number | null | undefined): string {
 function documentsFromItem(item: unknown) {
   const obj = (item ?? {}) as Record<string, unknown>;
   const docs: Array<{ key: string; label: string; url: string }> = [];
-  const cv = String(obj.cvFileUrl || "").trim();
-  const f1 = String(obj.additionalFile1Url || "").trim();
-  const f2 = String(obj.additionalFile2Url || "").trim();
+  const cv = resolveStoredUploadUrl(String(obj.cvFileUrl || "").trim());
+  const f1 = resolveStoredUploadUrl(String(obj.additionalFile1Url || "").trim());
+  const f2 = resolveStoredUploadUrl(String(obj.additionalFile2Url || "").trim());
   if (cv) docs.push({ key: "cv", label: "CV", url: cv });
   if (f1) docs.push({ key: "file1", label: "Additional Document 1", url: f1 });
   if (f2) docs.push({ key: "file2", label: "Additional Document 2", url: f2 });
@@ -447,12 +452,17 @@ function fileNameFromUrl(url: string): string {
   }
 }
 
-function downloadDocumentUrl(url: string, filenameHint?: string) {
-  const name = (filenameHint && String(filenameHint).trim()) || fileNameFromUrl(url) || "document";
+function viewDocumentUrl(url: string): string {
+  return viewStoredUploadUrl(url);
+}
+
+function downloadDocumentUrl(url: string) {
+  const href = downloadStoredUploadUrl(url);
+  if (!href) return;
   const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
+  a.href = href;
   a.rel = "noopener noreferrer";
+  a.target = "_blank";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -2929,14 +2939,7 @@ export default function LeadershipPage() {
                                           </td>
                                           <td className="px-4 py-3" />
                                         </tr>
-                                        <tr className="bg-gray-50 dark:bg-gray-900/20 border-t border-gray-200 dark:border-gray-700">
-                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Bonus Marks</td>
-                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">25</td>
-                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
-                                            {showObtained ? formatObtainedMarkDisplay(bonusMarks) : "—"}
-                                          </td>
-                                          <td className="px-4 py-3" />
-                                        </tr>
+                                        
                                       </>
                                     );
                                   })()}
@@ -2977,6 +2980,42 @@ export default function LeadershipPage() {
                               {String(item.additionalAchievements || "").trim() || "No additional achievements provided."}
                             </div>
                           </div>
+
+                          <div className="rounded-xl border-2 border-violet-300 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-950/30 p-6 shadow-md">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <svg
+                                  className="h-5 w-5 text-violet-500 dark:text-violet-300"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  viewBox="0 0 24 24"
+                                  aria-hidden
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M9 17v-2a4 4 0 018 0v2m-4 4a4 4 0 01-4-4V8a4 4 0 118 0v9a4 4 0 01-4 4z"
+                                  />
+                                </svg>
+                                <span className="text-base font-bold text-violet-800 dark:text-violet-200 tracking-tight">
+                                  Bonus Marks
+                                </span>
+                              </div>
+                              <span className="inline-flex items-center rounded-full border border-violet-300 dark:border-violet-700 bg-white dark:bg-violet-900/50 px-4 py-1.5 text-lg font-mono font-semibold text-violet-700 dark:text-violet-200 shadow-sm tabular-nums">
+                                {formatObtainedMarkDisplay(bonusMarks)}
+                                <span className="mx-1 font-normal text-violet-400 dark:text-violet-600">/</span>
+                                25
+                              </span>
+                            </div>
+                            <div className="mt-4 text-sm text-gray-700 dark:text-gray-200">
+                              <span className="block text-xs uppercase font-semibold text-violet-700 mb-1 dark:text-violet-300 tracking-wide">What this means:</span>
+                              <span>
+                                Bonus marks recognize exceptional plans, achievements, or unique contributions beyond the main assessment criteria. These can include creative strategies, outstanding leadership, or notable awards.
+                              </span>
+                            </div>
+                          </div>
+                    
 
                           {showAssessmentMarks ? (
                             <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/80 dark:bg-emerald-950/20 p-6 shadow-sm">
@@ -3020,7 +3059,7 @@ export default function LeadershipPage() {
                                       </div>
                                       <div className="flex flex-wrap items-center gap-2 shrink-0">
                                         <a
-                                          href={d.url}
+                                          href={viewDocumentUrl(d.url)}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="inline-flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -3029,7 +3068,7 @@ export default function LeadershipPage() {
                                         </a>
                                         <button
                                           type="button"
-                                          onClick={() => downloadDocumentUrl(d.url, name !== "-" ? name : undefined)}
+                                          onClick={() => downloadDocumentUrl(d.url)}
                                           className="inline-flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
                                         >
                                           Download
@@ -3461,7 +3500,7 @@ function ApplicationsTable({
             </TableCell>
             <TableCell className="px-4 py-3 text-sm w-[100px] tabular-nums">
               {app.obtainedMarksTotal != null && Number.isFinite(app.obtainedMarksTotal) ? (
-                <span className="font-medium text-gray-900 dark:text-gray-100">{formatObtainedMarkDisplay(app.obtainedMarksTotal)}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{formatObtainedMarkDisplay(app.obtainedMarksTotal)} / <span className="text-gray-400 dark:text-gray-500 text-[8px]">100</span></span>
               ) : (
                 <span className="text-gray-400 dark:text-gray-500">—</span>
               )}
@@ -3469,7 +3508,7 @@ function ApplicationsTable({
             <TableCell className="px-4 py-3 text-sm w-[100px]">
               {Number(app.bonusMarks ?? 0) > 0 ? (
                 <span className="font-medium text-gray-900 dark:text-gray-100">
-                  {formatObtainedMarkDisplay(Number(app.bonusMarks ?? 0))}
+                 {formatObtainedMarkDisplay(Number(app.bonusMarks ?? 0))} / <span className="text-gray-400 dark:text-gray-500 text-[8px]">25</span>
                 </span>
               ) : (
                 <span className="text-gray-400 dark:text-gray-500">—</span>

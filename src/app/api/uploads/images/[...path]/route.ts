@@ -43,6 +43,11 @@ function decodeFilenameOnce(raw: string): string {
   }
 }
 
+function contentDispositionFilename(filename: string): string {
+  const safe = filename.replace(/[^\w.\-() ]+/g, "_");
+  return `filename="${safe}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
 export async function GET(request: Request, ctx: { params: Promise<{ path?: string[] }> }) {
   try {
     const params = await ctx.params;
@@ -79,10 +84,17 @@ export async function GET(request: Request, ctx: { params: Promise<{ path?: stri
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    const requestUrl = new URL(request.url);
+    const forceDownload =
+      requestUrl.searchParams.get("download") === "1" ||
+      requestUrl.searchParams.get("download") === "true";
+    const disposition = forceDownload ? "attachment" : "inline";
+
     return new NextResponse(new Uint8Array(fileBuffer), {
       status: 200,
       headers: {
         "Content-Type": contentTypeFromFilename(filename),
+        "Content-Disposition": `${disposition}; ${contentDispositionFilename(filename)}`,
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

@@ -127,3 +127,33 @@ export function resolveStoredUploadUrl(stored: string | null | undefined): strin
   return publicUploadsUrlFromStored(s) ?? s;
 }
 
+function withUploadQuery(url: string, key: "inline" | "download", value = "1"): string {
+  const s = String(url ?? "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) {
+    try {
+      const u = new URL(s);
+      u.searchParams.set(key, value);
+      return u.toString();
+    } catch {
+      return s;
+    }
+  }
+  const sep = s.includes("?") ? "&" : "?";
+  return `${s}${sep}${key}=${value}`;
+}
+
+/** Open in browser (inline preview) instead of forcing download. */
+export function viewStoredUploadUrl(stored: string | null | undefined): string {
+  const base = resolveStoredUploadUrl(stored);
+  if (!base) return "";
+  return withUploadQuery(base, "inline");
+}
+
+/** Force file download via Content-Disposition: attachment. */
+export function downloadStoredUploadUrl(stored: string | null | undefined): string {
+  const base = resolveStoredUploadUrl(stored);
+  if (!base) return "";
+  return withUploadQuery(base, "download");
+}
+

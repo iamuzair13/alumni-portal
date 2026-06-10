@@ -191,7 +191,7 @@ export function PerformanceScore({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.98 }}
               transition={{ duration: 0.2 }}
-              className="absolute right-0 top-[calc(100%+6px)] z-[200] w-[min(100vw-2rem,320px)]"
+              className="absolute right-0 top-[calc(100%+8px)] z-[200] w-[min(100vw-2rem,400px)]"
             >
               <PerformanceScoreBreakdown result={result} variant="command" />
             </motion.div>

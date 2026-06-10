@@ -77,7 +77,7 @@ export function DashboardLayout({
       </div>
 
       {/* Desktop ≥1440px: full bento 8/4 + system strip */}
-      <div className="hidden min-h-0 flex-1 grid-cols-12 gap-2 overflow-hidden min-[1440px]:grid min-[1440px]:grid-rows-[1fr_112px]">
+      <div className="hidden min-h-0 flex-1 grid-cols-12 gap-2 overflow-hidden min-[1440px]:grid min-[1440px]:grid-rows-[1fr_minmax(148px,auto)]">
         <div className="col-span-12 grid min-h-0 grid-cols-12 gap-2 overflow-hidden">
           <section aria-label="Alumni Intelligence" className={`col-span-8 min-h-0 overflow-hidden ${ccSection.alumni}`}>
             <SectionAlumni data={data} trends={trends} isLoading={isLoading} />
@@ -101,7 +101,7 @@ export function DashboardLayout({
             <SectionPerks data={data} isLoading={isLoading} />
           </section>
         </div>
-        <section className={`h-[112px] shrink-0 overflow-hidden ${ccSection.system}`}>
+        <section className={`min-h-[148px] shrink-0 overflow-hidden ${ccSection.system}`}>
           <SectionSystem data={data} scopeNotes={scopeNotes} isLoading={isLoading} />
         </section>
       </div>

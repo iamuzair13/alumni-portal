@@ -2,7 +2,23 @@
 
 import React from "react";
 
-export function ChartEmpty({ height = 48, message = "No data" }: { height?: number; message?: string }) {
+export function ChartEmpty({
+  height = 48,
+  message = "No data",
+  compact = false,
+}: {
+  height?: number;
+  message?: string;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <p className="w-full min-w-0 truncate text-right text-[9px] italic leading-tight text-gray-400 dark:text-gray-500">
+        {message}
+      </p>
+    );
+  }
+
   return (
     <div
       className="flex w-full items-center justify-center rounded-md bg-gray-50 text-[10px] text-gray-400 dark:bg-gray-800/40 dark:text-gray-500"

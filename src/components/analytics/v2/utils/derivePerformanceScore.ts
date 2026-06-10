@@ -16,6 +16,37 @@ export type PerformanceResult = {
   factors: PerformanceFactor[];
 };
 
+/** Shown in the expanded performance breakdown panel. */
+export const PERFORMANCE_SCORE_METHODOLOGY = {
+  summary:
+    "Portal Performance is a weighted composite index (0–100) built from six live dashboard signals. Each driver is scored 0–100, multiplied by its weight, then rounded to produce the headline score.",
+  ratings: [
+    { label: "Strong", range: "70–100" },
+    { label: "Stable", range: "45–69" },
+    { label: "Needs Attention", range: "below 45" },
+  ],
+  drivers: [
+    { weight: "20%", label: "Verification", detail: "Verified alumni ÷ total alumni on record." },
+    { weight: "20%", label: "Active alumni", detail: "Alumni who logged in at least once ÷ total alumni." },
+    {
+      weight: "20%",
+      label: "Placement",
+      detail: "Employed alumni ÷ tracked occupation cohort (employed, self-employed, and job-seeking).",
+    },
+    {
+      weight: "15%",
+      label: "Engagement momentum",
+      detail: "Quarter-to-date activity pace for mentorship, alumni talks, and seminars vs year-to-date totals.",
+    },
+    { weight: "10%", label: "Honor cards", detail: "Honor cards delivered ÷ total cards issued or applied for." },
+    {
+      weight: "15%",
+      label: "Chapter density",
+      detail: "Association membership reach — members relative to chapters/associations.",
+    },
+  ],
+} as const;
+
 function clamp(n: number, min = 0, max = 100) {
   return Math.min(max, Math.max(min, n));
 }

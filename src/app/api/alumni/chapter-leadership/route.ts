@@ -5,6 +5,10 @@ import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { sendEmailDetailed } from "@/lib/email";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 import { EMAIL_LOG_STATUS, EMAIL_TRIGGERED_BY, insertEmailLog } from "@/lib/emailLogs";
+import {
+  parseRequiredAdditionalAchievements,
+  parseRequiredPlanStrategy,
+} from "@/lib/leadershipApplicationFields";
 
 export async function GET() {
   try {
@@ -200,13 +204,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
     }
 
-    const additionalAchievementsTextRaw = typeof body.additionalAchievements === "string" ? body.additionalAchievements : "";
-    const additionalAchievementsText = String(additionalAchievementsTextRaw ?? "").trim().slice(0, 5000);
-    const additionalAchievementsValue = additionalAchievementsText ? additionalAchievementsText : null;
+    const additionalAchievementsParsed = parseRequiredAdditionalAchievements(body.additionalAchievements);
+    if (!additionalAchievementsParsed.ok) {
+      return NextResponse.json({ error: additionalAchievementsParsed.error }, { status: 400 });
+    }
+    const additionalAchievementsValue = additionalAchievementsParsed.value;
 
-    const planStrategyRaw = typeof body.planStrategy === "string" ? body.planStrategy : "";
-    const planStrategy = planStrategyRaw.trim();
-    const planStrategyValue = planStrategy ? planStrategy : null;
+    const planStrategyParsed = parseRequiredPlanStrategy(body.planStrategy);
+    if (!planStrategyParsed.ok) {
+      return NextResponse.json({ error: planStrategyParsed.error }, { status: 400 });
+    }
+    const planStrategyValue = planStrategyParsed.value;
 
     const optionalCriteriaProficiencyRaw = body.optionalCriteriaProficiency && typeof body.optionalCriteriaProficiency === "object"
       ? (body.optionalCriteriaProficiency as Record<string, unknown>)
@@ -225,10 +233,6 @@ export async function POST(request: NextRequest) {
             .filter(Boolean) as Array<readonly [string, number]>
         )
       : null;
-
-    if (planStrategyValue && planStrategyValue.length < 50) {
-      return NextResponse.json({ error: "Plan/strategy must be at least 50 characters (or leave it empty)." }, { status: 400 });
-    }
 
     const cvFileUrlValue = typeof body.cvFileUrl === "string" && body.cvFileUrl.trim() ? body.cvFileUrl.trim().slice(0, 500) : null;
     const additionalFile1UrlValue = typeof body.additionalFile1Url === "string" && body.additionalFile1Url.trim() ? body.additionalFile1Url.trim().slice(0, 500) : null;

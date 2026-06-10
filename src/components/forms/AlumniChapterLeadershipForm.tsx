@@ -6,6 +6,14 @@ import toast from "react-hot-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LeadershipApplicationsTracker from "@/components/alumni/LeadershipApplicationsTracker";
 import StarRating, { proficiencyLabel } from "@/components/ui/StarRating";
+import {
+  ADDITIONAL_ACHIEVEMENTS_MAX_LEN,
+  ADDITIONAL_ACHIEVEMENTS_MIN_LEN,
+  PLAN_STRATEGY_MAX_LEN,
+  PLAN_STRATEGY_MIN_LEN,
+  validateAdditionalAchievements,
+  validatePlanStrategy,
+} from "@/lib/leadershipApplicationFields";
 
 type AlumniChapterLeadershipFormValues = {
   post: string;
@@ -185,13 +193,13 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
 
   const post = watch("post");
   const planStrategy = watch("planStrategy");
+  const additionalAchievements = watch("additionalAchievements");
   const roleDescriptionAcknowledged = watch("roleDescriptionAcknowledged");
   const officeGovernanceAcknowledged = watch("officeGovernanceAcknowledged");
   const codeOfEthicsAcknowledged = watch("codeOfEthicsAcknowledged");
 
-  const planMinLen = 50;
-  const planMaxLen = 1000;
   const planLen = useMemo(() => String(planStrategy || "").length, [planStrategy]);
+  const achievementsLen = useMemo(() => String(additionalAchievements || "").length, [additionalAchievements]);
 
   // Update selectedPost when form value changes
   React.useEffect(() => {
@@ -998,22 +1006,14 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role
+                      <span className="text-rose-600"> *</span>
                     </div>
-                    <div className={`text-xs font-semibold ${planLen > planMaxLen ? "text-rose-600" : "text-gray-500 dark:text-gray-400"}`}>
-                      {planLen} / {planMaxLen}
+                    <div className={`text-xs font-semibold ${planLen > PLAN_STRATEGY_MAX_LEN ? "text-rose-600" : "text-gray-500 dark:text-gray-400"}`}>
+                      {planLen} / {PLAN_STRATEGY_MAX_LEN}
                     </div>
                   </div>
                   <textarea
-                    {...register("planStrategy", {
-                      validate: (v) => {
-                        const s = String(v || "");
-                        const trimmed = s.trim();
-                        if (!trimmed) return true;
-                        if (trimmed.length < planMinLen) return `Please write at least ${planMinLen} characters (or leave it empty).`;
-                        if (trimmed.length > planMaxLen) return `Please keep it under ${planMaxLen} characters.`;
-                        return true;
-                      },
-                    })}
+                    {...register("planStrategy", { validate: validatePlanStrategy })}
                     rows={4}
                     placeholder="Write your plan or strategy here..."
                     onInput={(e) => {
@@ -1025,17 +1025,27 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                   />
                   {errors.planStrategy ? <div className={errorText}>{errors.planStrategy.message}</div> : null}
                   <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Optional. If provided, aim for {planMinLen}-{planMaxLen} characters.
+                    Required. Write {PLAN_STRATEGY_MIN_LEN}-{PLAN_STRATEGY_MAX_LEN} characters.
                   </div>
                 </div>
  <div>
-            <label className={labelBase}>Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.</label>
+            <label className={labelBase}>
+              Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
+              <span className="text-rose-600"> *</span>
+            </label>
+            <div className={`mb-1 text-xs font-semibold ${achievementsLen > ADDITIONAL_ACHIEVEMENTS_MAX_LEN ? "text-rose-600" : "text-gray-500 dark:text-gray-400"}`}>
+              {achievementsLen} / {ADDITIONAL_ACHIEVEMENTS_MAX_LEN}
+            </div>
             <textarea
-              {...register("additionalAchievements")}
+              {...register("additionalAchievements", { validate: validateAdditionalAchievements })}
               rows={5}
               placeholder="Write your additional achievements here..."
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {errors.additionalAchievements ? <div className={errorText}>{errors.additionalAchievements.message}</div> : null}
+            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Required. Write {ADDITIONAL_ACHIEVEMENTS_MIN_LEN}-{ADDITIONAL_ACHIEVEMENTS_MAX_LEN} characters.
+            </div>
           </div>
 
                 <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-4">

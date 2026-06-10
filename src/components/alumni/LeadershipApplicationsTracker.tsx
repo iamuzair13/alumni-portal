@@ -8,6 +8,11 @@ import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { useQuery } from "@tanstack/react-query";
 import { formatObtainedMarkDisplay } from "@/lib/leadershipMarks";
+import {
+  downloadStoredUploadUrl,
+  resolveStoredUploadUrl,
+  viewStoredUploadUrl,
+} from "@/lib/uploadsImageUrl";
 
 const ALUMNI_PROFILE_PLACEHOLDER = "/images/person.jpg";
 
@@ -49,9 +54,9 @@ async function fetchApplicationDetails(input: ViewApp) {
 
 function documentsFromItem(item: any) {
   const docs: Array<{ key: string; label: string; url: string }> = [];
-  const cv = String(item?.cvFileUrl || "").trim();
-  const f1 = String(item?.additionalFile1Url || "").trim();
-  const f2 = String(item?.additionalFile2Url || "").trim();
+  const cv = resolveStoredUploadUrl(String(item?.cvFileUrl || "").trim());
+  const f1 = resolveStoredUploadUrl(String(item?.additionalFile1Url || "").trim());
+  const f2 = resolveStoredUploadUrl(String(item?.additionalFile2Url || "").trim());
   if (cv) docs.push({ key: "cv", label: "CV", url: cv });
   if (f1) docs.push({ key: "file1", label: "Additional Document 1", url: f1 });
   if (f2) docs.push({ key: "file2", label: "Additional Document 2", url: f2 });
@@ -71,12 +76,17 @@ function fileNameFromUrl(url: string): string {
   }
 }
 
-function downloadDocumentUrl(url: string, filenameHint?: string) {
-  const name = (filenameHint && String(filenameHint).trim()) || fileNameFromUrl(url) || "document";
+function viewDocumentUrl(url: string): string {
+  return viewStoredUploadUrl(url);
+}
+
+function downloadDocumentUrl(url: string) {
+  const href = downloadStoredUploadUrl(url);
+  if (!href) return;
   const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
+  a.href = href;
   a.rel = "noopener noreferrer";
+  a.target = "_blank";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -524,7 +534,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                                   </div>
                                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                                     <a
-                                      href={d.url}
+                                      href={viewDocumentUrl(d.url)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50"
@@ -533,7 +543,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                                     </a>
                                     <button
                                       type="button"
-                                      onClick={() => downloadDocumentUrl(d.url, name !== "-" ? name : undefined)}
+                                      onClick={() => downloadDocumentUrl(d.url)}
                                       className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50"
                                     >
                                       Download

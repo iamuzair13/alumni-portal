@@ -12,6 +12,10 @@ import {
   buildAssociationTabMembershipMembersSQL,
   buildAssociationTabMembershipNonMembersSQL,
 } from "@/lib/association-tab-filters";
+import {
+  parseRequiredAdditionalAchievements,
+  parseRequiredPlanStrategy,
+} from "@/lib/leadershipApplicationFields";
 
 export async function GET(request: NextRequest) {
 
@@ -317,16 +321,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
     }
 
-    const additionalAchievementsTextRaw = typeof additionalAchievements === "string" ? additionalAchievements : "";
-    const additionalAchievementsText = String(additionalAchievementsTextRaw ?? "").trim().slice(0, 5000);
-    const additionalAchievementsValue = additionalAchievementsText ? additionalAchievementsText : null;
-
-    const planStrategyTextRaw = typeof planStrategy === "string" ? planStrategy : "";
-    const planStrategyText = String(planStrategyTextRaw ?? "").trim().slice(0, 1000);
-    const planStrategyValue = planStrategyText ? planStrategyText : null;
-    if (planStrategyValue && planStrategyValue.length < 50) {
-      return NextResponse.json({ error: "Plan/strategy must be at least 50 characters (or leave it empty)." }, { status: 400 });
+    const additionalAchievementsParsed = parseRequiredAdditionalAchievements(additionalAchievements);
+    if (!additionalAchievementsParsed.ok) {
+      return NextResponse.json({ error: additionalAchievementsParsed.error }, { status: 400 });
     }
+    const additionalAchievementsValue = additionalAchievementsParsed.value;
+
+    const planStrategyParsed = parseRequiredPlanStrategy(planStrategy);
+    if (!planStrategyParsed.ok) {
+      return NextResponse.json({ error: planStrategyParsed.error }, { status: 400 });
+    }
+    const planStrategyValue = planStrategyParsed.value;
 
     const optionalCriteriaProficiencyObj = optionalCriteriaProficiency && typeof optionalCriteriaProficiency === "object"
       ? (optionalCriteriaProficiency as Record<string, unknown>)

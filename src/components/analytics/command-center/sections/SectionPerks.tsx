@@ -17,8 +17,9 @@ import { AnalyticsCard } from "../AnalyticsCard";
 import { ExpandDrawer } from "../ExpandDrawer";
 import { Sparkline } from "../charts/Sparkline";
 import { Bar } from "../charts/Bar";
-import { Donut } from "../charts/Donut";
+import { FillChart } from "../charts/FillChart";
 import { Heatmap } from "../charts/Heatmap";
+import { MetricChips } from "../charts/MetricChips";
 import { ProgressBars } from "../charts/ProgressBars";
 import { useExpandable } from "../hooks/useExpandable";
 import {
@@ -197,9 +198,18 @@ export function SectionPerks({
   const active = activeId ? drawers[activeId] : null;
   const jobsPosted = career.kpis?.jobsPosted ?? 0;
 
+  const activityTotal = activities.rows.reduce((s, r) => s + r.ytd, 0);
+  const perksTotal = memberships.chartSeries.reduce((s, p) => s + p.value, 0);
+  const chapterSpark = [
+    chapters.meetupsYtd,
+    Math.round(chapters.meetupsYtd * 0.72),
+    Math.round(chapters.meetupsYtd * 0.88),
+    chapters.meetupsYtd,
+  ];
+
   return (
     <>
-      <div className="grid h-full min-h-0 grid-cols-2 grid-rows-4 gap-2 overflow-hidden">
+      <div className="grid h-full min-h-0 grid-cols-2 grid-rows-5 gap-2 overflow-hidden">
         <AnalyticsCard
           id={CARD_IDS.chapters}
           title="Engagements & Chapters"
@@ -209,13 +219,12 @@ export function SectionPerks({
           secondaryLabel={`${chapters.members.toLocaleString()} members`}
           colSpan="col-span-2 row-span-1"
           delay={0.3}
+          chartFill
           onExpand={open}
           chart={
-            <Sparkline
-              data={[chapters.meetupsYtd, chapters.meetupsYtd * 0.7, chapters.meetupsYtd * 0.85, chapters.meetupsYtd]}
-              color="#a78bfa"
-              height={44}
-            />
+            <FillChart minHeight={36}>
+              {(h) => <Sparkline data={chapterSpark} color="#8b5cf6" height={h} />}
+            </FillChart>
           }
         />
         <AnalyticsCard
@@ -229,7 +238,7 @@ export function SectionPerks({
           delay={0.35}
           compact
           onExpand={open}
-          chart={<Bar data={career.chart.chartSeries.slice(0, 3)} height={48} horizontal />}
+          chart={<MetricChips data={career.chart.chartSeries.slice(0, 3)} />}
         />
         <AnalyticsCard
           id={CARD_IDS.meetups}
@@ -242,19 +251,28 @@ export function SectionPerks({
           delay={0.4}
           compact
           onExpand={open}
-          chart={<Heatmap data={meetups.heatmapSeries} height={44} />}
+          chart={<Heatmap data={meetups.heatmapSeries} />}
         />
         <AnalyticsCard
           id={CARD_IDS.activities}
           title="Engagement Activities"
           icon={BookOpen}
           accent="violet"
-          primaryValue={activities.rows.reduce((s, r) => s + r.ytd, 0)}
-          secondaryLabel="YTD total"
+          primaryValue={activityTotal}
+          secondaryLabel={
+            activityTotal > 0 ? "YTD total" : "YTD total · No activities recorded yet"
+          }
           colSpan="col-span-2 row-span-1"
           delay={0.45}
+          chartFill={activityTotal > 0}
           onExpand={open}
-          chart={<Bar data={activities.chartSeries.slice(0, 3)} height={44} horizontal />}
+          chart={
+            activityTotal > 0 ? (
+              <FillChart minHeight={32}>
+                {(h) => <Bar data={activities.chartSeries.slice(0, 3)} height={h} horizontal />}
+              </FillChart>
+            ) : undefined
+          }
         />
         <AnalyticsCard
           id={CARD_IDS.publications}
@@ -267,20 +285,28 @@ export function SectionPerks({
           delay={0.5}
           compact
           onExpand={open}
-          chart={<Bar data={publications.chartSeries} height={44} />}
+          chart={
+            <MetricChips
+              data={[
+                { label: "Stories", value: publications.stories },
+                { label: "Surveys", value: publications.surveys },
+                { label: "News", value: publications.newsletters },
+              ]}
+            />
+          }
         />
         <AnalyticsCard
           id={CARD_IDS.memberships}
           title="Memberships & Perks"
           icon={Gift}
           accent="violet"
-          primaryValue={memberships.chartSeries.reduce((s, p) => s + p.value, 0)}
+          primaryValue={perksTotal}
           secondaryLabel="Active perks"
           colSpan="col-span-1 row-span-1"
           delay={0.55}
           compact
           onExpand={open}
-          chart={<ProgressBars data={memberships.chartSeries} maxItems={3} />}
+          chart={<ProgressBars data={memberships.chartSeries} maxItems={2} />}
         />
         <AnalyticsCard
           id={CARD_IDS.merchants}
@@ -291,8 +317,39 @@ export function SectionPerks({
           secondaryLabel="Partner merchants"
           colSpan="col-span-2 row-span-1"
           delay={0.6}
+          splitBody
           onExpand={open}
-          chart={<Donut data={discounts.discountSeries} size={48} />}
+          chart={
+            discounts.merchants.length > 0 ? (
+              <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1">
+                {discounts.merchants.slice(0, 4).map((m) => (
+                  <span
+                    key={`${m.merchant}-${m.reference}`}
+                    className="inline-flex max-w-[calc(50%-0.25rem)] items-center gap-1 rounded-full border border-violet-200/80 bg-violet-50/80 px-2 py-0.5 text-[10px] font-medium text-violet-800 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200"
+                    title={m.merchant}
+                  >
+                    <span className="truncate">{m.merchant}</span>
+                    {m.discount ? (
+                      <span className="shrink-0 rounded bg-violet-200/80 px-1 text-[9px] font-bold dark:bg-violet-500/30">
+                        {m.discount}
+                      </span>
+                    ) : null}
+                  </span>
+                ))}
+                {discounts.merchants.length > 4 ? (
+                  <span className="shrink-0 text-[10px] font-semibold text-violet-600 dark:text-violet-300">
+                    +{discounts.merchants.length - 4}
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <MetricChips
+                data={discounts.discountSeries}
+                emptyMessage="No partner merchants"
+                variant="rows"
+              />
+            )
+          }
         />
       </div>
 

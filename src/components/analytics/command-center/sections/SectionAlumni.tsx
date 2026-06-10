@@ -312,7 +312,7 @@ export function SectionAlumni({
           title="Transition Velocity"
           icon={GaugeIcon}
           accent="emerald"
-          primaryValue={velocity.score}
+          primaryValue={`${velocity.score}%`}
           secondaryLabel="Early transition · all alumni"
           colSpan="col-span-1 row-span-1"
           delay={0.2}

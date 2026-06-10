@@ -25,20 +25,23 @@ export function BarChartMini({
   }));
 
   if (horizontal) {
+    const maxLabelLen = Math.max(...chartData.map((d) => d.label.length), 4);
+    const yAxisWidth = Math.min(80, Math.max(48, maxLabelLen * 5.5));
+
     return (
       <div className="w-full overflow-hidden" style={{ height }}>
         <ResponsiveContainer width="100%" height={height}>
           <BarChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 0, right: 4, bottom: 0, left: 0 }}
-            barSize={Math.max(6, Math.min(10, height / chartData.length - 2))}
+            margin={{ top: 0, right: 4, bottom: 0, left: 2 }}
+            barSize={Math.max(5, Math.min(9, height / chartData.length - 2))}
           >
             <XAxis type="number" hide domain={[0, "dataMax"]} />
             <YAxis
               type="category"
               dataKey="label"
-              width={52}
+              width={yAxisWidth}
               tick={{ fontSize: 9, fill: "currentColor" }}
               className="text-gray-500 dark:text-gray-400"
               axisLine={false}
