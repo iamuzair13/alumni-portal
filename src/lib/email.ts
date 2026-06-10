@@ -483,3 +483,31 @@ export async function sendPasswordResetEmail(
   return await sendEmail({ to: alumniEmail, subject, html });
 }
 
+export async function sendAdminPasswordResetEmail(
+  staffEmail: string,
+  staffName: string,
+  newPassword: string
+): Promise<boolean> {
+  const subject = "Admin Portal Password Reset";
+  const greeting = `Dear ${staffName},`;
+  const portalUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk";
+  const body = `
+    <p style="margin: 0; color: #333333; font-size: 16px;">You have requested to reset your password for the UOL Alumni Portal admin dashboard.</p>
+    <div style="margin: 16px 0; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+      <p style="margin: 0; color: #333333; font-size: 14px;"><strong>Your New Password:</strong> <span style="font-family: monospace;">${newPassword}</span></p>
+    </div>
+    <p style="margin: 0; color: #333333; font-size: 14px;"><strong>Important Security Notice:</strong></p>
+    <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #333333;">
+      <li style="margin: 5px 0;">Sign in with your registered admin email and this password.</li>
+      <li style="margin: 5px 0;">Change this password immediately from your profile settings at <a href="${portalUrl}/profile" style="color: #007bff; text-decoration: underline;">${portalUrl}/profile</a>.</li>
+      <li style="margin: 5px 0;">Never share your password with anyone.</li>
+      <li style="margin: 5px 0;">If you did not request this password reset, please contact the Super Admin immediately.</li>
+    </ul>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;">Portal Login: <a href="${portalUrl}/signin" style="color: #007bff; text-decoration: underline;">${portalUrl}/signin</a></p>
+  `;
+  const footer = "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore<br>alumni@uol.edu.pk";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: staffEmail, subject, html });
+}
+

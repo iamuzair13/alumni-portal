@@ -92,7 +92,7 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   }
   
   return (
-    <div className="relative">
+    <div className="relative overflow-visible">
       <button
         ref={buttonRef}
         onClick={toggleDropdown} 
@@ -141,9 +141,9 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
       <Dropdown
         isOpen={isOpen}
         onClose={closeDropdown}
-        className={`right-0 flex w-[260px] flex-col rounded-2xl border border-gray-200/80 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900 ${
-          openUpwards ? "bottom-full mb-3" : "mt-3"
-        }`}
+        anchorRef={buttonRef}
+        openUpwards={openUpwards}
+        className="flex w-[260px] flex-col rounded-2xl border border-gray-200/80 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900"
       >
         <div>
           <span className="block text-theme-sm font-medium text-gray-700 dark:text-gray-200">

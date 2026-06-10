@@ -65,3 +65,19 @@ The `type` column should show `superadmin`.
 - If a Super Admin already exists, the script will change it to `admin` before setting the new one
 - If the user doesn't exist, the script will warn you and exit
 
+## Emergency Super Admin Password Reset
+
+If a Super Admin is locked out, use the CLI reset tool (updates `public.users` with scrypt hashing):
+
+```powershell
+npm run reset-super-admin-password -- "postgresql://user:password@host:port/database"
+```
+
+Or with `DATABASE_URL` in `.env.local`:
+
+```powershell
+npm run reset-super-admin-password
+```
+
+Staff users can also use **Forgot Password** on the sign-in page with their registered admin email for self-service recovery.
+

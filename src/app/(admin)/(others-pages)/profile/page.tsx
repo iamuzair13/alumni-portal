@@ -31,10 +31,8 @@ export default async function Profile({ searchParams }: ProfilePageProps) {
   // If user is admin/viewer/superadmin, show admin profile form
   if (isAdminUserType) {
     return (
-      <ComponentCard title="Edit Profile" className="">
-        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
-          <AdminProfileForm />
-        </div>
+      <ComponentCard title="Edit Profile" className="overflow-visible">
+        <AdminProfileForm />
       </ComponentCard>
     );
   }

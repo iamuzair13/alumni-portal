@@ -505,7 +505,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
       {/* Sits below AppHeader (sticky topbar). Secondary mode is nav-only on pages like /leadership. */}
       <div
         className={`
-          sticky top-[68px] z-[500] w-full max-w-full overflow-x-hidden border-b bg-white/95 backdrop-blur-xl transition-shadow duration-300
+          sticky top-[var(--app-header-height,4.25rem)] z-40 w-full max-w-full border-b bg-white/95 backdrop-blur-xl transition-shadow duration-300
           dark:bg-gray-900/95
           ${
             isScrolled
@@ -599,7 +599,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
       </div>
 
       {showTabsContent && (
-        <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+        <div className="relative z-0 mx-auto w-full max-w-[1600px] scroll-mt-4 px-4 pt-4 pb-6 sm:px-6 sm:pt-6 lg:px-8">
           <ComponentCard className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <TabContent selected={selected} />
           </ComponentCard>
@@ -661,8 +661,9 @@ const UnifiedHeaderTopbar: FC = () => {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
+      style={{ ["--app-header-height" as string]: "4.25rem" }}
       className={`
-        sticky top-0 z-[620] flex min-h-[68px] w-full max-w-full items-center overflow-x-hidden border-b bg-white/95
+        sticky top-0 z-50 flex min-h-[4.25rem] w-full max-w-full items-center overflow-visible border-b bg-white/95 
         backdrop-blur-xl transition-all duration-300 
         ${
           isScrolled
@@ -826,7 +827,7 @@ const UnifiedHeaderTopbar: FC = () => {
           </button>
 
           {/* Desktop actions */}
-          <div className="hidden items-center gap-2 lg:flex">
+          <div className="relative z-10 hidden items-center gap-2 overflow-visible lg:flex">
             <ThemeToggleButton />
 
             {/* Divider */}

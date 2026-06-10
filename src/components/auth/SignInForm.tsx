@@ -372,7 +372,7 @@ export default function SignInForm() {
           <div className="mb-4">
             <h2 className="text-xl font-semibold text-slate-900">Reset Your Password</h2>
             <p className="mt-2 text-sm text-slate-600">
-              Enter your email address and we&apos;ll send you a new password.
+              Enter your registered email and we&apos;ll send you a new password.
             </p>
           </div>
 
@@ -384,7 +384,7 @@ export default function SignInForm() {
               <input
                 id="forgot-password-email"
                 type="email"
-                placeholder="Enter your personal email"
+                placeholder="Enter your registered email"
                 required
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                 value={forgotPasswordEmail}
@@ -392,7 +392,7 @@ export default function SignInForm() {
                 disabled={forgotPasswordLoading}
               />
               <p className="mt-1 text-xs text-slate-500">
-                Enter the email address registered in your personal email field
+                Alumni: use your personal email. Staff: use your admin portal email.
               </p>
             </div>
 

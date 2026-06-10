@@ -26,8 +26,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch {
       savedTheme = null;
     }
-    const stored = savedTheme === "dark" ? "dark" : "light";
-    const initialTheme: Theme = stored;
+    const stored =
+      savedTheme === "dark" ? "dark" : savedTheme === "light" ? "light" : null;
+    const prefersDark =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initialTheme: Theme = stored ?? (prefersDark ? "dark" : "light");
 
     setTheme(initialTheme);
     setIsInitialized(true);

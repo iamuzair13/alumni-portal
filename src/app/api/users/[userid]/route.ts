@@ -280,11 +280,16 @@ export async function PUT(req: Request) {
         });
         return NextResponse.json({ error: "FORBIDDEN: You can only update your password" }, { status: 403 });
       }
+      if (body.password && String(body.password).length < 8) {
+        return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
+      }
+      const passwordPlain = body.password !== undefined ? String(body.password) : null;
+      const passwordHash = passwordPlain ? await hashAdminPassword(passwordPlain) : null;
       // Admin can only update password for themselves
       await sql/* sql */`
         UPDATE public.users
         SET
-          ${body.password ? sql`password = ${String(body.password)}, password_hash = ${String(body.password)},` : sql``}
+          ${passwordPlain ? sql`password = ${passwordPlain}, password_hash = ${passwordHash},` : sql``}
           updated_at = now()
         WHERE id = ${id} OR legacy_userid = ${id}`;
 
