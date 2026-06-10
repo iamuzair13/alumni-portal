@@ -25,6 +25,11 @@ function num(v: number | null | undefined): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
+export type VerifiedAlumniMapOptions = {
+  /** When true, metrics use tbl_alumni.verify = 'true' aggregates only */
+  verifiedOnly?: boolean;
+};
+
 export function mapSparklineData(trends: AlumniTrendPoint[] | undefined): number[] {
   return (trends ?? []).map((t) => t.total);
 }
@@ -36,18 +41,29 @@ export function mapAlumniOverview(data: ManagementDashboardPayload | undefined) 
   const active = num(kpis?.activeAlumni);
   const verified = num(ah?.verified);
   const chart = alumniOverviewChart(data);
+  const headlineBars: ChartSeriesPoint[] = [
+    { label: "Total", value: total, color: "#6366f1" },
+    { label: "Verified", value: verified, color: "#10b981" },
+    { label: "Active", value: active, color: "#34d399" },
+  ];
   return {
     primaryValue: total,
     secondaryLabel: `${active.toLocaleString()} active · ${verified.toLocaleString()} verified`,
+    headlineBars,
     chartSeries: chart.chartSeries,
     insight: chart.insight,
     facultyRows: data?.sectionA?.facultyRows ?? [],
   };
 }
 
-export function mapAlumniCategories(data: ManagementDashboardPayload | undefined) {
-  const chart = alumniCategoriesChart(data);
-  const cat = data?.alumniHeadline?.category;
+export function mapAlumniCategories(
+  data: ManagementDashboardPayload | undefined,
+  options?: VerifiedAlumniMapOptions
+) {
+  const chart = alumniCategoriesChart(data, options);
+  const cat = options?.verifiedOnly
+    ? data?.alumniHeadline?.verifiedCategory ?? data?.alumniHeadline?.category
+    : data?.alumniHeadline?.category;
   return {
     chartSeries: chart.chartSeries,
     rows: [
@@ -60,9 +76,14 @@ export function mapAlumniCategories(data: ManagementDashboardPayload | undefined
   };
 }
 
-export function mapAlumniOccupation(data: ManagementDashboardPayload | undefined) {
-  const chart = occupationChart(data);
-  const oc = data?.sectionA?.currentOccupation;
+export function mapAlumniOccupation(
+  data: ManagementDashboardPayload | undefined,
+  options?: VerifiedAlumniMapOptions
+) {
+  const chart = occupationChart(data, options);
+  const oc = options?.verifiedOnly
+    ? data?.sectionA?.verifiedCurrentOccupation ?? data?.sectionA?.currentOccupation
+    : data?.sectionA?.currentOccupation;
   return {
     chartSeries: chart.chartSeries,
     rows: [
@@ -75,9 +96,14 @@ export function mapAlumniOccupation(data: ManagementDashboardPayload | undefined
   };
 }
 
-export function mapHonorCards(data: ManagementDashboardPayload | undefined) {
-  const chart = honorCardsChart(data);
-  const cards = data?.sectionB?.cardsStatus;
+export function mapHonorCards(
+  data: ManagementDashboardPayload | undefined,
+  options?: VerifiedAlumniMapOptions
+) {
+  const cards = options?.verifiedOnly
+    ? data?.sectionB?.verifiedCardsStatus ?? data?.sectionB?.cardsStatus
+    : data?.sectionB?.cardsStatus;
+  const chart = honorCardsChart(data, options);
   return {
     total: num(cards?.totalCards),
     delivered: num(cards?.delivered),
@@ -93,17 +119,29 @@ export function mapHonorCards(data: ManagementDashboardPayload | undefined) {
   };
 }
 
-export function mapTransitionVelocity(data: ManagementDashboardPayload | undefined) {
-  const tv = data?.sectionA?.transitionVelocity;
-  const totalAlumni = num(data?.alumniHeadline?.total ?? data?.kpis?.totalAlumni);
+export function mapTransitionVelocity(
+  data: ManagementDashboardPayload | undefined,
+  options?: VerifiedAlumniMapOptions
+) {
+  const tv = options?.verifiedOnly
+    ? data?.sectionA?.verifiedTransitionVelocity ?? data?.sectionA?.transitionVelocity
+    : data?.sectionA?.transitionVelocity;
+  const totalAlumni = options?.verifiedOnly
+    ? num(data?.alumniHeadline?.verified)
+    : num(data?.alumniHeadline?.total ?? data?.kpis?.totalAlumni);
   const chart = transitionVelocityChart(tv, totalAlumni);
   const score = transitionVelocityScore(tv, totalAlumni);
   return { score, chartSeries: chart.chartSeries, insight: chart.insight, totalAlumni };
 }
 
-export function mapLocation(data: ManagementDashboardPayload | undefined) {
-  const chart = provinceLocationChart(data);
-  const pl = data?.sectionA?.provinceLocation;
+export function mapLocation(
+  data: ManagementDashboardPayload | undefined,
+  options?: VerifiedAlumniMapOptions
+) {
+  const chart = provinceLocationChart(data, options);
+  const pl = options?.verifiedOnly
+    ? data?.sectionA?.verifiedProvinceLocation ?? data?.sectionA?.provinceLocation
+    : data?.sectionA?.provinceLocation;
   return {
     chartSeries: chart.chartSeries,
     rows: [

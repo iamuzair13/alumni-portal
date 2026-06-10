@@ -1,5 +1,6 @@
 import type { AlumniTrendPoint } from "@/services/dashboardService";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
+import { periodBucketOverlapsRange } from "./periodFilter";
 
 /** Filter monthly alumni trend points to the dashboard's selected year/month. Returns all when period is "all". */
 export function filterTrendsToPeriod(
@@ -8,6 +9,14 @@ export function filterTrendsToPeriod(
 ): AlumniTrendPoint[] {
   if (!trends?.length) return [];
   if (!meta || meta.periodType === "all" || !meta.periodType) return trends.slice(-12);
+
+  if (meta.periodType === "range" && meta.periodStart && meta.periodEnd) {
+    const filtered = trends.filter((p) =>
+      periodBucketOverlapsRange(p.period, meta.periodStart!, meta.periodEnd!)
+    );
+    return filtered.length > 0 ? filtered : trends.slice(-12);
+  }
+
   if (!meta.year) return trends.slice(-12);
 
   const yearPrefix = String(meta.year);

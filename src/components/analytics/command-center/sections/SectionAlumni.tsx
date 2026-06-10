@@ -11,13 +11,17 @@ import {
 } from "lucide-react";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import type { AlumniTrendPoint } from "@/services/dashboardService";
-import AnalyticsDataTable from "@/components/analytics/management/AnalyticsDataTable";
-import { AnalyticsChartRenderer } from "@/components/analytics/v2/charts/AnalyticsChartRenderer";
+import { CategoriesExpandPanel } from "../panels/CategoriesExpandPanel";
+import { HonorExpandPanel } from "../panels/HonorExpandPanel";
+import { LocationExpandPanel } from "../panels/LocationExpandPanel";
+import { OccupationExpandPanel } from "../panels/OccupationExpandPanel";
+import { OverviewExpandPanel } from "../panels/OverviewExpandPanel";
+import { VelocityExpandPanel } from "../panels/VelocityExpandPanel";
 import { AnalyticsCard } from "../AnalyticsCard";
 import { ExpandDrawer } from "../ExpandDrawer";
-import { Sparkline } from "../charts/Sparkline";
-import { Donut } from "../charts/Donut";
+import { MasonryGrid } from "../MasonryGrid";
 import { Bar } from "../charts/Bar";
+import { Donut } from "../charts/Donut";
 import { Gauge } from "../charts/Gauge";
 import { OccupationRadar } from "../charts/OccupationRadar";
 import { FillChart } from "../charts/FillChart";
@@ -28,15 +32,8 @@ import {
   mapAlumniOverview,
   mapHonorCards,
   mapLocation,
-  mapSparklineData,
   mapTransitionVelocity,
 } from "../data/mapPayloadToCards";
-import {
-  honorCardsChart,
-  occupationChart,
-  provinceLocationChart,
-  transitionVelocityChart,
-} from "@/components/analytics/v2/utils/chartSeriesBuilders";
 
 const CARD_IDS = {
   overview: "alumni-overview",
@@ -46,6 +43,8 @@ const CARD_IDS = {
   velocity: "transition-velocity",
   location: "location",
 } as const;
+
+const VERIFIED_ONLY = { verifiedOnly: true } as const;
 
 export function SectionAlumni({
   data,
@@ -58,140 +57,46 @@ export function SectionAlumni({
 }) {
   const { activeId, open, close } = useExpandable();
   const overview = mapAlumniOverview(data);
-  const categories = mapAlumniCategories(data);
-  const occupation = mapAlumniOccupation(data);
-  const honor = mapHonorCards(data);
-  const velocity = mapTransitionVelocity(data);
-  const location = mapLocation(data);
-  const sparkline = mapSparklineData(trends);
-
+  const categories = mapAlumniCategories(data, VERIFIED_ONLY);
+  const occupation = mapAlumniOccupation(data, VERIFIED_ONLY);
+  const honor = mapHonorCards(data, VERIFIED_ONLY);
+  const velocity = mapTransitionVelocity(data, VERIFIED_ONLY);
+  const location = mapLocation(data, VERIFIED_ONLY);
   const totalCategories = categories.rows.reduce((s, r) => s + r.count, 0);
+
+  const WIDE_DRAWER_IDS = new Set<string>([
+    CARD_IDS.overview,
+    CARD_IDS.categories,
+    CARD_IDS.occupation,
+    CARD_IDS.honor,
+    CARD_IDS.velocity,
+    CARD_IDS.location,
+  ]);
 
   const drawers: Record<string, { title: string; content: React.ReactNode }> = {
     [CARD_IDS.overview]: {
       title: "Alumni Overview",
-      content: (
-        <div className="space-y-4">
-          <AnalyticsDataTable
-            isLoading={isLoading}
-            columns={[
-              { key: "faculty", label: "Faculty" },
-              { key: "registrations", label: "Registrations", align: "right" },
-            ]}
-            rows={overview.facultyRows.map((r) => ({
-              faculty: r.faculty,
-              registrations: r.registrations.toLocaleString(),
-            }))}
-          />
-          <AnalyticsChartRenderer
-            group={{
-              id: "overview",
-              label: "Overview",
-              items: [],
-              chartType: "bar",
-              chartSeries: overview.chartSeries,
-            }}
-          />
-        </div>
-      ),
+      content: <OverviewExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.categories]: {
-      title: "Alumni Categories",
-      content: (
-        <AnalyticsDataTable
-          isLoading={isLoading}
-          columns={[
-            { key: "tier", label: "Tier" },
-            { key: "count", label: "Count", align: "right" },
-            { key: "pct", label: "%", align: "right" },
-          ]}
-          rows={categories.rows.map((r) => ({
-            tier: r.tier,
-            count: r.count.toLocaleString(),
-            pct: totalCategories > 0 ? `${((r.count / totalCategories) * 100).toFixed(1)}%` : "—",
-          }))}
-        />
-      ),
+      title: "Alumni Categories (Verified)",
+      content: <CategoriesExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.occupation]: {
-      title: "Alumni Occupation",
-      content: (
-        <div className="space-y-4">
-          <AnalyticsDataTable
-            isLoading={isLoading}
-            columns={[
-              { key: "status", label: "Status" },
-              { key: "count", label: "Count", align: "right" },
-            ]}
-            rows={occupation.rows.map((r) => ({
-              status: r.status,
-              count: r.count.toLocaleString(),
-            }))}
-          />
-          <AnalyticsChartRenderer
-            group={{
-              id: "occupation",
-              label: "Occupation",
-              items: [],
-              ...occupationChart(data),
-            }}
-          />
-        </div>
-      ),
+      title: "Alumni Occupation (Verified)",
+      content: <OccupationExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.honor]: {
-      title: "Alumni Honor Cards",
-      content: (
-        <AnalyticsChartRenderer
-          group={{
-            id: "honor",
-            label: "Honor Cards",
-            items: [],
-            ...honorCardsChart(data),
-          }}
-        />
-      ),
+      title: "Honor Cards (Verified)",
+      content: <HonorExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.velocity]: {
-      title: "Transition Velocity",
-      content: (
-        <AnalyticsChartRenderer
-          group={{
-            id: "velocity",
-            label: "Transition Velocity",
-            items: [],
-            ...transitionVelocityChart(
-              data?.sectionA?.transitionVelocity,
-              data?.alumniHeadline?.total ?? data?.kpis?.totalAlumni
-            ),
-          }}
-        />
-      ),
+      title: "Transition Velocity (Verified)",
+      content: <VelocityExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.location]: {
-      title: "Location Distribution",
-      content: (
-        <div className="space-y-4">
-          <AnalyticsDataTable
-            isLoading={isLoading}
-            columns={[
-              { key: "region", label: "Region" },
-              { key: "count", label: "Alumni", align: "right" },
-            ]}
-            rows={location.rows
-              .filter((r) => r.count > 0)
-              .map((r) => ({ region: r.region, count: r.count.toLocaleString() }))}
-          />
-          <AnalyticsChartRenderer
-            group={{
-              id: "location",
-              label: "Location",
-              items: [],
-              ...provinceLocationChart(data),
-            }}
-          />
-        </div>
-      ),
+      title: "Location Distribution (Verified)",
+      content: <LocationExpandPanel data={data} isLoading={isLoading} />,
     },
   };
 
@@ -199,7 +104,7 @@ export function SectionAlumni({
 
   return (
     <>
-      <div className="grid h-full min-h-0 grid-cols-6 grid-rows-4 gap-2 overflow-hidden">
+      <MasonryGrid columns="default" layout="uniform">
         <AnalyticsCard
           id={CARD_IDS.overview}
           title="Alumni Overview"
@@ -207,36 +112,14 @@ export function SectionAlumni({
           accent="emerald"
           primaryValue={overview.primaryValue}
           secondaryLabel={overview.secondaryLabel}
-          colSpan="col-span-3 row-span-2"
+          masonrySize="lg"
           chartFill
           delay={0}
           onExpand={open}
           chart={
-            <FillChart minHeight={80}>
+            <FillChart minHeight={120}>
               {(h) => (
-                <div className="flex h-full min-h-0 gap-2">
-                  <div className="h-full min-w-0 flex-[3]">
-                    <Sparkline data={sparkline} color="#34d399" height={h} />
-                  </div>
-                  <div className="flex h-full min-w-0 flex-[2]">
-                    <Donut
-                      showLabels
-                      showLegend
-                      minSlicePercent={0.04}
-                      data={[
-                        { label: "Active", value: data?.kpis?.activeAlumni ?? 0, color: "#34d399" },
-                        {
-                          label: "Inactive",
-                          value: Math.max(
-                            0,
-                            (data?.kpis?.totalAlumni ?? 0) - (data?.kpis?.activeAlumni ?? 0)
-                          ),
-                          color: "#94a3b8",
-                        },
-                      ]}
-                    />
-                  </div>
-                </div>
+                <Bar data={overview.headlineBars} height={h} horizontal={false} showLabels />
               )}
             </FillChart>
           }
@@ -247,18 +130,17 @@ export function SectionAlumni({
           icon={Layers}
           accent="emerald"
           primaryValue={totalCategories}
-          secondaryLabel="A+ through D tiers"
-          colSpan="col-span-1 row-span-2"
+          secondaryLabel="Verified · A+ through D"
+          masonrySize="lg"
           chartFill
           delay={0.05}
-          compact
           onExpand={open}
           chart={
-            <FillChart minHeight={80}>
+            <FillChart minHeight={120}>
               {() => (
                 <Donut
                   data={categories.chartSeries}
-                  showLegend
+                  showLabels
                   minSlicePercent={0.05}
                 />
               )}
@@ -270,14 +152,14 @@ export function SectionAlumni({
           title="Occupation"
           icon={Briefcase}
           accent="emerald"
-          primaryValue={occupation.rows[0]?.count ?? 0}
-          secondaryLabel="Employed alumni"
-          colSpan="col-span-2 row-span-2"
+          primaryValue={occupation.rows.reduce((s, r) => s + r.count, 0).toLocaleString()}
+          secondaryLabel="Verified · employed"
+          masonrySize="lg"
           chartFill
           delay={0.1}
           onExpand={open}
           chart={
-            <FillChart minHeight={80}>
+            <FillChart minHeight={120}>
               {(h) => <OccupationRadar data={occupation.chartSeries} height={h} />}
             </FillChart>
           }
@@ -288,23 +170,21 @@ export function SectionAlumni({
           icon={Award}
           accent="emerald"
           primaryValue={honor.delivered}
-          secondaryLabel={`${honor.total.toLocaleString()} total`}
-          colSpan="col-span-1 row-span-1"
+          secondaryLabel={`Verified · ${honor.total.toLocaleString()} cards`}
+          masonrySize="md"
           delay={0.15}
-          compact
           onExpand={open}
           chart={
-            <div className="grid grid-cols-3 gap-1">
-              {honor.badges.slice(0, 3).map((b) => (
-                <div
-                  key={b.label}
-                  className="rounded-md bg-gray-100 px-1 py-1 text-center dark:bg-gray-800/80"
-                >
-                  <div className="text-[10px] text-gray-500 dark:text-gray-400">{b.label}</div>
-                  <div className="text-xs font-bold text-gray-900 dark:text-gray-100">{b.count}</div>
-                </div>
-              ))}
-            </div>
+            <FillChart minHeight={72}>
+              {(h) => (
+                <Bar
+                  data={honor.chartSeries.filter((p) => p.value > 0).slice(0, 4)}
+                  height={h}
+                  horizontal={false}
+                  showLabels
+                />
+              )}
+            </FillChart>
           }
         />
         <AnalyticsCard
@@ -313,12 +193,15 @@ export function SectionAlumni({
           icon={GaugeIcon}
           accent="emerald"
           primaryValue={`${velocity.score}%`}
-          secondaryLabel="Early transition · all alumni"
-          colSpan="col-span-1 row-span-1"
+          secondaryLabel="Verified · early transition"
+          masonrySize="md"
           delay={0.2}
-          compact
           onExpand={open}
-          chart={<Gauge score={velocity.score} size={44} />}
+          chart={
+            <FillChart minHeight={72}>
+              {(h) => <Gauge score={velocity.score} size={Math.min(96, Math.round(h * 0.85))} />}
+            </FillChart>
+          }
         />
         <AnalyticsCard
           id={CARD_IDS.location}
@@ -326,19 +209,31 @@ export function SectionAlumni({
           icon={MapPin}
           accent="emerald"
           primaryValue={location.rows.reduce((s, r) => s + r.count, 0)}
-          secondaryLabel="By province / region"
-          colSpan="col-span-4 row-span-1"
+          secondaryLabel="Verified · top provinces"
+          masonrySize="md"
           delay={0.25}
           onExpand={open}
-          chart={<Bar data={location.chartSeries.slice(0, 5)} height={52} horizontal />}
+          chart={
+            <FillChart minHeight={72}>
+              {(h) => (
+                <Bar
+                  data={location.chartSeries.slice(0, 4)}
+                  height={h}
+                  horizontal={false}
+                  showLabels
+                />
+              )}
+            </FillChart>
+          }
         />
-      </div>
+      </MasonryGrid>
 
       <ExpandDrawer
         open={!!active}
         title={active?.title ?? ""}
         onClose={close}
         accent="emerald"
+        maxWidthClass={activeId && WIDE_DRAWER_IDS.has(activeId) ? "max-w-5xl" : "max-w-3xl"}
       >
         {active?.content}
       </ExpandDrawer>

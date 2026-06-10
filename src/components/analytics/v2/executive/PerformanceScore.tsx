@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Maximize2 } from "lucide-react";
 import type { PerformanceResult } from "../utils/derivePerformanceScore";
@@ -11,6 +12,12 @@ type PerformanceScoreProps = {
   compact?: boolean;
   /** Command center header styling and dropdown breakdown */
   variant?: "default" | "command";
+};
+
+type DropdownPosition = {
+  top: number;
+  left: number;
+  width: number;
 };
 
 function gaugeStrokeClass(label: PerformanceResult["label"]) {
@@ -25,7 +32,9 @@ export function PerformanceScore({
   variant = "default",
 }: PerformanceScoreProps) {
   const [expanded, setExpanded] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<DropdownPosition | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { score, label } = result;
   const isCommand = variant === "command";
 
@@ -43,27 +52,48 @@ export function PerformanceScore({
         ? "text-amber-600 dark:text-amber-400"
         : "text-rose-600 dark:text-rose-400";
 
+  const updateDropdownPosition = () => {
+    const el = rootRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const width = Math.min(400, window.innerWidth - 16);
+    const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
+    setDropdownPos({
+      top: rect.bottom + 8,
+      left,
+      width,
+    });
+  };
+
   useEffect(() => {
-    if (!isCommand || !expanded) return;
+    if (!isCommand || !expanded) {
+      setDropdownPos(null);
+      return;
+    }
+
+    updateDropdownPosition();
     const onPointerDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setExpanded(false);
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target) || dropdownRef.current?.contains(target)) return;
+      setExpanded(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setExpanded(false);
     };
+    window.addEventListener("resize", updateDropdownPosition);
+    window.addEventListener("scroll", updateDropdownPosition, true);
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKey);
     return () => {
+      window.removeEventListener("resize", updateDropdownPosition);
+      window.removeEventListener("scroll", updateDropdownPosition, true);
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKey);
     };
   }, [isCommand, expanded]);
 
   const gauge = (
-    <div
-      className="relative shrink-0"
-      style={{ width: size, height: size }}
-    >
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg className="-rotate-90" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
         <circle
           cx={center}
@@ -140,9 +170,7 @@ export function PerformanceScore({
         {!isCommand ? (
           <p className={hintClass}>
             {compact ? (
-              <>
-                {expanded ? "Tap to hide breakdown" : "Tap for score breakdown"}
-              </>
+              <>{expanded ? "Tap to hide breakdown" : "Tap for score breakdown"}</>
             ) : (
               <>
                 Composite index from verification, engagement, placement & chapters ·{" "}
@@ -170,8 +198,33 @@ export function PerformanceScore({
         compact ? "px-2.5 py-2" : "gap-3 p-3"
       } ${expanded ? "ring-2 ring-indigo-500/20 dark:ring-indigo-400/20" : ""}`;
 
+  const commandDropdown =
+    isCommand && expanded && dropdownPos && typeof document !== "undefined"
+      ? createPortal(
+          <AnimatePresence>
+            <motion.div
+              ref={dropdownRef}
+              id="performance-score-breakdown"
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="fixed z-[500] shadow-2xl"
+              style={{
+                top: dropdownPos.top,
+                left: dropdownPos.left,
+                width: dropdownPos.width,
+              }}
+            >
+              <PerformanceScoreBreakdown result={result} variant="command" />
+            </motion.div>
+          </AnimatePresence>,
+          document.body,
+        )
+      : null;
+
   return (
-    <div ref={rootRef} className={`relative ${isCommand ? "" : "flex flex-col gap-2"}`}>
+    <div ref={rootRef} className={`relative ${isCommand ? "z-30" : "flex flex-col gap-2"}`}>
       <button
         type="button"
         onClick={() => setExpanded((open) => !open)}
@@ -182,22 +235,9 @@ export function PerformanceScore({
         {cardBody}
       </button>
 
-      {isCommand ? (
-        <AnimatePresence>
-          {expanded ? (
-            <motion.div
-              id="performance-score-breakdown"
-              initial={{ opacity: 0, y: -6, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.98 }}
-              transition={{ duration: 0.2 }}
-              className="absolute right-0 top-[calc(100%+8px)] z-[200] w-[min(100vw-2rem,400px)]"
-            >
-              <PerformanceScoreBreakdown result={result} variant="command" />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      ) : expanded ? (
+      {commandDropdown}
+
+      {!isCommand && expanded ? (
         <div id="performance-score-breakdown">
           <PerformanceScoreBreakdown result={result} />
         </div>

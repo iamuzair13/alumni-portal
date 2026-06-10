@@ -1,19 +1,27 @@
 "use client";
 
 import React from "react";
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { ChartSeriesPoint } from "@/components/analytics/v2/utils/kpiConfig";
 import { colorAt } from "@/components/analytics/v2/charts/chartColors";
 import { ChartEmpty } from "./ChartEmpty";
+
+const labelStyle = { fontSize: 10, fontWeight: 600, fill: "currentColor" } as const;
+
+function formatBarLabel(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value) ? value.toLocaleString() : "";
+}
 
 export function BarChartMini({
   data,
   horizontal = true,
   height = 56,
+  showLabels = false,
 }: {
   data: ChartSeriesPoint[];
   horizontal?: boolean;
   height?: number;
+  showLabels?: boolean;
 }) {
   const filtered = data.filter((d) => d.value > 0);
   if (!filtered.length) return <ChartEmpty height={height} />;
@@ -29,12 +37,12 @@ export function BarChartMini({
     const yAxisWidth = Math.min(80, Math.max(48, maxLabelLen * 5.5));
 
     return (
-      <div className="w-full overflow-hidden" style={{ height }}>
+      <div className="w-full overflow-hidden text-gray-600 dark:text-gray-300" style={{ height }}>
         <ResponsiveContainer width="100%" height={height}>
           <BarChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 0, right: 4, bottom: 0, left: 2 }}
+            margin={{ top: 0, right: showLabels ? 40 : 4, bottom: 0, left: 2 }}
             barSize={Math.max(5, Math.min(9, height / chartData.length - 2))}
           >
             <XAxis type="number" hide domain={[0, "dataMax"]} />
@@ -42,7 +50,7 @@ export function BarChartMini({
               type="category"
               dataKey="label"
               width={yAxisWidth}
-              tick={{ fontSize: 9, fill: "currentColor" }}
+              tick={{ fontSize: 10, fill: "currentColor" }}
               className="text-gray-500 dark:text-gray-400"
               axisLine={false}
               tickLine={false}
@@ -56,6 +64,15 @@ export function BarChartMini({
               {chartData.map((entry, i) => (
                 <Cell key={entry.label} fill={entry.fill ?? colorAt(i)} />
               ))}
+              {showLabels ? (
+                <LabelList
+                  dataKey="value"
+                  position="right"
+                  formatter={formatBarLabel}
+                  className="text-gray-600 dark:text-gray-300"
+                  style={labelStyle}
+                />
+              ) : null}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -64,9 +81,9 @@ export function BarChartMini({
   }
 
   return (
-    <div className="w-full overflow-hidden" style={{ height }}>
+    <div className="w-full overflow-hidden text-gray-600 dark:text-gray-300" style={{ height }}>
       <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+        <BarChart data={chartData} margin={{ top: showLabels ? 16 : 4, right: 4, bottom: 0, left: 4 }}>
           <XAxis
             dataKey="label"
             tick={{ fontSize: 9, fill: "currentColor" }}
@@ -81,6 +98,14 @@ export function BarChartMini({
             {chartData.map((entry, i) => (
               <Cell key={entry.label} fill={entry.fill ?? colorAt(i)} />
             ))}
+            {showLabels ? (
+              <LabelList
+                dataKey="value"
+                position="top"
+                formatter={formatBarLabel}
+                style={labelStyle}
+              />
+            ) : null}
           </Bar>
         </BarChart>
       </ResponsiveContainer>

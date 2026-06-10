@@ -7,16 +7,20 @@ import type { SystemHealthPayload } from "@/lib/analytics/systemHealth";
 
 export type QuarterYtd = { quarter: number | null; ytd: number | null };
 
+export type AlumniCategoryBreakdown = {
+  aPlus: number | null;
+  a: number | null;
+  b: number | null;
+  c: number | null;
+  d: number | null;
+};
+
 export type ManagementDashboardAlumniHeadline = {
   total: number | null;
   verified: number | null;
-  category: {
-    aPlus: number | null;
-    a: number | null;
-    b: number | null;
-    c: number | null;
-    d: number | null;
-  };
+  category: AlumniCategoryBreakdown;
+  /** Category tiers for alumni with verify = 'true' (tbl_alumni.verify) */
+  verifiedCategory?: AlumniCategoryBreakdown;
 };
 
 /** Portal staff with faculty scope: `user_access_assignments` × `users` (admin/viewer, not blocked). Labeled “trained” per management dashboard spec. */
@@ -25,8 +29,62 @@ export type TrainedFacultyAdminsPayload = {
   byFaculty: Array<{ faculty: string; facultyId: number | null; count: number }>;
 };
 
+export type FacultyCategoryRow = {
+  faculty: string;
+  aPlus: number;
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+};
+
+export type FacultyOccupationRow = {
+  faculty: string;
+  employed: number;
+  selfEmployed: number;
+  unemployedSearching: number;
+  unemployedByChoice: number;
+  other: number;
+};
+
+export type FacultyTransitionRow = {
+  faculty: string;
+  beforeGraduation: number;
+  immediateAfterGraduation: number;
+  within3Months: number;
+  within6Months: number;
+  after6Months: number;
+  unknown: number;
+};
+
+export type FacultyLocationRow = {
+  faculty: string;
+  punjab: number;
+  islamabad: number;
+  kpk: number;
+  sindh: number;
+  ajk: number;
+  gb: number;
+  balochistan: number;
+  overseas: number;
+  other: number;
+};
+
 export type ManagementDashboardSectionA = {
-  facultyRows: Array<{ faculty: string; registrations: number }>;
+  facultyRows: Array<{
+    faculty: string;
+    registrations: number;
+    verified: number;
+    active: number;
+  }>;
+  /** Verified alumni category tiers (A+–D) grouped by faculty */
+  facultyCategoryRows?: FacultyCategoryRow[];
+  /** Verified alumni occupation status grouped by faculty */
+  facultyOccupationRows?: FacultyOccupationRow[];
+  /** Verified alumni transition timing grouped by faculty */
+  facultyTransitionRows?: FacultyTransitionRow[];
+  /** Verified alumni province/region grouped by faculty */
+  facultyLocationRows?: FacultyLocationRow[];
   trainedFacultyAdmins: TrainedFacultyAdminsPayload;
   transitionVelocity: {
     beforeGraduation: number | null;
@@ -54,6 +112,10 @@ export type ManagementDashboardSectionA = {
     overseas: number | null;
     other: number | null;
   };
+  /** Verified alumni only — same shape as above fields */
+  verifiedTransitionVelocity?: ManagementDashboardSectionA["transitionVelocity"];
+  verifiedCurrentOccupation?: ManagementDashboardSectionA["currentOccupation"];
+  verifiedProvinceLocation?: ManagementDashboardSectionA["provinceLocation"];
 };
 
 export type ManagementDashboardCardsStatus = {
@@ -64,6 +126,16 @@ export type ManagementDashboardCardsStatus = {
   underPrinting: number | null;
   readyForDelivery: number | null;
   delivered: number | null;
+};
+
+export type FacultyHonorCardRow = {
+  faculty: string;
+  applied: number;
+  review: number;
+  onHold: number;
+  underPrinting: number;
+  readyForDelivery: number;
+  delivered: number;
 };
 
 export type ManagementDashboardSectionB = {
@@ -79,6 +151,10 @@ export type ManagementDashboardSectionB = {
     meetupsTotal: number | null;
   };
   cardsStatus: ManagementDashboardCardsStatus;
+  /** Honor cards for verified alumni only (tbl_alumni.verify = 'true') */
+  verifiedCardsStatus?: ManagementDashboardCardsStatus;
+  /** Verified alumni honor card pipeline grouped by faculty */
+  facultyHonorCardRows?: FacultyHonorCardRow[];
   activities: {
     mentorshipSessions: QuarterYtd;
     seminarsParticipation: QuarterYtd;
@@ -167,7 +243,7 @@ export type ManagementDashboardPayload = {
     quarterStart: string;
     yearStart: string;
     timeRange: string;
-  periodType?: "all" | "year" | "month";
+  periodType?: "all" | "year" | "month" | "range";
   year?: number;
   month?: number | null;
   periodStart?: string;

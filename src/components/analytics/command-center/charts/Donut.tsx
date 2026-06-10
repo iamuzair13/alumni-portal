@@ -79,7 +79,7 @@ export function Donut({
       const legendReserve = showLegend ? Math.min(72, pieDataLength(data) * 16) : 0;
       const availH = Math.max(48, h - legendReserve);
       const next = Math.floor(Math.min(width, availH) * 0.98);
-      if (next > 0) setDim(Math.max(56, next));
+      if (next > 0) setDim(Math.max(72, next));
     };
 
     measure();

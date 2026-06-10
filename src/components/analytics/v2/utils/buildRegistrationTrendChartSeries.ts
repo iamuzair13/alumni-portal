@@ -1,5 +1,6 @@
 import type { AlumniTrendPoint } from "@/services/dashboardService";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
+import { periodBucketOverlapsRange } from "./periodFilter";
 
 export type RegistrationTrendChartPoint = {
   period: string;
@@ -34,6 +35,25 @@ export function buildRegistrationTrendChartSeries(
   dailyWindow = 14
 ): { points: RegistrationTrendChartPoint[]; asOfLabel: string | null; granularity: "daily" | "monthly" } {
   const periodType = meta?.periodType ?? "all";
+
+  if (periodType === "range" && meta?.periodStart && meta?.periodEnd) {
+    const start = meta.periodStart;
+    const end = meta.periodEnd;
+    const spanDays =
+      (new Date(`${end}T12:00:00`).getTime() - new Date(`${start}T12:00:00`).getTime()) / 86_400_000;
+    const useDaily = spanDays <= 62;
+    const source = useDaily ? dailyTrends : monthlyTrends;
+    const filtered = sortTrends(source ?? []).filter((p) => periodBucketOverlapsRange(p.period, start, end));
+    const points = filtered.map((p) => ({
+      period: p.period,
+      label: useDaily ? formatDailyLabel(p.period) : formatMonthlyLabel(p.period),
+      total: p.total,
+      verified: p.verified,
+      active: p.active,
+    }));
+    const latest = points[points.length - 1];
+    return { points, asOfLabel: latest ? latest.label : null, granularity: useDaily ? "daily" : "monthly" };
+  }
 
   if (periodType === "year" && meta?.year) {
     const yearPrefix = String(meta.year);

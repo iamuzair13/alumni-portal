@@ -23,8 +23,24 @@ const yearStartDate = (): string => {
   return new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
 };
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseISODateParam(value: string | null): string {
+  const trimmed = (value || "").trim();
+  return ISO_DATE.test(trimmed) ? trimmed : "";
+}
+
+function formatRangeLabel(start: string, end: string): string {
+  const fmt = (iso: string) => {
+    const d = new Date(`${iso}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
+  };
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
 function resolvePeriodBounds(searchParams: URLSearchParams): {
-  periodType: "all" | "year" | "month";
+  periodType: "all" | "year" | "month" | "range";
   year: number;
   month: number | null;
   periodStart: string;
@@ -33,7 +49,8 @@ function resolvePeriodBounds(searchParams: URLSearchParams): {
 } {
   const now = new Date();
   const raw = (searchParams.get("periodType") || "all").toLowerCase();
-  const periodType = raw === "month" ? "month" : raw === "year" ? "year" : "all";
+  const periodType =
+    raw === "month" ? "month" : raw === "year" ? "year" : raw === "range" ? "range" : "all";
   const yearRaw = parseInt(searchParams.get("year") || String(now.getFullYear()), 10);
   const year = Number.isFinite(yearRaw) ? yearRaw : now.getFullYear();
 
@@ -45,6 +62,34 @@ function resolvePeriodBounds(searchParams: URLSearchParams): {
       periodStart: "",
       periodEnd: "",
       periodLabel: "All time",
+    };
+  }
+
+  if (periodType === "range") {
+    let dateFrom = parseISODateParam(searchParams.get("dateFrom"));
+    let dateTo = parseISODateParam(searchParams.get("dateTo"));
+    if (!dateFrom && !dateTo) {
+      dateTo = now.toISOString().slice(0, 10);
+      const from = new Date(now);
+      from.setDate(from.getDate() - 29);
+      dateFrom = from.toISOString().slice(0, 10);
+    } else if (!dateFrom) {
+      dateFrom = dateTo;
+    } else if (!dateTo) {
+      dateTo = dateFrom;
+    }
+    if (dateFrom > dateTo) {
+      const swap = dateFrom;
+      dateFrom = dateTo;
+      dateTo = swap;
+    }
+    return {
+      periodType: "range",
+      year,
+      month: null,
+      periodStart: dateFrom,
+      periodEnd: dateTo,
+      periodLabel: formatRangeLabel(dateFrom, dateTo),
     };
   }
 
@@ -85,7 +130,7 @@ export async function GET(req: Request) {
   const period = resolvePeriodBounds(searchParams);
   const { periodStart, periodEnd, periodLabel, periodType, year, month } = period;
 
-  const applyPeriodFilter = periodType === "year" || periodType === "month";
+  const applyPeriodFilter = periodType === "year" || periodType === "month" || periodType === "range";
 
   // Legacy timeRange param support (This Quarter / YTD) when periodType not sent
   const useLegacyTimeRange =
@@ -160,7 +205,45 @@ export async function GET(req: Request) {
           COUNT(DISTINCT a.alumniid) FILTER (
             WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'd'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
-          )::int AS category_d
+          )::int AS category_d,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+              AND (
+                LOWER(TRIM(COALESCE(a.category, ''))) = 'a+'
+                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%'
+              )
+          )::int AS verified_category_a_plus,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+              AND (
+                LOWER(TRIM(COALESCE(a.category, ''))) = 'a'
+                OR (
+                  LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%'
+                  AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'
+                )
+              )
+          )::int AS verified_category_a,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+              AND (
+                LOWER(TRIM(COALESCE(a.category, ''))) = 'b'
+                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%'
+              )
+          )::int AS verified_category_b,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+              AND (
+                LOWER(TRIM(COALESCE(a.category, ''))) = 'c'
+                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%'
+              )
+          )::int AS verified_category_c,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+              AND (
+                LOWER(TRIM(COALESCE(a.category, ''))) = 'd'
+                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
+              )
+          )::int AS verified_category_d
         FROM public.tbl_alumni a
         WHERE 1=1
         ${accessFilterCondition}
@@ -251,7 +334,12 @@ export async function GET(req: Request) {
     const facultyRows = await sql/* sql */`
       SELECT
         COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
-        COUNT(*)::int AS registrations
+        COUNT(*)::int AS registrations,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'true')::int AS verified,
+        COUNT(*) FILTER (WHERE
+          COALESCE(a.logincount, 0) >= 1
+          OR TRIM(COALESCE(a.lasttimelogin, '')) <> ''
+        )::int AS active
       FROM public.tbl_alumni a
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
       WHERE 1=1
@@ -260,6 +348,201 @@ export async function GET(req: Request) {
       ${alumniPeriodCond}
       GROUP BY 1
       ORDER BY 2 DESC
+    `;
+
+    const facultyCategoryRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COUNT(DISTINCT a.alumniid) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.category, ''))) = 'a+'
+              OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%'
+            )
+        )::int AS a_plus,
+        COUNT(DISTINCT a.alumniid) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.category, ''))) = 'a'
+              OR (
+                LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%'
+                AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'
+              )
+            )
+        )::int AS a,
+        COUNT(DISTINCT a.alumniid) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.category, ''))) = 'b'
+              OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%'
+            )
+        )::int AS b,
+        COUNT(DISTINCT a.alumniid) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.category, ''))) = 'c'
+              OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%'
+            )
+        )::int AS c,
+        COUNT(DISTINCT a.alumniid) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.category, ''))) = 'd'
+              OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
+            )
+        )::int AS d
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${alumniPeriodCond}
+      GROUP BY 1
+      ORDER BY (
+        COUNT(DISTINCT a.alumniid) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'true')
+      ) DESC
+    `;
+
+    const facultyOccupationRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.employeed,''))) IN ('employed','employed/business')
+        )::int AS employed,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%self-employed%'
+              OR LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%entrepreneur%'
+            )
+        )::int AS self_employed,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%searching%'
+        )::int AS unemployed_searching,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%choice%'
+        )::int AS unemployed_choice,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true' AND TRIM(COALESCE(a.employeed,'')) <> ''
+        )::int AS with_status
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${alumniPeriodCond}
+      GROUP BY 1
+      ORDER BY 6 DESC
+    `;
+
+    const facultyTransitionRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) = 'before graduation'
+        )::int AS before_graduation,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%immediately%'
+        )::int AS immediate,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%within 3 month%'
+        )::int AS within_3,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%within 6 month%'
+        )::int AS within_6,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%after 6 month%'
+        )::int AS after_6,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND TRIM(COALESCE(a.occupation_transition_timing,'')) <> ''
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT IN ('before graduation')
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%immediately%'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%within 3 month%'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%within 6 month%'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%after 6 month%'
+        )::int AS unknown_bucket,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'true')::int AS verified_total
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${alumniPeriodCond}
+      GROUP BY 1
+      ORDER BY 8 DESC
+    `;
+
+    const facultyLocationRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.province,''))) LIKE '%punjab%'
+            AND LOWER(TRIM(COALESCE(a.province,''))) NOT LIKE '%islamabad%'
+        )::int AS punjab,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.province,''))) LIKE '%islamabad%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%ict%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%federal capital%'
+            )
+        )::int AS islamabad,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.province,''))) LIKE '%khyber%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%kpk%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) = 'kp'
+            )
+        )::int AS kpk,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.province,''))) LIKE '%sindh%'
+        )::int AS sindh,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.province,''))) LIKE '%ajk%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%azad%'
+            )
+        )::int AS ajk,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.province,''))) LIKE '%gilgit%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%baltistan%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%gb%'
+            )
+        )::int AS gb,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.province,''))) LIKE '%baloch%'
+        )::int AS balochistan,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND TRIM(COALESCE(a.country,'')) <> ''
+            AND LOWER(TRIM(COALESCE(a.country,''))) NOT LIKE '%pakistan%'
+            AND LOWER(TRIM(COALESCE(a.country,''))) NOT IN ('pk')
+        )::int AS overseas,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'true')::int AS verified_total
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${alumniPeriodCond}
+      GROUP BY 1
+      ORDER BY verified_total DESC
     `;
 
     const chapterAssocRows = await sql/* sql */`
@@ -306,6 +589,44 @@ export async function GET(req: Request) {
       ${accessFilterCondition}
       ${facultyFilterCondition}
       ${cardPeriodCond}
+    `;
+
+    const verifiedCardsRows = await sql/* sql */`
+      SELECT
+        COUNT(*)::int AS card_total,
+        COUNT(*) FILTER (WHERE c.status IS NULL OR TRIM(COALESCE(c.status,'')) = '')::int AS applied,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) IN ('UNDERREVIEW','PENDING'))::int AS review,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) = 'ONHOLD')::int AS on_hold,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) IN ('UNDERPRINTING','PROCESS'))::int AS under_printing,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) IN ('ACTIVE'))::int AS ready_for_delivery,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) = 'DELIVERED')::int AS delivered
+      FROM public.tblcard c
+      JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
+      WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${cardPeriodCond}
+    `;
+
+    const facultyHonorCardRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COUNT(*) FILTER (WHERE c.status IS NULL OR TRIM(COALESCE(c.status,'')) = '')::int AS applied,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) IN ('UNDERREVIEW','PENDING'))::int AS review,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) = 'ONHOLD')::int AS on_hold,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) IN ('UNDERPRINTING','PROCESS'))::int AS under_printing,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) IN ('ACTIVE'))::int AS ready_for_delivery,
+        COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) = 'DELIVERED')::int AS delivered,
+        COUNT(*)::int AS card_total
+      FROM public.tblcard c
+      JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${cardPeriodCond}
+      GROUP BY 1
+      ORDER BY card_total DESC
     `;
 
     const talksRows = await sql/* sql */`
@@ -382,7 +703,36 @@ export async function GET(req: Request) {
             AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%within 3 month%'
             AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%within 6 month%'
             AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%after 6 month%'
-        )::int AS unknown_bucket
+        )::int AS unknown_bucket,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) = 'before graduation'
+        )::int AS verified_before_graduation,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%immediately%'
+        )::int AS verified_immediate,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%within 3 month%'
+        )::int AS verified_within_3,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%within 6 month%'
+        )::int AS verified_within_6,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%after 6 month%'
+        )::int AS verified_after_6,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND TRIM(COALESCE(a.occupation_transition_timing,'')) <> ''
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT IN ('before graduation')
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%immediately%'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%within 3 month%'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%within 6 month%'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%after 6 month%'
+        )::int AS verified_unknown_bucket
       FROM public.tbl_alumni a
       WHERE 1=1
       ${accessFilterCondition}
@@ -404,7 +754,29 @@ export async function GET(req: Request) {
         COUNT(*) FILTER (
           WHERE LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%choice%'
         )::int AS unemployed_choice,
-        COUNT(*) FILTER (WHERE TRIM(COALESCE(a.employeed,'')) <> '')::int AS with_status
+        COUNT(*) FILTER (WHERE TRIM(COALESCE(a.employeed,'')) <> '')::int AS with_status,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.employeed,''))) IN ('employed','employed/business')
+        )::int AS verified_employed,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%self-employed%'
+              OR LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%entrepreneur%'
+            )
+        )::int AS verified_self_employed,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%searching%'
+        )::int AS verified_unemployed_searching,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%choice%'
+        )::int AS verified_unemployed_choice,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true' AND TRIM(COALESCE(a.employeed,'')) <> ''
+        )::int AS verified_with_status
       FROM public.tbl_alumni a
       WHERE 1=1
       ${accessFilterCondition}
@@ -448,7 +820,58 @@ export async function GET(req: Request) {
             AND LOWER(TRIM(COALESCE(a.country,''))) NOT LIKE '%pakistan%'
             AND LOWER(TRIM(COALESCE(a.country,''))) NOT IN ('pk')
         )::int AS overseas,
-        COUNT(*)::int AS total_rows
+        COUNT(*)::int AS total_rows,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.province,''))) LIKE '%punjab%'
+            AND LOWER(TRIM(COALESCE(a.province,''))) NOT LIKE '%islamabad%'
+        )::int AS verified_punjab,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.province,''))) LIKE '%islamabad%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%ict%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%federal capital%'
+            )
+        )::int AS verified_islamabad,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.province,''))) LIKE '%khyber%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%kpk%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) = 'kp'
+            )
+        )::int AS verified_kpk,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.province,''))) LIKE '%sindh%'
+        )::int AS verified_sindh,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.province,''))) LIKE '%ajk%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%azad%'
+            )
+        )::int AS verified_ajk,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND (
+              LOWER(TRIM(COALESCE(a.province,''))) LIKE '%gilgit%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%baltistan%'
+              OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%gb%'
+            )
+        )::int AS verified_gb,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND LOWER(TRIM(COALESCE(a.province,''))) LIKE '%baloch%'
+        )::int AS verified_balochistan,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(a.verify, '')) = 'true'
+            AND TRIM(COALESCE(a.country,'')) <> ''
+            AND LOWER(TRIM(COALESCE(a.country,''))) NOT LIKE '%pakistan%'
+            AND LOWER(TRIM(COALESCE(a.country,''))) NOT IN ('pk')
+        )::int AS verified_overseas,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'true')::int AS verified_total_rows
       FROM public.tbl_alumni a
       WHERE 1=1
       ${accessFilterCondition}
@@ -940,6 +1363,7 @@ export async function GET(req: Request) {
     const mb = (membershipRows[0] ?? {}) as Record<string, number | undefined>;
     const ca = (chapterAssocRows[0] ?? {}) as Record<string, number | undefined>;
     const cd = (cardsRows[0] ?? {}) as Record<string, number | undefined>;
+    const vcd = (verifiedCardsRows[0] ?? {}) as Record<string, number | undefined>;
     const tk = (talksRows[0] ?? {}) as Record<string, number | undefined>;
     const ce = (chapterEventsRows[0] ?? {}) as { quarter_count?: number; ytd_count?: number; total_count?: number };
     const cr = (careerDerivedRows[0] ?? {}) as Record<string, number | undefined>;
@@ -958,6 +1382,16 @@ export async function GET(req: Request) {
         Number(oc.unemployed_choice ?? 0)
     );
 
+    const verifiedTotalWithOcc = Number(oc.verified_with_status ?? 0);
+    const verifiedOccOther = Math.max(
+      0,
+      verifiedTotalWithOcc -
+        Number(oc.verified_employed ?? 0) -
+        Number(oc.verified_self_employed ?? 0) -
+        Number(oc.verified_unemployed_searching ?? 0) -
+        Number(oc.verified_unemployed_choice ?? 0)
+    );
+
     const provinceSumKnown =
       Number(pr.punjab ?? 0) +
       Number(pr.islamabad ?? 0) +
@@ -968,6 +1402,17 @@ export async function GET(req: Request) {
       Number(pr.balochistan ?? 0) +
       Number(pr.overseas ?? 0);
     const provinceOther = Math.max(0, Number(pr.total_rows ?? 0) - provinceSumKnown);
+
+    const verifiedProvinceSumKnown =
+      Number(pr.verified_punjab ?? 0) +
+      Number(pr.verified_islamabad ?? 0) +
+      Number(pr.verified_kpk ?? 0) +
+      Number(pr.verified_sindh ?? 0) +
+      Number(pr.verified_ajk ?? 0) +
+      Number(pr.verified_gb ?? 0) +
+      Number(pr.verified_balochistan ?? 0) +
+      Number(pr.verified_overseas ?? 0);
+    const verifiedProvinceOther = Math.max(0, Number(pr.verified_total_rows ?? 0) - verifiedProvinceSumKnown);
 
     const meetupsForKpi = applyPeriodFilter
       ? (ev.period_count ?? null)
@@ -1010,6 +1455,13 @@ export async function GET(req: Request) {
           c: ah.category_c ?? null,
           d: ah.category_d ?? null,
         },
+        verifiedCategory: {
+          aPlus: ah.verified_category_a_plus ?? null,
+          a: ah.verified_category_a ?? null,
+          b: ah.verified_category_b ?? null,
+          c: ah.verified_category_c ?? null,
+          d: ah.verified_category_d ?? null,
+        },
       },
       kpis: {
         totalAlumni: kpi.total_alumni ?? null,
@@ -1022,7 +1474,112 @@ export async function GET(req: Request) {
         activeBenefitsDiscounts: mb.active_benefits ?? null,
       },
       sectionA: {
-        facultyRows: facultyRows.map((r) => r as { faculty: string; registrations: number }),
+        facultyRows: facultyRows.map((r) => r as {
+          faculty: string;
+          registrations: number;
+          verified: number;
+          active: number;
+        }),
+        facultyCategoryRows: facultyCategoryRows.map((r) => {
+          const row = r as {
+            faculty: string;
+            a_plus: number;
+            a: number;
+            b: number;
+            c: number;
+            d: number;
+          };
+          return {
+            faculty: row.faculty,
+            aPlus: row.a_plus ?? 0,
+            a: row.a ?? 0,
+            b: row.b ?? 0,
+            c: row.c ?? 0,
+            d: row.d ?? 0,
+          };
+        }),
+        facultyOccupationRows: facultyOccupationRows.map((r) => {
+          const row = r as {
+            faculty: string;
+            employed: number;
+            self_employed: number;
+            unemployed_searching: number;
+            unemployed_choice: number;
+            with_status: number;
+          };
+          const withStatus = row.with_status ?? 0;
+          const other = Math.max(
+            0,
+            withStatus -
+              (row.employed ?? 0) -
+              (row.self_employed ?? 0) -
+              (row.unemployed_searching ?? 0) -
+              (row.unemployed_choice ?? 0)
+          );
+          return {
+            faculty: row.faculty,
+            employed: row.employed ?? 0,
+            selfEmployed: row.self_employed ?? 0,
+            unemployedSearching: row.unemployed_searching ?? 0,
+            unemployedByChoice: row.unemployed_choice ?? 0,
+            other,
+          };
+        }),
+        facultyTransitionRows: facultyTransitionRows.map((r) => {
+          const row = r as {
+            faculty: string;
+            before_graduation: number;
+            immediate: number;
+            within_3: number;
+            within_6: number;
+            after_6: number;
+            unknown_bucket: number;
+          };
+          return {
+            faculty: row.faculty,
+            beforeGraduation: row.before_graduation ?? 0,
+            immediateAfterGraduation: row.immediate ?? 0,
+            within3Months: row.within_3 ?? 0,
+            within6Months: row.within_6 ?? 0,
+            after6Months: row.after_6 ?? 0,
+            unknown: row.unknown_bucket ?? 0,
+          };
+        }),
+        facultyLocationRows: facultyLocationRows.map((r) => {
+          const row = r as {
+            faculty: string;
+            punjab: number;
+            islamabad: number;
+            kpk: number;
+            sindh: number;
+            ajk: number;
+            gb: number;
+            balochistan: number;
+            overseas: number;
+            verified_total: number;
+          };
+          const sumKnown =
+            (row.punjab ?? 0) +
+            (row.islamabad ?? 0) +
+            (row.kpk ?? 0) +
+            (row.sindh ?? 0) +
+            (row.ajk ?? 0) +
+            (row.gb ?? 0) +
+            (row.balochistan ?? 0) +
+            (row.overseas ?? 0);
+          return {
+            faculty: row.faculty,
+            punjab: row.punjab ?? 0,
+            islamabad: row.islamabad ?? 0,
+            kpk: row.kpk ?? 0,
+            sindh: row.sindh ?? 0,
+            ajk: row.ajk ?? 0,
+            gb: row.gb ?? 0,
+            balochistan: row.balochistan ?? 0,
+            overseas: row.overseas ?? 0,
+            other: Math.max(0, (row.verified_total ?? 0) - sumKnown),
+          };
+        }),
         trainedFacultyAdmins,
         transitionVelocity: {
           beforeGraduation: tr.before_graduation ?? null,
@@ -1050,6 +1607,32 @@ export async function GET(req: Request) {
           overseas: pr.overseas ?? null,
           other: provinceOther > 0 ? provinceOther : null,
         },
+        verifiedTransitionVelocity: {
+          beforeGraduation: tr.verified_before_graduation ?? null,
+          immediateAfterGraduation: tr.verified_immediate ?? null,
+          within3Months: tr.verified_within_3 ?? null,
+          within6Months: tr.verified_within_6 ?? null,
+          after6Months: tr.verified_after_6 ?? null,
+          unknown: tr.verified_unknown_bucket ?? null,
+        },
+        verifiedCurrentOccupation: {
+          employed: oc.verified_employed ?? null,
+          selfEmployed: oc.verified_self_employed ?? null,
+          unemployedSearching: oc.verified_unemployed_searching ?? null,
+          unemployedByChoice: oc.verified_unemployed_choice ?? null,
+          other: verifiedOccOther > 0 ? verifiedOccOther : null,
+        },
+        verifiedProvinceLocation: {
+          punjab: pr.verified_punjab ?? null,
+          islamabad: pr.verified_islamabad ?? null,
+          kpk: pr.verified_kpk ?? null,
+          sindh: pr.verified_sindh ?? null,
+          ajk: pr.verified_ajk ?? null,
+          gb: pr.verified_gb ?? null,
+          balochistan: pr.verified_balochistan ?? null,
+          overseas: pr.verified_overseas ?? null,
+          other: verifiedProvinceOther > 0 ? verifiedProvinceOther : null,
+        },
       },
       sectionB: {
         chaptersAssociations: {
@@ -1072,6 +1655,35 @@ export async function GET(req: Request) {
           readyForDelivery: cd.ready_for_delivery ?? null,
           delivered: cd.delivered ?? null,
         },
+        verifiedCardsStatus: {
+          totalCards: vcd.card_total ?? null,
+          applied: vcd.applied ?? null,
+          review: vcd.review ?? null,
+          onHold: vcd.on_hold ?? null,
+          underPrinting: vcd.under_printing ?? null,
+          readyForDelivery: vcd.ready_for_delivery ?? null,
+          delivered: vcd.delivered ?? null,
+        },
+        facultyHonorCardRows: facultyHonorCardRows.map((r) => {
+          const row = r as {
+            faculty: string;
+            applied: number;
+            review: number;
+            on_hold: number;
+            under_printing: number;
+            ready_for_delivery: number;
+            delivered: number;
+          };
+          return {
+            faculty: row.faculty,
+            applied: row.applied ?? 0,
+            review: row.review ?? 0,
+            onHold: row.on_hold ?? 0,
+            underPrinting: row.under_printing ?? 0,
+            readyForDelivery: row.ready_for_delivery ?? 0,
+            delivered: row.delivered ?? 0,
+          };
+        }),
         activities: {
           mentorshipSessions: { quarter: tk.mentorship_quarter ?? 0, ytd: tk.mentorship_ytd ?? 0 },
           seminarsParticipation: { quarter: tk.seminars_quarter ?? 0, ytd: tk.seminars_ytd ?? 0 },

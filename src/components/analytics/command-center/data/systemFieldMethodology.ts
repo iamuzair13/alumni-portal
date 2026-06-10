@@ -75,7 +75,7 @@ export const OTHER_SYSTEM_METHODOLOGY = {
     {
       label: "Period metadata",
       detail:
-        "From payload.meta: timeRange label, active facultyId filter, and periodType (all / year / month) chosen in the command center header.",
+        "From payload.meta: timeRange label, active facultyId filter, and periodType (all / year / month / range) chosen in the command center header.",
     },
     {
       label: "Logs · Backups · Config",

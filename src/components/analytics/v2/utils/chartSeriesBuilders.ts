@@ -45,8 +45,13 @@ export function facultyRegistrationsChart(data: ManagementDashboardPayload | und
   };
 }
 
-export function occupationChart(data: ManagementDashboardPayload | undefined): ChartGroupMeta {
-  const oc = data?.sectionA?.currentOccupation;
+export function occupationChart(
+  data: ManagementDashboardPayload | undefined,
+  options?: { verifiedOnly?: boolean }
+): ChartGroupMeta {
+  const oc = options?.verifiedOnly
+    ? data?.sectionA?.verifiedCurrentOccupation ?? data?.sectionA?.currentOccupation
+    : data?.sectionA?.currentOccupation;
   const chartSeries: ChartSeriesPoint[] = [
     { label: "Employed", value: num(oc?.employed), color: KPI_COLOR_HEX.emerald },
     { label: "Self-employed", value: num(oc?.selfEmployed), color: KPI_COLOR_HEX.sky },
@@ -71,8 +76,13 @@ const PROVINCE_MAP_KEYS: Record<string, string> = {
   GB: "PK-GB",
 };
 
-export function provinceLocationChart(data: ManagementDashboardPayload | undefined): ChartGroupMeta {
-  const pl = data?.sectionA?.provinceLocation;
+export function provinceLocationChart(
+  data: ManagementDashboardPayload | undefined,
+  options?: { verifiedOnly?: boolean }
+): ChartGroupMeta {
+  const pl = options?.verifiedOnly
+    ? data?.sectionA?.verifiedProvinceLocation ?? data?.sectionA?.provinceLocation
+    : data?.sectionA?.provinceLocation;
   const regions = [
     { title: "Punjab", value: pl?.punjab },
     { title: "Islamabad", value: pl?.islamabad },
@@ -202,8 +212,13 @@ export function chaptersAssociationsChart(data: ManagementDashboardPayload | und
   };
 }
 
-export function honorCardsChart(data: ManagementDashboardPayload | undefined): ChartGroupMeta {
-  const cards = data?.sectionB?.cardsStatus;
+export function honorCardsChart(
+  data: ManagementDashboardPayload | undefined,
+  options?: { verifiedOnly?: boolean }
+): ChartGroupMeta {
+  const cards = options?.verifiedOnly
+    ? data?.sectionB?.verifiedCardsStatus ?? data?.sectionB?.cardsStatus
+    : data?.sectionB?.cardsStatus;
   const chartSeries: ChartSeriesPoint[] = [
     { label: "Applied", value: num(cards?.applied), color: KPI_COLOR_HEX.slate },
     { label: "Under review", value: num(cards?.review), color: KPI_COLOR_HEX.amber },
@@ -333,8 +348,13 @@ export function discountCategoriesChart(data: ManagementDashboardPayload | undef
   };
 }
 
-export function alumniCategoriesChart(data: ManagementDashboardPayload | undefined): ChartGroupMeta {
-  const cat = data?.alumniHeadline?.category;
+export function alumniCategoriesChart(
+  data: ManagementDashboardPayload | undefined,
+  options?: { verifiedOnly?: boolean }
+): ChartGroupMeta {
+  const cat = options?.verifiedOnly
+    ? data?.alumniHeadline?.verifiedCategory ?? data?.alumniHeadline?.category
+    : data?.alumniHeadline?.category;
   const chartSeries: ChartSeriesPoint[] = [
     { label: "A+", value: num(cat?.aPlus), color: KPI_COLOR_HEX.violet },
     { label: "A", value: num(cat?.a), color: KPI_COLOR_HEX.sky },

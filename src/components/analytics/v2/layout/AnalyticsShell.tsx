@@ -114,6 +114,7 @@ export function AnalyticsShell({
                 <option value="all">All</option>
                 <option value="year">Year</option>
                 <option value="month">Month</option>
+                <option value="range">Date range</option>
               </select>
             </div>
 

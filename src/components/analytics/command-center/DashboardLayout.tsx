@@ -7,11 +7,10 @@ import type { AnalyticsPeriodFilter } from "@/components/analytics/v2/utils/peri
 import { CommandCenterHeader } from "./CommandCenterHeader";
 import { SectionAlumni } from "./sections/SectionAlumni";
 import { SectionPerks } from "./sections/SectionPerks";
-import { SectionSystem } from "./sections/SectionSystem";
-import type { SystemHealthPayload } from "@/lib/analytics/systemHealth";
+import { SectionTrainedAdmins } from "./sections/SectionTrainedAdmins";
 import { ccPage, ccSection, ccTabActive, ccTabInactive } from "./theme";
 
-type Tab = "alumni" | "perks" | "system";
+type Tab = "alumni" | "perks";
 
 export function DashboardLayout({
   data,
@@ -24,8 +23,6 @@ export function DashboardLayout({
   periodFilter,
   onPeriodFilterChange,
   dataUpdatedAt,
-  scopeNotes,
-  systemHealth,
   performance,
 }: {
   data: ManagementDashboardPayload | undefined;
@@ -38,11 +35,26 @@ export function DashboardLayout({
   periodFilter: AnalyticsPeriodFilter;
   onPeriodFilterChange: (f: AnalyticsPeriodFilter) => void;
   dataUpdatedAt: number;
-  scopeNotes?: readonly string[];
-  systemHealth?: SystemHealthPayload;
   performance: React.ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>("alumni");
+
+  const alumniColumn = (
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <section
+        aria-label="Alumni Intelligence"
+        className={`min-h-0 flex-1 overflow-y-auto ${ccSection.alumni}`}
+      >
+        <SectionAlumni data={data} trends={trends} isLoading={isLoading} />
+      </section>
+      <section
+        aria-label="Trained Faculty Admins"
+        className={`shrink-0 ${ccSection.admins}`}
+      >
+        <SectionTrainedAdmins data={data} isLoading={isLoading} />
+      </section>
+    </div>
+  );
 
   return (
     <div className={`flex h-[calc(100dvh-68px)] flex-col overflow-hidden p-2 sm:p-3 ${ccPage}`}>
@@ -57,13 +69,12 @@ export function DashboardLayout({
         performance={performance}
       />
 
-      {/* Mobile / tablet tabs (<1280px) */}
-      <div className="mb-1.5 flex shrink-0 gap-1.5 min-[1280px]:hidden">
+      {/* Mobile / tablet tabs (<1024px) */}
+      <div className="mb-1.5 flex shrink-0 gap-1.5 lg:hidden">
         {(
           [
             { id: "alumni" as const, label: "Alumni" },
             { id: "perks" as const, label: "Perks" },
-            { id: "system" as const, label: "System" },
           ] as const
         ).map((t) => (
           <button
@@ -79,49 +90,26 @@ export function DashboardLayout({
         ))}
       </div>
 
-      {/* Desktop ≥1440px: full bento 8/4 + system strip */}
-      <div className="hidden min-h-0 flex-1 grid-cols-12 gap-2 overflow-hidden min-[1440px]:grid min-[1440px]:grid-rows-[1fr_minmax(148px,auto)]">
-        <div className="col-span-12 grid min-h-0 grid-cols-12 gap-2 overflow-hidden">
-          <section aria-label="Alumni Intelligence" className={`col-span-8 min-h-0 overflow-hidden ${ccSection.alumni}`}>
-            <SectionAlumni data={data} trends={trends} isLoading={isLoading} />
-          </section>
-          <section aria-label="Perks and Benefits" className={`col-span-4 min-h-0 overflow-hidden ${ccSection.perks}`}>
+      {/* Laptop & desktop — equal-height columns, no outer scroll */}
+      <div className="relative z-0 hidden min-h-0 flex-1 gap-2 overflow-hidden lg:grid lg:grid-cols-2 lg:grid-rows-1 xl:grid-cols-12">
+        <div className="flex h-full min-h-0 flex-col lg:col-span-1 xl:col-span-8">{alumniColumn}</div>
+        <section
+          aria-label="Perks and Benefits"
+          className={`flex h-full min-h-0 flex-col overflow-hidden lg:col-span-1 xl:col-span-4 ${ccSection.perks}`}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <SectionPerks data={data} isLoading={isLoading} />
-          </section>
-        </div>
-        <section aria-label="System and Faculty" className={`col-span-12 min-h-0 shrink-0 overflow-hidden ${ccSection.system}`}>
-          <SectionSystem data={data} scopeNotes={scopeNotes} systemHealth={systemHealth} isLoading={isLoading} />
+          </div>
         </section>
       </div>
 
-      {/* 1280–1439px: 2-column equal */}
-      <div className="hidden min-h-0 flex-1 flex-col gap-2 overflow-hidden min-[1280px]:flex min-[1440px]:hidden">
-        <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-hidden">
-          <section className={`min-h-0 overflow-hidden ${ccSection.alumni}`}>
-            <SectionAlumni data={data} trends={trends} isLoading={isLoading} />
-          </section>
-          <section className={`min-h-0 overflow-hidden ${ccSection.perks}`}>
-            <SectionPerks data={data} isLoading={isLoading} />
-          </section>
-        </div>
-        <section className={`min-h-[148px] shrink-0 overflow-hidden ${ccSection.system}`}>
-          <SectionSystem data={data} scopeNotes={scopeNotes} systemHealth={systemHealth} isLoading={isLoading} />
-        </section>
-      </div>
-
-      {/* <1280px: tabbed single section */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden min-[1280px]:hidden">
+      {/* <1024px: tabbed, scroll within panel */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:hidden">
         {tab === "alumni" ? (
-          <section className={`min-h-0 flex-1 overflow-hidden ${ccSection.alumni}`}>
-            <SectionAlumni data={data} trends={trends} isLoading={isLoading} />
-          </section>
-        ) : tab === "perks" ? (
-          <section className={`min-h-0 flex-1 overflow-hidden ${ccSection.perks}`}>
-            <SectionPerks data={data} isLoading={isLoading} />
-          </section>
+          alumniColumn
         ) : (
-          <section className={`min-h-0 flex-1 overflow-hidden ${ccSection.system}`}>
-            <SectionSystem data={data} scopeNotes={scopeNotes} systemHealth={systemHealth} isLoading={isLoading} />
+          <section className={ccSection.perks}>
+            <SectionPerks data={data} isLoading={isLoading} />
           </section>
         )}
       </div>

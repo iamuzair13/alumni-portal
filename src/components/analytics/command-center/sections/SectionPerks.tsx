@@ -15,6 +15,7 @@ import AnalyticsDataTable from "@/components/analytics/management/AnalyticsDataT
 import { AnalyticsChartRenderer } from "@/components/analytics/v2/charts/AnalyticsChartRenderer";
 import { AnalyticsCard } from "../AnalyticsCard";
 import { ExpandDrawer } from "../ExpandDrawer";
+import { MasonryGrid } from "../MasonryGrid";
 import { Sparkline } from "../charts/Sparkline";
 import { Bar } from "../charts/Bar";
 import { FillChart } from "../charts/FillChart";
@@ -209,7 +210,7 @@ export function SectionPerks({
 
   return (
     <>
-      <div className="grid h-full min-h-0 grid-cols-2 grid-rows-5 gap-2 overflow-hidden">
+      <MasonryGrid columns="narrow" layout="uniform">
         <AnalyticsCard
           id={CARD_IDS.chapters}
           title="Engagements & Chapters"
@@ -217,12 +218,12 @@ export function SectionPerks({
           accent="violet"
           primaryValue={chapters.national + chapters.international}
           secondaryLabel={`${chapters.members.toLocaleString()} members`}
-          colSpan="col-span-2 row-span-1"
-          delay={0.3}
+          masonrySize="md"
           chartFill
+          delay={0.3}
           onExpand={open}
           chart={
-            <FillChart minHeight={36}>
+            <FillChart minHeight={80}>
               {(h) => <Sparkline data={chapterSpark} color="#8b5cf6" height={h} />}
             </FillChart>
           }
@@ -234,9 +235,8 @@ export function SectionPerks({
           accent="violet"
           primaryValue={jobsPosted}
           secondaryLabel="Jobs posted"
-          colSpan="col-span-1 row-span-1"
+          masonrySize="md"
           delay={0.35}
-          compact
           onExpand={open}
           chart={<MetricChips data={career.chart.chartSeries.slice(0, 3)} />}
         />
@@ -247,9 +247,8 @@ export function SectionPerks({
           accent="violet"
           primaryValue={meetups.meetupsTotal}
           secondaryLabel={`${meetups.chapterEventsTotal} chapter events`}
-          colSpan="col-span-1 row-span-1"
+          masonrySize="md"
           delay={0.4}
-          compact
           onExpand={open}
           chart={<Heatmap data={meetups.heatmapSeries} />}
         />
@@ -262,14 +261,14 @@ export function SectionPerks({
           secondaryLabel={
             activityTotal > 0 ? "YTD total" : "YTD total · No activities recorded yet"
           }
-          colSpan="col-span-2 row-span-1"
-          delay={0.45}
+          masonrySize="md"
           chartFill={activityTotal > 0}
+          delay={0.45}
           onExpand={open}
           chart={
             activityTotal > 0 ? (
-              <FillChart minHeight={32}>
-                {(h) => <Bar data={activities.chartSeries.slice(0, 3)} height={h} horizontal />}
+              <FillChart minHeight={80}>
+                {(h) => <Bar data={activities.chartSeries.slice(0, 4)} height={h} horizontal />}
               </FillChart>
             ) : undefined
           }
@@ -281,9 +280,8 @@ export function SectionPerks({
           accent="violet"
           primaryValue={publications.stories}
           secondaryLabel={`${publications.surveys} surveys`}
-          colSpan="col-span-1 row-span-1"
+          masonrySize="md"
           delay={0.5}
-          compact
           onExpand={open}
           chart={
             <MetricChips
@@ -302,11 +300,10 @@ export function SectionPerks({
           accent="violet"
           primaryValue={perksTotal}
           secondaryLabel="Active perks"
-          colSpan="col-span-1 row-span-1"
+          masonrySize="md"
           delay={0.55}
-          compact
           onExpand={open}
-          chart={<ProgressBars data={memberships.chartSeries} maxItems={2} />}
+          chart={<ProgressBars data={memberships.chartSeries} maxItems={3} />}
         />
         <AnalyticsCard
           id={CARD_IDS.merchants}
@@ -315,17 +312,16 @@ export function SectionPerks({
           accent="violet"
           primaryValue={discounts.merchants.length}
           secondaryLabel="Partner merchants"
-          colSpan="col-span-2 row-span-1"
+          masonrySize="md"
           delay={0.6}
-          splitBody
           onExpand={open}
           chart={
             discounts.merchants.length > 0 ? (
-              <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1">
-                {discounts.merchants.slice(0, 4).map((m) => (
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1">
+                {discounts.merchants.slice(0, 6).map((m) => (
                   <span
                     key={`${m.merchant}-${m.reference}`}
-                    className="inline-flex max-w-[calc(50%-0.25rem)] items-center gap-1 rounded-full border border-violet-200/80 bg-violet-50/80 px-2 py-0.5 text-[10px] font-medium text-violet-800 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200"
+                    className="inline-flex max-w-full items-center gap-1 rounded-full border border-violet-200/80 bg-violet-50/80 px-2 py-0.5 text-[10px] font-medium text-violet-800 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200"
                     title={m.merchant}
                   >
                     <span className="truncate">{m.merchant}</span>
@@ -336,9 +332,9 @@ export function SectionPerks({
                     ) : null}
                   </span>
                 ))}
-                {discounts.merchants.length > 4 ? (
+                {discounts.merchants.length > 6 ? (
                   <span className="shrink-0 text-[10px] font-semibold text-violet-600 dark:text-violet-300">
-                    +{discounts.merchants.length - 4}
+                    +{discounts.merchants.length - 6}
                   </span>
                 ) : null}
               </div>
@@ -351,7 +347,7 @@ export function SectionPerks({
             )
           }
         />
-      </div>
+      </MasonryGrid>
 
       <ExpandDrawer open={!!active} title={active?.title ?? ""} onClose={close} accent="violet">
         {active?.content}
