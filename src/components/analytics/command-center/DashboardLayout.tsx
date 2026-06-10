@@ -8,6 +8,7 @@ import { CommandCenterHeader } from "./CommandCenterHeader";
 import { SectionAlumni } from "./sections/SectionAlumni";
 import { SectionPerks } from "./sections/SectionPerks";
 import { SectionSystem } from "./sections/SectionSystem";
+import type { SystemHealthPayload } from "@/lib/analytics/systemHealth";
 import { ccPage, ccSection, ccTabActive, ccTabInactive } from "./theme";
 
 type Tab = "alumni" | "perks" | "system";
@@ -24,6 +25,7 @@ export function DashboardLayout({
   onPeriodFilterChange,
   dataUpdatedAt,
   scopeNotes,
+  systemHealth,
   performance,
 }: {
   data: ManagementDashboardPayload | undefined;
@@ -37,6 +39,7 @@ export function DashboardLayout({
   onPeriodFilterChange: (f: AnalyticsPeriodFilter) => void;
   dataUpdatedAt: number;
   scopeNotes?: readonly string[];
+  systemHealth?: SystemHealthPayload;
   performance: React.ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>("alumni");
@@ -87,7 +90,7 @@ export function DashboardLayout({
           </section>
         </div>
         <section aria-label="System and Faculty" className={`col-span-12 min-h-0 shrink-0 overflow-hidden ${ccSection.system}`}>
-          <SectionSystem data={data} scopeNotes={scopeNotes} isLoading={isLoading} />
+          <SectionSystem data={data} scopeNotes={scopeNotes} systemHealth={systemHealth} isLoading={isLoading} />
         </section>
       </div>
 
@@ -102,7 +105,7 @@ export function DashboardLayout({
           </section>
         </div>
         <section className={`min-h-[148px] shrink-0 overflow-hidden ${ccSection.system}`}>
-          <SectionSystem data={data} scopeNotes={scopeNotes} isLoading={isLoading} />
+          <SectionSystem data={data} scopeNotes={scopeNotes} systemHealth={systemHealth} isLoading={isLoading} />
         </section>
       </div>
 
@@ -118,7 +121,7 @@ export function DashboardLayout({
           </section>
         ) : (
           <section className={`min-h-0 flex-1 overflow-hidden ${ccSection.system}`}>
-            <SectionSystem data={data} scopeNotes={scopeNotes} isLoading={isLoading} />
+            <SectionSystem data={data} scopeNotes={scopeNotes} systemHealth={systemHealth} isLoading={isLoading} />
           </section>
         )}
       </div>

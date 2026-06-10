@@ -16,6 +16,7 @@ export default function AnalyticsDashboardClient() {
     isLoadingFaculties,
     data,
     scopeNotes,
+    systemHealth,
     trends,
     isLoading,
     dataUpdatedAt,
@@ -38,6 +39,7 @@ export default function AnalyticsDashboardClient() {
       onPeriodFilterChange={setPeriodFilter}
       dataUpdatedAt={dataUpdatedAt}
       scopeNotes={scopeNotes}
+      systemHealth={systemHealth}
       performance={performance}
     />
   );

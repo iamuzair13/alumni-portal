@@ -62,6 +62,7 @@ export function useCommandCenterData() {
 
   const data = dashboardQuery.data as ManagementDashboardPayload | undefined;
   const scopeNotes = dashboardQuery.data?.scopeNotes;
+  const systemHealth = dashboardQuery.data?.systemHealth;
   const isLoading = dashboardQuery.isLoading || trendsQuery.isLoading;
   const dataUpdatedAt = Math.max(dashboardQuery.dataUpdatedAt, trendsQuery.dataUpdatedAt);
 
@@ -74,6 +75,7 @@ export function useCommandCenterData() {
     isLoadingFaculties: facultiesQuery.isLoading,
     data,
     scopeNotes,
+    systemHealth,
     trends: trendsQuery.data,
     isLoading,
     dataUpdatedAt,

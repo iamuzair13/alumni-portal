@@ -8,6 +8,7 @@ import {
   MANAGEMENT_DASHBOARD_SCOPE_NOTES,
   type ManagementDashboardPayload,
 } from "@/lib/analytics/management-dashboard";
+import { collectSystemHealth } from "@/lib/analytics/systemHealth";
 
 type NumOrNull = number | null;
 
@@ -1127,11 +1128,14 @@ export async function GET(req: Request) {
       },
     };
 
+    const systemHealth = await collectSystemHealth();
+
     return NextResponse.json(
       {
         ...payload,
         ...(debug ? { debug: { trainedFacultyAdmins: trainedFacultyAdminsDebug } } : {}),
         scopeNotes: MANAGEMENT_DASHBOARD_SCOPE_NOTES,
+        systemHealth,
         legacy: {
           totalEventsMeetupsSelectedRange: ev.selected_range_count ?? null,
           jobsUolAllTime: jb.uol_total ?? null,

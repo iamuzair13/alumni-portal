@@ -3,6 +3,8 @@
  * Populated by GET /api/analytics/realtime-dashboard
  */
 
+import type { SystemHealthPayload } from "@/lib/analytics/systemHealth";
+
 export type QuarterYtd = { quarter: number | null; ytd: number | null };
 
 export type ManagementDashboardAlumniHeadline = {
@@ -152,6 +154,7 @@ export const MANAGEMENT_DASHBOARD_SCOPE_NOTES: readonly string[] = [
 
 export type ManagementDashboardApiResponse = ManagementDashboardPayload & {
   scopeNotes: readonly string[];
+  systemHealth?: SystemHealthPayload;
   legacy?: {
     totalEventsMeetupsSelectedRange?: number | null;
     jobsUolAllTime?: number | null;

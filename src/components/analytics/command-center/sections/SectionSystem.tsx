@@ -8,8 +8,45 @@ import AnalyticsDataTable from "@/components/analytics/management/AnalyticsDataT
 import { ExpandDrawer } from "../ExpandDrawer";
 import { useExpandable } from "../hooks/useExpandable";
 import { mapTrainedAdmins } from "../data/mapPayloadToCards";
-import { MOCK_SYSTEM_HEALTH, MOCK_SYSTEM_LOGS } from "../data/mockAnalyticsData";
+import type { SystemHealthPayload } from "@/lib/analytics/systemHealth";
+import {
+  OTHER_SYSTEM_METHODOLOGY,
+  SYSTEM_HEALTH_METHODOLOGY,
+  TRAINED_ADMINS_METHODOLOGY,
+} from "../data/systemFieldMethodology";
 import { ccAccent, ccCard, ccCardSub, ccCardTitle, ccCardValueMd } from "../theme";
+
+function MethodologyPanel({
+  summary,
+  source,
+  items,
+  footer,
+}: {
+  summary: string;
+  source: string;
+  items: ReadonlyArray<{ label: string; detail: string }>;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <div className="mt-4 rounded-xl border border-amber-100/80 bg-amber-50/40 p-3 dark:border-amber-500/15 dark:bg-amber-500/5">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        How it&apos;s calculated &amp; exposed
+      </p>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-gray-600 dark:text-gray-400">{summary}</p>
+      <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-500">
+        <span className="font-semibold text-gray-600 dark:text-gray-300">Source:</span> {source}
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {items.map((item) => (
+          <li key={item.label} className="text-[10px] leading-snug text-gray-500 dark:text-gray-400">
+            <span className="font-semibold text-gray-700 dark:text-gray-300">{item.label}:</span> {item.detail}
+          </li>
+        ))}
+      </ul>
+      {footer ? <div className="mt-2">{footer}</div> : null}
+    </div>
+  );
+}
 
 const CARD_IDS = {
   admins: "trained-admins",
@@ -39,21 +76,26 @@ const healthIcons: Record<string, React.ElementType> = {
 export function SectionSystem({
   data,
   scopeNotes,
+  systemHealth,
   isLoading,
 }: {
   data: ManagementDashboardPayload | undefined;
   scopeNotes?: readonly string[];
+  systemHealth?: SystemHealthPayload;
   isLoading: boolean;
 }) {
   const { activeId, open, close } = useExpandable();
   const admins = mapTrainedAdmins(data);
   const amber = ccAccent.amber;
   const scopeCount = scopeNotes?.length ?? 0;
+  const healthMetrics = systemHealth?.metrics ?? [];
+  const systemLogs = systemHealth?.logs ?? [];
 
   const drawers: Record<string, { title: string; content: React.ReactNode }> = {
     [CARD_IDS.admins]: {
       title: "Trained Faculty Admins",
       content: (
+        <>
         <AnalyticsDataTable
           isLoading={isLoading}
           columns={[
@@ -65,15 +107,31 @@ export function SectionSystem({
             count: r.count.toLocaleString(),
           }))}
         />
+        <MethodologyPanel
+          summary={TRAINED_ADMINS_METHODOLOGY.summary}
+          source={TRAINED_ADMINS_METHODOLOGY.source}
+          items={TRAINED_ADMINS_METHODOLOGY.calculations}
+          footer={
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+              <span className="font-semibold text-gray-600 dark:text-gray-300">Refresh:</span>{" "}
+              {TRAINED_ADMINS_METHODOLOGY.refresh}
+            </p>
+          }
+        />
+        </>
       ),
     },
     [CARD_IDS.health]: {
       title: "System Health",
       content: (
         <div className="space-y-4">
-          {/* TODO: Replace with actual API data */}
+          {systemHealth?.collectedAt ? (
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+              Last collected {new Date(systemHealth.collectedAt).toLocaleString()}
+            </p>
+          ) : null}
           <div className="grid grid-cols-2 gap-2">
-            {MOCK_SYSTEM_HEALTH.map((m) => (
+            {healthMetrics.map((m) => (
               <div
                 key={m.id}
                 className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50"
@@ -95,7 +153,22 @@ export function SectionSystem({
               { key: "level", label: "Level" },
               { key: "message", label: "Message" },
             ]}
-            rows={MOCK_SYSTEM_LOGS}
+            rows={systemLogs}
+          />
+          <MethodologyPanel
+            summary={SYSTEM_HEALTH_METHODOLOGY.summary}
+            source={SYSTEM_HEALTH_METHODOLOGY.source}
+            items={SYSTEM_HEALTH_METHODOLOGY.planned}
+            footer={
+              <ul className="space-y-1">
+                {SYSTEM_HEALTH_METHODOLOGY.statusRules.map((rule) => (
+                  <li key={rule.label} className="text-[10px] text-gray-500 dark:text-gray-400">
+                    <span className="font-semibold text-gray-600 dark:text-gray-300">{rule.label}:</span>{" "}
+                    {rule.detail}
+                  </li>
+                ))}
+              </ul>
+            }
           />
         </div>
       ),
@@ -127,6 +200,11 @@ export function SectionSystem({
               </ul>
             </div>
           ) : null}
+          <MethodologyPanel
+            summary={OTHER_SYSTEM_METHODOLOGY.summary}
+            source={OTHER_SYSTEM_METHODOLOGY.source}
+            items={OTHER_SYSTEM_METHODOLOGY.calculations}
+          />
         </div>
       ),
     },
@@ -196,7 +274,15 @@ export function SectionSystem({
 
         {/* System Health Metrics */}
         <div className="col-span-4 grid h-full min-h-0 grid-cols-4 gap-1.5">
-          {MOCK_SYSTEM_HEALTH.map((m, i) => {
+          {(healthMetrics.length > 0
+            ? healthMetrics
+            : [
+                { id: "api", label: "API Latency", value: isLoading ? "…" : "—", status: "warning" as const, unit: "ms" },
+                { id: "db", label: "Database", value: isLoading ? "…" : "—", status: "warning" as const },
+                { id: "storage", label: "Storage", value: isLoading ? "…" : "—", status: "warning" as const, unit: "%" },
+                { id: "errors", label: "Error Rate", value: isLoading ? "…" : "—", status: "warning" as const, unit: "%" },
+              ]
+          ).map((m, i) => {
             const MetricIcon = healthIcons[m.id] ?? Server;
             return (
               <motion.button
