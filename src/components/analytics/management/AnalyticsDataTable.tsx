@@ -34,7 +34,7 @@ export default function AnalyticsDataTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200/80 dark:border-gray-800">
-      <div className="max-h-80 overflow-auto">
+      <div className="overflow-auto">
         <table className="w-full text-xs">
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/80">

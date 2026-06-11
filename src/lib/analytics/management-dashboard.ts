@@ -29,9 +29,9 @@ export type TrainedFacultyAdminRow = {
   count: number;
   admins: number;
   viewers: number;
-  /** Earliest faculty-scope assignment (URA/UAA) or user account creation */
+  /** Earliest faculty-scope assignment (URA/UAA created_at), or account created_at when no assignment timestamp */
   firstTrainedAt: string | null;
-  /** Latest faculty-scope assignment (URA/UAA) or user account creation */
+  /** Latest faculty-scope assignment (URA/UAA created_at), or account created_at when no assignment timestamp */
   lastTrainedAt: string | null;
 };
 

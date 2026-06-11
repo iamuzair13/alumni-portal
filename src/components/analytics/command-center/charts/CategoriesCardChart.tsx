@@ -5,8 +5,7 @@ import type { ChartSeriesPoint } from "@/components/analytics/v2/utils/kpiConfig
 import { Donut } from "./Donut";
 import { ChartEmpty } from "./ChartEmpty";
 
-const LEGEND_ROW = 15;
-const LEGEND_PAD = 8;
+const CHART_GAP = 6;
 
 function formatCount(n: number): string {
   if (n >= 10_000) return `${(n / 1_000).toFixed(1)}k`;
@@ -15,26 +14,28 @@ function formatCount(n: number): string {
 
 export function CategoriesCardChart({ data }: { data: ChartSeriesPoint[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [donutSize, setDonutSize] = useState(96);
+  const legendRef = useRef<HTMLUListElement>(null);
+  const [donutSize, setDonutSize] = useState(88);
   const filtered = useMemo(() => data.filter((d) => d.value > 0), [data]);
-  const legendHeight = filtered.length * LEGEND_ROW + LEGEND_PAD;
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     const measure = () => {
-      const { width, height } = el.getBoundingClientRect();
-      const availH = Math.max(72, height - legendHeight);
-      const next = Math.floor(Math.min(width, availH) * 0.98);
-      if (next > 0) setDonutSize(Math.max(80, Math.min(next, 118)));
+      const { width, height } = container.getBoundingClientRect();
+      const legendH = legendRef.current?.getBoundingClientRect().height ?? 0;
+      const availH = Math.max(56, height - legendH - CHART_GAP);
+      const next = Math.floor(Math.min(width - 4, availH) * 0.92);
+      if (next > 0) setDonutSize(Math.max(64, Math.min(next, 104)));
     };
 
     measure();
     const ro = new ResizeObserver(measure);
-    ro.observe(el);
+    ro.observe(container);
+    if (legendRef.current) ro.observe(legendRef.current);
     return () => ro.disconnect();
-  }, [filtered.length, legendHeight]);
+  }, [filtered.length]);
 
   if (!filtered.length) {
     return <ChartEmpty height={88} message="No category data" />;
@@ -44,21 +45,24 @@ export function CategoriesCardChart({ data }: { data: ChartSeriesPoint[] }) {
   const sorted = [...filtered].sort((a, b) => b.value - a.value);
 
   return (
-    <div ref={containerRef} className="flex h-full w-full min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 items-center justify-center">
+    <div ref={containerRef} className="flex h-full w-full min-h-0 flex-col justify-between gap-1">
+      <div className="flex shrink-0 items-center justify-center py-0.5">
         <Donut data={sorted} size={donutSize} minSlicePercent={0.04} />
       </div>
 
-      <ul className="shrink-0 space-y-1 border-t border-emerald-100/80 pt-1 dark:border-emerald-500/10">
+      <ul
+        ref={legendRef}
+        className="shrink-0 space-y-0.5 border-t border-emerald-100/80 pt-1 dark:border-emerald-500/10"
+      >
         {sorted.map((tier) => {
           const pct = total > 0 ? Math.round((tier.value / total) * 100) : 0;
           return (
             <li
               key={tier.label}
-              className="flex items-center gap-1.5 text-[10px] leading-tight text-gray-600 dark:text-gray-400"
+              className="flex items-center gap-1.5 text-[9px] leading-tight text-gray-600 dark:text-gray-400"
             >
               <span
-                className="h-2 w-2 shrink-0 rounded-full"
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
                 style={{ backgroundColor: tier.color }}
               />
               <span className="min-w-0 flex-1 truncate font-medium text-gray-700 dark:text-gray-300">
@@ -67,7 +71,7 @@ export function CategoriesCardChart({ data }: { data: ChartSeriesPoint[] }) {
               <span className="shrink-0 tabular-nums font-semibold text-gray-800 dark:text-gray-200">
                 {formatCount(tier.value)}
               </span>
-              <span className="w-8 shrink-0 text-right tabular-nums text-gray-500 dark:text-gray-400">
+              <span className="w-7 shrink-0 text-right tabular-nums text-gray-500 dark:text-gray-400">
                 {pct}%
               </span>
             </li>

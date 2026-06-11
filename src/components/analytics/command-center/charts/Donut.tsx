@@ -101,6 +101,47 @@ export function Donut({
   const outerR = Math.max(22, dim / 2 - 2);
   const innerR = outerR * 0.45;
 
+  const pieChart = (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie
+          data={pieData}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          innerRadius={innerR}
+          outerRadius={outerR}
+          paddingAngle={2}
+          stroke="#fff"
+          strokeWidth={1.5}
+          isAnimationActive={false}
+          label={showLabels ? sliceLabel(minSlicePercent) : false}
+          labelLine={false}
+        >
+          {pieData.map((entry, i) => (
+            <Cell key={entry.name} fill={entry.fill ?? colorAt(i)} />
+          ))}
+        </Pie>
+        <Tooltip
+          contentStyle={{ fontSize: 11, borderRadius: 8 }}
+          formatter={(value: number, name: string) => [
+            `${Number(value).toLocaleString()} (${total > 0 ? ((Number(value) / total) * 100).toFixed(1) : 0}%)`,
+            name,
+          ]}
+        />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+
+  if (size != null && !showLegend) {
+    return (
+      <div className="shrink-0" style={{ width: dim, height: dim }}>
+        {pieChart}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full w-full min-h-0 flex-col overflow-hidden">
       <div
@@ -108,36 +149,7 @@ export function Donut({
         className="flex min-h-0 flex-1 items-center justify-center overflow-hidden"
       >
         <div className="shrink-0" style={{ width: dim, height: dim }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={innerR}
-                outerRadius={outerR}
-                paddingAngle={2}
-                stroke="#fff"
-                strokeWidth={1.5}
-                isAnimationActive={false}
-                label={showLabels ? sliceLabel(minSlicePercent) : false}
-                labelLine={false}
-              >
-                {pieData.map((entry, i) => (
-                  <Cell key={entry.name} fill={entry.fill ?? colorAt(i)} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                formatter={(value: number, name: string) => [
-                  `${Number(value).toLocaleString()} (${total > 0 ? ((Number(value) / total) * 100).toFixed(1) : 0}%)`,
-                  name,
-                ]}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          {pieChart}
         </div>
       </div>
 

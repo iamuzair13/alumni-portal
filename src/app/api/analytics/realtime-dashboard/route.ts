@@ -1362,7 +1362,7 @@ export async function GET(req: Request) {
                 fby_res.id
               ) AS faculty_id,
               LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
-              ura.created_at AS scope_trained_at,
+              ura.created_at AS assignment_at,
               u.created_at AS user_created_at
             FROM public.user_resource_access ura
             INNER JOIN public.users u ON u.id = ura.user_id
@@ -1402,20 +1402,34 @@ export async function GET(req: Request) {
             SELECT
               user_id,
               faculty_id,
-              MAX(user_type) AS user_type,
-              MIN(LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at)) AS trained_at
+              CASE
+                WHEN BOOL_OR(user_type = 'admin') THEN 'admin'
+                ELSE MAX(user_type)
+              END AS user_type,
+              MIN(user_created_at) AS user_created_at,
+              MIN(assignment_at) AS first_assignment_at,
+              MAX(assignment_at) AS last_assignment_at
             FROM ura_scoped
             GROUP BY user_id, faculty_id
+          ),
+          per_user_faculty_dated AS (
+            SELECT
+              user_id,
+              faculty_id,
+              user_type,
+              COALESCE(first_assignment_at, user_created_at) AS first_trained_at,
+              COALESCE(last_assignment_at, user_created_at) AS last_trained_at
+            FROM per_user_faculty
           ),
           per_faculty AS (
             SELECT
               faculty_id,
-              COUNT(*)::int AS cnt,
-              COUNT(*) FILTER (WHERE user_type = 'admin')::int AS admins,
-              COUNT(*) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
-              MIN(trained_at) AS first_trained_at,
-              MAX(trained_at) AS last_trained_at
-            FROM per_user_faculty
+              COUNT(DISTINCT user_id)::int AS cnt,
+              COUNT(DISTINCT user_id) FILTER (WHERE user_type = 'admin')::int AS admins,
+              COUNT(DISTINCT user_id) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
+              MIN(first_trained_at) AS first_trained_at,
+              MAX(last_trained_at) AS last_trained_at
+            FROM per_user_faculty_dated
             GROUP BY faculty_id
           )
           SELECT
@@ -1484,7 +1498,7 @@ export async function GET(req: Request) {
             u.id AS user_id,
             COALESCE(uaa.faculty_id, fby.id) AS faculty_id
           FROM public.user_access_assignments uaa
-          INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+          INNER JOIN public.users u ON u.id = uaa.userid
           LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
             AND LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
             AND LOWER(TRIM(fby.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
@@ -1529,7 +1543,7 @@ export async function GET(req: Request) {
               fby_res.id
             ) AS faculty_id,
             LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
-            MIN(ura.created_at) AS scope_trained_at,
+            ura.created_at AS assignment_at,
             u.created_at AS user_created_at
           FROM public.user_resource_access ura
           INNER JOIN public.users u ON u.id = ura.user_id
@@ -1564,17 +1578,16 @@ export async function GET(req: Request) {
             )
             AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
             ${uraFacultyCond}
-          GROUP BY u.id, faculty_id, user_type, u.created_at
         ),
         uaa_scoped AS (
           SELECT
             u.id AS user_id,
             COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
             LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
-            MIN(uaa.created_at) AS scope_trained_at,
+            uaa.created_at AS assignment_at,
             u.created_at AS user_created_at
           FROM public.user_access_assignments uaa
-          INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+          INNER JOIN public.users u ON u.id = uaa.userid
           LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
             AND LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
             AND LOWER(TRIM(fby.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
@@ -1585,30 +1598,43 @@ export async function GET(req: Request) {
               OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
             )
             ${uaaFacultyResolvedCond}
-          GROUP BY u.id, faculty_id, user_type, u.created_at
         ),
         per_user_faculty AS (
           SELECT
             user_id,
             faculty_id,
-            MAX(user_type) AS user_type,
-            MIN(LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at)) AS trained_at
+            CASE
+              WHEN BOOL_OR(user_type = 'admin') THEN 'admin'
+              ELSE MAX(user_type)
+            END AS user_type,
+            MIN(user_created_at) AS user_created_at,
+            MIN(assignment_at) AS first_assignment_at,
+            MAX(assignment_at) AS last_assignment_at
           FROM (
-            SELECT user_id, faculty_id, user_type, scope_trained_at, user_created_at FROM ura_scoped
+            SELECT user_id, faculty_id, user_type, assignment_at, user_created_at FROM ura_scoped
             UNION ALL
-            SELECT user_id, faculty_id, user_type, scope_trained_at, user_created_at FROM uaa_scoped
+            SELECT user_id, faculty_id, user_type, assignment_at, user_created_at FROM uaa_scoped
           ) combined
           GROUP BY user_id, faculty_id
+        ),
+        per_user_faculty_dated AS (
+          SELECT
+            user_id,
+            faculty_id,
+            user_type,
+            COALESCE(first_assignment_at, user_created_at) AS first_trained_at,
+            COALESCE(last_assignment_at, user_created_at) AS last_trained_at
+          FROM per_user_faculty
         ),
         per_faculty AS (
           SELECT
             faculty_id,
-            COUNT(*)::int AS cnt,
-            COUNT(*) FILTER (WHERE user_type = 'admin')::int AS admins,
-            COUNT(*) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
-            MIN(trained_at) AS first_trained_at,
-            MAX(trained_at) AS last_trained_at
-          FROM per_user_faculty
+            COUNT(DISTINCT user_id)::int AS cnt,
+            COUNT(DISTINCT user_id) FILTER (WHERE user_type = 'admin')::int AS admins,
+            COUNT(DISTINCT user_id) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
+            MIN(first_trained_at) AS first_trained_at,
+            MAX(last_trained_at) AS last_trained_at
+          FROM per_user_faculty_dated
           GROUP BY faculty_id
         )
         SELECT
@@ -1635,7 +1661,7 @@ export async function GET(req: Request) {
           WITH scoped_users AS (
             SELECT DISTINCT u.id AS user_id
             FROM public.user_access_assignments uaa
-            INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+            INNER JOIN public.users u ON u.id = uaa.userid
             WHERE COALESCE(uaa.faculty_id, (
               SELECT f2.id FROM public.tbl_faculties f2
               WHERE LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
@@ -1669,10 +1695,10 @@ export async function GET(req: Request) {
               u.id AS user_id,
               COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
               LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
-              uaa.created_at AS scope_trained_at,
+              uaa.created_at AS assignment_at,
               u.created_at AS user_created_at
             FROM public.user_access_assignments uaa
-            INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+            INNER JOIN public.users u ON u.id = uaa.userid
             LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
               AND LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
               AND LOWER(TRIM(fby.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
@@ -1688,20 +1714,34 @@ export async function GET(req: Request) {
             SELECT
               user_id,
               faculty_id,
-              MAX(user_type) AS user_type,
-              MIN(LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at)) AS trained_at
+              CASE
+                WHEN BOOL_OR(user_type = 'admin') THEN 'admin'
+                ELSE MAX(user_type)
+              END AS user_type,
+              MIN(user_created_at) AS user_created_at,
+              MIN(assignment_at) AS first_assignment_at,
+              MAX(assignment_at) AS last_assignment_at
             FROM uaa_scoped
             GROUP BY user_id, faculty_id
+          ),
+          per_user_faculty_dated AS (
+            SELECT
+              user_id,
+              faculty_id,
+              user_type,
+              COALESCE(first_assignment_at, user_created_at) AS first_trained_at,
+              COALESCE(last_assignment_at, user_created_at) AS last_trained_at
+            FROM per_user_faculty
           ),
           per_faculty AS (
             SELECT
               faculty_id,
-              COUNT(*)::int AS cnt,
-              COUNT(*) FILTER (WHERE user_type = 'admin')::int AS admins,
-              COUNT(*) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
-              MIN(trained_at) AS first_trained_at,
-              MAX(trained_at) AS last_trained_at
-            FROM per_user_faculty
+              COUNT(DISTINCT user_id)::int AS cnt,
+              COUNT(DISTINCT user_id) FILTER (WHERE user_type = 'admin')::int AS admins,
+              COUNT(DISTINCT user_id) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
+              MIN(first_trained_at) AS first_trained_at,
+              MAX(last_trained_at) AS last_trained_at
+            FROM per_user_faculty_dated
             GROUP BY faculty_id
           )
           SELECT
@@ -1765,7 +1805,7 @@ export async function GET(req: Request) {
               tu.userid AS user_id,
               COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
               LOWER(TRIM(COALESCE(tu.type, ''))) AS user_type,
-              uaa.created_at AS trained_at
+              uaa.created_at AS assignment_at
             FROM public.user_access_assignments uaa
             INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid
             LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
@@ -1780,20 +1820,33 @@ export async function GET(req: Request) {
             SELECT
               user_id,
               faculty_id,
-              MAX(user_type) AS user_type,
-              MIN(trained_at) AS trained_at
+              CASE
+                WHEN BOOL_OR(user_type = 'admin') THEN 'admin'
+                ELSE MAX(user_type)
+              END AS user_type,
+              MIN(assignment_at) AS first_assignment_at,
+              MAX(assignment_at) AS last_assignment_at
             FROM legacy_scoped
             GROUP BY user_id, faculty_id
+          ),
+          per_user_faculty_dated AS (
+            SELECT
+              user_id,
+              faculty_id,
+              user_type,
+              first_assignment_at AS first_trained_at,
+              last_assignment_at AS last_trained_at
+            FROM per_user_faculty
           ),
           per_faculty AS (
             SELECT
               faculty_id,
-              COUNT(*)::int AS cnt,
-              COUNT(*) FILTER (WHERE user_type = 'admin')::int AS admins,
-              COUNT(*) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
-              MIN(trained_at) AS first_trained_at,
-              MAX(trained_at) AS last_trained_at
-            FROM per_user_faculty
+              COUNT(DISTINCT user_id)::int AS cnt,
+              COUNT(DISTINCT user_id) FILTER (WHERE user_type = 'admin')::int AS admins,
+              COUNT(DISTINCT user_id) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
+              MIN(first_trained_at) AS first_trained_at,
+              MAX(last_trained_at) AS last_trained_at
+            FROM per_user_faculty_dated
             GROUP BY faculty_id
           )
           SELECT

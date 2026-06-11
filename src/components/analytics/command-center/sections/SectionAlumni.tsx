@@ -130,7 +130,7 @@ export function SectionAlumni({
           icon={Layers}
           accent="emerald"
           primaryValue={totalCategories}
-          secondaryLabel=''
+          secondaryLabel={categoriesSummary(categories.chartSeries)}
           masonrySize="md"
           chartFill
           delay={0.05}

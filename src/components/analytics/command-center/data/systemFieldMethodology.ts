@@ -1,6 +1,6 @@
 export const TRAINED_ADMINS_METHODOLOGY = {
   summary:
-    "Headline total = superadmins + distinct faculty-scoped admins + distinct faculty-scoped viewers. Role is read from users.type (or legacy_type). Faculty rows count distinct users per faculty; summing rows can exceed headline totals when users span multiple faculties.",
+    "Headline total = superadmins + distinct faculty-scoped admins + distinct faculty-scoped viewers. Role is read from users.type (or legacy_type). Faculty rows count distinct users per faculty; summing faculty rows can exceed headline totals when one user is assigned to multiple faculties.",
   source: "GET /api/analytics/realtime-dashboard → sectionA.trainedFacultyAdmins",
   calculations: [
     {
@@ -26,7 +26,7 @@ export const TRAINED_ADMINS_METHODOLOGY = {
     {
       label: "Training date",
       detail:
-        "Per user–faculty pair: earliest and latest of user_resource_access.created_at, user_access_assignments.created_at, or users.created_at.",
+        "Per faculty: MIN/MAX of assignment created_at from user_resource_access and user_access_assignments per user–faculty pair (falls back to users.created_at only when no assignment timestamp exists).",
     },
     {
       label: "Eligible users",
