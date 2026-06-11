@@ -38,8 +38,8 @@ export function PerformanceScore({
   const { score, label } = result;
   const isCommand = variant === "command";
 
-  const size = isCommand ? 52 : compact ? 64 : 88;
-  const radius = isCommand ? 21 : compact ? 26 : 36;
+  const size = isCommand ? 46 : compact ? 64 : 88;
+  const radius = isCommand ? 18 : compact ? 26 : 36;
   const stroke = isCommand ? 4 : compact ? 5 : 6;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
@@ -122,7 +122,7 @@ export function PerformanceScore({
       <div className="absolute inset-0 flex items-center justify-center">
         <span
           className={`font-bold tabular-nums text-gray-900 dark:text-white ${
-            isCommand ? "text-base" : compact ? "text-lg" : "text-xl"
+            isCommand ? "text-xs" : compact ? "text-lg" : "text-xl"
           }`}
         >
           {score}
@@ -132,7 +132,7 @@ export function PerformanceScore({
   );
 
   const titleClass = isCommand
-    ? "text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+    ? "text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
     : compact
       ? "text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400"
       : "text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
@@ -164,9 +164,14 @@ export function PerformanceScore({
   const cardBody = (
     <>
       {gauge}
-      <div className="min-w-0 flex-1 text-left">
-        <p className={titleClass}>Portal Performance</p>
-        <p className={`text-sm font-bold leading-tight ${labelColor}`}>{label}</p>
+      <div className={`min-w-0 flex-1 text-left ${isCommand ? "leading-none" : ""}`}>
+        <p className={titleClass}>{isCommand ? "Portal performance" : "Portal Performance"}</p>
+        <p
+          className={`${isCommand ? "text-xs" : "text-sm"} font-bold leading-snug ${labelColor} ${isCommand ? "truncate" : ""}`}
+          title={isCommand ? label : undefined}
+        >
+          {label}
+        </p>
         {!isCommand ? (
           <p className={hintClass}>
             {compact ? (
@@ -178,16 +183,14 @@ export function PerformanceScore({
               </>
             )}
           </p>
-        ) : (
-          <p className={hintClass}>{expanded ? "Click to close" : "Score breakdown"}</p>
-        )}
+        ) : null}
       </div>
       {expandIcon}
     </>
   );
 
   const buttonClass = isCommand
-    ? `group flex w-full items-center gap-2 rounded-xl border bg-white/95 px-2 py-1.5 text-left shadow-sm backdrop-blur-sm transition-all hover:shadow-md dark:bg-gray-900/80 ${
+    ? `group flex h-8 w-full items-center gap-2 rounded-lg border bg-white/95 px-2 py-0 text-left shadow-sm backdrop-blur-sm transition-all hover:shadow-md dark:bg-gray-900/80 ${
         label === "Strong"
           ? "border-emerald-200/80 hover:border-emerald-300 dark:border-emerald-500/20 dark:hover:border-emerald-400/40"
           : label === "Stable"

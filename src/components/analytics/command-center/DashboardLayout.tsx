@@ -40,16 +40,16 @@ export function DashboardLayout({
   const [tab, setTab] = useState<Tab>("alumni");
 
   const alumniColumn = (
-    <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-1.5">
       <section
         aria-label="Alumni Intelligence"
-        className={`min-h-0 flex-1 overflow-y-auto ${ccSection.alumni}`}
+        className={`min-h-0 overflow-y-auto ${ccSection.alumni}`}
       >
         <SectionAlumni data={data} trends={trends} isLoading={isLoading} />
       </section>
       <section
         aria-label="Trained Faculty Admins"
-        className={`shrink-0 ${ccSection.admins}`}
+        className={`max-h-[4.25rem] shrink-0 overflow-hidden ${ccSection.admins}`}
       >
         <SectionTrainedAdmins data={data} isLoading={isLoading} />
       </section>
@@ -57,7 +57,7 @@ export function DashboardLayout({
   );
 
   return (
-    <div className={`flex h-[calc(100dvh-68px)] flex-col overflow-hidden p-2 sm:p-3 ${ccPage}`}>
+    <div className={`flex h-[calc(100dvh-68px)] flex-col overflow-hidden p-1.5 sm:p-2 ${ccPage}`}>
       <CommandCenterHeader
         facultyFilter={facultyFilter}
         onFacultyChange={onFacultyChange}
@@ -70,7 +70,7 @@ export function DashboardLayout({
       />
 
       {/* Mobile / tablet tabs (<1024px) */}
-      <div className="mb-1.5 flex shrink-0 gap-1.5 lg:hidden">
+      <div className="mb-1 flex shrink-0 gap-1 lg:hidden">
         {(
           [
             { id: "alumni" as const, label: "Alumni" },

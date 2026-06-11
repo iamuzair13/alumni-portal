@@ -1,6 +1,11 @@
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
+import { stripFacultyOfPrefix } from "../utils/facultyLabels";
 import type { AlumniTrendPoint } from "@/services/dashboardService";
 import type { ChartSeriesPoint } from "@/components/analytics/v2/utils/kpiConfig";
+import {
+  getPeriodColumnLabels,
+  resolveQuarterLabel,
+} from "@/components/analytics/v2/utils/periodColumnLabels";
 import {
   alumniCategoriesChart,
   alumniOverviewChart,
@@ -17,7 +22,9 @@ import {
   publicationsChart,
   scholarshipsChart,
   transitionVelocityChart,
+  transitionVelocityEarlyCount,
   transitionVelocityScore,
+  transitionVelocityTrackedTotal,
   trainedAdminChart,
 } from "@/components/analytics/v2/utils/chartSeriesBuilders";
 
@@ -131,7 +138,33 @@ export function mapTransitionVelocity(
     : num(data?.alumniHeadline?.total ?? data?.kpis?.totalAlumni);
   const chart = transitionVelocityChart(tv, totalAlumni);
   const score = transitionVelocityScore(tv, totalAlumni);
-  return { score, chartSeries: chart.chartSeries, insight: chart.insight, totalAlumni };
+  const buckets = {
+    beforeGraduation: num(tv?.beforeGraduation),
+    immediateAfterGraduation: num(tv?.immediateAfterGraduation),
+    within3Months: num(tv?.within3Months),
+    within6Months: num(tv?.within6Months),
+    after6Months: num(tv?.after6Months),
+    unknown: num(tv?.unknown),
+  };
+  const trackedTotal = transitionVelocityTrackedTotal(tv);
+  const earlyCount = transitionVelocityEarlyCount(tv);
+  const timingBars = [
+    { label: "Before grad", value: buckets.beforeGraduation, color: "#10b981" },
+    { label: "Immediate", value: buckets.immediateAfterGraduation, color: "#0ea5e9" },
+    { label: "≤3 mo", value: buckets.within3Months, color: "#8b5cf6" },
+    { label: "≤6 mo", value: buckets.within6Months, color: "#f59e0b" },
+  ].filter((b) => b.value > 0);
+
+  return {
+    score,
+    earlyCount,
+    trackedTotal,
+    buckets,
+    timingBars,
+    chartSeries: chart.chartSeries,
+    insight: chart.insight,
+    totalAlumni,
+  };
 }
 
 export function mapLocation(
@@ -161,12 +194,36 @@ export function mapLocation(
 export function mapEngagementsChapters(data: ManagementDashboardPayload | undefined) {
   const ch = data?.sectionB?.chaptersAssociations;
   const chart = chaptersAssociationsChart(data);
+  const nationalRows = ch?.nationalChapterRows ?? [];
+  const internationalRows = ch?.internationalChapterRows ?? [];
+  const nationalMembers =
+    ch?.nationalMembers != null
+      ? num(ch.nationalMembers)
+      : nationalRows.reduce((sum, row) => sum + num(row.members), 0);
+  const internationalMembers =
+    ch?.internationalMembers != null
+      ? num(ch.internationalMembers)
+      : internationalRows.reduce((sum, row) => sum + num(row.members), 0);
   return {
     national: num(ch?.nationalChapters),
     international: num(ch?.internationalChapters),
+    nationalMembers,
+    internationalMembers,
     members: num(ch?.members),
     meetupsYtd: num(ch?.meetupsYtd),
+    nationalRows,
+    internationalRows,
     chartSeries: chart.chartSeries,
+    summaryChart: {
+      national: [
+        { label: "Chapters", value: num(ch?.nationalChapters), color: "#8b5cf6" },
+        { label: "Alumni", value: nationalMembers, color: "#a78bfa" },
+      ],
+      international: [
+        { label: "Chapters", value: num(ch?.internationalChapters), color: "#10b981" },
+        { label: "Alumni", value: internationalMembers, color: "#34d399" },
+      ],
+    },
   };
 }
 
@@ -177,78 +234,210 @@ export function mapCareerBenefits(data: ManagementDashboardPayload | undefined) 
   const chart = careerBenefitsChart(employed, denom, data);
   const career = careerServicesChart(data);
   const scholarships = scholarshipsChart(data);
-  return { chart, career, scholarships, kpis: data?.kpis };
-}
+  const quarterLabel = resolveQuarterLabel(data);
+  const jobsData = data?.sectionC?.jobs;
+  const sc = data?.sectionC?.scholarships;
+  const jobs = {
+    total: num(jobsData?.total),
+    uol: num(jobsData?.uol),
+    other: num(jobsData?.other),
+    quarter: num(jobsData?.quarter),
+    ytd: num(jobsData?.ytd),
+    categoryRows: jobsData?.categoryRows ?? [],
+  };
+  const scholarshipTotals = {
+    kinshipApplied: num(sc?.kinship?.applied),
+    kinshipProcessed: num(sc?.kinship?.processed),
+    mastersApplied: num(sc?.mastersPhd?.applied),
+    mastersProcessed: num(sc?.mastersPhd?.processed),
+    iqApplied: num(sc?.iqPrograms?.applied),
+    iqProcessed: num(sc?.iqPrograms?.processed),
+  };
+  const scholarshipsApplied =
+    scholarshipTotals.kinshipApplied +
+    scholarshipTotals.mastersApplied +
+    scholarshipTotals.iqApplied;
+  const scholarshipsProcessed =
+    scholarshipTotals.kinshipProcessed +
+    scholarshipTotals.mastersProcessed +
+    scholarshipTotals.iqProcessed;
 
-export function mapMeetupsEvents(data: ManagementDashboardPayload | undefined) {
-  const ch = data?.sectionB?.chaptersAssociations;
-  const events = data?.sectionB?.activities?.chapterEvents;
   return {
-    meetupsTotal: num(ch?.meetupsTotal),
-    meetupsYtd: num(ch?.meetupsYtd),
-    chapterEventsTotal: num(events?.total),
-    chapterEventsYtd: num(events?.ytd),
-    heatmapSeries: buildMeetupHeatmap(ch),
+    chart,
+    career,
+    scholarships,
+    jobs,
+    quarterLabel,
+    facultyScholarshipRows: data?.sectionC?.facultyScholarshipRows ?? [],
+    scholarshipTotals,
+    scholarshipsApplied,
+    scholarshipsProcessed,
+    careerServices: data?.sectionC?.career,
+    kpis: data?.kpis,
   };
 }
 
-function buildMeetupHeatmap(ch: ManagementDashboardPayload["sectionB"]["chaptersAssociations"] | undefined): ChartSeriesPoint[] {
-  return [
-    { label: "Q", value: num(ch?.meetupsQuarter) },
-    { label: "YTD", value: num(ch?.meetupsYtd) },
-    { label: "Total", value: num(ch?.meetupsTotal) },
-  ];
+export function mapMeetupsEvents(data: ManagementDashboardPayload | undefined) {
+  const em = data?.sectionB?.eventsMeetups;
+  const quarterLabel = resolveQuarterLabel(data);
+
+  const events = {
+    total: num(em?.events?.total),
+    ytd: num(em?.events?.ytd),
+    quarter: num(em?.events?.quarter),
+  };
+  const meetups = {
+    total: num(em?.meetups?.total),
+    ytd: num(em?.meetups?.ytd),
+    quarter: num(em?.meetups?.quarter),
+  };
+
+  return {
+    events,
+    meetups,
+    eventsChapterRows: em?.eventsChapterRows ?? [],
+    meetupsChapterRows: em?.meetupsChapterRows ?? [],
+    quarterLabel,
+    // Legacy fields for management dashboard compatibility
+    meetupsTotal: meetups.total,
+    meetupsYtd: meetups.ytd,
+    chapterEventsTotal: events.total,
+    chapterEventsYtd: events.ytd,
+  };
 }
+
+export type EngagementActivityRow = {
+  activity: string;
+  quarter: number;
+  ytd: number;
+};
 
 export function mapEngagementActivities(data: ManagementDashboardPayload | undefined) {
   const chart = engagementActivitiesChart(data);
   const a = data?.sectionB?.activities;
+  const quarterLabel = resolveQuarterLabel(data);
+  const rows: EngagementActivityRow[] = [
+    { activity: "Mentorship", quarter: num(a?.mentorshipSessions?.quarter), ytd: num(a?.mentorshipSessions?.ytd) },
+    { activity: "Seminars", quarter: num(a?.seminarsParticipation?.quarter), ytd: num(a?.seminarsParticipation?.ytd) },
+    { activity: "Conferences", quarter: num(a?.conferencesParticipation?.quarter), ytd: num(a?.conferencesParticipation?.ytd) },
+    { activity: "Alumni Talks", quarter: num(a?.alumniTalks?.quarter), ytd: num(a?.alumniTalks?.ytd) },
+    { activity: "High Achievers", quarter: num(a?.highAchieversRecognition?.quarter), ytd: num(a?.highAchieversRecognition?.ytd) },
+    { activity: "Wellbeing", quarter: num(a?.wellbeingSupport?.quarter), ytd: num(a?.wellbeingSupport?.ytd) },
+  ];
+  const quarterTotal = rows.reduce((sum, row) => sum + row.quarter, 0);
+  const ytdTotal = rows.reduce((sum, row) => sum + row.ytd, 0);
+  const ranked = [...rows].sort((x, y) => y.ytd - x.ytd || y.quarter - x.quarter);
+  const topByYtd = ranked[0] ?? { activity: "—", quarter: 0, ytd: 0 };
+  const topByQuarter = [...rows].sort((x, y) => y.quarter - x.quarter)[0] ?? topByYtd;
+  const activeTypes = rows.filter((row) => row.ytd > 0 || row.quarter > 0).length;
+
   return {
     chartSeries: chart.chartSeries,
-    rows: [
-      { activity: "Mentorship", quarter: num(a?.mentorshipSessions?.quarter), ytd: num(a?.mentorshipSessions?.ytd) },
-      { activity: "Seminars", quarter: num(a?.seminarsParticipation?.quarter), ytd: num(a?.seminarsParticipation?.ytd) },
-      { activity: "Conferences", quarter: num(a?.conferencesParticipation?.quarter), ytd: num(a?.conferencesParticipation?.ytd) },
-      { activity: "Alumni Talks", quarter: num(a?.alumniTalks?.quarter), ytd: num(a?.alumniTalks?.ytd) },
-      { activity: "High Achievers", quarter: num(a?.highAchieversRecognition?.quarter), ytd: num(a?.highAchieversRecognition?.ytd) },
-      { activity: "Wellbeing", quarter: num(a?.wellbeingSupport?.quarter), ytd: num(a?.wellbeingSupport?.ytd) },
-    ],
+    rows,
+    quarterTotal,
+    ytdTotal,
+    quarterLabel,
+    topByYtd,
+    topByQuarter,
+    activeTypes,
+    topRows: ranked.slice(0, 3),
   };
 }
 
 export function mapPublicationsSurveys(data: ManagementDashboardPayload | undefined) {
   const chart = publicationsChart(data);
   const p = data?.sectionB?.publications;
+  const { primary, secondary } = getPeriodColumnLabels(data);
   return {
     chartSeries: chart.chartSeries,
     chartSeriesSecondary: chart.chartSeriesSecondary,
     surveys: num(p?.surveysConducted),
     stories: num(p?.successStoriesPublished),
+    storiesQuarter: num(p?.successStoriesQuarter),
+    storiesYtd: num(p?.successStoriesYtd),
     newsletters: num(p?.newslettersIssued),
+    newslettersQuarter: num(p?.newslettersQuarter),
+    newslettersYtd: num(p?.newslettersYtd),
+    quarterLabel: resolveQuarterLabel(data),
+    periodPrimary: primary,
+    periodSecondary: secondary,
+    facultyRows: p?.facultyPublicationRows ?? [],
   };
 }
 
 export function mapMembershipsPerks(data: ManagementDashboardPayload | undefined) {
   const chart = membershipsChart(data);
-  return { chartSeries: chart.chartSeries, memberships: data?.sectionD?.memberships };
+  const m = data?.sectionD?.memberships;
+  const gym = num(m?.gymDiscountActive);
+  const pool = num(m?.swimmingPoolDiscountActive);
+  const qalander = num(m?.qalanderClub);
+  const total = num(m?.totalMemberships);
+  return {
+    total,
+    gym,
+    pool,
+    qalander,
+    facultyRows: data?.sectionD?.facultyMembershipRows ?? [],
+    chartSeries: chart.chartSeries,
+    memberships: m,
+  };
 }
 
 export function mapDiscountsMerchants(data: ManagementDashboardPayload | undefined) {
   const discounts = discountCategoriesChart(data);
-  const merchants = merchantPartnershipsChart(data);
+  const merchantsChart = merchantPartnershipsChart(data);
+  const dc = data?.sectionD?.discountCategories;
+  const dining = num(dc?.diningAndCafes);
+  const retail = num(dc?.retailAndShopping);
+  const travel = num(dc?.travelAndLeisure);
+  const health = num(dc?.healthAndWellness);
+  const professional = num(dc?.professionalServices);
+  const financial = num(dc?.financialServices);
+  const total = num(dc?.totalApplications);
+  const merchantList = data?.sectionD?.merchants ?? [];
+  const categories = [
+    { key: "dining", label: "Dining", value: dining },
+    { key: "retail", label: "Retail", value: retail },
+    { key: "travel", label: "Travel", value: travel },
+    { key: "health", label: "Health", value: health },
+    { key: "professional", label: "Professional", value: professional },
+    { key: "financial", label: "Financial", value: financial },
+  ];
+  const topCategory = [...categories].sort((a, b) => b.value - a.value)[0] ?? {
+    label: "—",
+    value: 0,
+  };
+
   return {
+    total,
+    dining,
+    retail,
+    travel,
+    health,
+    professional,
+    financial,
+    merchantCount: merchantList.length,
+    categories,
+    topCategory,
+    facultyRows: data?.sectionD?.facultyDiscountRows ?? [],
     discountSeries: discounts.chartSeries,
-    merchantSeries: merchants.chartSeries,
-    merchants: data?.sectionD?.merchants ?? [],
+    merchantSeries: merchantsChart.chartSeries,
+    merchants: merchantList,
   };
 }
 
 export function mapTrainedAdmins(data: ManagementDashboardPayload | undefined) {
   const trained = data?.sectionA?.trainedFacultyAdmins;
   const chart = trainedAdminChart(trained);
+  const byFaculty = (trained?.byFaculty ?? []).map((row) => ({
+    ...row,
+    faculty: row.faculty,
+    facultyShort: stripFacultyOfPrefix(row.faculty),
+  }));
   return {
     total: num(trained?.total),
-    byFaculty: trained?.byFaculty ?? [],
+    superadminsTotal: num(trained?.superadminsTotal),
+    byFaculty,
     chartSeries: chart.chartSeries,
   };
 }

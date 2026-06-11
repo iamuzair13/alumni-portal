@@ -25,32 +25,36 @@ function shortLabel(label: string): string {
   return SHORT_LABELS[label] ?? (label.length > 11 ? `${label.slice(0, 10)}…` : label);
 }
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 10_000) return `${(n / 1_000).toFixed(1)}k`;
-  return n.toLocaleString();
-}
+type SnapshotRow = {
+  subject: string;
+  fullName: string;
+  count: number;
+  sharePct: number;
+};
 
-type VertexPayload = { count?: number; fullName?: string };
+type VertexPayload = SnapshotRow;
 
-function VertexLabel(props: {
+function SnapshotVertexLabel(props: {
   x?: number;
   y?: number;
   cx?: number;
   cy?: number;
   payload?: VertexPayload;
   value?: number;
+  index?: number;
+  compact?: boolean;
 }) {
-  const { x, y, cx, cy, payload, value } = props;
-  const count = payload?.count ?? value;
-  if (x == null || y == null || count == null || count <= 0) return null;
+  const { x, y, cx, cy, payload, value, compact = false } = props;
+  const share = payload?.sharePct ?? value;
+  if (x == null || y == null || share == null || share <= 0) return null;
 
   const centerX = cx ?? x;
   const centerY = cy ?? y;
   const angle = Math.atan2(y - centerY, x - centerX);
-  const offset = 14;
+  const offset = compact ? 11 : 14;
   const lx = x + Math.cos(angle) * offset;
   const ly = y + Math.sin(angle) * offset;
+  const fontSize = compact ? 8 : 10;
 
   return (
     <text
@@ -58,16 +62,22 @@ function VertexLabel(props: {
       y={ly}
       textAnchor="middle"
       dominantBaseline="middle"
-      fontSize={10}
+      fontSize={fontSize}
       fontWeight={700}
       className="fill-emerald-700 dark:fill-emerald-300"
     >
-      {formatCount(count)}
+      {`${share < 10 ? share.toFixed(1) : Math.round(share)}%`}
     </text>
   );
 }
 
-/** Occupation radar — area fill scaled to raw counts (not normalized %), with vertex data labels. */
+function makeSnapshotLabel(compact: boolean) {
+  return (props: Parameters<typeof SnapshotVertexLabel>[0]) => (
+    <SnapshotVertexLabel {...props} compact={compact} />
+  );
+}
+
+/** Occupation snapshot radar — share % profile (0–100) with vertex data labels. */
 export function OccupationRadar({
   data,
   height = 120,
@@ -78,26 +88,25 @@ export function OccupationRadar({
   const filtered = data.filter((d) => d.value > 0);
   if (!filtered.length) return <ChartEmpty height={height} />;
 
-  const maxCount = Math.max(...filtered.map((d) => d.value), 1);
-  const domainMax = Math.ceil(maxCount * 1.15);
-
-  const chartData = filtered.map((d) => ({
+  const total = filtered.reduce((sum, d) => sum + d.value, 0);
+  const chartData: SnapshotRow[] = filtered.map((d) => ({
     subject: shortLabel(d.label),
     fullName: d.label,
     count: d.value,
+    sharePct: total > 0 ? (d.value / total) * 100 : 0,
   }));
 
-  const showRadiusTicks = height >= 160;
-  const showVertexLabels = height >= 170;
-  const outerRadius = height >= 200 ? "72%" : height >= 150 ? "65%" : "58%";
-  const tickSize = height >= 180 ? 11 : 10;
+  const compact = height < 160;
+  const outerRadius = height >= 200 ? "68%" : height >= 150 ? "62%" : "56%";
+  const tickSize = compact ? 9 : 10;
+  const showRadiusTicks = height >= 130;
 
   return (
     <div className="h-full w-full overflow-hidden" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={chartData} cx="50%" cy="50%" outerRadius={outerRadius}>
           <PolarGrid
-            gridType="circle"
+            gridType="polygon"
             className="stroke-gray-200 dark:stroke-gray-600"
             strokeWidth={0.75}
           />
@@ -108,43 +117,44 @@ export function OccupationRadar({
           />
           <PolarRadiusAxis
             angle={90}
-            domain={[0, domainMax]}
+            domain={[0, 100]}
             tick={
               showRadiusTicks
-                ? { fontSize: 8, fill: "#9ca3af" }
+                ? { fontSize: compact ? 7 : 8, fill: "#9ca3af" }
                 : false
             }
             axisLine={false}
           />
           <RadarSeries
-            name="Alumni"
-            dataKey="count"
+            name="Share"
+            dataKey="sharePct"
             stroke="#059669"
             fill="#10b981"
-            fillOpacity={0.62}
+            fillOpacity={0.45}
             strokeWidth={2}
             isAnimationActive={false}
             dot={{
-              r: 4,
+              r: compact ? 3 : 4,
               fill: "#059669",
               stroke: "#ffffff",
               strokeWidth: 1.5,
             }}
             activeDot={{
-              r: 5,
+              r: compact ? 4 : 5,
               fill: "#047857",
               stroke: "#ffffff",
               strokeWidth: 2,
             }}
-            label={showVertexLabels ? VertexLabel : false}
+            label={makeSnapshotLabel(compact)}
           />
           <Tooltip
             contentStyle={{ fontSize: 11, borderRadius: 8 }}
             formatter={(_value: number, _name, item) => {
               const row = item?.payload as VertexPayload | undefined;
+              if (!row) return ["—", ""];
               return [
-                row?.count != null ? row.count.toLocaleString() : "—",
-                row?.fullName ?? "Alumni",
+                `${row.count.toLocaleString()} (${row.sharePct.toFixed(1)}%)`,
+                row.fullName,
               ];
             }}
           />

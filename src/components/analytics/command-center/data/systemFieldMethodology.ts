@@ -9,9 +9,19 @@ export const TRAINED_ADMINS_METHODOLOGY = {
         "COUNT(DISTINCT user_id) across merged faculty-scope pairs from user_resource_access (resources tree) and, when present, user_access_assignments.",
     },
     {
+      label: "Superadmins",
+      detail:
+        "Distinct non-blocked users with type superadmin, counted org-wide (not attributed to any faculty).",
+    },
+    {
       label: "By faculty",
       detail:
-        "Same scoped pairs grouped by resolved faculty_id / faculty name. A user with multiple faculty scopes can appear in more than one faculty row.",
+        "Faculty-scoped admin and viewer users only, grouped by resolved faculty_id / faculty name, with first–last training dates per faculty.",
+    },
+    {
+      label: "Training date",
+      detail:
+        "Per user–faculty pair: earliest and latest of user_resource_access.created_at, user_access_assignments.created_at, or users.created_at.",
     },
     {
       label: "Eligible users",

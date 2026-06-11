@@ -34,6 +34,7 @@ export function ExpandDrawer({
   children,
   accent = "emerald",
   maxWidthClass = "max-w-3xl",
+  presentation = "center",
 }: {
   open: boolean;
   title: string;
@@ -41,7 +42,9 @@ export function ExpandDrawer({
   children: React.ReactNode;
   accent?: "emerald" | "violet" | "amber";
   maxWidthClass?: string;
+  presentation?: "center" | "slide-right";
 }) {
+  const slideRight = presentation === "slide-right";
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -66,7 +69,7 @@ export function ExpandDrawer({
     <AnimatePresence>
       {open ? (
         <div
-          className="fixed inset-0 z-[700] flex items-center justify-center p-4 sm:p-6"
+          className={`fixed inset-0 z-[700] ${slideRight ? "flex justify-end" : "flex items-center justify-center p-4 sm:p-6"}`}
           role="presentation"
         >
           <motion.button
@@ -75,8 +78,8 @@ export function ExpandDrawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-gray-900/45 backdrop-blur-[6px] dark:bg-gray-950/65"
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 bg-black/20 backdrop-blur-sm dark:bg-black/40"
             onClick={onClose}
             aria-label="Close dialog"
           />
@@ -86,17 +89,21 @@ export function ExpandDrawer({
             role="dialog"
             aria-modal
             aria-label={title}
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ type: "spring", stiffness: 420, damping: 34 }}
-            className={`relative z-[710] flex max-h-[min(88vh,820px)] w-full ${maxWidthClass} flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-2xl ring-1 dark:border-gray-700/60 dark:bg-gray-900 ${ccAccent[accent].ring}`}
+            initial={slideRight ? { x: "100%" } : { opacity: 0, scale: 0.96, y: 12 }}
+            animate={slideRight ? { x: 0 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={slideRight ? { x: "100%" } : { opacity: 0, scale: 0.96, y: 8 }}
+            transition={
+              slideRight
+                ? { duration: 0.3, ease: [0.32, 0.72, 0, 1] }
+                : { type: "spring", stiffness: 420, damping: 34 }
+            }
+            className={`relative z-[710] flex h-full max-h-[100dvh] w-full flex-col overflow-hidden border border-slate-100 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 ${slideRight ? `max-w-[min(100vw,560px)] rounded-none sm:rounded-l-2xl` : `max-h-[min(88vh,820px)] rounded-2xl border-gray-200/80 dark:border-gray-700/60 ring-1 ${ccAccent[accent].ring}`} ${!slideRight ? maxWidthClass : ""}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={`h-1 w-full bg-gradient-to-r ${accentTopBar[accent]}`} aria-hidden />
 
             <div
-              className={`flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-gray-800 ${accentHeaderBg[accent]}`}
+              className={`sticky top-0 z-10 flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95 ${accentHeaderBg[accent]}`}
             >
               <div className="flex min-w-0 items-start gap-3">
                 <div
@@ -116,7 +123,7 @@ export function ExpandDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200/80 bg-white/90 text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />

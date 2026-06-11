@@ -202,7 +202,7 @@ export function OccupationExpandPanel({
 
         <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
           <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Radar profile
+            Snapshot profile
           </h3>
           <div className="h-[200px]">
             <OccupationRadar data={occupation.chartSeries} height={200} />

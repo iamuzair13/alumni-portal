@@ -17,12 +17,16 @@ export function BarChartMini({
   horizontal = true,
   height = 56,
   showLabels = false,
+  variant = "default",
 }: {
   data: ChartSeriesPoint[];
   horizontal?: boolean;
   height?: number;
   showLabels?: boolean;
+  variant?: "default" | "premium";
 }) {
+  const isPremium = variant === "premium";
+  const gradientId = "cc-bar-violet-gradient";
   const filtered = data.filter((d) => d.value > 0);
   if (!filtered.length) return <ChartEmpty height={height} />;
 
@@ -37,14 +41,22 @@ export function BarChartMini({
     const yAxisWidth = Math.min(80, Math.max(48, maxLabelLen * 5.5));
 
     return (
-      <div className="w-full overflow-hidden text-gray-600 dark:text-gray-300" style={{ height }}>
+      <div className="w-full overflow-hidden text-slate-600 dark:text-slate-300" style={{ height }}>
         <ResponsiveContainer width="100%" height={height}>
           <BarChart
             data={chartData}
             layout="vertical"
             margin={{ top: 0, right: showLabels ? 40 : 4, bottom: 0, left: 2 }}
-            barSize={Math.max(5, Math.min(9, height / chartData.length - 2))}
+            barSize={Math.max(isPremium ? 7 : 5, Math.min(isPremium ? 11 : 9, height / chartData.length - 2))}
           >
+            {isPremium ? (
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#8b5cf6" />
+                  <stop offset="100%" stopColor="#a78bfa" />
+                </linearGradient>
+              </defs>
+            ) : null}
             <XAxis type="number" hide domain={[0, "dataMax"]} />
             <YAxis
               type="category"
@@ -60,9 +72,18 @@ export function BarChartMini({
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
               formatter={(value: number) => [value.toLocaleString(), ""]}
             />
-            <Bar dataKey="value" radius={[0, 3, 3, 0]} isAnimationActive={false}>
+            <Bar
+              dataKey="value"
+              radius={isPremium ? [0, 8, 8, 0] : [0, 3, 3, 0]}
+              isAnimationActive={isPremium}
+              animationDuration={700}
+              animationEasing="ease-out"
+            >
               {chartData.map((entry, i) => (
-                <Cell key={entry.label} fill={entry.fill ?? colorAt(i)} />
+                <Cell
+                  key={entry.label}
+                  fill={isPremium ? `url(#${gradientId})` : entry.fill ?? colorAt(i)}
+                />
               ))}
               {showLabels ? (
                 <LabelList

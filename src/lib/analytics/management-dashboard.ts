@@ -23,10 +23,24 @@ export type ManagementDashboardAlumniHeadline = {
   verifiedCategory?: AlumniCategoryBreakdown;
 };
 
+export type TrainedFacultyAdminRow = {
+  faculty: string;
+  facultyId: number | null;
+  count: number;
+  admins: number;
+  viewers: number;
+  /** Earliest faculty-scope assignment (URA/UAA) or user account creation */
+  firstTrainedAt: string | null;
+  /** Latest faculty-scope assignment (URA/UAA) or user account creation */
+  lastTrainedAt: string | null;
+};
+
 /** Portal staff with faculty scope: `user_access_assignments` × `users` (admin/viewer, not blocked). Labeled “trained” per management dashboard spec. */
 export type TrainedFacultyAdminsPayload = {
   total: number | null;
-  byFaculty: Array<{ faculty: string; facultyId: number | null; count: number }>;
+  /** Org-wide superadmins (not attributed to any faculty) */
+  superadminsTotal: number | null;
+  byFaculty: TrainedFacultyAdminRow[];
 };
 
 export type FacultyCategoryRow = {
@@ -138,10 +152,39 @@ export type FacultyHonorCardRow = {
   delivered: number;
 };
 
+export type ChapterMemberRow = {
+  chapter: string;
+  members: number;
+};
+
+export type EventPeriodCounts = {
+  total: number | null;
+  ytd: number | null;
+  quarter: number | null;
+};
+
+export type ChapterEventCountRow = {
+  chapter: string;
+  total: number;
+  ytd: number;
+  quarter: number;
+};
+
+export type EventsMeetupsPayload = {
+  events: EventPeriodCounts;
+  meetups: EventPeriodCounts;
+  eventsChapterRows: ChapterEventCountRow[];
+  meetupsChapterRows: ChapterEventCountRow[];
+};
+
 export type ManagementDashboardSectionB = {
   chaptersAssociations: {
     nationalChapters: number | null;
     internationalChapters: number | null;
+    nationalMembers: number | null;
+    internationalMembers: number | null;
+    nationalChapterRows: ChapterMemberRow[];
+    internationalChapterRows: ChapterMemberRow[];
     associations: number | null;
     associationMembers: number | null;
     members: number | null;
@@ -164,6 +207,8 @@ export type ManagementDashboardSectionB = {
     wellbeingSupport: QuarterYtd;
     chapterEvents: { quarter: number | null; ytd: number | null; total: number | null };
   };
+  /** Events vs meetups from tbl_events (/events admin), with per-chapter breakdown */
+  eventsMeetups?: EventsMeetupsPayload;
   publications: {
     successStoriesPublished: number | null;
     successStoriesQuarter: number | null;
@@ -172,10 +217,49 @@ export type ManagementDashboardSectionB = {
     newslettersQuarter: number | null;
     newslettersYtd: number | null;
     surveysConducted: number | null;
+    /** Success stories from tblalumnistories grouped by alumni faculty */
+    facultyPublicationRows?: FacultyPublicationRow[];
   };
 };
 
+export type FacultyPublicationRow = {
+  faculty: string;
+  total: number;
+  quarter: number;
+  ytd: number;
+};
+
+export type JobCategoryRow = {
+  category: string;
+  total: number;
+  uol: number;
+  other: number;
+  quarter: number;
+  ytd: number;
+};
+
+export type FacultyScholarshipRow = {
+  faculty: string;
+  applied: number;
+  processed: number;
+  kinshipApplied: number;
+  kinshipProcessed: number;
+  mastersApplied: number;
+  mastersProcessed: number;
+  iqApplied: number;
+  iqProcessed: number;
+};
+
 export type ManagementDashboardSectionC = {
+  jobs?: {
+    total: number | null;
+    uol: number | null;
+    other: number | null;
+    quarter: number | null;
+    ytd: number | null;
+    categoryRows: JobCategoryRow[];
+  };
+  facultyScholarshipRows?: FacultyScholarshipRow[];
   career: {
     recruitmentDrives: QuarterYtd;
     jobsPostedUol: QuarterYtd;
@@ -191,8 +275,28 @@ export type ManagementDashboardSectionC = {
   giveBackFinancialAssistance: number | null;
 };
 
+export type FacultyMembershipRow = {
+  faculty: string;
+  total: number;
+  gym: number;
+  pool: number;
+  qalander: number;
+};
+
+export type FacultyDiscountRow = {
+  faculty: string;
+  total: number;
+  dining: number;
+  retail: number;
+  travel: number;
+  health: number;
+  professional: number;
+  financial: number;
+};
+
 export type ManagementDashboardSectionD = {
   memberships: {
+    totalMemberships: number | null;
     gymDiscountActive: number | null;
     swimmingPoolDiscountActive: number | null;
     freeGymThreeMonth: number | null;
@@ -201,7 +305,10 @@ export type ManagementDashboardSectionD = {
     healthcareDiscounts: number | null;
     vehicleStickers: number | null;
   };
+  /** Campus membership applications grouped by alumni faculty */
+  facultyMembershipRows?: FacultyMembershipRow[];
   discountCategories: {
+    totalApplications: number | null;
     diningAndCafes: number | null;
     retailAndShopping: number | null;
     travelAndLeisure: number | null;
@@ -209,6 +316,7 @@ export type ManagementDashboardSectionD = {
     professionalServices: number | null;
     financialServices: number | null;
   };
+  facultyDiscountRows?: FacultyDiscountRow[];
   merchants: Array<{ merchant: string; discount: string; reference: string }>;
 };
 
@@ -242,6 +350,8 @@ export type ManagementDashboardPayload = {
   meta: {
     quarterStart: string;
     yearStart: string;
+    /** e.g. "Apr–Jun 2026" for the active calendar quarter */
+    quarterMonthLabel?: string;
     timeRange: string;
   periodType?: "all" | "year" | "month" | "range";
   year?: number;

@@ -22,7 +22,7 @@ import { ExpandDrawer } from "../ExpandDrawer";
 import { MasonryGrid } from "../MasonryGrid";
 import { Bar } from "../charts/Bar";
 import { Donut } from "../charts/Donut";
-import { Gauge } from "../charts/Gauge";
+import { VelocityCardChart } from "../charts/VelocityCardChart";
 import { OccupationRadar } from "../charts/OccupationRadar";
 import { FillChart } from "../charts/FillChart";
 import { useExpandable } from "../hooks/useExpandable";
@@ -75,7 +75,7 @@ export function SectionAlumni({
 
   const drawers: Record<string, { title: string; content: React.ReactNode }> = {
     [CARD_IDS.overview]: {
-      title: "Alumni Overview",
+      title: "Alumni",
       content: <OverviewExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.categories]: {
@@ -104,20 +104,20 @@ export function SectionAlumni({
 
   return (
     <>
-      <MasonryGrid columns="default" layout="uniform">
+      <MasonryGrid columns="default" layout="uniform" className="gap-1.5">
         <AnalyticsCard
           id={CARD_IDS.overview}
-          title="Alumni Overview"
+          title="Alumni"
           icon={GraduationCap}
           accent="emerald"
           primaryValue={overview.primaryValue}
-          secondaryLabel={overview.secondaryLabel}
-          masonrySize="lg"
+          secondaryLabel=''
+          masonrySize="md"
           chartFill
           delay={0}
           onExpand={open}
           chart={
-            <FillChart minHeight={120}>
+            <FillChart minHeight={88}>
               {(h) => (
                 <Bar data={overview.headlineBars} height={h} horizontal={false} showLabels />
               )}
@@ -130,13 +130,13 @@ export function SectionAlumni({
           icon={Layers}
           accent="emerald"
           primaryValue={totalCategories}
-          secondaryLabel="Verified · A+ through D"
-          masonrySize="lg"
+          secondaryLabel=""
+          masonrySize="md"
           chartFill
           delay={0.05}
           onExpand={open}
           chart={
-            <FillChart minHeight={120}>
+            <FillChart minHeight={88}>
               {() => (
                 <Donut
                   data={categories.chartSeries}
@@ -153,13 +153,13 @@ export function SectionAlumni({
           icon={Briefcase}
           accent="emerald"
           primaryValue={occupation.rows.reduce((s, r) => s + r.count, 0).toLocaleString()}
-          secondaryLabel="Verified · employed"
-          masonrySize="lg"
+          secondaryLabel=""
+          masonrySize="md"
           chartFill
           delay={0.1}
           onExpand={open}
           chart={
-            <FillChart minHeight={120}>
+            <FillChart minHeight={88}>
               {(h) => <OccupationRadar data={occupation.chartSeries} height={h} />}
             </FillChart>
           }
@@ -169,13 +169,13 @@ export function SectionAlumni({
           title="Honor Cards"
           icon={Award}
           accent="emerald"
-          primaryValue={honor.delivered}
-          secondaryLabel={`Verified · ${honor.total.toLocaleString()} cards`}
-          masonrySize="md"
+          primaryValue={honor.total}
+          secondaryLabel={`Delivered · ${honor.delivered.toLocaleString()} cards`}
+          masonrySize="sm"
           delay={0.15}
           onExpand={open}
           chart={
-            <FillChart minHeight={72}>
+            <FillChart minHeight={56}>
               {(h) => (
                 <Bar
                   data={honor.chartSeries.filter((p) => p.value > 0).slice(0, 4)}
@@ -192,15 +192,20 @@ export function SectionAlumni({
           title="Transition Velocity"
           icon={GaugeIcon}
           accent="emerald"
-          primaryValue={`${velocity.score}%`}
-          secondaryLabel="Verified · early transition"
-          masonrySize="md"
+          primaryValue={velocity.trackedTotal}
+          secondaryLabel={`${velocity.buckets.beforeGraduation.toLocaleString()} during grad · ${velocity.score}% early`}
+          masonrySize="sm"
+          chartFill
           delay={0.2}
           onExpand={open}
           chart={
-            <FillChart minHeight={72}>
-              {(h) => <Gauge score={velocity.score} size={Math.min(96, Math.round(h * 0.85))} />}
-            </FillChart>
+            <VelocityCardChart
+              trackedTotal={velocity.trackedTotal}
+              beforeGraduation={velocity.buckets.beforeGraduation}
+              earlyCount={velocity.earlyCount}
+              score={velocity.score}
+              timingBars={velocity.timingBars}
+            />
           }
         />
         <AnalyticsCard
@@ -210,11 +215,11 @@ export function SectionAlumni({
           accent="emerald"
           primaryValue={location.rows.reduce((s, r) => s + r.count, 0)}
           secondaryLabel="Verified · top provinces"
-          masonrySize="md"
+          masonrySize="sm"
           delay={0.25}
           onExpand={open}
           chart={
-            <FillChart minHeight={72}>
+            <FillChart minHeight={56}>
               {(h) => (
                 <Bar
                   data={location.chartSeries.slice(0, 4)}

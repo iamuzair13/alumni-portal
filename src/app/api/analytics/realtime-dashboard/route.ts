@@ -23,6 +23,14 @@ const yearStartDate = (): string => {
   return new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
 };
 
+function formatQuarterMonthLabel(quarterStart: string): string {
+  const start = new Date(`${quarterStart}T12:00:00`);
+  if (Number.isNaN(start.getTime())) return "This Q";
+  const end = new Date(start.getFullYear(), start.getMonth() + 3, 0);
+  const fmt = (d: Date) => d.toLocaleString("en", { month: "short" });
+  return `${fmt(start)}–${fmt(end)} ${start.getFullYear()}`;
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function parseISODateParam(value: string | null): string {
@@ -264,8 +272,23 @@ export async function GET(req: Request) {
 
     const jobsRows = await sql/* sql */`
       SELECT
+        COUNT(*)::int AS all_total,
         COUNT(*) FILTER (WHERE 1=1${applyPeriodFilter ? sql` AND j.created_at::date >= ${periodStart}::date AND j.created_at::date <= ${periodEnd}::date` : sql``})::int AS total,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')::int AS uol_total,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
+            AND j.created_at >= ${qStart}::timestamptz${qEndJob}
+        )::int + COUNT(*) FILTER (
+          WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
+            AND j.created_at >= ${qStart}::timestamptz${qEndJob}
+        )::int AS quarter_total,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
+            AND j.created_at >= ${yStart}::timestamptz${qEndJob}
+        )::int + COUNT(*) FILTER (
+          WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
+            AND j.created_at >= ${yStart}::timestamptz${qEndJob}
+        )::int AS ytd_total,
         COUNT(*) FILTER (WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%'))::int AS other_total,
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
@@ -286,6 +309,27 @@ export async function GET(req: Request) {
       FROM public.tbljobs j
     `;
 
+    const jobsCategoryRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(j.category), ''), 'Uncategorized') AS category,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(j.company,'')) LIKE '%university of lahore%'
+            OR LOWER(COALESCE(j.company,'')) LIKE '%uol%'
+        )::int AS uol,
+        COUNT(*) FILTER (
+          WHERE NOT (
+            LOWER(COALESCE(j.company,'')) LIKE '%university of lahore%'
+            OR LOWER(COALESCE(j.company,'')) LIKE '%uol%'
+          )
+        )::int AS other,
+        COUNT(*) FILTER (WHERE j.created_at >= ${qStart}::timestamptz${qEndJob})::int AS quarter,
+        COUNT(*) FILTER (WHERE j.created_at >= ${yStart}::timestamptz${qEndJob})::int AS ytd
+      FROM public.tbljobs j
+      GROUP BY 1
+      ORDER BY total DESC, category ASC
+    `;
+
     const scholarshipsRows = await sql/* sql */`
       SELECT
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('approved','not-approved'))::int AS processed,
@@ -303,8 +347,43 @@ export async function GET(req: Request) {
       ${scholarshipPeriodCond}
     `;
 
+    const facultyScholarshipRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COUNT(*)::int AS applied,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('approved','not-approved'))::int AS processed,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%kinship%')::int AS kinship_applied,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%kinship%'
+            AND LOWER(COALESCE(s.status,'pending')) IN ('approved','not-approved')
+        )::int AS kinship_processed,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%master%'
+            OR LOWER(COALESCE(s.apply_for,'')) LIKE '%phd%'
+        )::int AS masters_applied,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(s.apply_for,'')) LIKE '%master%' OR LOWER(COALESCE(s.apply_for,'')) LIKE '%phd%')
+            AND LOWER(COALESCE(s.status,'pending')) IN ('approved','not-approved')
+        )::int AS masters_processed,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%iq%')::int AS iq_applied,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%iq%'
+            AND LOWER(COALESCE(s.status,'pending')) IN ('approved','not-approved')
+        )::int AS iq_processed
+      FROM public.alumni_scholarships s
+      JOIN public.tbl_alumni a ON a.alumniid = s.id
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${scholarshipPeriodCond}
+      GROUP BY 1
+      ORDER BY applied DESC, faculty ASC
+    `;
+
     const membershipRows = await sql/* sql */`
       SELECT
+        COUNT(*)::int AS total_count,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(m.status,'pending')) IN ('approved','active'))::int AS active_benefits,
         COUNT(*) FILTER (WHERE TRIM(COALESCE(m.gym_membership_month,'')) <> '')::int AS gym_count,
         COUNT(*) FILTER (WHERE TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> '')::int AS swimming_count,
@@ -329,6 +408,27 @@ export async function GET(req: Request) {
       ${accessFilterCondition}
       ${facultyFilterCondition}
       ${membershipPeriodCond}
+    `;
+
+    const facultyMembershipRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE TRIM(COALESCE(m.gym_membership_month,'')) <> '')::int AS gym,
+        COUNT(*) FILTER (WHERE TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> '')::int AS pool,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(m.reason,'')) LIKE '%qalander%'
+            OR LOWER(COALESCE(m.reason,'')) LIKE '%qalandar%'
+        )::int AS qalander
+      FROM public.alumni_memberships m
+      JOIN public.tbl_alumni a ON a.alumniid = m.alumniid
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${membershipPeriodCond}
+      GROUP BY 1
+      ORDER BY total DESC, faculty ASC
     `;
 
     const facultyRows = await sql/* sql */`
@@ -574,6 +674,96 @@ export async function GET(req: Request) {
         (SELECT COUNT(*)::int FROM public.chapter_leadership cl WHERE LOWER(COALESCE(cl.status,'')) = 'approved') AS leaders_appointed
     `;
 
+    const nationalChapterMemberRows = await sql/* sql */`
+      WITH national_chapters AS (
+        SELECT DISTINCT TRIM(c.national_chapter) AS chapter_name
+        FROM public.tblchapters c
+        WHERE c.is_active = true
+          AND TRIM(COALESCE(c.national_chapter, '')) <> ''
+      ),
+      member_counts AS (
+        SELECT
+          TRIM(c.national_chapter) AS chapter_name,
+          COUNT(DISTINCT a.alumniid)::int AS members
+        FROM public.tblchapters c
+        INNER JOIN public.alumni_chapter ac ON (
+          ac.chapter1 = c.id OR ac.chapter2 = c.id OR ac.chapter3 = c.id
+        )
+        INNER JOIN public.tbl_alumni a ON a.alumniid = ac.id
+        WHERE c.is_active = true
+          AND TRIM(COALESCE(c.national_chapter, '')) <> ''
+          ${accessFilterCondition}
+          ${facultyFilterCondition}
+          ${alumniPeriodCond}
+        GROUP BY TRIM(c.national_chapter)
+      )
+      SELECT
+        nc.chapter_name AS chapter,
+        COALESCE(mc.members, 0)::int AS members
+      FROM national_chapters nc
+      LEFT JOIN member_counts mc ON mc.chapter_name = nc.chapter_name
+      ORDER BY members DESC, chapter ASC
+    `;
+
+    const internationalChapterMemberRows = await sql/* sql */`
+      WITH international_chapters AS (
+        SELECT DISTINCT TRIM(c.international_chapter) AS chapter_name
+        FROM public.tblchapters c
+        WHERE c.is_active = true
+          AND TRIM(COALESCE(c.international_chapter, '')) <> ''
+      ),
+      member_counts AS (
+        SELECT
+          TRIM(c.international_chapter) AS chapter_name,
+          COUNT(DISTINCT a.alumniid)::int AS members
+        FROM public.tblchapters c
+        INNER JOIN public.alumni_chapter ac ON (
+          ac.chapter1 = c.id OR ac.chapter2 = c.id OR ac.chapter3 = c.id
+        )
+        INNER JOIN public.tbl_alumni a ON a.alumniid = ac.id
+        WHERE c.is_active = true
+          AND TRIM(COALESCE(c.international_chapter, '')) <> ''
+          ${accessFilterCondition}
+          ${facultyFilterCondition}
+          ${alumniPeriodCond}
+        GROUP BY TRIM(c.international_chapter)
+      )
+      SELECT
+        ic.chapter_name AS chapter,
+        COALESCE(mc.members, 0)::int AS members
+      FROM international_chapters ic
+      LEFT JOIN member_counts mc ON mc.chapter_name = ic.chapter_name
+      ORDER BY members DESC, chapter ASC
+    `;
+
+    const nationalMembersRows = await sql/* sql */`
+      SELECT COUNT(DISTINCT a.alumniid)::int AS national_members
+      FROM public.tblchapters c
+      INNER JOIN public.alumni_chapter ac ON (
+        ac.chapter1 = c.id OR ac.chapter2 = c.id OR ac.chapter3 = c.id
+      )
+      INNER JOIN public.tbl_alumni a ON a.alumniid = ac.id
+      WHERE c.is_active = true
+        AND TRIM(COALESCE(c.national_chapter, '')) <> ''
+        ${accessFilterCondition}
+        ${facultyFilterCondition}
+        ${alumniPeriodCond}
+    `;
+
+    const internationalMembersRows = await sql/* sql */`
+      SELECT COUNT(DISTINCT a.alumniid)::int AS international_members
+      FROM public.tblchapters c
+      INNER JOIN public.alumni_chapter ac ON (
+        ac.chapter1 = c.id OR ac.chapter2 = c.id OR ac.chapter3 = c.id
+      )
+      INNER JOIN public.tbl_alumni a ON a.alumniid = ac.id
+      WHERE c.is_active = true
+        AND TRIM(COALESCE(c.international_chapter, '')) <> ''
+        ${accessFilterCondition}
+        ${facultyFilterCondition}
+        ${alumniPeriodCond}
+    `;
+
     const cardsRows = await sql/* sql */`
       SELECT
         COUNT(*)::int AS card_total,
@@ -658,6 +848,139 @@ export async function GET(req: Request) {
         COUNT(*) FILTER (WHERE e.fromdate >= ${yStart}::date${applyPeriodFilter ? sql` AND e.fromdate <= ${periodEnd}::date` : sql``})::int AS ytd_count,
         COUNT(*) FILTER (WHERE 1=1${applyPeriodFilter ? sql` AND e.fromdate >= ${periodStart}::date AND e.fromdate <= ${periodEnd}::date` : sql``})::int AS total_count
       FROM public.tbl_events e
+    `;
+
+    const eventsMeetupsSummaryRows = await sql/* sql */`
+      SELECT
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(category, ''))) NOT LIKE '%meetup%'
+        )::int AS events_total,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(category, ''))) NOT LIKE '%meetup%'
+            AND fromdate >= ${qStart}::date${qEndEvents}
+        )::int AS events_quarter,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(category, ''))) NOT LIKE '%meetup%'
+            AND fromdate >= ${yStart}::date${qEndEvents}
+        )::int AS events_ytd,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(category, ''))) LIKE '%meetup%'
+        )::int AS meetups_total,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(category, ''))) LIKE '%meetup%'
+            AND fromdate >= ${qStart}::date${qEndEvents}
+        )::int AS meetups_quarter,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(category, ''))) LIKE '%meetup%'
+            AND fromdate >= ${yStart}::date${qEndEvents}
+        )::int AS meetups_ytd
+      FROM public.tbl_events
+    `;
+
+    const eventsByChapterRows = await sql/* sql */`
+      WITH active_chapters AS (
+        SELECT
+          c.id,
+          COALESCE(
+            NULLIF(TRIM(c.national_chapter), ''),
+            NULLIF(TRIM(c.international_chapter), '')
+          ) AS chapter_name
+        FROM public.tblchapters c
+        WHERE c.is_active = true
+          AND (
+            TRIM(COALESCE(c.national_chapter, '')) <> ''
+            OR TRIM(COALESCE(c.international_chapter, '')) <> ''
+          )
+      ),
+      chapter_counts AS (
+        SELECT
+          e.chapter_id,
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE e.fromdate >= ${yStart}::date${qEndEvents})::int AS ytd,
+          COUNT(*) FILTER (WHERE e.fromdate >= ${qStart}::date${qEndEvents})::int AS quarter
+        FROM public.tbl_events e
+        WHERE e.chapter_id IS NOT NULL
+          AND LOWER(TRIM(COALESCE(e.category, ''))) NOT LIKE '%meetup%'
+        GROUP BY e.chapter_id
+      ),
+      unassigned AS (
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE e.fromdate >= ${yStart}::date${qEndEvents})::int AS ytd,
+          COUNT(*) FILTER (WHERE e.fromdate >= ${qStart}::date${qEndEvents})::int AS quarter
+        FROM public.tbl_events e
+        WHERE e.chapter_id IS NULL
+          AND LOWER(TRIM(COALESCE(e.category, ''))) NOT LIKE '%meetup%'
+      )
+      SELECT
+        ac.chapter_name AS chapter,
+        COALESCE(cc.total, 0)::int AS total,
+        COALESCE(cc.ytd, 0)::int AS ytd,
+        COALESCE(cc.quarter, 0)::int AS quarter
+      FROM active_chapters ac
+      LEFT JOIN chapter_counts cc ON cc.chapter_id = ac.id
+      UNION ALL
+      SELECT
+        'No chapter' AS chapter,
+        COALESCE(u.total, 0)::int AS total,
+        COALESCE(u.ytd, 0)::int AS ytd,
+        COALESCE(u.quarter, 0)::int AS quarter
+      FROM unassigned u
+      WHERE COALESCE(u.total, 0) > 0
+      ORDER BY total DESC, chapter ASC
+    `;
+
+    const meetupsByChapterRows = await sql/* sql */`
+      WITH active_chapters AS (
+        SELECT
+          c.id,
+          COALESCE(
+            NULLIF(TRIM(c.national_chapter), ''),
+            NULLIF(TRIM(c.international_chapter), '')
+          ) AS chapter_name
+        FROM public.tblchapters c
+        WHERE c.is_active = true
+          AND (
+            TRIM(COALESCE(c.national_chapter, '')) <> ''
+            OR TRIM(COALESCE(c.international_chapter, '')) <> ''
+          )
+      ),
+      chapter_counts AS (
+        SELECT
+          e.chapter_id,
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE e.fromdate >= ${yStart}::date${qEndEvents})::int AS ytd,
+          COUNT(*) FILTER (WHERE e.fromdate >= ${qStart}::date${qEndEvents})::int AS quarter
+        FROM public.tbl_events e
+        WHERE e.chapter_id IS NOT NULL
+          AND LOWER(TRIM(COALESCE(e.category, ''))) LIKE '%meetup%'
+        GROUP BY e.chapter_id
+      ),
+      unassigned AS (
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE e.fromdate >= ${yStart}::date${qEndEvents})::int AS ytd,
+          COUNT(*) FILTER (WHERE e.fromdate >= ${qStart}::date${qEndEvents})::int AS quarter
+        FROM public.tbl_events e
+        WHERE e.chapter_id IS NULL
+          AND LOWER(TRIM(COALESCE(e.category, ''))) LIKE '%meetup%'
+      )
+      SELECT
+        ac.chapter_name AS chapter,
+        COALESCE(cc.total, 0)::int AS total,
+        COALESCE(cc.ytd, 0)::int AS ytd,
+        COALESCE(cc.quarter, 0)::int AS quarter
+      FROM active_chapters ac
+      LEFT JOIN chapter_counts cc ON cc.chapter_id = ac.id
+      UNION ALL
+      SELECT
+        'No chapter' AS chapter,
+        COALESCE(u.total, 0)::int AS total,
+        COALESCE(u.ytd, 0)::int AS ytd,
+        COALESCE(u.quarter, 0)::int AS quarter
+      FROM unassigned u
+      WHERE COALESCE(u.total, 0) > 0
+      ORDER BY total DESC, chapter ASC
     `;
 
     const careerDerivedRows = await sql/* sql */`
@@ -891,8 +1214,17 @@ export async function GET(req: Request) {
 
     let trainedFacultyAdmins: {
       total: number | null;
-      byFaculty: Array<{ faculty: string; facultyId: number | null; count: number }>;
-    } = { total: null, byFaculty: [] };
+      superadminsTotal: number | null;
+      byFaculty: Array<{
+        faculty: string;
+        facultyId: number | null;
+        count: number;
+        admins: number;
+        viewers: number;
+        firstTrainedAt: string | null;
+        lastTrainedAt: string | null;
+      }>;
+    } = { total: null, superadminsTotal: null, byFaculty: [] };
     const trainedFacultyAdminsDebug: {
       tableCheck?: unknown;
       mergedError?: string;
@@ -905,13 +1237,28 @@ export async function GET(req: Request) {
       byFacultyRows: unknown
     ) => {
       const total = Number((totalRows[0] as { c?: number } | undefined)?.c ?? 0);
-      const byFaculty = (byFacultyRows as unknown as Array<{ faculty: string; faculty_id: number | null; cnt: number }>).map((r) => ({
+      const byFaculty = (
+        byFacultyRows as unknown as Array<{
+          faculty: string;
+          faculty_id: number | null;
+          cnt: number;
+          admins?: number;
+          viewers?: number;
+          first_trained_at?: string | Date | null;
+          last_trained_at?: string | Date | null;
+        }>
+      ).map((r) => ({
         faculty: r.faculty || "Unknown",
         facultyId: r.faculty_id ?? null,
         count: Number(r.cnt ?? 0),
+        admins: Number(r.admins ?? 0),
+        viewers: Number(r.viewers ?? 0),
+        firstTrainedAt: r.first_trained_at ? new Date(r.first_trained_at).toISOString() : null,
+        lastTrainedAt: r.last_trained_at ? new Date(r.last_trained_at).toISOString() : null,
       }));
       trainedFacultyAdmins = {
         total: Number.isFinite(total) ? total : null,
+        superadminsTotal: trainedFacultyAdmins.superadminsTotal,
         byFaculty,
       };
     };
@@ -975,8 +1322,8 @@ export async function GET(req: Request) {
             WHERE res.type IN ('faculty', 'department', 'program')
               AND COALESCE(u.blocked, false) = false
               AND (
-                LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-                OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+                LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
+                OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
               )
               AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
               ${uraFacultyCond}
@@ -984,15 +1331,18 @@ export async function GET(req: Request) {
           SELECT COUNT(DISTINCT user_id)::int AS c FROM ura_pairs
         `;
         const byFacultyUraOnly = await sql/* sql */`
-          WITH ura_pairs AS (
-            SELECT DISTINCT
+          WITH ura_scoped AS (
+            SELECT
               u.id AS user_id,
               COALESCE(
                 res.legacy_faculty_id,
                 parent_fac.legacy_faculty_id,
                 grandparent_fac.legacy_faculty_id,
                 fby_res.id
-              ) AS faculty_id
+              ) AS faculty_id,
+              LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
+              MIN(ura.created_at) AS scope_trained_at,
+              u.created_at AS user_created_at
             FROM public.user_resource_access ura
             INNER JOIN public.users u ON u.id = ura.user_id
             INNER JOIN public.resources res ON ura.resource_id = res.id
@@ -1021,21 +1371,40 @@ export async function GET(req: Request) {
             WHERE res.type IN ('faculty', 'department', 'program')
               AND COALESCE(u.blocked, false) = false
               AND (
-                LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-                OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+                LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
+                OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
               )
               AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
               ${uraFacultyCond}
+            GROUP BY u.id, faculty_id, user_type, u.created_at
+          ),
+          per_user_faculty AS (
+            SELECT
+              user_id,
+              faculty_id,
+              user_type,
+              LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at) AS trained_at
+            FROM ura_scoped
           ),
           per_faculty AS (
-            SELECT faculty_id, COUNT(DISTINCT user_id)::int AS cnt
-            FROM ura_pairs
+            SELECT
+              faculty_id,
+              COUNT(*)::int AS cnt,
+              COUNT(*) FILTER (WHERE user_type = 'admin')::int AS admins,
+              COUNT(*) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
+              MIN(trained_at) AS first_trained_at,
+              MAX(trained_at) AS last_trained_at
+            FROM per_user_faculty
             GROUP BY faculty_id
           )
           SELECT
             COALESCE(NULLIF(TRIM(tf.faculty_name), ''), 'Faculty #' || pf.faculty_id::text) AS faculty,
             pf.faculty_id AS faculty_id,
-            pf.cnt
+            pf.cnt,
+            pf.admins,
+            pf.viewers,
+            pf.first_trained_at,
+            pf.last_trained_at
           FROM per_faculty pf
           LEFT JOIN public.tbl_faculties tf ON tf.id = pf.faculty_id
           ORDER BY pf.cnt DESC, faculty ASC
@@ -1083,8 +1452,8 @@ export async function GET(req: Request) {
           WHERE res.type IN ('faculty', 'department', 'program')
             AND COALESCE(u.blocked, false) = false
             AND (
-              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
             )
             AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
             ${uraFacultyCond}
@@ -1101,8 +1470,8 @@ export async function GET(req: Request) {
           WHERE COALESCE(uaa.faculty_id, fby.id) IS NOT NULL
             AND COALESCE(u.blocked, false) = false
             AND (
-              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
             )
             ${uaaFacultyResolvedCond}
         ),
@@ -1114,15 +1483,18 @@ export async function GET(req: Request) {
         SELECT COUNT(DISTINCT user_id)::int AS c FROM pairs
       `;
       const byFacultyMerged = await sql/* sql */`
-        WITH ura_pairs AS (
-          SELECT DISTINCT
+        WITH ura_scoped AS (
+          SELECT
             u.id AS user_id,
             COALESCE(
               res.legacy_faculty_id,
               parent_fac.legacy_faculty_id,
               grandparent_fac.legacy_faculty_id,
               fby_res.id
-            ) AS faculty_id
+            ) AS faculty_id,
+            LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
+            MIN(ura.created_at) AS scope_trained_at,
+            u.created_at AS user_created_at
           FROM public.user_resource_access ura
           INNER JOIN public.users u ON u.id = ura.user_id
           INNER JOIN public.resources res ON ura.resource_id = res.id
@@ -1151,16 +1523,20 @@ export async function GET(req: Request) {
           WHERE res.type IN ('faculty', 'department', 'program')
             AND COALESCE(u.blocked, false) = false
             AND (
-              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
             )
             AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
             ${uraFacultyCond}
+          GROUP BY u.id, faculty_id, user_type, u.created_at
         ),
-        uaa_pairs AS (
-          SELECT DISTINCT
+        uaa_scoped AS (
+          SELECT
             u.id AS user_id,
-            COALESCE(uaa.faculty_id, fby.id) AS faculty_id
+            COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
+            LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
+            MIN(uaa.created_at) AS scope_trained_at,
+            u.created_at AS user_created_at
           FROM public.user_access_assignments uaa
           INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
           LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
@@ -1169,25 +1545,44 @@ export async function GET(req: Request) {
           WHERE COALESCE(uaa.faculty_id, fby.id) IS NOT NULL
             AND COALESCE(u.blocked, false) = false
             AND (
-              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
             )
             ${uaaFacultyResolvedCond}
+          GROUP BY u.id, faculty_id, user_type, u.created_at
         ),
-        pairs AS (
-          SELECT user_id, faculty_id FROM ura_pairs
-          UNION
-          SELECT user_id, faculty_id FROM uaa_pairs
+        per_user_faculty AS (
+          SELECT
+            user_id,
+            faculty_id,
+            MAX(user_type) AS user_type,
+            MIN(LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at)) AS trained_at
+          FROM (
+            SELECT user_id, faculty_id, user_type, scope_trained_at, user_created_at FROM ura_scoped
+            UNION ALL
+            SELECT user_id, faculty_id, user_type, scope_trained_at, user_created_at FROM uaa_scoped
+          ) combined
+          GROUP BY user_id, faculty_id
         ),
         per_faculty AS (
-          SELECT faculty_id, COUNT(DISTINCT user_id)::int AS cnt
-          FROM pairs
+          SELECT
+            faculty_id,
+            COUNT(*)::int AS cnt,
+            COUNT(*) FILTER (WHERE user_type = 'admin')::int AS admins,
+            COUNT(*) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
+            MIN(trained_at) AS first_trained_at,
+            MAX(trained_at) AS last_trained_at
+          FROM per_user_faculty
           GROUP BY faculty_id
         )
         SELECT
           COALESCE(NULLIF(TRIM(tf.faculty_name), ''), 'Faculty #' || pf.faculty_id::text) AS faculty,
           pf.faculty_id AS faculty_id,
-          pf.cnt
+          pf.cnt,
+          pf.admins,
+          pf.viewers,
+          pf.first_trained_at,
+          pf.last_trained_at
         FROM per_faculty pf
         LEFT JOIN public.tbl_faculties tf ON tf.id = pf.faculty_id
         ORDER BY pf.cnt DESC, faculty ASC
@@ -1212,36 +1607,68 @@ export async function GET(req: Request) {
           )) IS NOT NULL
             AND COALESCE(u.blocked, false) = false
             AND (
-              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
             )
             ${uaaFacultyResolvedCond}
         `;
         const byFacultyUaaOnly = await sql/* sql */`
+          WITH uaa_scoped AS (
+            SELECT
+              u.id AS user_id,
+              COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
+              LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
+              MIN(uaa.created_at) AS scope_trained_at,
+              u.created_at AS user_created_at
+            FROM public.user_access_assignments uaa
+            INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+            LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
+              AND LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
+              AND LOWER(TRIM(fby.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
+            WHERE COALESCE(uaa.faculty_id, fby.id) IS NOT NULL
+              AND COALESCE(u.blocked, false) = false
+              AND (
+                LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
+                OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
+              )
+              ${uaaFacultyResolvedCond}
+            GROUP BY u.id, faculty_id, user_type, u.created_at
+          ),
+          per_user_faculty AS (
+            SELECT
+              user_id,
+              faculty_id,
+              user_type,
+              LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at) AS trained_at
+            FROM uaa_scoped
+          ),
+          per_faculty AS (
+            SELECT
+              faculty_id,
+              COUNT(*)::int AS cnt,
+              COUNT(*) FILTER (WHERE user_type = 'admin')::int AS admins,
+              COUNT(*) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
+              MIN(trained_at) AS first_trained_at,
+              MAX(trained_at) AS last_trained_at
+            FROM per_user_faculty
+            GROUP BY faculty_id
+          )
           SELECT
-            COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(uaa.faculty_name), ''), 'Faculty #' || COALESCE(uaa.faculty_id, fby.id)::text) AS faculty,
-            COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
-            COUNT(DISTINCT u.id)::int AS cnt
-          FROM public.user_access_assignments uaa
-          INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
-          LEFT JOIN public.tbl_faculties f ON f.id = uaa.faculty_id
-          LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
-            AND LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
-            AND LOWER(TRIM(fby.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
-          WHERE COALESCE(uaa.faculty_id, fby.id) IS NOT NULL
-            AND COALESCE(u.blocked, false) = false
-            AND (
-              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-            )
-            ${uaaFacultyResolvedCond}
-          GROUP BY COALESCE(uaa.faculty_id, fby.id), f.faculty_name, uaa.faculty_name, fby.faculty_name
-          ORDER BY cnt DESC, faculty ASC
+            COALESCE(NULLIF(TRIM(tf.faculty_name), ''), 'Faculty #' || pf.faculty_id::text) AS faculty,
+            pf.faculty_id AS faculty_id,
+            pf.cnt,
+            pf.admins,
+            pf.viewers,
+            pf.first_trained_at,
+            pf.last_trained_at
+          FROM per_faculty pf
+          LEFT JOIN public.tbl_faculties tf ON tf.id = pf.faculty_id
+          ORDER BY pf.cnt DESC, faculty ASC
         `;
         applyTrainedAdminRows(totalRowsUaaOnly as Array<{ c?: number }>, byFacultyUaaOnly);
       } catch (e2) {
         trainedFacultyAdminsDebug.uaaOnlyError = e2 instanceof Error ? e2.message : String(e2);
-        trainedFacultyAdmins = { total: null, byFaculty: [] };
+        trainedFacultyAdmins = { total: null, superadminsTotal: null, byFaculty: [] };
       }
     }
 
@@ -1256,27 +1683,52 @@ export async function GET(req: Request) {
           INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid
           WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
             AND COALESCE(tu.blocked, false) = false
-            AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'user')
             ${selectedFacultyId && Number.isFinite(selectedFacultyId) ? sql` AND uaa.faculty_id = ${selectedFacultyId}` : sql``}
         `;
         const byFacultyRowsLegacy = await sql/* sql */`
+          WITH legacy_scoped AS (
+            SELECT
+              tu.userid AS user_id,
+              COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
+              LOWER(TRIM(COALESCE(tu.type, ''))) AS user_type,
+              MIN(uaa.created_at) AS trained_at
+            FROM public.user_access_assignments uaa
+            INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid
+            LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
+              AND LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
+              AND LOWER(TRIM(fby.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
+            WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
+              AND COALESCE(tu.blocked, false) = false
+              AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'user')
+              ${selectedFacultyId && Number.isFinite(selectedFacultyId) ? sql` AND uaa.faculty_id = ${selectedFacultyId}` : sql``}
+            GROUP BY tu.userid, faculty_id, user_type
+          ),
+          per_faculty AS (
+            SELECT
+              faculty_id,
+              COUNT(*)::int AS cnt,
+              COUNT(*) FILTER (WHERE user_type = 'admin')::int AS admins,
+              COUNT(*) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
+              MIN(trained_at) AS first_trained_at,
+              MAX(trained_at) AS last_trained_at
+            FROM legacy_scoped
+            GROUP BY faculty_id
+          )
           SELECT
             COALESCE(
-              NULLIF(TRIM(f.faculty_name), ''),
-              NULLIF(TRIM(uaa.faculty_name), ''),
-              CASE WHEN uaa.faculty_id IS NOT NULL THEN 'Faculty #' || uaa.faculty_id::text ELSE 'Unassigned faculty' END
+              NULLIF(TRIM(tf.faculty_name), ''),
+              'Faculty #' || pf.faculty_id::text
             ) AS faculty,
-            uaa.faculty_id AS faculty_id,
-            COUNT(DISTINCT uaa.userid)::int AS cnt
-          FROM public.user_access_assignments uaa
-          INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid
-          LEFT JOIN public.tbl_faculties f ON f.id = uaa.faculty_id
-          WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
-            AND COALESCE(tu.blocked, false) = false
-            AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-            ${selectedFacultyId && Number.isFinite(selectedFacultyId) ? sql` AND uaa.faculty_id = ${selectedFacultyId}` : sql``}
-          GROUP BY uaa.faculty_id, f.faculty_name, uaa.faculty_name
-          ORDER BY cnt DESC, 1 ASC
+            pf.faculty_id AS faculty_id,
+            pf.cnt,
+            pf.admins,
+            pf.viewers,
+            pf.first_trained_at,
+            pf.last_trained_at
+          FROM per_faculty pf
+          LEFT JOIN public.tbl_faculties tf ON tf.id = pf.faculty_id
+          ORDER BY pf.cnt DESC, faculty ASC
         `;
         applyTrainedAdminRows(totalRowsLegacy as Array<{ c?: number }>, byFacultyRowsLegacy);
       } catch (e3) {
@@ -1284,6 +1736,44 @@ export async function GET(req: Request) {
         /* tbl_users may not exist */
       }
     }
+
+    let superadminsTotal = 0;
+    try {
+      const userTables = await sql/* sql */`
+        SELECT
+          to_regclass('public.users') AS users_tbl,
+          to_regclass('public.tbl_users') AS legacy_users_tbl
+      `;
+      const ut = (userTables as unknown as Array<{ users_tbl?: string | null; legacy_users_tbl?: string | null }>)?.[0];
+      if (ut?.users_tbl) {
+        const superRow = await sql/* sql */`
+          SELECT COUNT(*)::int AS c
+          FROM public.users u
+          WHERE COALESCE(u.blocked, false) = false
+            AND (
+              LOWER(TRIM(COALESCE(u.type, ''))) = 'superadmin'
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) = 'superadmin'
+            )
+        `;
+        superadminsTotal = Number((superRow[0] as { c?: number } | undefined)?.c ?? 0);
+      } else if (ut?.legacy_users_tbl) {
+        const superRow = await sql/* sql */`
+          SELECT COUNT(*)::int AS c
+          FROM public.tbl_users tu
+          WHERE COALESCE(tu.blocked, false) = false
+            AND LOWER(TRIM(COALESCE(tu.type, ''))) = 'superadmin'
+        `;
+        superadminsTotal = Number((superRow[0] as { c?: number } | undefined)?.c ?? 0);
+      }
+    } catch {
+      superadminsTotal = 0;
+    }
+    const facultyScopedTotal = trainedFacultyAdmins.total ?? 0;
+    trainedFacultyAdmins = {
+      ...trainedFacultyAdmins,
+      superadminsTotal,
+      total: facultyScopedTotal + superadminsTotal,
+    };
 
     let storiesPub = 0;
     let storiesQ = 0;
@@ -1315,6 +1805,24 @@ export async function GET(req: Request) {
       storiesY = 0;
     }
 
+    const facultyPublicationRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE s.createdat >= ${qStart}::timestamp${qEndStory})::int AS quarter,
+        COUNT(*) FILTER (WHERE s.createdat >= ${yStart}::timestamp${qEndStory})::int AS ytd
+      FROM public.tblalumnistories s
+      INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE s.alumnistories IS NOT NULL
+        AND TRIM(s.alumnistories) <> ''
+        AND (s.status IS NULL OR LOWER(TRIM(s.status)) NOT IN ('rejected', 'declined', 'draft'))
+        ${accessFilterCondition}
+        ${facultyFilterCondition}
+      GROUP BY 1
+      ORDER BY total DESC, faculty ASC
+    `;
+
     let nlTotal = 0;
     let nlQ = 0;
     let nlY = 0;
@@ -1339,8 +1847,46 @@ export async function GET(req: Request) {
       nlY = 0;
     }
 
+    const facultyDiscountRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%dining%'
+            OR LOWER(COALESCE(s.discount_type,'')) LIKE '%café%'
+            OR LOWER(COALESCE(s.discount_type,'')) LIKE '%cafe%'
+        )::int AS dining,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%retail%'
+            OR LOWER(COALESCE(s.discount_type,'')) LIKE '%shop%'
+        )::int AS retail,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%travel%'
+            OR LOWER(COALESCE(s.discount_type,'')) LIKE '%leisure%'
+        )::int AS travel,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%health%'
+            OR LOWER(COALESCE(s.discount_type,'')) LIKE '%wellness%'
+        )::int AS health,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%professional%'
+            OR LOWER(COALESCE(s.discount_type,'')) LIKE '%education%'
+        )::int AS professional,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%financ%')::int AS financial
+      FROM public.alumni_scholarships s
+      JOIN public.tbl_alumni a ON a.alumniid = s.id
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${scholarshipPeriodCond}
+      GROUP BY 1
+      ORDER BY total DESC, faculty ASC
+    `;
+
     const discountCatRows = await sql/* sql */`
       SELECT
+        COUNT(*)::int AS total_count,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%dining%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%café%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%cafe%')::int AS dining,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%retail%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%shop%')::int AS retail,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%travel%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%leisure%')::int AS travel,
@@ -1362,10 +1908,20 @@ export async function GET(req: Request) {
     const sc = (scholarshipsRows[0] ?? {}) as Record<string, number | undefined>;
     const mb = (membershipRows[0] ?? {}) as Record<string, number | undefined>;
     const ca = (chapterAssocRows[0] ?? {}) as Record<string, number | undefined>;
+    const nm = (nationalMembersRows[0] ?? {}) as { national_members?: number };
+    const im = (internationalMembersRows[0] ?? {}) as { international_members?: number };
     const cd = (cardsRows[0] ?? {}) as Record<string, number | undefined>;
     const vcd = (verifiedCardsRows[0] ?? {}) as Record<string, number | undefined>;
     const tk = (talksRows[0] ?? {}) as Record<string, number | undefined>;
     const ce = (chapterEventsRows[0] ?? {}) as { quarter_count?: number; ytd_count?: number; total_count?: number };
+    const em = (eventsMeetupsSummaryRows[0] ?? {}) as {
+      events_total?: number;
+      events_quarter?: number;
+      events_ytd?: number;
+      meetups_total?: number;
+      meetups_quarter?: number;
+      meetups_ytd?: number;
+    };
     const cr = (careerDerivedRows[0] ?? {}) as Record<string, number | undefined>;
     const tr = (transitionRows[0] ?? {}) as Record<string, number | undefined>;
     const oc = (occupationRows[0] ?? {}) as Record<string, number | undefined>;
@@ -1435,6 +1991,7 @@ export async function GET(req: Request) {
       meta: {
         quarterStart,
         yearStart,
+        quarterMonthLabel: formatQuarterMonthLabel(quarterStart),
         timeRange,
         periodType,
         year,
@@ -1638,6 +2195,16 @@ export async function GET(req: Request) {
         chaptersAssociations: {
           nationalChapters: ca.national_chapters ?? null,
           internationalChapters: ca.international_chapters ?? null,
+          nationalMembers: nm.national_members ?? null,
+          internationalMembers: im.international_members ?? null,
+          nationalChapterRows: nationalChapterMemberRows.map((r) => {
+            const row = r as { chapter: string; members: number };
+            return { chapter: row.chapter, members: Number(row.members ?? 0) };
+          }),
+          internationalChapterRows: internationalChapterMemberRows.map((r) => {
+            const row = r as { chapter: string; members: number };
+            return { chapter: row.chapter, members: Number(row.members ?? 0) };
+          }),
           associations: ca.associations ?? null,
           associationMembers: ca.association_members ?? null,
           members: ca.members ?? null,
@@ -1693,6 +2260,36 @@ export async function GET(req: Request) {
           wellbeingSupport: { quarter: tk.wellbeing_quarter ?? 0, ytd: tk.wellbeing_ytd ?? 0 },
           chapterEvents: { quarter: ce.quarter_count ?? 0, ytd: ce.ytd_count ?? 0, total: ce.total_count ?? 0 },
         },
+        eventsMeetups: {
+          events: {
+            total: em.events_total ?? null,
+            ytd: em.events_ytd ?? null,
+            quarter: em.events_quarter ?? null,
+          },
+          meetups: {
+            total: em.meetups_total ?? null,
+            ytd: em.meetups_ytd ?? null,
+            quarter: em.meetups_quarter ?? null,
+          },
+          eventsChapterRows: eventsByChapterRows.map((r) => {
+            const row = r as { chapter: string; total: number; ytd: number; quarter: number };
+            return {
+              chapter: row.chapter,
+              total: Number(row.total ?? 0),
+              ytd: Number(row.ytd ?? 0),
+              quarter: Number(row.quarter ?? 0),
+            };
+          }),
+          meetupsChapterRows: meetupsByChapterRows.map((r) => {
+            const row = r as { chapter: string; total: number; ytd: number; quarter: number };
+            return {
+              chapter: row.chapter,
+              total: Number(row.total ?? 0),
+              ytd: Number(row.ytd ?? 0),
+              quarter: Number(row.quarter ?? 0),
+            };
+          }),
+        },
         publications: {
           successStoriesPublished: storiesPub,
           successStoriesQuarter: storiesQ,
@@ -1701,9 +2298,67 @@ export async function GET(req: Request) {
           newslettersQuarter: nlQ,
           newslettersYtd: nlY,
           surveysConducted: null,
+          facultyPublicationRows: facultyPublicationRows.map((r) => {
+            const row = r as { faculty: string; total: number; quarter: number; ytd: number };
+            return {
+              faculty: row.faculty,
+              total: Number(row.total ?? 0),
+              quarter: Number(row.quarter ?? 0),
+              ytd: Number(row.ytd ?? 0),
+            };
+          }),
         },
       },
       sectionC: {
+        jobs: {
+          total: jb.all_total ?? null,
+          uol: jb.uol_total ?? null,
+          other: jb.other_total ?? null,
+          quarter: jb.quarter_total ?? null,
+          ytd: jb.ytd_total ?? null,
+          categoryRows: jobsCategoryRows.map((r) => {
+            const row = r as {
+              category: string;
+              total: number;
+              uol: number;
+              other: number;
+              quarter: number;
+              ytd: number;
+            };
+            return {
+              category: row.category,
+              total: Number(row.total ?? 0),
+              uol: Number(row.uol ?? 0),
+              other: Number(row.other ?? 0),
+              quarter: Number(row.quarter ?? 0),
+              ytd: Number(row.ytd ?? 0),
+            };
+          }),
+        },
+        facultyScholarshipRows: facultyScholarshipRows.map((r) => {
+          const row = r as {
+            faculty: string;
+            applied: number;
+            processed: number;
+            kinship_applied: number;
+            kinship_processed: number;
+            masters_applied: number;
+            masters_processed: number;
+            iq_applied: number;
+            iq_processed: number;
+          };
+          return {
+            faculty: row.faculty,
+            applied: Number(row.applied ?? 0),
+            processed: Number(row.processed ?? 0),
+            kinshipApplied: Number(row.kinship_applied ?? 0),
+            kinshipProcessed: Number(row.kinship_processed ?? 0),
+            mastersApplied: Number(row.masters_applied ?? 0),
+            mastersProcessed: Number(row.masters_processed ?? 0),
+            iqApplied: Number(row.iq_applied ?? 0),
+            iqProcessed: Number(row.iq_processed ?? 0),
+          };
+        }),
         career: {
           recruitmentDrives: { quarter: cr.recruitment_quarter ?? 0, ytd: cr.recruitment_ytd ?? 0 },
           jobsPostedUol: { quarter: jb.uol_quarter ?? null, ytd: jb.uol_ytd ?? null },
@@ -1720,6 +2375,7 @@ export async function GET(req: Request) {
       },
       sectionD: {
         memberships: {
+          totalMemberships: mb.total_count ?? null,
           gymDiscountActive: mb.gym_count ?? null,
           swimmingPoolDiscountActive: mb.swimming_count ?? null,
           freeGymThreeMonth: mb.free_gym_hint ?? null,
@@ -1728,7 +2384,24 @@ export async function GET(req: Request) {
           healthcareDiscounts: mb.healthcare_hint ?? null,
           vehicleStickers: mb.vehicle_hint ?? null,
         },
+        facultyMembershipRows: facultyMembershipRows.map((r) => {
+          const row = r as {
+            faculty: string;
+            total: number;
+            gym: number;
+            pool: number;
+            qalander: number;
+          };
+          return {
+            faculty: row.faculty,
+            total: Number(row.total ?? 0),
+            gym: Number(row.gym ?? 0),
+            pool: Number(row.pool ?? 0),
+            qalander: Number(row.qalander ?? 0),
+          };
+        }),
         discountCategories: {
+          totalApplications: dc.total_count ?? null,
           diningAndCafes: dc.dining ?? null,
           retailAndShopping: dc.retail ?? null,
           travelAndLeisure: dc.travel ?? null,
@@ -1736,6 +2409,28 @@ export async function GET(req: Request) {
           professionalServices: dc.professional ?? null,
           financialServices: dc.financial ?? null,
         },
+        facultyDiscountRows: facultyDiscountRows.map((r) => {
+          const row = r as {
+            faculty: string;
+            total: number;
+            dining: number;
+            retail: number;
+            travel: number;
+            health: number;
+            professional: number;
+            financial: number;
+          };
+          return {
+            faculty: row.faculty,
+            total: Number(row.total ?? 0),
+            dining: Number(row.dining ?? 0),
+            retail: Number(row.retail ?? 0),
+            travel: Number(row.travel ?? 0),
+            health: Number(row.health ?? 0),
+            professional: Number(row.professional ?? 0),
+            financial: Number(row.financial ?? 0),
+          };
+        }),
         merchants: [...MANAGEMENT_DASHBOARD_MERCHANT_SEED],
       },
     };

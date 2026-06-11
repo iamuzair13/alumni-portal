@@ -5,13 +5,13 @@ export const ccPage =
 
 export const ccSection = {
   alumni:
-    "rounded-xl border border-emerald-200/80 bg-white/90 p-2 dark:border-emerald-500/10 dark:bg-gray-900/30",
+    "rounded-xl border border-emerald-200/80 bg-white/90 p-1.5 dark:border-emerald-500/10 dark:bg-gray-900/30",
   perks:
     "rounded-xl border border-violet-200/80 bg-white/90 p-2 dark:border-violet-500/10 dark:bg-gray-900/30",
   system:
     "rounded-xl border border-amber-200/80 bg-white/90 p-2 dark:border-amber-500/10 dark:bg-gray-900/30",
   admins:
-    "rounded-xl border border-amber-200/80 bg-white/90 p-2 dark:border-amber-500/10 dark:bg-gray-900/30",
+    "rounded-xl border border-amber-200/80 bg-white/90 p-1 dark:border-amber-500/10 dark:bg-gray-900/30",
 } as const;
 
 export const ccCard =
@@ -62,6 +62,12 @@ export const ccDrawerPanel =
 export const ccDrawerHeader = "border-gray-200 dark:border-gray-700/60";
 
 export const ccDrawerTitle = "text-base font-semibold text-gray-900 dark:text-gray-100";
+
+export const ccSectionLabel =
+  "text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500";
+
+export const ccCardPremium =
+  "rounded-2xl border border-white/20 bg-white font-sans antialiased shadow-[0_2px_16px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(139,92,246,0.08)] dark:border-white/5 dark:bg-slate-900/80 dark:shadow-[0_2px_24px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_8px_30px_rgba(139,92,246,0.12)]";
 
 export const ccAccent = {
   emerald: {
