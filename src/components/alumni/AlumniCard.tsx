@@ -10,8 +10,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
 import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
-import { SendEmailButton } from "@/components/email/SendEmailButton";
-import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
+import {
+  CardStatusSelect,
+  CardStatusConfirmModal,
+  submitCardStatusChange,
+  ON_HOLD_REASON_OPTIONS,
+  type OnHoldReason,
+  type PendingCardStatusChange,
+} from "@/components/alumni/CardStatusSelect";
 import { 
   type CardStatus, 
   type DbCardStatus,
@@ -103,15 +109,7 @@ const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
   delivered: CheckCircleIcon,
 };
 
-/** Stored in tblcard.reason_onhold; sent in notification email. */
-export const ON_HOLD_REASON_OPTIONS = [
-  { value: "Picture issue", label: "📷 Picture Issue — Blurry, incorrect format, or missing photo" },
-  { value: "Data Mismatch", label: "📋 Data Mismatch — Information doesn't match university records" },
-  { value: "Islamabad Campus", label: "🏛️ Islamabad Campus" },
-] as const;
-
-export type OnHoldReason = (typeof ON_HOLD_REASON_OPTIONS)[number]["value"];
-
+export { ON_HOLD_REASON_OPTIONS, type OnHoldReason };
 
 export type AlumniCardProps = {
   item: AlumniCardItem;
@@ -358,6 +356,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     item: AlumniListItem;
     checked: boolean;
   } | null>(null);
+  const [pendingCardStatusChange, setPendingCardStatusChange] = React.useState<PendingCardStatusChange | null>(null);
+  const [showStatusConfirmModal, setShowStatusConfirmModal] = React.useState(false);
+  const [statusChangeError, setStatusChangeError] = React.useState<string | null>(null);
+  const [isStatusUpdating, setIsStatusUpdating] = React.useState(false);
+  const queryClient = useQueryClient();
   const { data: session } = useSession();
   const canEdit = canModify(session?.user);
   const { isExporting, openExportModal, ExportModal } = useExcelExport();
@@ -721,597 +724,52 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     });
   }, [debouncedQuery, selectedStatus, selectedOverdueType, openExportModal, overdueByAlumniSet]);
 
-  const StatusSelect: React.FC<{
-    sapId: string;
-    alumniId?: number | null;
-    recipientEmail?: string | null;
-    alumniName?: string;
-    initialStatus?: CardStatus;
-    readOnly?: boolean;
-  }> = ({ sapId, alumniId, recipientEmail, alumniName, initialStatus, readOnly = false }) => {
-    const { data: session } = useSession();
-    const queryClient = useQueryClient();
-    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
-    const [localStatus, setLocalStatus] = React.useState<DbCardStatus | null>(null);
-    const [showReasonInput, setShowReasonInput] = React.useState<boolean>(false);
-    const [isUpdating, setIsUpdating] = React.useState(false);
-    const [error, setError] = React.useState<string | null>(null);
-    const [showConfirmModal, setShowConfirmModal] = React.useState(false);
-    const [pendingStatusChange, setPendingStatusChange] = React.useState<{ status: DbCardStatus; reason?: string } | null>(null);
-    const hasUpdatedRef = React.useRef(false);
-    const canEdit = canModify(session?.user); // Includes both admin and superadmin
-    
-    // Map UI status (from items list) to DB status using centralized config
-    const getDbStatusFromUI = (uiStatus?: CardStatus): DbCardStatus => {
-      const dbStatus = mapUIStatusToDb(uiStatus || "under-review");
-      return dbStatus || "UnderReview";
-    };
-    
-    // Get initial DB status from item prop or fetch from API
-    const initialDbStatus = initialStatus ? getDbStatusFromUI(initialStatus) : null;
-    
-    // Always fetch card data to get reason_onhold, even if we have initialStatus
-    const { data, isLoading } = useCardStatus(sapId);
-    
-    // Initialize local state from props first, then from fetched data
-    React.useEffect(() => {
-      if (!hasUpdatedRef.current && data !== undefined) {
-        if (data?.status) {
-          // Normalize and migrate database status
-          const normalizedStatus = normalizeDbStatus(data.status);
-          setLocalStatus(normalizedStatus);
-          
-          // Always load reason from database when status is Onhold
-          if (normalizedStatus === "Onhold" && data.reason_onhold) {
-            setShowReasonInput(true);
-          }
-        } else {
-          // If no data from API but we have initial status, use that
-          if (initialDbStatus && !data) {
-            setLocalStatus(initialDbStatus);
-          } else {
-            setLocalStatus("UnderReview");
-          }
-        }
-      } else if (initialDbStatus && !hasUpdatedRef.current && !data) {
-        // Fallback: use initial status if no data fetched yet
-        setLocalStatus(initialDbStatus);
-      }
-    }, [data, initialDbStatus]);
-    
-    // Sync local state with initialStatus prop if it changes (but only if we haven't manually updated)
-    React.useEffect(() => {
-      if (!hasUpdatedRef.current && initialDbStatus && localStatus !== initialDbStatus) {
-        setLocalStatus(initialDbStatus);
-      }
-    }, [initialDbStatus, localStatus]);
-    
-    const current = localStatus ?? initialDbStatus ?? (data?.status ? normalizeDbStatus(data.status) : "UnderReview");
-    
-    // Show reason input when Onhold is selected
-    React.useEffect(() => {
-      setShowReasonInput(current === "Onhold");
-      // Don't auto-fill the input field - it should only show what user types
-      // The database reason is displayed in the "Current Reason (from database)" section
-    }, [current]);
-    
-    const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const next = normalizeDbStatus(e.target.value) as DbCardStatus;
-      
-      // Don't update if same status
-      if (next === current) return;
-      
-      // For other statuses, show confirmation modal first (for admins and superadmins)
-      if (canEdit) {
-        setPendingStatusChange({ status: next, reason: next === "Onhold" ? "" : undefined });
-        setShowConfirmModal(true);
-      } else {
-        // Non-admins/superadmins can change status directly (shouldn't happen, but just in case)
-        await submitStatusChange(next, "");
-      }
-    };
-    
-    const handleConfirmStatusChange = async () => {
-      if (!pendingStatusChange) return;
-      if (pendingStatusChange.status === "Onhold") {
-        const reason = String(pendingStatusChange.reason || "").trim();
-        if (!reason) {
-          setError("Reason is required when status is Onhold");
-          return;
-        }
-        const validReasons = ON_HOLD_REASON_OPTIONS.map((o) => o.value);
-        if (!validReasons.includes(reason as OnHoldReason)) {
-          setError("Please select a valid On Hold reason from the list");
-          return;
-        }
-      }
-      setShowConfirmModal(false);
-      await submitStatusChange(pendingStatusChange.status, pendingStatusChange.reason || "");
-      setPendingStatusChange(null);
-    };
-    
-    const handleCancelStatusChange = () => {
-      setShowConfirmModal(false);
-      // Revert local status to the actual current status from data
-      if (data?.status) {
-        const normalizedStatus = normalizeDbStatus(data.status);
-        setLocalStatus(normalizedStatus);
-      } else {
-        setLocalStatus("UnderReview");
-      }
-      setPendingStatusChange(null);
-    };
-    
-    const submitStatusChange = async (next: DbCardStatus, reason: string) => {
-      // Optimistic update
-      const previousStatus = localStatus ?? (data?.status ? normalizeDbStatus(data.status) : "UnderReview");
-      setLocalStatus(next);
-      setIsUpdating(true);
-      setError(null);
-      hasUpdatedRef.current = true; // Mark that we've manually updated
-      
-      try {
-        const body: { status: string; reason_onhold?: string } = { status: next };
-        if (next === "Onhold" && reason) {
-          body.reason_onhold = reason;
-        }
-        
-        const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j?.error || `Failed (${res.status})`);
-        }
-        
-        // Update local cache with the new status immediately
-        queryClient.setQueryData(cardStatusKey(sapId), (old: CardData | null) => {
-          if (!old) {
-            // If no old data, create a minimal card data object
-            return {
-              cardid: 0,
-              alumniid: 0,
-              cnicno: null,
-              cardaddress: null,
-              status: next,
-              cardpicture: null,
-              card_image: null,
-              createdat: null,
-              reason_onhold: next === "Onhold" ? reason : null,
-            };
-          }
-          return { 
-            ...old, 
-            status: next,
-            reason_onhold: next === "Onhold" ? reason : null
-          };
-        });
-        
-        // Keep local state as the new status (don't let refetch override it)
-        setLocalStatus(next);
-        
-        // Reorder items to move the updated item to the first position
-        const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered"];
-        for (const s of statuses) {
-          const key = cardApplicantsKey(s);
-          const current = queryClient.getQueryData<CardApplicantsResponse>(key);
-          
-          if (current) {
-            const itemIndex = current.items.findIndex((r) => String(r.sapid) === String(sapId));
-            if (itemIndex !== -1 && itemIndex !== 0) {
-              // Move the updated item to the first position
-              const updatedItem = { ...current.items[itemIndex], status: next };
-              const reorderedItems = [
-                updatedItem,
-                ...current.items.slice(0, itemIndex),
-                ...current.items.slice(itemIndex + 1)
-              ];
-              queryClient.setQueryData(key, {
-                ...current,
-                items: reorderedItems,
-              });
-            } else if (itemIndex !== -1) {
-              // Item is already first, just update its status
-              const updatedItem = { ...current.items[itemIndex], status: next };
-              queryClient.setQueryData(key, {
-                ...current,
-                items: [
-                  updatedItem,
-                  ...current.items.slice(1)
-                ],
-              });
-            }
-          }
-        }
-        
-        // If status is Onhold and reason was saved, clear the input field after a short delay
-        // This allows the cache update to complete first, then the reason will be displayed from database
-        if (next === "Onhold" && reason) {
-          // no-op (reason is chosen in modal)
-        }
-        
-        // Invalidate applicants list to update counts, but debounce to prevent rapid refetches
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["alumni", "card", "applicants"], exact: false });
-        }, 500);
-        
-      } catch (err) {
-        // Revert on error
-        setLocalStatus(previousStatus);
-        hasUpdatedRef.current = false; // Reset flag on error
-        const errorMsg = err instanceof Error ? err.message : "Failed to update status";
-        setError(errorMsg);
+  const handleStatusChangeRequest = React.useCallback((change: PendingCardStatusChange) => {
+    setStatusChangeError(null);
+    setPendingCardStatusChange(change);
+    setShowStatusConfirmModal(true);
+  }, []);
 
-      } finally {
-        setIsUpdating(false);
+  const handleCancelCardStatusChange = React.useCallback(() => {
+    setShowStatusConfirmModal(false);
+    setPendingCardStatusChange(null);
+    setStatusChangeError(null);
+  }, []);
+
+  const handleConfirmCardStatusChange = React.useCallback(async () => {
+    if (!pendingCardStatusChange) return;
+
+    if (pendingCardStatusChange.toStatus === "Onhold") {
+      const reason = String(pendingCardStatusChange.reason || "").trim();
+      if (!reason) {
+        setStatusChangeError("Reason is required when status is Onhold");
+        return;
       }
-    };
-    
-    // Map status to display label using centralized config
-    const uiStatus = current ? mapDbStatusToUI(current) : "under-review";
-    const statusLabel = getStatusLabel(uiStatus);
-    
-    if (readOnly) {
-      return (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">{statusLabel}</span>
-          {current === "Onhold" && data?.reason_onhold && (
-            <span className="text-[10px] text-gray-500" title={data.reason_onhold}>
-              (Reason: {data.reason_onhold})
-            </span>
-          )}
-        </div>
+      const validReasons = ON_HOLD_REASON_OPTIONS.map((o) => o.value);
+      if (!validReasons.includes(reason as OnHoldReason)) {
+        setStatusChangeError("Please select a valid On Hold reason from the list");
+        return;
+      }
+    }
+
+    setIsStatusUpdating(true);
+    setStatusChangeError(null);
+    try {
+      await submitCardStatusChange(
+        pendingCardStatusChange.sapId,
+        pendingCardStatusChange.toStatus,
+        pendingCardStatusChange.reason || "",
+        queryClient
       );
+      setShowStatusConfirmModal(false);
+      setPendingCardStatusChange(null);
+    } catch (err) {
+      setStatusChangeError(err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setIsStatusUpdating(false);
     }
-    
-    return (
-      <div className="flex flex-col gap-2">
-        {/* ─── Status Badge / Select ─── */}
-        <div className="flex items-center gap-2">
-          <div className="relative group">
-            <select
-              aria-label="Card status"
-              value={current}
-              disabled={isLoading || isUpdating || readOnly}
-              onChange={handleStatusChange}
-              className={`
-                appearance-none rounded-xl border px-3.5 py-2 pr-10 text-xs font-semibold shadow-sm
-                transition-all duration-200 cursor-pointer
-                focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500/30
-                disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none
-                hover:shadow-md
-                ${getStatusSelectStyles(current)}
-              `}
-            >
-              {Object.entries(CARD_STATUS_CONFIG)
-                .filter(([key]) => key !== "all")
-                .map(([key, config]) => (
-                  <option key={key} value={config.dbValue || ""}>
-                    {config.label}
-                  </option>
-                ))}
-            </select>
-            {/* Custom chevron */}
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5">
-              <svg 
-                className={`h-3.5 w-3.5 transition-colors ${isLoading || isUpdating || readOnly ? 'text-gray-300' : 'text-gray-400 group-hover:text-gray-600'}`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
-    
-          {/* Loading State */}
-          {isUpdating && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 animate-pulse">
-              <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Saving...
-            </span>
-          )}
-    
-          {/* Error Tooltip */}
-          {error && (
-            <span 
-              className="inline-flex items-center gap-1 text-[11px] text-red-600 bg-red-50 px-2 py-1 rounded-md border border-red-100 cursor-help"
-              title={error}
-            >
-              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Failed
-            </span>
-          )}
-        </div>
-    
-        {/* ─── On Hold Reason Display ─── */}
-        {showReasonInput && current === "Onhold" && data?.reason_onhold && (
-          <div className="rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-orange-50/40 p-3 shadow-sm">
-            <div className="flex items-start gap-2">
-              <svg className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">On Hold Reason</span>
-                <p className="text-xs text-amber-900 dark:text-amber-300 mt-1 font-medium leading-relaxed">{data.reason_onhold}</p>
-              </div>
-            </div>
-          </div>
-        )}
-    
-        {/* ─── Confirmation Modal ─── */}
-        {canEdit && (
-          <Modal
-            isOpen={showConfirmModal}
-            onClose={handleCancelStatusChange}
-            className="max-w-lg mx-auto"
-            showCloseButton={true}
-          >
-            <div className="p-0 overflow-hidden">
-              {/* Modal Header */}
-              <div className="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/20">
-                    <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Confirm Status Change</h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Review details before confirming</p>
-                  </div>
-                </div>
-              </div>
-    
-              {/* Modal Body */}
-              <div className="px-6 py-5 space-y-5">
-                {/* Status Transition */}
-                <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800">
-                  <div className="flex-1">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Current</div>
-                    <StatusBadge status={current} />
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">New Status</div>
-                    <StatusBadge status={pendingStatusChange?.status || "UnderReview"} />
-                  </div>
-                </div>
-    
-                {/* On Hold Reason Section */}
-                {pendingStatusChange?.status === "Onhold" && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        Reason for On Hold
-                      </label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">This reason will be saved to the database and included in the notification email.</p>
-                    </div>
-                    <div className="relative">
-                      <select
-                        aria-label="On hold reason"
-                        value={pendingStatusChange?.reason || ""}
-                        disabled={isUpdating}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setPendingStatusChange((prev) => (prev ? { ...prev, reason: v } : prev));
-                          setError(null);
-                        }}
-                        className={`
-                          w-full rounded-xl border px-4 py-3 text-sm shadow-sm
-                          focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                          appearance-none pr-10
-                          ${!pendingStatusChange?.reason ? 'border-gray-300 bg-white text-gray-500' : 'border-amber-300 bg-amber-50/30 text-gray-900'}
-                        `}
-                      >
-                        <option value="" disabled>Select a reason...</option>
-                        {ON_HOLD_REASON_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
-                    {error && (
-                      <div className="flex items-center gap-1.5 text-xs text-red-600">
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {error}
-                      </div>
-                    )}
-                  </div>
-                )}
-    
-                {/* Email Preview Section */}
-                {(() => {
-                  const next = pendingStatusChange?.status;
-                  if (!next) return null;
-                  if (next !== "Onhold" && next !== "Active") return null;
-                  
-                  if (!alumniId || !recipientEmail) {
-                    return (
-                      <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4 flex items-start gap-3">
-                        <svg className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Email preview unavailable</p>
-                          <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">Alumni email or ID is missing for this record.</p>
-                        </div>
-                      </div>
-                    );
-                  }
-    
-                  if (next === "Onhold" && !String(pendingStatusChange?.reason || "").trim()) {
-                    return (
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 flex items-start gap-3">
-                        <svg className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Email notification ready</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">Select an On Hold reason above to preview and customize the email.</p>
-                        </div>
-                      </div>
-                    );
-                  }
-    
-                  const actionType =
-                    next === "Onhold"
-                      ? EMAIL_ACTION_TYPE.ALUMNI_CARD_ONHOLD
-                      : EMAIL_ACTION_TYPE.ALUMNI_CARD_READY_FOR_DELIVERY;
-    
-                  const tpl = generateAdminActionEmail({
-                    actionType,
-                    alumniName: alumniName || "Alumni",
-                    extraBodyHtml:
-                      next === "Onhold" && pendingStatusChange?.reason
-                        ? `<p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;"><strong>Reason:</strong> ${String(pendingStatusChange.reason)}</p>`
-                        : "",
-                  });
-    
-                  return (
-                    <div className="rounded-xl border border-blue-200/60 bg-gradient-to-br from-blue-50/80 to-indigo-50/40 p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <div className="h-9 w-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                            <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">Email Notification</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Preview and send email to {recipientEmail}</p>
-                          </div>
-                        </div>
-                        <SendEmailButton
-                          alumniId={alumniId}
-                          recipientEmail={recipientEmail}
-                          actionType={actionType}
-                          initialSubject={tpl.subject}
-                          initialBody={tpl.html}
-                          disabled={isUpdating}
-                        />
-                      </div>
-                      
-                      {/* Email Preview Card */}
-                      <div className="mt-3 rounded-lg border border-blue-100 bg-white dark:bg-gray-900 dark:border-gray-700 p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Subject</div>
-                        <p className="text-xs text-gray-800 dark:text-gray-200 font-medium truncate">{tpl.subject}</p>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-    
-              {/* Modal Footer */}
-              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={handleCancelStatusChange}
-                  disabled={isUpdating}
-                  className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmStatusChange}
-                  disabled={isUpdating}
-                  className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-500/25 hover:shadow-md hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200 inline-flex items-center gap-2"
-                >
-                  {isUpdating ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      <span>Updating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Confirm Change</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </Modal>
-        )}
-      </div>
-    );
-    
-    // ─── Helper Components ───
-    
-    function getStatusSelectStyles(status: string | null): string {
-      const base = "border-transparent";
-      switch (status) {
-        case "Pending":
-        case "UnderReview":
-          return `${base} bg-amber-50 text-amber-800 hover:bg-amber-100 focus:border-amber-500 dark:bg-amber-900/20 dark:text-amber-300`;
-        case "Process":
-        case "UnderPrinting":
-          return `${base} bg-purple-50 text-purple-800 hover:bg-purple-100 focus:border-purple-500 dark:bg-purple-900/20 dark:text-purple-300`;
-        case "Active":
-          return `${base} bg-emerald-50 text-emerald-800 hover:bg-emerald-100 focus:border-emerald-500 dark:bg-emerald-900/20 dark:text-emerald-300`;
-        case "Delivered":
-          return `${base} bg-blue-50 text-blue-800 hover:bg-blue-100 focus:border-blue-500 dark:bg-blue-900/20 dark:text-blue-300`;
-        case "Onhold":
-          return `${base} bg-rose-50 text-rose-800 hover:bg-rose-100 focus:border-rose-500 dark:bg-rose-900/20 dark:text-rose-300`;
-        default:
-          return `${base} bg-gray-50 text-gray-700 hover:bg-gray-100 focus:border-gray-500 dark:bg-gray-800 dark:text-gray-300`;
-      }
-    }
-    
-    function StatusBadge({ status }: { status: string | null }) {
-      const styles = getStatusSelectStyles(status);
-      const label = status ? getStatusLabel(mapDbStatusToUI(status as DbCardStatus)) : "Unknown";
-      
-      return (
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${styles}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${getStatusDotColor(status)}`} />
-          {label}
-        </span>
-      );
-    }
-    
-    function getStatusDotColor(status: string | null): string {
-      switch (status) {
-        case "Pending":
-        case "UnderReview": return "bg-amber-400";
-        case "Process":
-        case "UnderPrinting": return "bg-purple-400";
-        case "Active": return "bg-emerald-400";
-        case "Delivered": return "bg-blue-400";
-        case "Onhold": return "bg-rose-400";
-        default: return "bg-gray-400";
-      }
-    }
-  };
+  }, [pendingCardStatusChange, queryClient]);
+
 
   const RowActions: React.FC<{ sapId: string; studentName: string; alumItem: AlumniListItem }> = ({ sapId, studentName, alumItem }) => {
     const { data: session } = useSession();
@@ -1821,6 +1279,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       setShowOverdueByAlumniConfirmModal(true);
                     }}
                     canEdit={canEdit}
+                    onStatusChangeRequest={handleStatusChangeRequest}
                   />
                 ))}
               </tbody>
@@ -1963,6 +1422,19 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           scrollbar-width: none !important;
         }
       `}</style>
+      <CardStatusConfirmModal
+        pending={pendingCardStatusChange}
+        isOpen={showStatusConfirmModal}
+        isUpdating={isStatusUpdating}
+        error={statusChangeError}
+        onClose={handleCancelCardStatusChange}
+        onConfirm={handleConfirmCardStatusChange}
+        onReasonChange={(reason) =>
+          setPendingCardStatusChange((prev) => (prev ? { ...prev, reason } : prev))
+        }
+        onClearError={() => setStatusChangeError(null)}
+      />
+
       <ExportModal />
     </section>
   );
@@ -2142,7 +1614,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     onToggleExpand,
     isOverdue,
     onToggleOverdue,
-    canEdit
+    canEdit,
+    onStatusChangeRequest,
   }: {
     alum: AlumniListItem;
     idx: number;
@@ -2153,6 +1626,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     isOverdue: boolean;
     onToggleOverdue: (checked: boolean) => void;
     canEdit: boolean;
+    onStatusChangeRequest: (change: PendingCardStatusChange) => void;
   }) {
     const rowBg = isSelected 
       ? "bg-blue-50/70 dark:bg-blue-900/20" 
@@ -2244,13 +1718,14 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           </td>
           
           <td className="px-4 py-4">
-            <StatusSelect
+            <CardStatusSelect
               sapId={alum.id}
               alumniId={alum.alumniid ?? null}
               recipientEmail={alum.email ?? null}
               alumniName={alum.name}
               initialStatus={alum.status}
               readOnly={!canEdit}
+              onStatusChangeRequest={onStatusChangeRequest}
             />
           </td>
           

@@ -437,6 +437,8 @@ export function mapTrainedAdmins(data: ManagementDashboardPayload | undefined) {
   return {
     total: num(trained?.total),
     superadminsTotal: num(trained?.superadminsTotal),
+    adminsTotal: num(trained?.adminsTotal),
+    viewersTotal: num(trained?.viewersTotal),
     byFaculty,
     chartSeries: chart.chartSeries,
   };

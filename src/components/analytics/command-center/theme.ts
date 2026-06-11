@@ -66,6 +66,12 @@ export const ccDrawerTitle = "text-base font-semibold text-gray-900 dark:text-gr
 export const ccSectionLabel =
   "text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500";
 
+export const ccPerksSubsection =
+  "rounded-lg border border-violet-200/60 bg-white/50 p-1.5 dark:border-violet-500/15 dark:bg-gray-900/25";
+
+export const ccPerksSubsectionHeader =
+  "mb-1.5 border-b border-violet-100/80 pb-1 lg:mb-1 dark:border-violet-500/10";
+
 export const ccCardPremium =
   "rounded-2xl border border-white/20 bg-white font-sans antialiased shadow-[0_2px_16px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(139,92,246,0.08)] dark:border-white/5 dark:bg-slate-900/80 dark:shadow-[0_2px_24px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_8px_30px_rgba(139,92,246,0.12)]";
 

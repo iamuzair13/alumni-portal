@@ -1,12 +1,17 @@
 export const TRAINED_ADMINS_METHODOLOGY = {
   summary:
-    "Counts distinct admin/viewer users who have faculty-scoped access in the RBAC tables. Each user is counted once in the headline total; faculty pills show how many scoped assignments fall under each faculty.",
+    "Headline total = superadmins + distinct faculty-scoped admins + distinct faculty-scoped viewers. Role is read from users.type (or legacy_type). Faculty rows count distinct users per faculty; summing rows can exceed headline totals when users span multiple faculties.",
   source: "GET /api/analytics/realtime-dashboard → sectionA.trainedFacultyAdmins",
   calculations: [
     {
       label: "Total",
       detail:
-        "COUNT(DISTINCT user_id) across merged faculty-scope pairs from user_resource_access (resources tree) and, when present, user_access_assignments.",
+        "superadminsTotal + adminsTotal + viewersTotal. Faculty-scoped roles are distinct users with faculty access in user_resource_access and/or user_access_assignments.",
+    },
+    {
+      label: "Admins / viewers",
+      detail:
+        "Distinct faculty-scoped users filtered by users.type = admin, or viewer / legacy user respectively.",
     },
     {
       label: "Superadmins",

@@ -43,13 +43,13 @@ export function DashboardLayout({
     <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-1.5">
       <section
         aria-label="Alumni Intelligence"
-        className={`min-h-0 overflow-y-auto ${ccSection.alumni}`}
+        className={`min-h-0 h-[72vh] overflow-y-auto ${ccSection.alumni}`}
       >
         <SectionAlumni data={data} trends={trends} isLoading={isLoading} />
       </section>
       <section
         aria-label="Trained Faculty Admins"
-        className={`max-h-[4.25rem] shrink-0 overflow-hidden ${ccSection.admins}`}
+        className={`h-[13vh] shrink-0 overflow-hidden ${ccSection.admins}`}
       >
         <SectionTrainedAdmins data={data} isLoading={isLoading} />
       </section>

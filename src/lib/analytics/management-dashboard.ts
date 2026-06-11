@@ -37,9 +37,14 @@ export type TrainedFacultyAdminRow = {
 
 /** Portal staff with faculty scope: `user_access_assignments` × `users` (admin/viewer, not blocked). Labeled “trained” per management dashboard spec. */
 export type TrainedFacultyAdminsPayload = {
+  /** superadminsTotal + adminsTotal + viewersTotal */
   total: number | null;
   /** Org-wide superadmins (not attributed to any faculty) */
   superadminsTotal: number | null;
+  /** Distinct faculty-scoped users with type admin */
+  adminsTotal: number | null;
+  /** Distinct faculty-scoped users with type viewer or legacy user */
+  viewersTotal: number | null;
   byFaculty: TrainedFacultyAdminRow[];
 };
 

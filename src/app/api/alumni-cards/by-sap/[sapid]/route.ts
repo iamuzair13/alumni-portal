@@ -65,6 +65,17 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         card: {
           cardid: r.cardid,
           alumniid: r.alumniid,
+          email: (() => {
+            const row = r as {
+              personalemail?: string | null;
+              officialemail?: string | null;
+              universityemail?: string | null;
+            };
+            const resolved = String(
+              row.personalemail || row.officialemail || row.universityemail || ""
+            ).trim();
+            return resolved || null;
+          })(),
           cnicno: r.cnicno,
           cardaddress: r.cardaddress,
           delivery_city: (r as { delivery_city?: unknown }).delivery_city ?? null,

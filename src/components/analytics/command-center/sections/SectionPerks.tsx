@@ -23,7 +23,7 @@ import { DiscountsMerchantsCardChart } from "../charts/DiscountsMerchantsCardCha
 import { MeetupsEventsCardChart } from "../charts/MeetupsEventsCardChart";
 import { PublicationsCardChart } from "../charts/PublicationsCardChart";
 import { useExpandable } from "../hooks/useExpandable";
-import { ccSectionLabel } from "../theme";
+import { ccPerksSubsection, ccPerksSubsectionHeader, ccSectionLabel } from "../theme";
 import {
   mapCareerBenefits,
   mapDiscountsMerchants,
@@ -117,8 +117,8 @@ export function SectionPerks({
     <>
       <div className="space-y-3 font-sans antialiased lg:space-y-2.5">
         {/* Engagements */}
-        <section aria-label="Engagements">
-          <h3 className={`mb-1.5 lg:mb-1 ${ccSectionLabel}`}>Engagements</h3>
+        <section aria-label="Engagements" className={ccPerksSubsection}>
+          <h3 className={`${ccPerksSubsectionHeader} ${ccSectionLabel}`}>Engagements</h3>
           <MasonryGrid columns="narrow" layout="uniform" className="gap-2 lg:gap-1.5">
             <AnalyticsCard
               id={CARD_IDS.chapters}
@@ -193,8 +193,8 @@ export function SectionPerks({
         </section>
 
         {/* Perks */}
-        <section aria-label="Perks">
-          <h3 className={`mb-1.5 lg:mb-1 ${ccSectionLabel}`}>Perks</h3>
+        <section aria-label="Perks" className={ccPerksSubsection}>
+          <h3 className={`${ccPerksSubsectionHeader} ${ccSectionLabel}`}>Perks</h3>
           <MasonryGrid columns="narrow" layout="uniform" className="gap-2 lg:gap-1.5">
             <AnalyticsCard
               id={CARD_IDS.memberships}
@@ -264,8 +264,8 @@ export function SectionPerks({
         </section>
 
         {/* Publications */}
-        <section aria-label="Publications">
-          <h3 className={`mb-1.5 lg:mb-1 ${ccSectionLabel}`}>Publications</h3>
+        <section aria-label="Publications" className={ccPerksSubsection}>
+          <h3 className={`${ccPerksSubsectionHeader} ${ccSectionLabel}`}>Publications</h3>
           <MasonryGrid columns="narrow" layout="uniform" className="gap-2 lg:gap-1.5">
             <AnalyticsCard
               id={CARD_IDS.publications}

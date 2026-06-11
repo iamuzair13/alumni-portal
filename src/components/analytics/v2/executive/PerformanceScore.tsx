@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Maximize2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { PerformanceResult } from "../utils/derivePerformanceScore";
 import { PerformanceScoreBreakdown } from "./PerformanceScoreBreakdown";
 
@@ -26,6 +26,16 @@ function gaugeStrokeClass(label: PerformanceResult["label"]) {
   return "text-rose-500 dark:text-rose-400";
 }
 
+function statusPillClass(label: PerformanceResult["label"]) {
+  if (label === "Strong") {
+    return "bg-emerald-50 text-emerald-700 ring-emerald-200/80 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25";
+  }
+  if (label === "Stable") {
+    return "bg-amber-50 text-amber-700 ring-amber-200/80 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25";
+  }
+  return "bg-rose-50 text-rose-700 ring-rose-200/80 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/25";
+}
+
 export function PerformanceScore({
   result,
   compact = false,
@@ -38,19 +48,12 @@ export function PerformanceScore({
   const { score, label } = result;
   const isCommand = variant === "command";
 
-  const size = isCommand ? 46 : compact ? 64 : 88;
-  const radius = isCommand ? 18 : compact ? 26 : 36;
-  const stroke = isCommand ? 4 : compact ? 5 : 6;
+  const size = isCommand ? 28 : compact ? 64 : 88;
+  const radius = isCommand ? 10 : compact ? 26 : 36;
+  const stroke = isCommand ? 3 : compact ? 5 : 6;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
   const center = size / 2;
-
-  const labelColor =
-    label === "Strong"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : label === "Stable"
-        ? "text-amber-600 dark:text-amber-400"
-        : "text-rose-600 dark:text-rose-400";
 
   const updateDropdownPosition = () => {
     const el = rootRef.current;
@@ -122,7 +125,7 @@ export function PerformanceScore({
       <div className="absolute inset-0 flex items-center justify-center">
         <span
           className={`font-bold tabular-nums text-gray-900 dark:text-white ${
-            isCommand ? "text-xs" : compact ? "text-lg" : "text-xl"
+            isCommand ? "text-[10px] leading-none" : compact ? "text-lg" : "text-xl"
           }`}
         >
           {score}
@@ -131,8 +134,15 @@ export function PerformanceScore({
     </div>
   );
 
+  const labelColor =
+    label === "Strong"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : label === "Stable"
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-rose-600 dark:text-rose-400";
+
   const titleClass = isCommand
-    ? "text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+    ? "text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
     : compact
       ? "text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400"
       : "text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
@@ -144,10 +154,11 @@ export function PerformanceScore({
       : "mt-0.5 text-[10px] text-gray-400 dark:text-gray-500";
 
   const expandIcon = isCommand ? (
-    <Maximize2
-      className={`h-3.5 w-3.5 shrink-0 text-gray-400 transition-opacity group-hover:opacity-100 dark:text-gray-500 ${
-        expanded ? "opacity-100" : "opacity-60"
+    <ChevronDown
+      className={`h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform duration-200 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300 ${
+        expanded ? "rotate-180" : ""
       }`}
+      aria-hidden
     />
   ) : (
     <svg
@@ -161,42 +172,45 @@ export function PerformanceScore({
     </svg>
   );
 
-  const cardBody = (
+  const cardBody = isCommand ? (
     <>
       {gauge}
-      <div className={`min-w-0 flex-1 text-left ${isCommand ? "leading-none" : ""}`}>
-        <p className={titleClass}>{isCommand ? "Portal performance" : "Portal Performance"}</p>
-        <p
-          className={`${isCommand ? "text-xs" : "text-sm"} font-bold leading-snug ${labelColor} ${isCommand ? "truncate" : ""}`}
-          title={isCommand ? label : undefined}
+      <div className="min-w-0 flex-1 text-left leading-none">
+        <p className={titleClass}>Portal performance</p>
+        <span
+          className={`mt-0.5 inline-flex max-w-full items-center rounded-full px-1.5 py-px text-[10px] font-semibold ring-1 ring-inset ${statusPillClass(label)}`}
+          title={label}
         >
-          {label}
+          <span className="truncate">{label}</span>
+        </span>
+      </div>
+      {expandIcon}
+    </>
+  ) : (
+    <>
+      {gauge}
+      <div className="min-w-0 flex-1 text-left">
+        <p className={titleClass}>Portal Performance</p>
+        <p className={`text-sm font-bold leading-snug ${labelColor}`}>{label}</p>
+        <p className={hintClass}>
+          {compact ? (
+            <>{expanded ? "Tap to hide breakdown" : "Tap for score breakdown"}</>
+          ) : (
+            <>
+              Composite index from verification, engagement, placement & chapters ·{" "}
+              {expanded ? "click to hide" : "click for breakdown"}
+            </>
+          )}
         </p>
-        {!isCommand ? (
-          <p className={hintClass}>
-            {compact ? (
-              <>{expanded ? "Tap to hide breakdown" : "Tap for score breakdown"}</>
-            ) : (
-              <>
-                Composite index from verification, engagement, placement & chapters ·{" "}
-                {expanded ? "click to hide" : "click for breakdown"}
-              </>
-            )}
-          </p>
-        ) : null}
       </div>
       {expandIcon}
     </>
   );
 
   const buttonClass = isCommand
-    ? `group flex h-8 w-full items-center gap-2 rounded-lg border bg-white/95 px-2 py-0 text-left shadow-sm backdrop-blur-sm transition-all hover:shadow-md dark:bg-gray-900/80 ${
-        label === "Strong"
-          ? "border-emerald-200/80 hover:border-emerald-300 dark:border-emerald-500/20 dark:hover:border-emerald-400/40"
-          : label === "Stable"
-            ? "border-amber-200/80 hover:border-amber-300 dark:border-amber-500/20 dark:hover:border-amber-400/40"
-            : "border-rose-200/80 hover:border-rose-300 dark:border-rose-500/20 dark:hover:border-rose-400/40"
-      } ${expanded ? "ring-2 ring-cyan-500/20 dark:ring-cyan-400/20" : ""}`
+    ? `group inline-flex h-8 w-full min-w-[10.5rem] items-center gap-2 rounded-lg border border-gray-200/80 bg-gray-50/80 px-2 text-left transition-colors hover:border-gray-300 hover:bg-white dark:border-gray-700/80 dark:bg-gray-800/60 dark:hover:border-gray-600 dark:hover:bg-gray-800/90 ${
+        expanded ? "border-gray-300 bg-white ring-1 ring-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:ring-gray-700/80" : ""
+      }`
     : `flex w-full items-center gap-2.5 rounded-xl border border-gray-200/60 bg-white/80 text-left shadow-sm backdrop-blur-sm transition-colors hover:border-indigo-300/60 hover:bg-white dark:border-gray-800 dark:bg-gray-900/50 dark:hover:border-indigo-500/40 dark:hover:bg-gray-900/70 ${
         compact ? "px-2.5 py-2" : "gap-3 p-3"
       } ${expanded ? "ring-2 ring-indigo-500/20 dark:ring-indigo-400/20" : ""}`;

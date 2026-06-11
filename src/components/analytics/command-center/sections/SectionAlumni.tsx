@@ -21,7 +21,7 @@ import { AnalyticsCard } from "../AnalyticsCard";
 import { ExpandDrawer } from "../ExpandDrawer";
 import { MasonryGrid } from "../MasonryGrid";
 import { Bar } from "../charts/Bar";
-import { Donut } from "../charts/Donut";
+import { CategoriesCardChart, categoriesSummary } from "../charts/CategoriesCardChart";
 import { VelocityCardChart } from "../charts/VelocityCardChart";
 import { OccupationRadar } from "../charts/OccupationRadar";
 import { FillChart } from "../charts/FillChart";
@@ -130,22 +130,12 @@ export function SectionAlumni({
           icon={Layers}
           accent="emerald"
           primaryValue={totalCategories}
-          secondaryLabel=""
+          secondaryLabel=''
           masonrySize="md"
           chartFill
           delay={0.05}
           onExpand={open}
-          chart={
-            <FillChart minHeight={88}>
-              {() => (
-                <Donut
-                  data={categories.chartSeries}
-                  showLabels
-                  minSlicePercent={0.05}
-                />
-              )}
-            </FillChart>
-          }
+          chart={<CategoriesCardChart data={categories.chartSeries} />}
         />
         <AnalyticsCard
           id={CARD_IDS.occupation}

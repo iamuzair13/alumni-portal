@@ -6,6 +6,7 @@ export type CardStatus = "pending" | "rejected" | "delivered";
 export type CardData = {
   cardid: number;
   alumniid: number;
+  email?: string | null;
   cnicno: string | null;
   cardaddress: string | null;
   delivery_city?: string | null;

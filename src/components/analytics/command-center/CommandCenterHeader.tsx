@@ -299,7 +299,8 @@ export function CommandCenterHeader({
             <span className={`${statusShell} hidden md:inline-flex font-medium`}>{lastUpdated}</span>
           </div>
 
-          <div className="w-full min-w-[10.5rem] shrink-0 sm:w-[11.5rem] lg:w-[12.75rem]">{performance}</div>
+          <div className="hidden h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700 sm:block" aria-hidden />
+          <div className="shrink-0 sm:min-w-[11.5rem]">{performance}</div>
         </div>
       </div>
     </header>

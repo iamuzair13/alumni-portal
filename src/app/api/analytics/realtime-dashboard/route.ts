@@ -1215,6 +1215,8 @@ export async function GET(req: Request) {
     let trainedFacultyAdmins: {
       total: number | null;
       superadminsTotal: number | null;
+      adminsTotal: number | null;
+      viewersTotal: number | null;
       byFaculty: Array<{
         faculty: string;
         facultyId: number | null;
@@ -1224,7 +1226,7 @@ export async function GET(req: Request) {
         firstTrainedAt: string | null;
         lastTrainedAt: string | null;
       }>;
-    } = { total: null, superadminsTotal: null, byFaculty: [] };
+    } = { total: null, superadminsTotal: null, adminsTotal: null, viewersTotal: null, byFaculty: [] };
     const trainedFacultyAdminsDebug: {
       tableCheck?: unknown;
       mergedError?: string;
@@ -1233,10 +1235,12 @@ export async function GET(req: Request) {
     } = {};
 
     const applyTrainedAdminRows = (
-      totalRows: Array<{ c?: number }>,
+      totalRows: Array<{ c?: number; admins_total?: number; viewers_total?: number }>,
       byFacultyRows: unknown
     ) => {
-      const total = Number((totalRows[0] as { c?: number } | undefined)?.c ?? 0);
+      const totalRow = totalRows[0] as { c?: number; admins_total?: number; viewers_total?: number } | undefined;
+      const adminsTotal = Number(totalRow?.admins_total ?? 0);
+      const viewersTotal = Number(totalRow?.viewers_total ?? 0);
       const byFaculty = (
         byFacultyRows as unknown as Array<{
           faculty: string;
@@ -1257,8 +1261,10 @@ export async function GET(req: Request) {
         lastTrainedAt: r.last_trained_at ? new Date(r.last_trained_at).toISOString() : null,
       }));
       trainedFacultyAdmins = {
-        total: Number.isFinite(total) ? total : null,
+        total: null,
         superadminsTotal: trainedFacultyAdmins.superadminsTotal,
+        adminsTotal: Number.isFinite(adminsTotal) ? adminsTotal : null,
+        viewersTotal: Number.isFinite(viewersTotal) ? viewersTotal : null,
         byFaculty,
       };
     };
@@ -1327,8 +1333,23 @@ export async function GET(req: Request) {
               )
               AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
               ${uraFacultyCond}
+          ),
+          scoped_users AS (
+            SELECT DISTINCT user_id FROM ura_pairs
+          ),
+          user_roles AS (
+            SELECT
+              u.id AS user_id,
+              LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type
+            FROM public.users u
+            INNER JOIN scoped_users s ON s.user_id = u.id
+            WHERE COALESCE(u.blocked, false) = false
           )
-          SELECT COUNT(DISTINCT user_id)::int AS c FROM ura_pairs
+          SELECT
+            COUNT(DISTINCT user_id)::int AS c,
+            COUNT(DISTINCT user_id) FILTER (WHERE user_type = 'admin')::int AS admins_total,
+            COUNT(DISTINCT user_id) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers_total
+          FROM user_roles
         `;
         const byFacultyUraOnly = await sql/* sql */`
           WITH ura_scoped AS (
@@ -1341,7 +1362,7 @@ export async function GET(req: Request) {
                 fby_res.id
               ) AS faculty_id,
               LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
-              MIN(ura.created_at) AS scope_trained_at,
+              ura.created_at AS scope_trained_at,
               u.created_at AS user_created_at
             FROM public.user_resource_access ura
             INNER JOIN public.users u ON u.id = ura.user_id
@@ -1376,15 +1397,15 @@ export async function GET(req: Request) {
               )
               AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
               ${uraFacultyCond}
-            GROUP BY u.id, faculty_id, user_type, u.created_at
           ),
           per_user_faculty AS (
             SELECT
               user_id,
               faculty_id,
-              user_type,
-              LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at) AS trained_at
+              MAX(user_type) AS user_type,
+              MIN(LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at)) AS trained_at
             FROM ura_scoped
+            GROUP BY user_id, faculty_id
           ),
           per_faculty AS (
             SELECT
@@ -1479,8 +1500,23 @@ export async function GET(req: Request) {
           SELECT user_id, faculty_id FROM ura_pairs
           UNION
           SELECT user_id, faculty_id FROM uaa_pairs
+        ),
+        scoped_users AS (
+          SELECT DISTINCT user_id FROM pairs
+        ),
+        user_roles AS (
+          SELECT
+            u.id AS user_id,
+            LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type
+          FROM public.users u
+          INNER JOIN scoped_users s ON s.user_id = u.id
+          WHERE COALESCE(u.blocked, false) = false
         )
-        SELECT COUNT(DISTINCT user_id)::int AS c FROM pairs
+        SELECT
+          COUNT(DISTINCT user_id)::int AS c,
+          COUNT(DISTINCT user_id) FILTER (WHERE user_type = 'admin')::int AS admins_total,
+          COUNT(DISTINCT user_id) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers_total
+        FROM user_roles
       `;
       const byFacultyMerged = await sql/* sql */`
         WITH ura_scoped AS (
@@ -1596,21 +1632,36 @@ export async function GET(req: Request) {
       trainedFacultyAdminsDebug.mergedError = e instanceof Error ? e.message : String(e);
       try {
         const totalRowsUaaOnly = await sql/* sql */`
-          SELECT COUNT(DISTINCT u.id)::int AS c
-          FROM public.user_access_assignments uaa
-          INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
-          WHERE COALESCE(uaa.faculty_id, (
-            SELECT f2.id FROM public.tbl_faculties f2
-            WHERE LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
-              AND LOWER(TRIM(f2.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
-            LIMIT 1
-          )) IS NOT NULL
-            AND COALESCE(u.blocked, false) = false
-            AND (
-              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
-              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
-            )
-            ${uaaFacultyResolvedCond}
+          WITH scoped_users AS (
+            SELECT DISTINCT u.id AS user_id
+            FROM public.user_access_assignments uaa
+            INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+            WHERE COALESCE(uaa.faculty_id, (
+              SELECT f2.id FROM public.tbl_faculties f2
+              WHERE LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
+                AND LOWER(TRIM(f2.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
+              LIMIT 1
+            )) IS NOT NULL
+              AND COALESCE(u.blocked, false) = false
+              AND (
+                LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'user')
+                OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
+              )
+              ${uaaFacultyResolvedCond}
+          ),
+          user_roles AS (
+            SELECT
+              u.id AS user_id,
+              LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type
+            FROM public.users u
+            INNER JOIN scoped_users s ON s.user_id = u.id
+            WHERE COALESCE(u.blocked, false) = false
+          )
+          SELECT
+            COUNT(DISTINCT user_id)::int AS c,
+            COUNT(DISTINCT user_id) FILTER (WHERE user_type = 'admin')::int AS admins_total,
+            COUNT(DISTINCT user_id) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers_total
+          FROM user_roles
         `;
         const byFacultyUaaOnly = await sql/* sql */`
           WITH uaa_scoped AS (
@@ -1618,7 +1669,7 @@ export async function GET(req: Request) {
               u.id AS user_id,
               COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
               LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
-              MIN(uaa.created_at) AS scope_trained_at,
+              uaa.created_at AS scope_trained_at,
               u.created_at AS user_created_at
             FROM public.user_access_assignments uaa
             INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
@@ -1632,15 +1683,15 @@ export async function GET(req: Request) {
                 OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'user')
               )
               ${uaaFacultyResolvedCond}
-            GROUP BY u.id, faculty_id, user_type, u.created_at
           ),
           per_user_faculty AS (
             SELECT
               user_id,
               faculty_id,
-              user_type,
-              LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at) AS trained_at
+              MAX(user_type) AS user_type,
+              MIN(LEAST(COALESCE(scope_trained_at, user_created_at), user_created_at)) AS trained_at
             FROM uaa_scoped
+            GROUP BY user_id, faculty_id
           ),
           per_faculty AS (
             SELECT
@@ -1668,23 +1719,45 @@ export async function GET(req: Request) {
         applyTrainedAdminRows(totalRowsUaaOnly as Array<{ c?: number }>, byFacultyUaaOnly);
       } catch (e2) {
         trainedFacultyAdminsDebug.uaaOnlyError = e2 instanceof Error ? e2.message : String(e2);
-        trainedFacultyAdmins = { total: null, superadminsTotal: null, byFaculty: [] };
+        trainedFacultyAdmins = {
+          total: null,
+          superadminsTotal: null,
+          adminsTotal: null,
+          viewersTotal: null,
+          byFaculty: [],
+        };
       }
     }
 
     const hasNoTrainedData =
-      (trainedFacultyAdmins.total ?? 0) === 0 && (trainedFacultyAdmins.byFaculty?.length ?? 0) === 0;
+      (trainedFacultyAdmins.adminsTotal ?? 0) + (trainedFacultyAdmins.viewersTotal ?? 0) === 0 &&
+      (trainedFacultyAdmins.byFaculty?.length ?? 0) === 0;
 
     if (hasNoTrainedData) {
       try {
         const totalRowsLegacy = await sql/* sql */`
-          SELECT COUNT(DISTINCT uaa.userid)::int AS c
-          FROM public.user_access_assignments uaa
-          INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid
-          WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
-            AND COALESCE(tu.blocked, false) = false
-            AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'user')
-            ${selectedFacultyId && Number.isFinite(selectedFacultyId) ? sql` AND uaa.faculty_id = ${selectedFacultyId}` : sql``}
+          WITH scoped_users AS (
+            SELECT DISTINCT tu.userid AS user_id
+            FROM public.user_access_assignments uaa
+            INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid
+            WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
+              AND COALESCE(tu.blocked, false) = false
+              AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'user')
+              ${selectedFacultyId && Number.isFinite(selectedFacultyId) ? sql` AND uaa.faculty_id = ${selectedFacultyId}` : sql``}
+          ),
+          user_roles AS (
+            SELECT
+              tu.userid AS user_id,
+              LOWER(TRIM(COALESCE(tu.type, ''))) AS user_type
+            FROM public.tbl_users tu
+            INNER JOIN scoped_users s ON s.user_id = tu.userid
+            WHERE COALESCE(tu.blocked, false) = false
+          )
+          SELECT
+            COUNT(DISTINCT user_id)::int AS c,
+            COUNT(DISTINCT user_id) FILTER (WHERE user_type = 'admin')::int AS admins_total,
+            COUNT(DISTINCT user_id) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers_total
+          FROM user_roles
         `;
         const byFacultyRowsLegacy = await sql/* sql */`
           WITH legacy_scoped AS (
@@ -1692,7 +1765,7 @@ export async function GET(req: Request) {
               tu.userid AS user_id,
               COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
               LOWER(TRIM(COALESCE(tu.type, ''))) AS user_type,
-              MIN(uaa.created_at) AS trained_at
+              uaa.created_at AS trained_at
             FROM public.user_access_assignments uaa
             INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid
             LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
@@ -1702,7 +1775,15 @@ export async function GET(req: Request) {
               AND COALESCE(tu.blocked, false) = false
               AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'user')
               ${selectedFacultyId && Number.isFinite(selectedFacultyId) ? sql` AND uaa.faculty_id = ${selectedFacultyId}` : sql``}
-            GROUP BY tu.userid, faculty_id, user_type
+          ),
+          per_user_faculty AS (
+            SELECT
+              user_id,
+              faculty_id,
+              MAX(user_type) AS user_type,
+              MIN(trained_at) AS trained_at
+            FROM legacy_scoped
+            GROUP BY user_id, faculty_id
           ),
           per_faculty AS (
             SELECT
@@ -1712,7 +1793,7 @@ export async function GET(req: Request) {
               COUNT(*) FILTER (WHERE user_type IN ('viewer', 'user'))::int AS viewers,
               MIN(trained_at) AS first_trained_at,
               MAX(trained_at) AS last_trained_at
-            FROM legacy_scoped
+            FROM per_user_faculty
             GROUP BY faculty_id
           )
           SELECT
@@ -1768,11 +1849,12 @@ export async function GET(req: Request) {
     } catch {
       superadminsTotal = 0;
     }
-    const facultyScopedTotal = trainedFacultyAdmins.total ?? 0;
+    const adminsTotal = trainedFacultyAdmins.adminsTotal ?? 0;
+    const viewersTotal = trainedFacultyAdmins.viewersTotal ?? 0;
     trainedFacultyAdmins = {
       ...trainedFacultyAdmins,
       superadminsTotal,
-      total: facultyScopedTotal + superadminsTotal,
+      total: superadminsTotal + adminsTotal + viewersTotal,
     };
 
     let storiesPub = 0;
