@@ -73,26 +73,49 @@ export const ccPerksSubsectionHeader =
   "mb-1.5 border-b border-violet-100/80 pb-1 lg:mb-1 dark:border-violet-500/10";
 
 export const ccCardPremium =
-  "rounded-2xl border border-white/20 bg-white font-sans antialiased shadow-[0_2px_16px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(139,92,246,0.08)] dark:border-white/5 dark:bg-slate-900/80 dark:shadow-[0_2px_24px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_8px_30px_rgba(139,92,246,0.12)]";
+  "rounded-2xl font-sans antialiased shadow-[0_2px_16px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-0.5 dark:shadow-[0_2px_24px_rgba(0,0,0,0.2)]";
 
 export const ccAccent = {
   emerald: {
     border:
-      "border-emerald-200/80 hover:border-emerald-300 dark:border-emerald-500/20 dark:hover:border-emerald-400/40",
+      "border-emerald-200/70 hover:border-emerald-300/90 dark:border-emerald-500/25 dark:hover:border-emerald-400/45",
     glow: "hover:shadow-emerald-500/10",
     icon: "text-emerald-600 dark:text-emerald-400",
     ring: "ring-emerald-500/20",
+    cardDefault:
+      "border-l-[3px] border-l-emerald-400/90 bg-gradient-to-br from-emerald-50/50 via-white/95 to-white/95 dark:border-l-emerald-400/70 dark:from-emerald-500/8 dark:via-gray-900/85 dark:to-gray-900/80",
+    cardPremium:
+      "border border-emerald-200/70 bg-gradient-to-br from-emerald-50/40 via-white to-white hover:shadow-[0_8px_30px_rgba(16,185,129,0.1)] dark:border-emerald-500/20 dark:from-emerald-500/10 dark:via-slate-900/80 dark:to-slate-900/80 dark:hover:shadow-[0_8px_30px_rgba(16,185,129,0.14)]",
+    iconBg:
+      "bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-500/20 dark:to-emerald-900/20",
+    chartDivider: "border-emerald-100/80 dark:border-emerald-500/15",
   },
   violet: {
-    border: "border-violet-200/80 hover:border-violet-300 dark:border-violet-500/20 dark:hover:border-violet-400/40",
+    border:
+      "border-violet-200/70 hover:border-violet-300/90 dark:border-violet-500/25 dark:hover:border-violet-400/45",
     glow: "hover:shadow-violet-500/10",
     icon: "text-violet-600 dark:text-violet-400",
     ring: "ring-violet-500/20",
+    cardDefault:
+      "border-l-[3px] border-l-violet-400/90 bg-gradient-to-br from-violet-50/50 via-white/95 to-white/95 dark:border-l-violet-400/70 dark:from-violet-500/8 dark:via-gray-900/85 dark:to-gray-900/80",
+    cardPremium:
+      "border border-violet-200/70 bg-gradient-to-br from-violet-50/40 via-white to-white hover:shadow-[0_8px_30px_rgba(139,92,246,0.1)] dark:border-violet-500/20 dark:from-violet-500/10 dark:via-slate-900/80 dark:to-slate-900/80 dark:hover:shadow-[0_8px_30px_rgba(139,92,246,0.14)]",
+    iconBg:
+      "bg-gradient-to-br from-violet-100 to-violet-50 dark:from-violet-500/20 dark:to-violet-900/20",
+    chartDivider: "border-violet-100/80 dark:border-violet-500/15",
   },
   amber: {
-    border: "border-amber-200/80 hover:border-amber-300 dark:border-amber-500/20 dark:hover:border-amber-400/40",
+    border:
+      "border-amber-200/70 hover:border-amber-300/90 dark:border-amber-500/25 dark:hover:border-amber-400/45",
     glow: "hover:shadow-amber-500/10",
     icon: "text-amber-600 dark:text-amber-400",
     ring: "ring-amber-500/20",
+    cardDefault:
+      "border-l-[3px] border-l-amber-400/90 bg-gradient-to-br from-amber-50/50 via-white/95 to-white/95 dark:border-l-amber-400/70 dark:from-amber-500/8 dark:via-gray-900/85 dark:to-gray-900/80",
+    cardPremium:
+      "border border-amber-200/70 bg-gradient-to-br from-amber-50/40 via-white to-white hover:shadow-[0_8px_30px_rgba(245,158,11,0.1)] dark:border-amber-500/20 dark:from-amber-500/10 dark:via-slate-900/80 dark:to-slate-900/80 dark:hover:shadow-[0_8px_30px_rgba(245,158,11,0.14)]",
+    iconBg:
+      "bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-500/20 dark:to-amber-900/20",
+    chartDivider: "border-amber-100/80 dark:border-amber-500/15",
   },
 } as const;

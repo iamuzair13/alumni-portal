@@ -80,12 +80,12 @@ export function AnalyticsCard({
         transition={{ delay, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         onClick={() => onExpand(id)}
         aria-label={`Open ${title} details`}
-        className={`group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left ${ccCardPremium} ${styles.border} ${masonrySpan[size]} p-5`}
+        className={`group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left ${ccCardPremium} ${styles.cardPremium} ${masonrySpan[size]} p-5`}
       >
         <div className="flex shrink-0 items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-100 to-violet-50 transition-transform duration-300 group-hover:scale-105 dark:from-violet-500/20 dark:to-violet-900/20 ${styles.icon}`}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 ${styles.iconBg} ${styles.icon}`}
             >
               <Icon className="h-4 w-4" />
             </div>
@@ -120,7 +120,7 @@ export function AnalyticsCard({
 
         {chart ? (
           <div
-            className={`pointer-events-none min-w-0 overflow-hidden pt-4 ${chartHeights[size]}`}
+            className={`pointer-events-none min-w-0 overflow-hidden border-t pt-4 ${styles.chartDivider} ${chartHeights[size]}`}
           >
             {chart}
           </div>
@@ -140,7 +140,7 @@ export function AnalyticsCard({
       whileHover={{ scale: 1.005 }}
       onClick={() => onExpand(id)}
       aria-label={`Open ${title} details`}
-      className={`group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left transition-shadow hover:shadow-lg ${ccCard} ${styles.border} ${styles.glow} ${masonrySpan[size]} ${compact ? "p-2" : "p-2.5"}`}
+      className={`group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left transition-shadow hover:shadow-lg ${ccCard} ${styles.border} ${styles.cardDefault} ${styles.glow} ${masonrySpan[size]} ${compact ? "p-2" : "p-2.5"}`}
     >
       <div className="mb-1 flex shrink-0 items-center gap-2">
         <Icon className={`h-3.5 w-3.5 shrink-0 ${styles.icon}`} />
@@ -164,7 +164,9 @@ export function AnalyticsCard({
       ) : null}
 
       {chart ? (
-        <div className={`pointer-events-none min-w-0 overflow-hidden ${chartHeights[size]}`}>
+        <div
+          className={`pointer-events-none min-w-0 overflow-hidden border-t pt-1.5 ${styles.chartDivider} ${chartHeights[size]}`}
+        >
           {chart}
         </div>
       ) : null}

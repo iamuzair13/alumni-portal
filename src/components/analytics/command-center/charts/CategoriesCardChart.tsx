@@ -52,27 +52,22 @@ export function CategoriesCardChart({ data }: { data: ChartSeriesPoint[] }) {
 
       <ul
         ref={legendRef}
-        className="shrink-0 space-y-0.5 border-t border-emerald-100/80 pt-1 dark:border-emerald-500/10"
+        className="flex justify-between shrink-0 space-y-0.5 border-t border-emerald-100/80 pt-1 dark:border-emerald-500/10"
       >
         {sorted.map((tier) => {
           const pct = total > 0 ? Math.round((tier.value / total) * 100) : 0;
           return (
+            
             <li
               key={tier.label}
-              className="flex items-center gap-1.5 text-[9px] leading-tight text-gray-600 dark:text-gray-400"
+              className="flex  items-center gap-1.5 text-[9px] leading-tight text-gray-600 dark:text-gray-400"
             >
               <span
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
                 style={{ backgroundColor: tier.color }}
               />
               <span className="min-w-0 flex-1 truncate font-medium text-gray-700 dark:text-gray-300">
-                {tier.label}
-              </span>
-              <span className="shrink-0 tabular-nums font-semibold text-gray-800 dark:text-gray-200">
-                {formatCount(tier.value)}
-              </span>
-              <span className="w-7 shrink-0 text-right tabular-nums text-gray-500 dark:text-gray-400">
-                {pct}%
+                {tier.label} - {formatCount(tier.value)} ({pct}%)
               </span>
             </li>
           );
@@ -82,14 +77,3 @@ export function CategoriesCardChart({ data }: { data: ChartSeriesPoint[] }) {
   );
 }
 
-export function categoriesSummary(data: ChartSeriesPoint[]): string {
-  const filtered = data.filter((d) => d.value > 0);
-  if (!filtered.length) return "Verified alumni tiers";
-
-  const total = filtered.reduce((s, d) => s + d.value, 0);
-  const top = [...filtered].sort((a, b) => b.value - a.value)[0];
-  if (!top || total <= 0) return "Verified alumni tiers";
-
-  const pct = Math.round((top.value / total) * 100);
-  return `Verified · ${top.label} leads at ${pct}%`;
-}
