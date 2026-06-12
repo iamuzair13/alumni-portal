@@ -16,6 +16,7 @@ export type BulkScorecardApplicant = {
   applicationId: number;
   name: string;
   status: string;
+  bonusMarks: number;
   marksByCriterionId: Record<number, number | null>;
 };
 
@@ -138,7 +139,8 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
       SELECT
         cl.id as application_id,
         cl.status,
-        a.alumniname
+        a.alumniname,
+        cl.bonus_marks
       FROM public.chapter_leadership cl
       LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
       LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
@@ -183,10 +185,12 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
 
     for (const row of chapterRows as Array<Record<string, unknown>>) {
       const applicationId = Number(row.application_id);
+      const bonusRaw = Number(row.bonus_marks);
       applicants.push({
         applicationId,
         name: String(row.alumniname ?? "Unknown"),
         status: String(row.status ?? "pending"),
+        bonusMarks: Number.isFinite(bonusRaw) && bonusRaw >= 0 ? normalizeObtainedMark(bonusRaw) : 0,
         marksByCriterionId: marksByApplication.get(applicationId) ?? {},
       });
     }
@@ -209,7 +213,8 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
       SELECT
         ass.id as application_id,
         ass.status,
-        a.alumniname
+        a.alumniname,
+        ass.bonus_marks
       FROM public.tblalumniassociation ass
       LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
       WHERE 1=1
@@ -253,10 +258,12 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
 
     for (const row of associationRows as Array<Record<string, unknown>>) {
       const applicationId = Number(row.application_id);
+      const bonusRaw = Number(row.bonus_marks);
       applicants.push({
         applicationId,
         name: String(row.alumniname ?? "Unknown"),
         status: String(row.status ?? "pending"),
+        bonusMarks: Number.isFinite(bonusRaw) && bonusRaw >= 0 ? normalizeObtainedMark(bonusRaw) : 0,
         marksByCriterionId: marksByApplication.get(applicationId) ?? {},
       });
     }

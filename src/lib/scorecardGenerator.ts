@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import type { BulkScorecardCriterion, BulkScorecardPayload } from "@/lib/leadershipScorecardData";
 import { bulkScorecardRoleLabel } from "@/lib/leadershipScorecardData";
-import { formatObtainedMarkDisplay } from "@/lib/leadershipMarks";
+import { formatObtainedMarkDisplay, normalizeObtainedMark } from "@/lib/leadershipMarks";
 
 const PDF_LOGO_MAX_BYTES = 512 * 1024;
 
@@ -28,10 +28,12 @@ const THEME = {
 
 const QUESTIONS_COL_RATIO = 0.38;
 const MIN_APPLICANT_COL_MM = 22;
-const HEADER_ROW_H = 7;
+const MIN_HEADER_ROW_H = 7;
 const CELL_PAD = 1.5;
 const TABLE_FONT = 8;
+const HEADER_FONT = 7.5;
 const SECTION_GAP = 3;
+const BONUS_MARKS_MAX = 25;
 
 function getLogoBase64(): string {
   const candidates = [
@@ -220,39 +222,59 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
 
       const drawTableHeader = (ctx: TableContext) => {
         const totalW = ctx.questionsW + ctx.applicantW * ctx.batch.length;
+        const nameColW = ctx.applicantW - CELL_PAD * 2;
+
+        setStyle(HEADER_FONT, true, THEME.colors.white);
+        const questionsLabelLines = doc.splitTextToSize("Questions", ctx.questionsW - CELL_PAD * 2);
+        const applicantNameLines = ctx.batch.map((applicant) =>
+          doc.splitTextToSize(applicant.name || "—", nameColW)
+        );
+        const maxNameLines = Math.max(
+          questionsLabelLines.length,
+          ...applicantNameLines.map((lines) => lines.length),
+          1
+        );
+        const headerRowH = Math.max(
+          MIN_HEADER_ROW_H,
+          maxNameLines * lineH(HEADER_FONT) + CELL_PAD * 2
+        );
+        const textStartY = y + CELL_PAD + lineH(HEADER_FONT);
 
         doc.setFillColor(...THEME.colors.brand);
         doc.setDrawColor(...THEME.colors.brand);
         doc.setLineWidth(0.15);
-        doc.rect(m, y, totalW, HEADER_ROW_H, "F");
+        doc.rect(m, y, totalW, headerRowH, "F");
 
-        setStyle(THEME.font.small, true, THEME.colors.white);
-        doc.text("Questions", m + CELL_PAD, y + 4.8);
+        setStyle(HEADER_FONT, true, THEME.colors.white);
+        doc.text(questionsLabelLines, m + CELL_PAD, textStartY);
 
         ctx.batch.forEach((applicant, idx) => {
           const x = m + ctx.questionsW + idx * ctx.applicantW;
-          const nameLines = doc.splitTextToSize(applicant.name || "—", ctx.applicantW - CELL_PAD * 2);
-          const display = nameLines.slice(0, 2).join(" ");
-          doc.text(display, x + CELL_PAD, y + 4.8, { maxWidth: ctx.applicantW - CELL_PAD * 2 });
+          doc.text(applicantNameLines[idx], x + CELL_PAD, textStartY);
         });
 
-        y += HEADER_ROW_H;
+        y += headerRowH;
+      };
+
+      const formatMarkCell = (mark: number | string | null): string => {
+        if (typeof mark === "string") return mark;
+        return mark != null && Number.isFinite(mark) ? formatObtainedMarkDisplay(mark) : "—";
       };
 
       const drawTableRow = (
         ctx: TableContext,
         question: string,
-        marks: Array<number | null>,
-        shaded: boolean
+        marks: Array<number | string | null>,
+        shaded: boolean,
+        bold = false
       ) => {
         const qLines = doc.splitTextToSize(question, ctx.questionsW - CELL_PAD * 2);
         const markLineCounts = marks.map((mark) => {
-          const text =
-            mark != null && Number.isFinite(mark) ? formatObtainedMarkDisplay(mark) : "—";
+          const text = formatMarkCell(mark);
           return doc.splitTextToSize(text, ctx.applicantW - CELL_PAD * 2).length;
         });
         const rowLines = Math.max(qLines.length, ...markLineCounts, 1);
-        const rowH = Math.max(HEADER_ROW_H - 1, rowLines * lineH(TABLE_FONT) + CELL_PAD * 2);
+        const rowH = Math.max(MIN_HEADER_ROW_H - 1, rowLines * lineH(TABLE_FONT) + CELL_PAD * 2);
 
         const totalW = ctx.questionsW + ctx.applicantW * ctx.batch.length;
 
@@ -271,18 +293,82 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
           doc.line(dividerX, y, dividerX, y + rowH);
         }
 
-        setStyle(TABLE_FONT, false, THEME.colors.text);
+        setStyle(TABLE_FONT, bold, THEME.colors.text);
         doc.text(qLines, m + CELL_PAD, y + CELL_PAD + lineH(TABLE_FONT));
 
         marks.forEach((mark, idx) => {
           const x = m + ctx.questionsW + idx * ctx.applicantW;
-          const text =
-            mark != null && Number.isFinite(mark) ? formatObtainedMarkDisplay(mark) : "—";
-          const lines = doc.splitTextToSize(text, ctx.applicantW - CELL_PAD * 2);
+          const lines = doc.splitTextToSize(formatMarkCell(mark), ctx.applicantW - CELL_PAD * 2);
           doc.text(lines, x + CELL_PAD, y + CELL_PAD + lineH(TABLE_FONT));
         });
 
         y += rowH;
+      };
+
+      const sumApplicantObtainedMarks = (
+        applicant: BulkScorecardPayload["applicants"][number],
+        criteria: BulkScorecardCriterion[]
+      ): number | null => {
+        let total = 0;
+        let hasAny = false;
+        for (const criterion of criteria) {
+          const mark = applicant.marksByCriterionId[criterion.id];
+          if (mark != null && Number.isFinite(mark)) {
+            total += mark;
+            hasAny = true;
+          }
+        }
+        return hasAny ? normalizeObtainedMark(total) : null;
+      };
+
+      const sumCriteriaMaximumMarks = (criteria: BulkScorecardCriterion[]): number => {
+        return normalizeObtainedMark(
+          criteria.reduce((sum, criterion) => {
+            const max = criterion.criterionScore;
+            return max != null && Number.isFinite(max) && max > 0 ? sum + max : sum;
+          }, 0)
+        );
+      };
+
+      const drawSummaryRows = (ctx: TableContext, allCriteria: BulkScorecardCriterion[]) => {
+        if (ctx.batch.length === 0 || allCriteria.length === 0) return;
+
+        const criteriaMax = sumCriteriaMaximumMarks(allCriteria);
+        const obtainedTotals = ctx.batch.map((a) => sumApplicantObtainedMarks(a, allCriteria));
+        const bonusMarks = ctx.batch.map((a) => a.bonusMarks ?? 0);
+        const grandTotals = ctx.batch.map((a, idx) => {
+          const obtained = obtainedTotals[idx];
+          if (obtained == null) return null;
+          return normalizeObtainedMark(obtained + (bonusMarks[idx] ?? 0));
+        });
+        const grandMaximum = normalizeObtainedMark(criteriaMax + BONUS_MARKS_MAX);
+
+        const summaryRows: Array<{ label: string; values: Array<string> }> = [
+          {
+            label: "Total Obtained Marks",
+            values: obtainedTotals.map((total) =>
+              total != null ? `${formatObtainedMarkDisplay(total)} / ${formatObtainedMarkDisplay(criteriaMax)}` : "—"
+            ),
+          },
+          {
+            label: "Bonus Marks",
+            values: bonusMarks.map((bonus) =>
+              `${formatObtainedMarkDisplay(bonus)} / ${formatObtainedMarkDisplay(BONUS_MARKS_MAX)}`
+            ),
+          },
+          {
+            label: "Grand Total",
+            values: grandTotals.map((total) =>
+              total != null
+                ? `${formatObtainedMarkDisplay(total)} / ${formatObtainedMarkDisplay(grandMaximum)}`
+                : "—"
+            ),
+          },
+        ];
+
+        summaryRows.forEach((row, idx) => {
+          drawTableRow(ctx, row.label, row.values, idx % 2 === 1, true);
+        });
       };
 
       const drawCriteriaTable = (
@@ -344,6 +430,11 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
         drawSectionTitle("Section 2: Optional Criteria", { compact: true });
         if (data.applicants.length > 0) {
           drawCriteriaTable(ctx, data.criteria.optional, "No optional criteria defined.");
+          const allCriteria = [...data.criteria.mandatory, ...data.criteria.optional];
+          if (allCriteria.length > 0) {
+            y += 1;
+            drawSummaryRows(ctx, allCriteria);
+          }
         }
       };
 
