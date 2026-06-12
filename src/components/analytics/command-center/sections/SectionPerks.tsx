@@ -22,6 +22,7 @@ import { CareerCardChart } from "../charts/CareerCardChart";
 import { DiscountsMerchantsCardChart } from "../charts/DiscountsMerchantsCardChart";
 import { MeetupsEventsCardChart } from "../charts/MeetupsEventsCardChart";
 import { PublicationsCardChart } from "../charts/PublicationsCardChart";
+import { staggerDelay } from "../animation/useStaggeredEntrance";
 import { useExpandable } from "../hooks/useExpandable";
 import { ccPerksSubsection, ccPerksSubsectionHeader, ccSectionLabel } from "../theme";
 import {
@@ -130,7 +131,7 @@ export function SectionPerks({
               secondaryLabel={`${chapters.nationalMembers.toLocaleString()} nat · ${chapters.internationalMembers.toLocaleString()} intl alumni`}
               masonrySize="md"
               chartFill
-              delay={0.3}
+              delay={staggerDelay(0, 0)}
               onExpand={open}
               chart={
                 <FillChart minHeight={80}>
@@ -154,7 +155,7 @@ export function SectionPerks({
               secondaryLabel={`${meetups.events.quarter} ${meetups.events.quarter === 1 ? "event" : "events"} · ${meetups.meetups.quarter} ${meetups.meetups.quarter === 1 ? "meetup" : "meetups"} (${meetups.quarterLabel})`}
               masonrySize="md"
               chartFill
-              delay={0.4}
+              delay={staggerDelay(1, 0)}
               onExpand={open}
               chart={
                 <MeetupsEventsCardChart
@@ -178,7 +179,8 @@ export function SectionPerks({
               }
               masonrySize="md"
               chartFill
-              delay={0.45}
+              delay={staggerDelay(2, 0)}
+              emptyIdle
               onExpand={open}
               chart={
                 <ActivitiesCardChart
@@ -206,7 +208,7 @@ export function SectionPerks({
               secondaryLabel={`${memberships.gym} gym · ${memberships.pool} pool · ${memberships.qalander} qalandar`}
               masonrySize="md"
               chartFill
-              delay={0.55}
+              delay={staggerDelay(0, 0.16)}
               onExpand={open}
               chart={
                 <MembershipsCardChart
@@ -227,7 +229,7 @@ export function SectionPerks({
               secondaryLabel={`${career.jobs.uol} UOL · ${career.jobs.other} other · ${career.jobs.quarter} this Q`}
               masonrySize="md"
               chartFill
-              delay={0.35}
+              delay={staggerDelay(1, 0.16)}
               onExpand={open}
               chart={
                 <CareerCardChart
@@ -249,7 +251,7 @@ export function SectionPerks({
               secondaryLabel={`${discounts.dining} dining · ${discounts.retail} retail · ${discounts.merchantCount} merchants`}
               masonrySize="md"
               chartFill
-              delay={0.6}
+              delay={staggerDelay(2, 0.16)}
               onExpand={open}
               chart={
                 <DiscountsMerchantsCardChart
@@ -277,7 +279,7 @@ export function SectionPerks({
               secondaryLabel={`${publications.newsletters} newsletters`}
               masonrySize="md"
               chartFill
-              delay={0.5}
+              delay={staggerDelay(0, 0.08)}
               onExpand={open}
               chart={
                 <PublicationsCardChart

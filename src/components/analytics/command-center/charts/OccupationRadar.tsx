@@ -11,6 +11,9 @@ import {
   Tooltip,
 } from "recharts";
 import type { ChartSeriesPoint } from "@/components/analytics/v2/utils/kpiConfig";
+import { CHART } from "../animation/config";
+import { useAnimationReplay } from "../animation/AnimationReplayContext";
+import { useReducedMotion } from "../animation/useReducedMotion";
 import { ChartEmpty } from "./ChartEmpty";
 
 /** Fixed pentagon axes — always 5 spokes like the reference radar. */
@@ -174,6 +177,11 @@ export function OccupationRadar({
     });
   }, [data]);
 
+  const reduced = useReducedMotion();
+  const { replayKey } = useAnimationReplay();
+  const animate = !reduced;
+  const dataKey = chartData.map((r) => r.count).join("-");
+
   const hasData = chartData.some((r) => r.count > 0);
   if (!hasData) return <ChartEmpty height={height} />;
 
@@ -186,7 +194,7 @@ export function OccupationRadar({
 
   return (
     <div className="h-full w-full bg-transparent " style={{ height }}>
-      <ResponsiveContainer width="180%" height="180%" >
+      <ResponsiveContainer width="180%" height="180%" key={`radar-${replayKey}-${dataKey}`}>
         <RadarChart
           data={chartData}
           cx="30%"
@@ -214,7 +222,9 @@ export function OccupationRadar({
             fill={RADAR_FILL}
             fillOpacity={0.42}
             strokeWidth={2.5}
-            isAnimationActive={false}
+            isAnimationActive={animate}
+            animationDuration={CHART.radar.duration}
+            animationEasing={CHART.radar.easing}
             dot={{
               r: compact ? 3.5 : 4.5,
               fill: RADAR_STROKE,

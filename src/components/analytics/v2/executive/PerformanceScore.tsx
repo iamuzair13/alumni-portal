@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import type { PerformanceResult } from "../utils/derivePerformanceScore";
+import { useReducedMotion } from "@/components/analytics/command-center/animation/useReducedMotion";
 import { PerformanceScoreBreakdown } from "./PerformanceScoreBreakdown";
 
 type PerformanceScoreProps = {
@@ -47,6 +48,8 @@ export function PerformanceScore({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { score, label } = result;
   const isCommand = variant === "command";
+  const reduced = useReducedMotion();
+  const needsAttention = label === "Needs Attention";
 
   const size = isCommand ? 28 : compact ? 64 : 88;
   const radius = isCommand ? 10 : compact ? 26 : 36;
@@ -210,7 +213,7 @@ export function PerformanceScore({
   const buttonClass = isCommand
     ? `group inline-flex h-8 w-full min-w-[10.5rem] items-center gap-2 rounded-lg border border-gray-200/80 bg-gray-50/80 px-2 text-left transition-colors hover:border-gray-300 hover:bg-white dark:border-gray-700/80 dark:bg-gray-800/60 dark:hover:border-gray-600 dark:hover:bg-gray-800/90 ${
         expanded ? "border-gray-300 bg-white ring-1 ring-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:ring-gray-700/80" : ""
-      }`
+      } ${needsAttention && !reduced ? "cc-attention-border" : ""}`
     : `flex w-full items-center gap-2.5 rounded-xl border border-gray-200/60 bg-white/80 text-left shadow-sm backdrop-blur-sm transition-colors hover:border-indigo-300/60 hover:bg-white dark:border-gray-800 dark:bg-gray-900/50 dark:hover:border-indigo-500/40 dark:hover:bg-gray-900/70 ${
         compact ? "px-2.5 py-2" : "gap-3 p-3"
       } ${expanded ? "ring-2 ring-indigo-500/20 dark:ring-indigo-400/20" : ""}`;

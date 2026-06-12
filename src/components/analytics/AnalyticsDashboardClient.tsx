@@ -2,6 +2,7 @@
 
 import React from "react";
 import { DashboardLayout } from "@/components/analytics/command-center/DashboardLayout";
+import { AnimationReplayProvider } from "@/components/analytics/command-center/animation/AnimationReplayContext";
 import { useCommandCenterData } from "@/components/analytics/command-center/hooks/useCommandCenterData";
 import { PerformanceScore } from "@/components/analytics/v2/executive/PerformanceScore";
 import { derivePerformanceScore } from "@/components/analytics/v2/utils/derivePerformanceScore";
@@ -25,18 +26,20 @@ export default function AnalyticsDashboardClient() {
   );
 
   return (
-    <DashboardLayout
-      data={data}
-      trends={trends}
-      isLoading={isLoading}
-      facultyFilter={facultyFilter}
-      onFacultyChange={setFacultyFilter}
-      facultyOptions={facultyOptions}
-      isLoadingFaculties={isLoadingFaculties}
-      periodFilter={periodFilter}
-      onPeriodFilterChange={setPeriodFilter}
-      dataUpdatedAt={dataUpdatedAt}
-      performance={performance}
-    />
+    <AnimationReplayProvider>
+      <DashboardLayout
+        data={data}
+        trends={trends}
+        isLoading={isLoading}
+        facultyFilter={facultyFilter}
+        onFacultyChange={setFacultyFilter}
+        facultyOptions={facultyOptions}
+        isLoadingFaculties={isLoadingFaculties}
+        periodFilter={periodFilter}
+        onPeriodFilterChange={setPeriodFilter}
+        dataUpdatedAt={dataUpdatedAt}
+        performance={performance}
+      />
+    </AnimationReplayProvider>
   );
 }

@@ -1,8 +1,15 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { motion } from "motion/react";
-import { Activity, Building2, CalendarRange, Clock } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import {
+  Activity,
+  Building2,
+  CalendarRange,
+  Clock,
+  FlaskConical,
+  RotateCcw,
+} from "lucide-react";
 import {
   MONTH_OPTIONS,
   buildYearOptions,
@@ -11,6 +18,8 @@ import {
   toISODateString,
   type AnalyticsPeriodFilter,
 } from "@/components/analytics/v2/utils/periodFilter";
+import { LivePulse } from "./animation/LivePulse";
+import { useAnimationReplay } from "./animation/AnimationReplayContext";
 import { useRelativeTime } from "./hooks/useRelativeTime";
 import { ccPresetChip, ccPresetChipActive } from "./theme";
 
@@ -21,7 +30,7 @@ const compactDate =
   "w-[7.5rem] border-0 bg-transparent py-0.5 text-xs font-medium text-gray-800 focus:outline-none dark:text-gray-100 dark:[color-scheme:dark]";
 
 const controlShell =
-  "inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2 dark:border-gray-700/80 dark:bg-gray-900/80";
+  "group/control relative inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2 dark:border-gray-700/80 dark:bg-gray-900/80";
 
 const statusShell =
   "inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-gray-50/80 px-2 text-xs dark:border-gray-700 dark:bg-gray-800/60";
@@ -98,6 +107,18 @@ function InlineControl({
         {icon}
       </span>
       {children}
+      <svg
+        className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-focus-within/control:rotate-180 dark:text-gray-500"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        aria-hidden
+      >
+        <path
+          fillRule="evenodd"
+          d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+          clipRule="evenodd"
+        />
+      </svg>
     </label>
   );
 }
@@ -124,6 +145,7 @@ export function CommandCenterHeader({
   const [clock, setClock] = useState("");
   const lastUpdated = useRelativeTime(dataUpdatedAt);
   const yearOptions = buildYearOptions(12);
+  const { replay, demoMode, toggleDemo } = useAnimationReplay();
 
   const activePresetId = useMemo(() => {
     if (periodFilter.periodType !== "range") return null;
@@ -283,12 +305,7 @@ export function CommandCenterHeader({
         <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
           <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
             <span className={statusShell}>
-              <motion.span
-                className="h-2 w-2 rounded-full bg-emerald-500"
-                animate={{ opacity: [1, 0.35, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                aria-hidden
-              />
+              <LivePulse />
               <Activity className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
               <span className="font-semibold">Live</span>
             </span>
@@ -296,7 +313,49 @@ export function CommandCenterHeader({
               <Clock className="h-3.5 w-3.5 text-gray-400" aria-hidden />
               {clock}
             </span>
-            <span className={`${statusShell} hidden md:inline-flex font-medium`}>{lastUpdated}</span>
+            {/* <span className={`${statusShell} hidden md:inline-flex font-medium`}>
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={lastUpdated}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {lastUpdated}
+                </motion.span>
+              </AnimatePresence>
+            </span> */}
+            {demoMode ? (
+              <span className="hidden rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 lg:inline-flex dark:bg-amber-500/15 dark:text-amber-300">
+                Demo
+              </span>
+            ) : null}
+            <div className="hidden items-center gap-1 lg:flex">
+              <button
+                type="button"
+                onClick={replay}
+                title="Replay animations"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                aria-label="Replay animations"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={toggleDemo}
+                title={demoMode ? "Disable demo mode" : "Enable demo mode (simulated metric drift)"}
+                className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
+                  demoMode
+                    ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                }`}
+                aria-label={demoMode ? "Disable demo mode" : "Enable demo mode"}
+                aria-pressed={demoMode}
+              >
+                <FlaskConical className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="hidden h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700 sm:block" aria-hidden />

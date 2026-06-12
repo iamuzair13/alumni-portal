@@ -2,6 +2,8 @@
 
 import React from "react";
 import { motion } from "motion/react";
+import { CHART } from "../animation/config";
+import { useReducedMotion } from "../animation/useReducedMotion";
 import { ChartEmpty } from "./ChartEmpty";
 
 function MetricTile({
@@ -70,6 +72,8 @@ export function VelocityCardChart({
   score: number;
   timingBars: Array<{ label: string; value: number; color: string }>;
 }) {
+  const reduced = useReducedMotion();
+
   if (trackedTotal === 0 && beforeGraduation === 0 && earlyCount === 0) {
     return <ChartEmpty height={88} message="No transition timing data" />;
   }
@@ -101,9 +105,13 @@ export function VelocityCardChart({
                 </span>
                 <div className="h-1.5 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-500/15">
                   <motion.div
-                    initial={{ width: 0 }}
+                    initial={{ width: reduced ? `${width}%` : 0 }}
                     animate={{ width: `${width}%` }}
-                    transition={{ delay: 0.22 + i * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{
+                      delay: reduced ? 0 : i * (CHART.progress.staggerMs / 1000),
+                      duration: reduced ? 0 : CHART.progress.duration,
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
                     className="h-full rounded-full"
                     style={{ backgroundColor: bar.color }}
                   />

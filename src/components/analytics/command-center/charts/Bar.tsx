@@ -4,6 +4,9 @@ import React from "react";
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { ChartSeriesPoint } from "@/components/analytics/v2/utils/kpiConfig";
 import { colorAt } from "@/components/analytics/v2/charts/chartColors";
+import { CHART } from "../animation/config";
+import { useAnimationReplay } from "../animation/AnimationReplayContext";
+import { useReducedMotion } from "../animation/useReducedMotion";
 import { ChartEmpty } from "./ChartEmpty";
 
 const labelStyle = { fontSize: 10, fontWeight: 600, fill: "currentColor" } as const;
@@ -27,6 +30,9 @@ export function BarChartMini({
 }) {
   const isPremium = variant === "premium";
   const gradientId = "cc-bar-violet-gradient";
+  const reduced = useReducedMotion();
+  const { replayKey } = useAnimationReplay();
+  const animate = !reduced;
   const filtered = data.filter((d) => d.value > 0);
   if (!filtered.length) return <ChartEmpty height={height} />;
 
@@ -34,6 +40,7 @@ export function BarChartMini({
     label: d.label.length > 10 ? `${d.label.slice(0, 9)}…` : d.label,
     value: d.value,
     fill: d.color ?? colorAt(i),
+    index: i,
   }));
 
   if (horizontal) {
@@ -42,7 +49,7 @@ export function BarChartMini({
 
     return (
       <div className="w-full overflow-hidden text-slate-600 dark:text-slate-300" style={{ height }}>
-        <ResponsiveContainer width="100%" height={height}>
+        <ResponsiveContainer width="100%" height={height} key={`bar-h-${replayKey}`}>
           <BarChart
             data={chartData}
             layout="vertical"
@@ -75,9 +82,9 @@ export function BarChartMini({
             <Bar
               dataKey="value"
               radius={isPremium ? [0, 8, 8, 0] : [0, 3, 3, 0]}
-              isAnimationActive={isPremium}
-              animationDuration={700}
-              animationEasing="ease-out"
+              isAnimationActive={animate && isPremium}
+              animationDuration={isPremium ? 700 : CHART.bar.duration}
+              animationEasing={CHART.bar.easing}
             >
               {chartData.map((entry, i) => (
                 <Cell
@@ -103,7 +110,7 @@ export function BarChartMini({
 
   return (
     <div className="w-full overflow-hidden text-gray-600 dark:text-gray-300" style={{ height }}>
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={height} key={`bar-v-${replayKey}`}>
         <BarChart data={chartData} margin={{ top: showLabels ? 16 : 4, right: 4, bottom: 0, left: 4 }}>
           <XAxis
             dataKey="label"
@@ -115,9 +122,19 @@ export function BarChartMini({
           />
           <YAxis hide />
           <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-          <Bar dataKey="value" radius={[3, 3, 0, 0]} isAnimationActive={false}>
+          <Bar
+            dataKey="value"
+            radius={[3, 3, 0, 0]}
+            isAnimationActive={animate}
+            animationDuration={CHART.bar.duration}
+            animationEasing={CHART.bar.easing}
+          >
             {chartData.map((entry, i) => (
-              <Cell key={entry.label} fill={entry.fill ?? colorAt(i)} />
+              <Cell
+                key={entry.label}
+                fill={entry.fill ?? colorAt(i)}
+                // Recharts uses animationBegin on Bar; stagger via begin offset per cell index
+              />
             ))}
             {showLabels ? (
               <LabelList

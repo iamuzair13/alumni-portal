@@ -4,6 +4,8 @@ import React from "react";
 import { motion } from "motion/react";
 import type { ChartSeriesPoint } from "@/components/analytics/v2/utils/kpiConfig";
 import { colorAt } from "@/components/analytics/v2/charts/chartColors";
+import { CHART } from "../animation/config";
+import { useReducedMotion } from "../animation/useReducedMotion";
 import { ChartEmpty } from "./ChartEmpty";
 
 export function ProgressBars({
@@ -17,6 +19,7 @@ export function ProgressBars({
   accentClass?: string;
   variant?: "default" | "premium";
 }) {
+  const reduced = useReducedMotion();
   const filtered = data.filter((d) => d.value > 0).slice(0, maxItems);
   if (!filtered.length) {
     return (
@@ -36,6 +39,7 @@ export function ProgressBars({
       {filtered.map((p, i) => {
         const pct = Math.min(100, Math.max(4, (p.value / max) * 100));
         const fill = p.color ?? colorAt(i);
+        const stagger = i * (CHART.progress.staggerMs / 1000);
         return (
           <div
             key={p.label}
@@ -51,9 +55,13 @@ export function ProgressBars({
               className={`min-w-0 overflow-hidden ${isPremium ? "rounded-full bg-slate-100 dark:bg-slate-800" : "rounded-full bg-gray-200/90 dark:bg-gray-800"}`}
             >
               <motion.div
-                initial={{ width: 0 }}
+                initial={{ width: reduced ? `${pct}%` : 0 }}
                 animate={{ width: `${pct}%` }}
-                transition={{ delay: i * 0.08, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                transition={{
+                  delay: reduced ? 0 : stagger,
+                  duration: reduced ? 0 : CHART.progress.duration,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
                 className={`h-2 max-w-full rounded-full ${isPremium ? "" : accentClass}`}
                 style={
                   isPremium

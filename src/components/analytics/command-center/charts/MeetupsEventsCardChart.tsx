@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "motion/react";
+import { useReducedMotion } from "../animation/useReducedMotion";
 import { ChartEmpty } from "./ChartEmpty";
 
 type StatGroup = {
@@ -26,6 +27,7 @@ function StatPanel({
   quarterLabel: string;
   delay?: number;
 }) {
+  const reduced = useReducedMotion();
   const shortQuarter =
     quarterLabel.length > 14 ? quarterLabel.replace(/\s\d{4}$/, "") : quarterLabel;
   const share = stats.total > 0 ? Math.max(8, (stats.quarter / stats.total) * 100) : 0;
@@ -54,15 +56,23 @@ function StatPanel({
       <div className="mt-2 grid flex-1 grid-cols-2 gap-1.5">
         <div className="min-w-0">
           <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400">Total</p>
-          <p className={`text-lg font-bold tabular-nums leading-tight ${valueClass}`}>
+          <motion.p
+            className={`text-lg font-bold tabular-nums leading-tight ${valueClass}`}
+            whileHover={reduced ? undefined : { scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 500, damping: 20 }}
+          >
             {stats.total.toLocaleString()}
-          </p>
+          </motion.p>
         </div>
         <div className="min-w-0 text-right">
           <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400">This Q</p>
-          <p className={`text-lg font-bold tabular-nums leading-tight ${valueClass}`}>
+          <motion.p
+            className={`text-lg font-bold tabular-nums leading-tight ${valueClass}`}
+            whileHover={reduced ? undefined : { scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 500, damping: 20 }}
+          >
             {stats.quarter.toLocaleString()}
-          </p>
+          </motion.p>
           <p className="mt-0.5 truncate text-[8px] font-medium text-slate-400 dark:text-slate-500" title={quarterLabel}>
             {shortQuarter}
           </p>
@@ -74,7 +84,11 @@ function StatPanel({
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${share}%` }}
-            transition={{ delay: delay + 0.15, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            transition={{
+              delay: reduced ? 0 : delay + 0.15,
+              duration: reduced ? 0 : 0.7,
+              ease: [0.16, 1, 0.3, 1],
+            }}
             className={`h-full rounded-full ${
               accent === "violet"
                 ? "bg-gradient-to-r from-violet-500 to-violet-400"

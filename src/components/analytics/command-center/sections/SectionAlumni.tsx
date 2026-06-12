@@ -25,6 +25,7 @@ import { CategoriesCardChart } from "../charts/CategoriesCardChart";
 import { VelocityCardChart } from "../charts/VelocityCardChart";
 import { OccupationRadar } from "../charts/OccupationRadar";
 import { FillChart } from "../charts/FillChart";
+import { staggerDelay } from "../animation/useStaggeredEntrance";
 import { useExpandable } from "../hooks/useExpandable";
 import {
   mapAlumniCategories,
@@ -114,7 +115,7 @@ export function SectionAlumni({
           secondaryLabel=''
           masonrySize="md"
           chartFill
-          delay={0}
+          delay={staggerDelay(0)}
           onExpand={open}
           chart={
             <FillChart minHeight={88}>
@@ -133,7 +134,7 @@ export function SectionAlumni({
           secondaryLabel=""
           masonrySize="md"
           chartFill
-          delay={0.05}
+          delay={staggerDelay(1)}
           onExpand={open}
           chart={<CategoriesCardChart data={categories.chartSeries} />}
         />
@@ -142,11 +143,11 @@ export function SectionAlumni({
           title="Occupation"
           icon={Briefcase}
           accent="emerald"
-          primaryValue={occupation.rows.reduce((s, r) => s + r.count, 0).toLocaleString()}
+          primaryValue={occupation.rows.reduce((s, r) => s + r.count, 0)}
           secondaryLabel=""
           masonrySize="md"
           chartFill
-          delay={0.1}
+          delay={staggerDelay(2)}
           onExpand={open}
           chart={
             <FillChart minHeight={88}>
@@ -164,7 +165,7 @@ export function SectionAlumni({
           primaryValue={honor.total}
           secondaryLabel={`Delivered · ${honor.delivered.toLocaleString()} cards`}
           masonrySize="sm"
-          delay={0.15}
+          delay={staggerDelay(3)}
           onExpand={open}
           chart={
             <FillChart minHeight={56}>
@@ -188,7 +189,7 @@ export function SectionAlumni({
           secondaryLabel={`${velocity.buckets.beforeGraduation.toLocaleString()} during grad · ${velocity.score}% early`}
           masonrySize="sm"
           chartFill
-          delay={0.2}
+          delay={staggerDelay(4)}
           onExpand={open}
           chart={
             <VelocityCardChart
@@ -208,7 +209,7 @@ export function SectionAlumni({
           primaryValue={location.rows.reduce((s, r) => s + r.count, 0)}
           secondaryLabel="Verified · top provinces"
           masonrySize="sm"
-          delay={0.25}
+          delay={staggerDelay(5)}
           onExpand={open}
           chart={
             <FillChart minHeight={56}>

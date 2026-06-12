@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion } from "motion/react";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import type { AlumniTrendPoint } from "@/services/dashboardService";
 import type { AnalyticsPeriodFilter } from "@/components/analytics/v2/utils/periodFilter";
@@ -8,6 +9,9 @@ import { CommandCenterHeader } from "./CommandCenterHeader";
 import { SectionAlumni } from "./sections/SectionAlumni";
 import { SectionPerks } from "./sections/SectionPerks";
 import { SectionTrainedAdmins } from "./sections/SectionTrainedAdmins";
+import { ENTRANCE } from "./animation/config";
+import { getMotionProps, useReducedMotion } from "./animation/useReducedMotion";
+import { useAnimationReplay } from "./animation/AnimationReplayContext";
 import { ccPage, ccSection, ccTabActive, ccTabInactive } from "./theme";
 
 type Tab = "alumni" | "perks";
@@ -38,6 +42,14 @@ export function DashboardLayout({
   performance: React.ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>("alumni");
+  const reduced = useReducedMotion();
+  const { replayKey } = useAnimationReplay();
+
+  const sidebarEntrance = getMotionProps(reduced, {
+    initial: { opacity: 0, y: ENTRANCE.y },
+    animate: { opacity: 1, y: 0 },
+    transition: { delay: ENTRANCE.sidebarDelay, duration: ENTRANCE.duration, ease: ENTRANCE.ease },
+  });
 
   const alumniColumn = (
     <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-1.5">
@@ -54,6 +66,18 @@ export function DashboardLayout({
         <SectionTrainedAdmins data={data} isLoading={isLoading} />
       </section>
     </div>
+  );
+
+  const perksPanel = (
+    <motion.div
+      key={`perks-${replayKey}`}
+      {...sidebarEntrance}
+      className="flex h-full min-h-0 flex-col"
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto scroll-smooth [overflow-scrolling:touch]">
+        <SectionPerks data={data} isLoading={isLoading} />
+      </div>
+    </motion.div>
   );
 
   return (
@@ -97,20 +121,16 @@ export function DashboardLayout({
           aria-label="Perks and Benefits"
           className={`flex h-full min-h-0 flex-col overflow-hidden lg:col-span-1 xl:col-span-4 ${ccSection.perks}`}
         >
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <SectionPerks data={data} isLoading={isLoading} />
-          </div>
+          {perksPanel}
         </section>
       </div>
 
       {/* <1024px: tabbed, scroll within panel */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth lg:hidden">
         {tab === "alumni" ? (
           alumniColumn
         ) : (
-          <section className={ccSection.perks}>
-            <SectionPerks data={data} isLoading={isLoading} />
-          </section>
+          <section className={ccSection.perks}>{perksPanel}</section>
         )}
       </div>
     </div>

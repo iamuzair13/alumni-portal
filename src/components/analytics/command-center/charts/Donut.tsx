@@ -4,6 +4,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { ChartSeriesPoint } from "@/components/analytics/v2/utils/kpiConfig";
 import { colorAt } from "@/components/analytics/v2/charts/chartColors";
+import { CHART } from "../animation/config";
+import { useAnimationReplay } from "../animation/AnimationReplayContext";
+import { useReducedMotion } from "../animation/useReducedMotion";
 import { ChartEmpty } from "./ChartEmpty";
 
 function formatCount(n: number): string {
@@ -65,6 +68,9 @@ export function Donut({
 }) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [dim, setDim] = useState(size ?? 80);
+  const reduced = useReducedMotion();
+  const { replayKey } = useAnimationReplay();
+  const animate = !reduced;
 
   useEffect(() => {
     if (size != null) {
@@ -102,7 +108,7 @@ export function Donut({
   const innerR = outerR * 0.45;
 
   const pieChart = (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" key={`donut-${replayKey}`}>
       <PieChart>
         <Pie
           data={pieData}
@@ -115,12 +121,17 @@ export function Donut({
           paddingAngle={2}
           stroke="#fff"
           strokeWidth={1.5}
-          isAnimationActive={false}
+          isAnimationActive={animate}
+          animationDuration={CHART.donut.duration}
+          animationEasing={CHART.donut.easing}
           label={showLabels ? sliceLabel(minSlicePercent) : false}
           labelLine={false}
         >
           {pieData.map((entry, i) => (
-            <Cell key={entry.name} fill={entry.fill ?? colorAt(i)} />
+            <Cell
+              key={entry.name}
+              fill={entry.fill ?? colorAt(i)}
+            />
           ))}
         </Pie>
         <Tooltip

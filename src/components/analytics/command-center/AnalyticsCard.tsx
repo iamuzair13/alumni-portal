@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { motion } from "motion/react";
 import { Maximize2, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
-import { useAnimatedNumber } from "./hooks/useAnimatedNumber";
+import { AnimatedCard } from "./animation/AnimatedCard";
+import { AnimatedNumber } from "./animation/AnimatedNumber";
+import { EmptyStateIdle } from "./animation/EmptyStateIdle";
 import {
   ccAccent,
   ccCard,
@@ -45,8 +46,31 @@ export type AnalyticsCardProps = {
   delay?: number;
   compact?: boolean;
   variant?: "default" | "premium";
+  emptyIdle?: boolean;
   onExpand: (id: string) => void;
 };
+
+function ValueDisplay({
+  primaryValue,
+  valueClass,
+  emptyIdle,
+}: {
+  primaryValue: number | string;
+  valueClass: string;
+  emptyIdle?: boolean;
+}) {
+  if (typeof primaryValue === "number") {
+    if (emptyIdle && primaryValue === 0) {
+      return (
+        <EmptyStateIdle className={valueClass}>
+          <AnimatedNumber value={0} />
+        </EmptyStateIdle>
+      );
+    }
+    return <AnimatedNumber value={primaryValue} className={valueClass} />;
+  }
+  return <span className={`tabular-nums ${valueClass}`}>{primaryValue}</span>;
+}
 
 export function AnalyticsCard({
   id,
@@ -61,26 +85,20 @@ export function AnalyticsCard({
   delay = 0,
   compact = false,
   variant = "default",
+  emptyIdle = false,
   onExpand,
 }: AnalyticsCardProps) {
   const styles = ccAccent[accent];
-  const numericValue = typeof primaryValue === "number" ? primaryValue : null;
-  const animated = useAnimatedNumber(numericValue ?? 0);
-  const displayValue =
-    numericValue !== null ? animated.toLocaleString() : primaryValue;
   const size = compact ? "sm" : masonrySize;
   const isPremium = variant === "premium" && !compact;
 
   if (isPremium) {
     return (
-      <motion.button
-        type="button"
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      <AnimatedCard
+        delay={delay}
         onClick={() => onExpand(id)}
         aria-label={`Open ${title} details`}
-        className={`group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left ${ccCardPremium} ${styles.cardPremium} ${masonrySpan[size]} p-5`}
+        className={`group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left transition-shadow hover:shadow-lg ${ccCardPremium} ${styles.cardPremium} ${masonrySpan[size]} p-5`}
       >
         <div className="flex shrink-0 items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -97,8 +115,8 @@ export function AnalyticsCard({
         </div>
 
         <div className="mt-3 flex shrink-0 items-baseline gap-2">
-          <span className="text-3xl font-semibold tracking-tight tabular-nums text-slate-900 dark:text-white">
-            {displayValue}
+          <span className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+            <ValueDisplay primaryValue={primaryValue} valueClass="" emptyIdle={emptyIdle} />
           </span>
           {trend ? (
             <span
@@ -125,19 +143,15 @@ export function AnalyticsCard({
             {chart}
           </div>
         ) : null}
-      </motion.button>
+      </AnimatedCard>
     );
   }
 
   const valueClass = compact ? ccCardValueSm : ccCardValueLg;
 
   return (
-    <motion.button
-      type="button"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35, ease: "easeOut" }}
-      whileHover={{ scale: 1.005 }}
+    <AnimatedCard
+      delay={delay}
       onClick={() => onExpand(id)}
       aria-label={`Open ${title} details`}
       className={`group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left transition-shadow hover:shadow-lg ${ccCard} ${styles.border} ${styles.cardDefault} ${styles.glow} ${masonrySpan[size]} ${compact ? "p-2" : "p-2.5"}`}
@@ -145,7 +159,7 @@ export function AnalyticsCard({
       <div className="mb-1 flex shrink-0 items-center gap-2">
         <Icon className={`h-3.5 w-3.5 shrink-0 ${styles.icon}`} />
         <span className={`min-w-0 flex-1 truncate ${ccCardTitle}`}>{title}</span>
-        <span className={`shrink-0 tabular-nums ${valueClass}`}>{displayValue}</span>
+        <ValueDisplay primaryValue={primaryValue} valueClass={`shrink-0 ${valueClass}`} emptyIdle={emptyIdle} />
         {trend ? (
           <span
             className={`inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium ${
@@ -170,6 +184,6 @@ export function AnalyticsCard({
           {chart}
         </div>
       ) : null}
-    </motion.button>
+    </AnimatedCard>
   );
 }

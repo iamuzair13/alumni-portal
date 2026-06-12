@@ -55,7 +55,7 @@ export function CategoriesCardChart({ data }: { data: ChartSeriesPoint[] }) {
         className="flex justify-between shrink-0 space-y-0.5 border-t border-emerald-100/80 pt-1 dark:border-emerald-500/10"
       >
         {sorted.map((tier) => {
-          const pct = total > 0 ? Math.round((tier.value / total) * 100) : 0;
+          // const pct = total > 0 ? Math.round((tier.value / total) * 100) : 0;
           return (
             
             <li
@@ -67,7 +67,7 @@ export function CategoriesCardChart({ data }: { data: ChartSeriesPoint[] }) {
                 style={{ backgroundColor: tier.color }}
               />
               <span className="min-w-0 flex-1 truncate font-medium text-gray-700 dark:text-gray-300">
-                {tier.label} - {formatCount(tier.value)} ({pct}%)
+                {tier.label} - {formatCount(tier.value)}
               </span>
             </li>
           );
