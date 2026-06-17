@@ -35,6 +35,7 @@ type AlumniCardItem = {
   registrationno?: string | null;
   cardaddress?: string | null;
   deliveryCity?: string | null;
+  deliverySocietyName?: string | null;
   deliveryStreetNo?: string | null;
   deliveryHouseNo?: string | null;
 };
@@ -102,6 +103,7 @@ function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { d
     registrationno: rawRegNo || null,
     cardaddress: applicant.cardaddress ?? null,
     deliveryCity: applicant.delivery_city ?? null,
+    deliverySocietyName: applicant.delivery_society_name ?? null,
     deliveryStreetNo: applicant.delivery_street_no ?? null,
     deliveryHouseNo: applicant.delivery_house_no ?? null,
   };

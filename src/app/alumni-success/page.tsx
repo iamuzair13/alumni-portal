@@ -5,6 +5,7 @@ import Image from "next/image";
 import AppHeader from "@/layout/AppHeader";
 import { useAlumniStories, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
 import BackButton from "@/components/ui/BackButton";
+import { storyHtmlTextContent } from "@/lib/sanitizeStoryHtml";
 
 type SuccessStory = {
   id: string;
@@ -16,15 +17,6 @@ type SuccessStory = {
   date: string;
 };
 
-function sanitizeText(input: string): string {
-  return String(input || "")
-    .replace(/<script[^>]*?>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[^>]*?>[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 export default function Page() {
   const { data, isLoading, isFetching, isError, error } = useAlumniStories();
   // Always ensure we have an array, even if data is undefined or error occurred
@@ -32,11 +24,11 @@ export default function Page() {
   const storiesData = Array.isArray(data) ? data : [];
   const items: SuccessStory[] = storiesData.map((s: AlumniStoryItem) => ({
     id: s.id,
-    title: sanitizeText(s.title || s.name), // Use title if available, fallback to name
-    short: sanitizeText(s.shortDescription).slice(0, 200),
+    title: String(s.title || s.name || "").trim(),
+    short: storyHtmlTextContent(s.shortDescription).slice(0, 200),
     imageUrl: s.imageUrl,
-    program: sanitizeText(s.program),
-    session: sanitizeText(s.session),
+    program: String(s.program || "").trim(),
+    session: String(s.session || "").trim(),
     date: s.date,
   }));
 

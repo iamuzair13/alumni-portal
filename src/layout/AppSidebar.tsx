@@ -88,7 +88,7 @@ const navItems: NavItem[] = [
 
     icon: <PageIcon />,
 
-    name: "Stories Management",
+    name: "Success Stories",
 
     subItems: [
 

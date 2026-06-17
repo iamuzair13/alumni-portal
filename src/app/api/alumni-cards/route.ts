@@ -110,6 +110,9 @@ export async function POST(req: Request) {
       const deliveryStreetNoJson = isCollectJson
         ? null
         : String((body as { delivery_street_no?: unknown })?.delivery_street_no ?? "").trim() || null;
+      const deliverySocietyNameJson = isCollectJson
+        ? null
+        : String((body as { delivery_society_name?: unknown })?.delivery_society_name ?? "").trim() || null;
       const deliveryHouseNoJson = isCollectJson
         ? null
         : String((body as { delivery_house_no?: unknown })?.delivery_house_no ?? "").trim() || null;
@@ -134,17 +137,17 @@ export async function POST(req: Request) {
       }
       if (
         !isCollectJson &&
-        (!deliveryCityJson || !deliveryStreetNoJson || !deliveryHouseNoJson)
+        (!deliveryCityJson || !deliverySocietyNameJson || !deliveryStreetNoJson || !deliveryHouseNoJson)
       ) {
         return NextResponse.json(
-          { error: "City, street number, and house number are required when delivery to address is selected" },
+          { error: "City, society name, street number, and house number are required when delivery to address is selected" },
           { status: 400 }
         );
       }
 
       const rows = await sql/* sql */`
-        INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat, validity_date, delivery_city, delivery_street_no, delivery_house_no)
-        VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${cardpicture}, ${cardpicture}, NOW(), ${validityDate}, ${deliveryCityJson}, ${deliveryStreetNoJson}, ${deliveryHouseNoJson})
+        INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat, validity_date, delivery_city, delivery_society_name, delivery_street_no, delivery_house_no)
+        VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${cardpicture}, ${cardpicture}, NOW(), ${validityDate}, ${deliveryCityJson}, ${deliverySocietyNameJson}, ${deliveryStreetNoJson}, ${deliveryHouseNoJson})
         ON CONFLICT (alumniid) DO UPDATE
         SET cnicno = EXCLUDED.cnicno,
             cardaddress = EXCLUDED.cardaddress,
@@ -154,6 +157,7 @@ export async function POST(req: Request) {
             createdat = public.tblcard.createdat,
             validity_date = EXCLUDED.validity_date,
             delivery_city = EXCLUDED.delivery_city,
+            delivery_society_name = EXCLUDED.delivery_society_name,
             delivery_street_no = EXCLUDED.delivery_street_no,
             delivery_house_no = EXCLUDED.delivery_house_no
         RETURNING cardid`;
@@ -257,6 +261,9 @@ export async function POST(req: Request) {
     const deliveryStreetNo = isCollect
       ? null
       : String(formData.get("delivery_street_no") || "").trim() || null;
+    const deliverySocietyName = isCollect
+      ? null
+      : String(formData.get("delivery_society_name") || "").trim() || null;
     const deliveryHouseNo = isCollect
       ? null
       : String(formData.get("delivery_house_no") || "").trim() || null;
@@ -267,9 +274,9 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      if (!deliveryCity || !deliveryStreetNo || !deliveryHouseNo) {
+      if (!deliveryCity || !deliverySocietyName || !deliveryStreetNo || !deliveryHouseNo) {
         return NextResponse.json(
-          { error: "City, street number, and house number are required when delivery to your address is selected" },
+          { error: "City, society name, street number, and house number are required when delivery to your address is selected" },
           { status: 400 }
         );
       }
@@ -304,8 +311,8 @@ export async function POST(req: Request) {
 
     // When updating card image, if status is "Onhold", automatically change to "UnderReview"
     const rows = await sql/* sql */`
-      INSERT INTO public.tblcard (alumniid, status, cardpicture, card_image, createdat, comment, cardaddress, validity_date, delivery_city, delivery_street_no, delivery_house_no)
-      VALUES (${alumniId}, ${status}, ${storedFilename}, ${storedFilename}, NOW(), ${comment}, ${cardaddress}, ${validityDate}, ${deliveryCity}, ${deliveryStreetNo}, ${deliveryHouseNo})
+      INSERT INTO public.tblcard (alumniid, status, cardpicture, card_image, createdat, comment, cardaddress, validity_date, delivery_city, delivery_society_name, delivery_street_no, delivery_house_no)
+      VALUES (${alumniId}, ${status}, ${storedFilename}, ${storedFilename}, NOW(), ${comment}, ${cardaddress}, ${validityDate}, ${deliveryCity}, ${deliverySocietyName}, ${deliveryStreetNo}, ${deliveryHouseNo})
       ON CONFLICT (alumniid) DO UPDATE
       SET status = public.tblcard.status,
           cardpicture = EXCLUDED.cardpicture,
@@ -315,6 +322,7 @@ export async function POST(req: Request) {
           cardaddress = EXCLUDED.cardaddress,
           validity_date = EXCLUDED.validity_date,
           delivery_city = EXCLUDED.delivery_city,
+          delivery_society_name = EXCLUDED.delivery_society_name,
           delivery_street_no = EXCLUDED.delivery_street_no,
           delivery_house_no = EXCLUDED.delivery_house_no
       RETURNING cardid`;

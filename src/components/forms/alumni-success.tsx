@@ -12,18 +12,24 @@ import Underline from "@tiptap/extension-underline";
 import DOMPurify from "dompurify";
 import { useQueryClient } from "@tanstack/react-query";
 import { alumniStoriesKey } from "@/app/queries/fetch-alumni-stories";
+import { storyFormSchema } from "@/lib/alumniStories";
+import { useOrgDatasets } from "@/hooks/useOrgDatasets";
 
 type Props = {
-  sapId: string;
-  name: string;
-  email: string;
-  faculty: string;
-  department: string;
-  passingYear: number | null;
-  contactNumber: string;
+  mode?: "alumni" | "admin";
+  sapId?: string;
+  name?: string;
+  email?: string;
+  faculty?: string;
+  department?: string;
+  passingYear?: number | null;
+  contactNumber?: string;
   existingStory?: string;
   existingTitle?: string;
+  existingImageUrl?: string;
   storyId?: string;
+  onSuccess?: () => void;
+  redirectAfterSave?: string;
 };
 
 // Helper function to check if HTML has actual content (not just empty tags)
@@ -34,7 +40,7 @@ function hasContent(html: string): boolean {
   return textContent.length > 0;
 }
 
-const schema = z.object({
+const alumniSchema = z.object({
   name: z.string().min(1, "Name is required"),
   faculty: z.string().min(1, "Faculty is required"),
   department: z.string().min(1, "Department is required"),
@@ -47,7 +53,14 @@ const schema = z.object({
   ),
 });
 
-type FormVals = z.infer<typeof schema>;
+const adminSchema = storyFormSchema.extend({
+  passingYear: z.number().int().min(1900).max(2100).optional().nullable(),
+  contactNumber: z.string().max(50).optional(),
+});
+
+type AlumniFormVals = z.infer<typeof alumniSchema>;
+type AdminFormVals = z.infer<typeof adminSchema>;
+type FormVals = AlumniFormVals | AdminFormVals;
 
 const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:outline-gray-700";
 const labelBase = "mb-2 text-sm text-slate-900 font-medium block dark:text-gray-100";
@@ -55,42 +68,105 @@ const errorText = "mt-1 text-xs text-rose-600 dark:text-rose-400";
 const buttonPrimary = "px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:outline-gray-700";
 
 export default function AlumniSuccessForm({ 
-  sapId, 
-  name, 
-  email, 
-  faculty, 
-  department, 
-  passingYear,
-  contactNumber: initialContactNumber,
+  mode = "alumni",
+  sapId = "",
+  name = "",
+  email = "",
+  faculty = "",
+  department = "",
+  passingYear = null,
+  contactNumber: initialContactNumber = "",
   existingStory = "",
   existingTitle = "",
-  storyId
+  existingImageUrl = "",
+  storyId,
+  onSuccess,
+  redirectAfterSave,
 }: Props) {
+  const isAdmin = mode === "admin";
   const router = useRouter();
   const queryClient = useQueryClient();
   const [imageFile, setImageFile] = React.useState<File | null>(null);
-  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
+  const [imagePreview, setImagePreview] = React.useState<string | null>(
+    existingImageUrl
+      ? existingImageUrl.startsWith("http") || existingImageUrl.startsWith("/")
+        ? existingImageUrl
+        : `/images/${existingImageUrl}`
+      : null
+  );
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const {
+    faculties: dbFaculties,
+    departmentsForFaculty,
+    findFacultyByName,
+    findDepartmentByName,
+    loading: orgLoading,
+    error: orgError,
+  } = useOrgDatasets(isAdmin);
+  const [selectedFacultyId, setSelectedFacultyId] = React.useState<number | "">("");
+  const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<number | "">("");
+
+  const adminDefaults: AdminFormVals = {
+    sapId: sapId || "",
+    name: name || "",
+    email: email || "",
+    faculty: faculty || "",
+    department: department || "",
+    passingYear: passingYear ?? undefined,
+    contactNumber: initialContactNumber || "",
+    storyTitle: existingTitle || "",
+    storyHtml: existingStory || "",
+  };
+
+  const alumniDefaults: AlumniFormVals = {
+    name: name || "",
+    faculty: faculty || "",
+    department: department || "",
+    passingYear: passingYear ?? null,
+    contactNumber: initialContactNumber || "",
+    storyTitle: existingTitle || "",
+    storyHtml: existingStory || "",
+  };
   
   const { 
     handleSubmit, 
     control, 
+    register,
+    watch,
     formState: { errors, isSubmitting }, 
     reset,
     setValue
-  } = useForm<FormVals>({
-    resolver: zodResolver(schema),
-    defaultValues: { 
-      name: name || "",
-      faculty: faculty || "",
-      department: department || "",
-      passingYear: passingYear || null,
-      contactNumber: initialContactNumber || "",
-      storyTitle: existingTitle || "",
-      storyHtml: existingStory || "",
-    },
+  } = useForm<AdminFormVals | AlumniFormVals>({
+    resolver: zodResolver(isAdmin ? adminSchema : alumniSchema),
+    defaultValues: isAdmin ? adminDefaults : alumniDefaults,
     mode: "onChange",
   });
+
+
+  React.useEffect(() => {
+    if (!isAdmin || orgLoading || !dbFaculties.length || selectedFacultyId !== "") return;
+    const matchedFaculty = findFacultyByName(faculty);
+    if (!matchedFaculty) return;
+    setSelectedFacultyId(matchedFaculty.id);
+    if (department) {
+      const matchedDepartment = findDepartmentByName(matchedFaculty.id, department);
+      if (matchedDepartment) setSelectedDepartmentId(matchedDepartment.id);
+    }
+  }, [
+    isAdmin,
+    orgLoading,
+    dbFaculties.length,
+    faculty,
+    department,
+    selectedFacultyId,
+    findFacultyByName,
+    findDepartmentByName,
+  ]);
+
+  const filteredDepartments = React.useMemo(
+    () => departmentsForFaculty(typeof selectedFacultyId === "number" ? selectedFacultyId : null),
+    [departmentsForFaculty, selectedFacultyId]
+  );
 
   // Tiptap editor configuration
   // Note: immediatelyRender: false is required for SSR compatibility in Next.js
@@ -178,10 +254,8 @@ export default function AlumniSuccessForm({
   };
 
   const onSubmit = async (vals: FormVals) => {
-    // Get the latest HTML from editor if available
     const htmlContent = editor?.getHTML() || vals.storyHtml;
     
-    // Check if content is actually empty
     if (!hasContent(htmlContent)) {
       toast.error("Please enter your success story before submitting.", {
         duration: 3000,
@@ -195,21 +269,25 @@ export default function AlumniSuccessForm({
       return;
     }
 
+    const resolvedSapId = isAdmin ? String((vals as AdminFormVals).sapId ?? "").trim() : sapId;
+    const resolvedEmail = isAdmin ? String((vals as AdminFormVals).email ?? "").trim() : email;
+
     const loadingToast = toast.loading(storyId ? "Updating your story..." : "Submitting your success story...");
     try {
-      // Sanitize HTML using DOMPurify (client-side)
       const sanitizedHtml = DOMPurify.sanitize(htmlContent, {
         ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
         ALLOWED_ATTR: ["href", "target", "rel"],
       });
 
-      // Use FormData if image is present, otherwise use JSON
+      const endpoint = storyId ? `/api/alumni-stories/${encodeURIComponent(storyId)}` : "/api/alumni-stories";
+      const method = storyId ? "PUT" : "POST";
+
       let res: Response;
       if (imageFile) {
         const formData = new FormData();
-        formData.append("sapId", sapId);
+        formData.append("sapId", resolvedSapId);
         formData.append("name", vals.name);
-        formData.append("email", email);
+        formData.append("email", resolvedEmail);
         formData.append("faculty", vals.faculty);
         formData.append("department", vals.department);
         if (vals.passingYear) formData.append("passingYear", String(vals.passingYear));
@@ -218,15 +296,12 @@ export default function AlumniSuccessForm({
         formData.append("storyHtml", sanitizedHtml);
         formData.append("storyImage", imageFile);
 
-        res = await fetch(storyId ? `/api/alumni-stories/${encodeURIComponent(storyId)}` : "/api/alumni-stories", {
-          method: storyId ? "PUT" : "POST",
-          body: formData,
-        });
+        res = await fetch(endpoint, { method, body: formData });
       } else {
         const payload = {
-          sapId,
+          sapId: resolvedSapId,
           name: vals.name,
-          email,
+          email: resolvedEmail,
           faculty: vals.faculty,
           department: vals.department,
           passingYear: vals.passingYear || null,
@@ -235,8 +310,8 @@ export default function AlumniSuccessForm({
           storyHtml: sanitizedHtml,
         };
 
-        res = await fetch("/api/alumni-stories", {
-          method: "POST",
+        res = await fetch(endpoint, {
+          method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
@@ -271,13 +346,18 @@ export default function AlumniSuccessForm({
         fileInputRef.current.value = "";
       }
       
-      // Navigate back to story detail page if editing, otherwise to stories list
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      const destination = redirectAfterSave
+        ?? (storyId
+          ? (isAdmin ? `/alumni-stories/${encodeURIComponent(storyId)}` : `/alumni-success/${encodeURIComponent(storyId)}`)
+          : (isAdmin ? "/alumni-stories?tab=viewStories" : "/alumni-success"));
+
       setTimeout(() => {
-        if (storyId) {
-          router.push(`/alumni-success/${encodeURIComponent(storyId)}`);
-        } else {
-          router.push('/alumni-success');
-        }
+        router.push(destination);
         router.refresh();
       }, 1500);
     } catch (e) {
@@ -302,6 +382,21 @@ export default function AlumniSuccessForm({
 
       <form className="max-w-4xl mx-auto mt-4 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" onSubmit={handleSubmit(onSubmit)} aria-label="Alumni success form">
         <div className="grid sm:grid-cols-2 gap-6">
+          {isAdmin && (
+            <>
+              <div>
+                <label htmlFor="sapId" className={labelBase}>SAP ID<span className="text-rose-600 ml-1">*</span></label>
+                <input id="sapId" type="text" {...register("sapId" as keyof AdminFormVals)} className={inputBase} placeholder="SAP ID" aria-label="SAP ID" />
+                {"sapId" in errors && errors.sapId && <span className={errorText}>{String(errors.sapId.message)}</span>}
+              </div>
+              <div>
+                <label htmlFor="email" className={labelBase}>Email<span className="text-rose-600 ml-1">*</span></label>
+                <input id="email" type="email" {...register("email" as keyof AdminFormVals)} className={inputBase} placeholder="Email address" aria-label="Email" />
+                {"email" in errors && errors.email && <span className={errorText}>{String(errors.email.message)}</span>}
+              </div>
+            </>
+          )}
+
           {/* Name */}
           <div>
             <label htmlFor="name" className={labelBase}>Name</label>
@@ -314,7 +409,7 @@ export default function AlumniSuccessForm({
                     id="name"
                     {...field}
                     className={inputBase}
-                    readOnly
+                    readOnly={!isAdmin}
                     aria-label="Name"
                   />
                 )}
@@ -326,43 +421,92 @@ export default function AlumniSuccessForm({
           {/* Faculty */}
           <div>
             <label htmlFor="faculty" className={labelBase}>Faculty</label>
-            <div className="relative flex items-center">
-              <Controller
-                name="faculty"
-                control={control}
-                render={({ field }) => (
-                  <input
-                    id="faculty"
-                    {...field}
-                    className={inputBase}
-                    readOnly
-                    aria-label="Faculty"
+            {isAdmin ? (
+              <>
+                <select
+                  id="faculty"
+                  value={selectedFacultyId}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : "";
+                    setSelectedFacultyId(Number.isFinite(id) ? id : "");
+                    setSelectedDepartmentId("");
+                    const selected = dbFaculties.find((f) => f.id === id);
+                    setValue("faculty", selected?.name ?? "", { shouldValidate: true });
+                    setValue("department", "", { shouldValidate: true });
+                  }}
+                  className={inputBase}
+                  aria-label="Faculty"
+                  disabled={orgLoading}
+                >
+                  <option value="">{orgLoading ? "Loading faculties..." : "Select faculty"}</option>
+                  {dbFaculties.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+                {orgError && <span className={errorText}>{orgError}</span>}
+                {errors.faculty && <span className={errorText}>{errors.faculty.message}</span>}
+              </>
+            ) : (
+              <>
+                <div className="relative flex items-center">
+                  <Controller
+                    name="faculty"
+                    control={control}
+                    render={({ field }) => (
+                      <input id="faculty" {...field} className={inputBase} readOnly aria-label="Faculty" />
+                    )}
                   />
-                )}
-              />
-            </div>
-            {errors.faculty && <span className={errorText}>{errors.faculty.message}</span>}
+                </div>
+                {errors.faculty && <span className={errorText}>{errors.faculty.message}</span>}
+              </>
+            )}
           </div>
 
           {/* Department */}
           <div>
             <label htmlFor="department" className={labelBase}>Department</label>
-            <div className="relative flex items-center">
-              <Controller
-                name="department"
-                control={control}
-                render={({ field }) => (
-                  <input
-                    id="department"
-                    {...field}
-                    className={inputBase}
-                    readOnly
-                    aria-label="Department"
+            {isAdmin ? (
+              <>
+                <select
+                  id="department"
+                  value={selectedDepartmentId}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : "";
+                    setSelectedDepartmentId(Number.isFinite(id) ? id : "");
+                    const selected = filteredDepartments.find((d) => d.id === id);
+                    setValue("department", selected?.name ?? "", { shouldValidate: true });
+                  }}
+                  className={inputBase}
+                  aria-label="Department"
+                  disabled={orgLoading || !selectedFacultyId}
+                >
+                  <option value="">
+                    {!selectedFacultyId
+                      ? "Select faculty first"
+                      : orgLoading
+                        ? "Loading departments..."
+                        : "Select department"}
+                  </option>
+                  {filteredDepartments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+                {errors.department && <span className={errorText}>{errors.department.message}</span>}
+              </>
+            ) : (
+              <>
+                <div className="relative flex items-center">
+                  <Controller
+                    name="department"
+                    control={control}
+                    render={({ field }) => (
+                      <input id="department" {...field} className={inputBase} readOnly aria-label="Department" />
+                    )}
                   />
-                )}
-              />
-            </div>
-            {errors.department && <span className={errorText}>{errors.department.message}</span>}
+                </div>
+                {errors.department && <span className={errorText}>{errors.department.message}</span>}
+              </>
+            )}
           </div>
 
           {/* Passing Year */}
@@ -380,7 +524,7 @@ export default function AlumniSuccessForm({
                     value={field.value || ""}
                     onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value, 10) : null)}
                     className={inputBase}
-                    readOnly
+                    readOnly={!isAdmin}
                     aria-label="Passing Year"
                   />
                 )}

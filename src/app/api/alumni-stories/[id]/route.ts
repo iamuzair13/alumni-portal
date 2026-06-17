@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql, retryDbOperation } from "@/lib/dbconnect";
 import { storyServerSchema } from "@/lib/alumniStories";
 import { auth } from "@/lib/auth";
+import { isSuperAdminUser } from "@/lib/alumniProfile";
 
 
 
@@ -139,12 +140,11 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     
     const alumniId = Number(story.alumniid);
     
-    // Check authorization - allow if admin or if user owns the story
-    const userType = session?.user ? String((session.user as { type?: string })?.type || "").toLowerCase().trim() : "";
-    const isAdmin = userType === "admin" || userType === "superadmin";
+    // Check authorization - alumni owner or superadmin (admin/viewer are read-only on admin side)
+    const isSuperAdmin = isSuperAdminUser(session.user);
     
-    if (!isAdmin) {
-      // Verify ownership
+    if (!isSuperAdmin) {
+      // Verify ownership for alumni users
       const userEmail = session.user.email ? String(session.user.email) : null;
       const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null;
       
@@ -301,6 +301,14 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 
 export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!isSuperAdminUser(session.user)) {
+      return NextResponse.json({ error: "Forbidden: Only super administrators can delete stories" }, { status: 403 });
+    }
+
     const { id } = await ctx.params;
     const storyId = Number(id);
     

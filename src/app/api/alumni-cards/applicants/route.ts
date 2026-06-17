@@ -68,6 +68,7 @@ export async function GET(request: Request) {
         COALESCE(p.program_name, a.degreetitle) as degreetitle,
         c.cardaddress,
         c.delivery_city,
+        c.delivery_society_name,
         c.delivery_street_no,
         c.delivery_house_no,
         c.status,

@@ -573,6 +573,7 @@ CREATE TABLE public.tblcard (
   cardpicture character varying,
   cardaddress character varying,
   delivery_city character varying,
+  delivery_society_name character varying,
   delivery_street_no character varying,
   delivery_house_no character varying,
   cnicno character varying,

@@ -18,6 +18,7 @@ type CardRow = {
   cnicno: string | null;
   cardaddress: string | null;
   delivery_city?: string | null;
+  delivery_society_name?: string | null;
   delivery_street_no?: string | null;
   delivery_house_no?: string | null;
   status: string | null;

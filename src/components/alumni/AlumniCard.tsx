@@ -183,6 +183,7 @@ export type AlumniListItem = AlumniCardItem & {
   workCity?: string;
   cardaddress?: string | null;
   deliveryCity?: string | null;
+  deliverySocietyName?: string | null;
   deliveryStreetNo?: string | null;
   deliveryHouseNo?: string | null;
 };
@@ -410,6 +411,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           registrationno: rawRegNo || null,
           cardaddress: r.cardaddress ?? null,
           deliveryCity: (r as { delivery_city?: string | null }).delivery_city ?? null,
+          deliverySocietyName: (r as { delivery_society_name?: string | null }).delivery_society_name ?? null,
           deliveryStreetNo: (r as { delivery_street_no?: string | null }).delivery_street_no ?? null,
           deliveryHouseNo: (r as { delivery_house_no?: string | null }).delivery_house_no ?? null,
         };
@@ -1705,6 +1707,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             <div className="max-w-[260px] text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2">
               {formatCardDeliveryAddressLine(
                 alum.deliveryCity,
+                alum.deliverySocietyName,
                 alum.deliveryStreetNo,
                 alum.deliveryHouseNo
               ) || "-"}

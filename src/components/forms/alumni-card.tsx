@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
 import { ALUMNI_CARD_VALIDITY_ISO } from "@/lib/cardValidity";
+import { composeCardDeliveryAddress } from "@/lib/cardDeliveryAddress";
 
 type Props = {
   alumniId: string;
@@ -29,19 +30,20 @@ const schema = z.object({
     message: "Please select an address preference",
   }),
   deliveryCity: z.string().optional(),
+  deliverySocietyName: z.string().optional(),
   deliveryStreetNo: z.string().optional(),
   deliveryHouseNo: z.string().optional(),
 }).refine((data) => {
   if (data.addressPreference !== "Deliver") return true;
   const city = String(data.deliveryCity ?? "").trim();
+  const society = String(data.deliverySocietyName ?? "").trim();
   const street = String(data.deliveryStreetNo ?? "").trim();
   const house = String(data.deliveryHouseNo ?? "").trim();
-  if (!city || !street || !house) return false;
-  // Must match API: full cardaddress string ≥ 10 chars (composed from structured fields).
-  const composed = `${house}, ${street}, ${city}`;
+  if (!city || !society || !street || !house) return false;
+  const composed = composeCardDeliveryAddress(city, society, street, house);
   return composed.length >= 10;
 }, {
-  message: "City, street number, and house number are required. The combined address must be at least 10 characters.",
+  message: "City, society name, street number, and house number are required. The combined address must be at least 10 characters.",
   path: ["deliveryCity"],
 });
 
@@ -119,6 +121,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       comment: "",
       addressPreference: "Collect",
       deliveryCity: "",
+      deliverySocietyName: "",
       deliveryStreetNo: "",
       deliveryHouseNo: "",
     },
@@ -169,6 +172,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
   React.useEffect(() => {
     if (addressPreference === "Collect") {
       setValue("deliveryCity", "");
+      setValue("deliverySocietyName", "");
       setValue("deliveryStreetNo", "");
       setValue("deliveryHouseNo", "");
     }
@@ -215,10 +219,12 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       // cardaddress = full line for mailing; structured columns stored separately
       if (vals.addressPreference === "Deliver") {
         const city = String(vals.deliveryCity ?? "").trim();
+        const society = String(vals.deliverySocietyName ?? "").trim();
         const street = String(vals.deliveryStreetNo ?? "").trim();
         const house = String(vals.deliveryHouseNo ?? "").trim();
-        formData.append("cardaddress", `${house}, ${street}, ${city}`);
+        formData.append("cardaddress", composeCardDeliveryAddress(city, society, street, house));
         formData.append("delivery_city", city);
+        formData.append("delivery_society_name", society);
         formData.append("delivery_street_no", street);
         formData.append("delivery_house_no", house);
       } else {
@@ -267,6 +273,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       setValue("comment", "");
       setValue("addressPreference", "Collect");
       setValue("deliveryCity", "");
+      setValue("deliverySocietyName", "");
       setValue("deliveryStreetNo", "");
       setValue("deliveryHouseNo", "");
       
@@ -395,40 +402,17 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       </div>
 
       {addressPreference === "Deliver" && (
-        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+        <div className="">
           
           <div>
-            <div className={labelBase}>Delivery Address</div>
-            <p className="text-xs text-gray-600 mb-2">Where the physical card should be sent (house, street, city).</p>
+            <div className={`${labelBase} w-full`}>Delivery Address</div>
+            <p className="text-xs text-gray-600 mb-2">Where the physical card should be sent (city, society, street, house).</p>
            
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryCity">
-                  City<span className="text-red-600 ml-0.5">*</span>
-                </label>
-                <input
-                  id="deliveryCity"
-                  type="text"
-                  {...register("deliveryCity")}
-                  className={`${inputBase} mt-1`}
-                  placeholder="City"
-                  aria-label="Delivery city"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryStreetNo">
-                  Street No.<span className="text-red-600 ml-0.5">*</span>
-                </label>
-                <input
-                  id="deliveryStreetNo"
-                  type="text"
-                  {...register("deliveryStreetNo")}
-                  className={`${inputBase} mt-1`}
-                  placeholder="Street number"
-                  aria-label="Street number"
-                />
-              </div>
-              <div className="flex-1">
+            <div className="flex flex-col sm:flex-row gap-4 w-full flex-wrap">
+              
+              
+              
+              <div className="flex-1 min-w-[140px]">
                 <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryHouseNo">
                   House Number<span className="text-red-600 ml-0.5">*</span>
                 </label>
@@ -441,13 +425,53 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
                   aria-label="House number"
                 />
               </div>
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryStreetNo">
+                  Street No.<span className="text-red-600 ml-0.5">*</span>
+                </label>
+                <input
+                  id="deliveryStreetNo"
+                  type="text"
+                  {...register("deliveryStreetNo")}
+                  className={`${inputBase} mt-1`}
+                  placeholder="Street number"
+                  aria-label="Street number"
+                />
+              </div>
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliverySocietyName">
+                  Society name<span className="text-red-600 ml-0.5">*</span>
+                </label>
+                <input
+                  id="deliverySocietyName"
+                  type="text"
+                  {...register("deliverySocietyName")}
+                  className={`${inputBase} mt-1`}
+                  placeholder="Society name"
+                  aria-label="Society name"
+                />
+              </div>
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryCity">
+                  City<span className="text-red-600 ml-0.5">*</span>
+                </label>
+                <input
+                  id="deliveryCity"
+                  type="text"
+                  {...register("deliveryCity")}
+                  className={`${inputBase} mt-1`}
+                  placeholder="City"
+                  aria-label="Delivery city"
+                />
+              </div>
             </div>
-            {(errors.deliveryCity || errors.deliveryStreetNo || errors.deliveryHouseNo) && (
+            {(errors.deliveryCity || errors.deliverySocietyName || errors.deliveryStreetNo || errors.deliveryHouseNo) && (
               <p className="text-xs text-red-600 mt-1">
                 {errors.deliveryCity?.message ||
+                  errors.deliverySocietyName?.message ||
                   errors.deliveryStreetNo?.message ||
                   errors.deliveryHouseNo?.message ||
-                  "City, street number, and house number are required."}
+                  "City, society name, street number, and house number are required."}
               </p>
             )}
           </div>
