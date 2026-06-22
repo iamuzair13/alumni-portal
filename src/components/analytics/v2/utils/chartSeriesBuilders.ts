@@ -130,14 +130,13 @@ export function transitionVelocityTrackedTotal(
   );
 }
 
-/** Early transition % uses all alumni as denominator (missing timing counts as not early). */
+/** Early transition % among alumni with a recorded timing response only. */
 export function transitionVelocityScore(
-  tv: ManagementDashboardSectionA["transitionVelocity"] | undefined,
-  totalAlumni: number | null | undefined
+  tv: ManagementDashboardSectionA["transitionVelocity"] | undefined
 ): number {
-  const alumniTotal = num(totalAlumni);
-  if (alumniTotal <= 0) return 0;
-  return Math.round((transitionVelocityEarlyCount(tv) / alumniTotal) * 100);
+  const tracked = transitionVelocityTrackedTotal(tv);
+  if (tracked <= 0) return 0;
+  return Math.round((transitionVelocityEarlyCount(tv) / tracked) * 100);
 }
 
 export function transitionVelocityChart(

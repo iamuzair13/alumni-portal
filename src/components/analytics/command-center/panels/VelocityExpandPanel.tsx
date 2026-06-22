@@ -76,11 +76,6 @@ export function VelocityExpandPanel({
 }) {
   const velocity = mapTransitionVelocity(data, VERIFIED_ONLY);
   const facultyRows = data?.sectionA?.facultyTransitionRows ?? [];
-  const verifiedByFaculty = useMemo(
-    () => new Map((data?.sectionA?.facultyRows ?? []).map((r) => [r.faculty, r.verified ?? 0])),
-    [data?.sectionA?.facultyRows]
-  );
-
   const tv = data?.sectionA?.verifiedTransitionVelocity;
   const verifiedTotal = data?.alumniHeadline?.verified ?? 0;
   const early = transitionVelocityEarlyCount(tv);
@@ -103,7 +98,7 @@ export function VelocityExpandPanel({
   const tableRows = useMemo(() => {
     const body = facultyRows.map((r) => {
       const earlyN = earlyCount(r);
-      const denom = verifiedByFaculty.get(r.faculty) ?? 0;
+      const denom = trackedTotal(r);
       return {
         faculty: r.faculty,
         beforeGraduation: r.beforeGraduation.toLocaleString(),
@@ -147,10 +142,10 @@ export function VelocityExpandPanel({
         after6Months: sum.after6Months.toLocaleString(),
         unknown: sum.unknown.toLocaleString(),
         early: earlySum.toLocaleString(),
-        earlyRate: pct(earlySum, verifiedTotal),
+        earlyRate: pct(earlySum, tracked),
       },
     ];
-  }, [facultyRows, verifiedByFaculty, verifiedTotal]);
+  }, [facultyRows, tracked]);
 
   const facultyChartData = useMemo(
     () =>

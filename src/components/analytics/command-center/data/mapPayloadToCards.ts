@@ -138,7 +138,7 @@ export function mapTransitionVelocity(
     ? num(data?.alumniHeadline?.verified)
     : num(data?.alumniHeadline?.total ?? data?.kpis?.totalAlumni);
   const chart = transitionVelocityChart(tv, totalAlumni);
-  const score = transitionVelocityScore(tv, totalAlumni);
+  const score = transitionVelocityScore(tv);
   const buckets = {
     beforeGraduation: num(tv?.beforeGraduation),
     immediateAfterGraduation: num(tv?.immediateAfterGraduation),

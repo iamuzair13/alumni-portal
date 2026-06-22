@@ -64,6 +64,10 @@ export function SectionAlumni({
   const honor = mapHonorCards(data, VERIFIED_ONLY);
   const velocity = mapTransitionVelocity(data, VERIFIED_ONLY);
   const location = mapLocation(data, VERIFIED_ONLY);
+  const duringGradPct =
+    velocity.trackedTotal > 0
+      ? Math.round((velocity.buckets.beforeGraduation / velocity.trackedTotal) * 100)
+      : 0;
   const totalCategories = categories.rows.reduce((s, r) => s + r.count, 0);
   const totalOccupation = occupation.rows.reduce((s, r) => s + r.count, 0);
   const totalLocation = location.rows.reduce((s, r) => s + r.count, 0);
@@ -188,7 +192,7 @@ export function SectionAlumni({
           icon={GaugeIcon}
           accent="emerald"
           primaryValue={velocity.trackedTotal}
-          secondaryLabel={`${velocity.buckets.beforeGraduation.toLocaleString()} during grad · ${velocity.score}% early`}
+          secondaryLabel={`${duringGradPct}% during grad · ${velocity.score}% early`}
           masonrySize="sm"
           chartFill
           delay={staggerDelay(4)}

@@ -12,7 +12,7 @@ const toc = [
   { id: "#section-a", label: "Alumni" },
   { id: "#section-b", label: "Engagement" },
   { id: "#section-c", label: "Development" },
-  { id: "#section-d", label: "Perks" },
+  { id: "#section-d", label: "Perks & Benefits" },
 ] as const;
 
 const selectClass =
