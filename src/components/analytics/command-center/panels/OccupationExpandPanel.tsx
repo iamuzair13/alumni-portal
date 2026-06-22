@@ -19,6 +19,7 @@ import { OccupationRadar } from "../charts/OccupationRadar";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import { mapAlumniOccupation } from "../data/mapPayloadToCards";
 import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
+import { facultyBarChartRow, facultyTooltipLabel } from "../utils/facultyLabels";
 
 const VERIFIED_ONLY = { verifiedOnly: true } as const;
 
@@ -29,11 +30,6 @@ const STATUS_SERIES = [
   { key: "unemployedByChoice", label: "By choice", fill: KPI_COLOR_HEX.orange },
   { key: "other", label: "Other", fill: KPI_COLOR_HEX.slate },
 ] as const;
-
-function truncateFaculty(name: string, max = 18): string {
-  const t = name.trim();
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
-}
 
 function pct(n: number, d: number): string {
   if (!d || d <= 0) return "—";
@@ -123,8 +119,7 @@ export function OccupationExpandPanel({
         .sort((a, b) => b.total - a.total)
         .slice(0, 8)
         .map((r) => ({
-          faculty: truncateFaculty(r.faculty),
-          fullName: r.faculty,
+          ...facultyBarChartRow(r.faculty),
           employed: r.employed,
           selfEmployed: r.selfEmployed,
           unemployedSearching: r.unemployedSearching,
@@ -163,53 +158,6 @@ export function OccupationExpandPanel({
         ))}
       </div>
 
-      <section>
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          Verified occupation by faculty
-        </h3>
-        <AnalyticsDataTable
-          isLoading={isLoading}
-          columns={[
-            { key: "faculty", label: "Faculty" },
-            { key: "employed", label: "Employed", align: "right" },
-            { key: "selfEmployed", label: "Self-emp.", align: "right" },
-            { key: "unemployedSearching", label: "Searching", align: "right" },
-            { key: "unemployedByChoice", label: "By choice", align: "right" },
-            { key: "other", label: "Other", align: "right" },
-            { key: "total", label: "Total", align: "right" },
-            { key: "share", label: "Share", align: "right" },
-          ]}
-          rows={tableRows}
-        />
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Status distribution
-          </h3>
-          <div className="h-[200px]">
-            <Donut data={occupation.chartSeries} showLegend minSlicePercent={0.04} />
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Status counts
-          </h3>
-          <BarMini data={occupation.chartSeries} height={200} horizontal showLabels />
-        </section>
-
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Snapshot profile
-          </h3>
-          <div className="h-[200px]">
-            <OccupationRadar data={occupation.chartSeries} height={200} />
-          </div>
-        </section>
-      </div>
-
       <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
         <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Top faculties · occupation breakdown
@@ -231,9 +179,7 @@ export function OccupationExpandPanel({
                 <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={32} />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 10 }}
-                  labelFormatter={(_label, payload) =>
-                    (payload?.[0]?.payload as { fullName?: string })?.fullName ?? _label
-                  }
+                  labelFormatter={facultyTooltipLabel}
                   formatter={(value: number, name: string) => [value.toLocaleString(), name]}
                 />
                 <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} iconType="circle" iconSize={8} />
@@ -262,6 +208,29 @@ export function OccupationExpandPanel({
           </div>
         )}
       </section>
+
+      <section>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Occupation by faculty
+        </h3>
+        <AnalyticsDataTable
+          isLoading={isLoading}
+          columns={[
+            { key: "faculty", label: "Faculty" },
+            { key: "employed", label: "Employed", align: "right" },
+            { key: "selfEmployed", label: "Self-emp.", align: "right" },
+            { key: "unemployedSearching", label: "Searching", align: "right" },
+            { key: "unemployedByChoice", label: "By choice", align: "right" },
+            { key: "other", label: "Other", align: "right" },
+            { key: "total", label: "Total", align: "right" },
+            { key: "share", label: "Share", align: "right" },
+          ]}
+          rows={tableRows}
+        />
+      </section>
+
+
+      
     </div>
   );
 }

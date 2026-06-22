@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import AnalyticsDataTable from "@/components/analytics/management/AnalyticsDataTable";
-import { Bar as BarMini } from "../charts/Bar";
+import { ChapterVerticalBarChart } from "../charts/ChapterVerticalBarChart";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import { mapEngagementsChapters } from "../data/mapPayloadToCards";
 import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
@@ -58,7 +58,8 @@ export function ChaptersExpandPanel({
         .sort((a, b) => b.members - a.members)
         .slice(0, 10)
         .map((row, i) => ({
-          label: row.chapter.length > 14 ? `${row.chapter.slice(0, 13)}…` : row.chapter,
+          label: row.chapter,
+          fullName: row.chapter,
           value: row.members,
           color: i === 0 ? KPI_COLOR_HEX.violet : undefined,
         })),
@@ -72,7 +73,8 @@ export function ChaptersExpandPanel({
         .sort((a, b) => b.members - a.members)
         .slice(0, 10)
         .map((row, i) => ({
-          label: row.chapter.length > 14 ? `${row.chapter.slice(0, 13)}…` : row.chapter,
+          label: row.chapter,
+          fullName: row.chapter,
           value: row.members,
           color: i === 0 ? KPI_COLOR_HEX.emerald : undefined,
         })),
@@ -87,18 +89,24 @@ export function ChaptersExpandPanel({
       color: KPI_COLOR_HEX.violet,
     },
     {
+      label: "Alumni in national chapters",
+      value: chapters.nationalMembers,
+      sub: "All chapter memberships",
+      color: KPI_COLOR_HEX.violet,
+    },
+    {
       label: "International chapters",
       value: chapters.international,
       sub: `${chapters.internationalMembers.toLocaleString()} alumni`,
       color: KPI_COLOR_HEX.emerald,
     },
     {
-      label: "Total members",
-      value: chapters.members,
+      label: "Alumni in international chapters",
+      value: chapters.internationalMembers,
       sub: "All chapter memberships",
-      color: KPI_COLOR_HEX.sky,
+      color: KPI_COLOR_HEX.emerald,
     },
-    
+
   ];
 
   return (
@@ -120,7 +128,8 @@ export function ChaptersExpandPanel({
         ))}
       </div>
 
-      <section>
+<div className="flex ">
+      <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40 w-full">
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
           National chapters
         </h3>
@@ -135,18 +144,19 @@ export function ChaptersExpandPanel({
         />
       </section>
 
-      <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
+      <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40 w-full">
         <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
           Top national chapters by alumni
         </h3>
         {nationalChart.length === 0 ? (
           <p className="py-8 text-center text-sm text-gray-400">No national chapter members</p>
         ) : (
-          <BarMini data={nationalChart} height={Math.max(120, nationalChart.length * 22)} horizontal showLabels />
+          <ChapterVerticalBarChart data={nationalChart} accent="violet" height={475} />
         )}
       </section>
-
-      <section>
+      </div>
+      <div className="flex ">
+      <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40 w-full">
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
           International chapters
         </h3>
@@ -161,21 +171,17 @@ export function ChaptersExpandPanel({
         />
       </section>
 
-      <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
+      <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40 w-full">
         <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
           Top international chapters by alumni
         </h3>
         {internationalChart.length === 0 ? (
           <p className="py-8 text-center text-sm text-gray-400">No international chapter members</p>
         ) : (
-          <BarMini
-            data={internationalChart}
-            height={Math.max(120, internationalChart.length * 22)}
-            horizontal
-            showLabels
-          />
+          <ChapterVerticalBarChart data={internationalChart} accent="emerald" height={475} />
         )}
       </section>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { ManagementDashboardPayload } from "@/lib/analytics/management-dash
 import { stripFacultyOfPrefix } from "../utils/facultyLabels";
 import type { AlumniTrendPoint } from "@/services/dashboardService";
 import type { ChartSeriesPoint } from "@/components/analytics/v2/utils/kpiConfig";
+import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
 import {
   getPeriodColumnLabels,
   resolveQuarterLabel,
@@ -148,18 +149,22 @@ export function mapTransitionVelocity(
   };
   const trackedTotal = transitionVelocityTrackedTotal(tv);
   const earlyCount = transitionVelocityEarlyCount(tv);
-  const timingBars = [
-    { label: "Before grad", value: buckets.beforeGraduation, color: "#10b981" },
-    { label: "Immediate", value: buckets.immediateAfterGraduation, color: "#0ea5e9" },
-    { label: "≤3 mo", value: buckets.within3Months, color: "#8b5cf6" },
-    { label: "≤6 mo", value: buckets.within6Months, color: "#f59e0b" },
-  ].filter((b) => b.value > 0);
+  const rows = [
+    { label: "Before grad", short: "Pre", count: buckets.beforeGraduation, color: KPI_COLOR_HEX.emerald },
+    { label: "Immediate", short: "Imm", count: buckets.immediateAfterGraduation, color: KPI_COLOR_HEX.sky },
+    { label: "≤3 mo", short: "3mo", count: buckets.within3Months, color: KPI_COLOR_HEX.violet },
+    { label: "≤6 mo", short: "6mo", count: buckets.within6Months, color: KPI_COLOR_HEX.amber },
+    { label: ">6 mo", short: "6m+", count: buckets.after6Months, color: KPI_COLOR_HEX.orange },
+    { label: "Other", short: "Oth", count: buckets.unknown, color: KPI_COLOR_HEX.slate },
+  ];
+  const timingBars = rows.map(({ label, count, color }) => ({ label, value: count, color }));
 
   return {
     score,
     earlyCount,
     trackedTotal,
     buckets,
+    rows,
     timingBars,
     chartSeries: chart.chartSeries,
     insight: chart.insight,
@@ -215,14 +220,8 @@ export function mapEngagementsChapters(data: ManagementDashboardPayload | undefi
     internationalRows,
     chartSeries: chart.chartSeries,
     summaryChart: {
-      national: [
-        { label: "Chapters", value: num(ch?.nationalChapters), color: "#8b5cf6" },
-        { label: "Alumni", value: nationalMembers, color: "#a78bfa" },
-      ],
-      international: [
-        { label: "Chapters", value: num(ch?.internationalChapters), color: "#10b981" },
-        { label: "Alumni", value: internationalMembers, color: "#34d399" },
-      ],
+      national: [{ label: "Alumni", value: nationalMembers, color: "#a78bfa" }],
+      international: [{ label: "Alumni", value: internationalMembers, color: "#34d399" }],
     },
   };
 }
@@ -368,15 +367,26 @@ export function mapPublicationsSurveys(data: ManagementDashboardPayload | undefi
 export function mapMembershipsPerks(data: ManagementDashboardPayload | undefined) {
   const chart = membershipsChart(data);
   const m = data?.sectionD?.memberships;
-  const gym = num(m?.gymDiscountActive);
-  const pool = num(m?.swimmingPoolDiscountActive);
-  const qalander = num(m?.qalanderClub);
-  const total = num(m?.totalMemberships);
+  const gymApplied = num(m?.gymDiscountActive);
+  const gymApproved = num(m?.gymApproved);
+  const poolApplied = num(m?.swimmingPoolDiscountActive);
+  const poolApproved = num(m?.swimmingPoolApproved);
+  const qalanderApplied = num(m?.qalanderClub);
+  const qalanderApproved = num(m?.qalanderApproved);
+  const totalApplied = num(m?.totalMemberships);
+  const totalApproved = num(m?.totalApproved);
   return {
-    total,
-    gym,
-    pool,
-    qalander,
+    total: totalApplied,
+    totalApproved,
+    gym: gymApproved,
+    pool: poolApproved,
+    qalander: qalanderApproved,
+    gymApplied,
+    gymApproved,
+    poolApplied,
+    poolApproved,
+    qalanderApplied,
+    qalanderApproved,
     facultyRows: data?.sectionD?.facultyMembershipRows ?? [],
     chartSeries: chart.chartSeries,
     memberships: m,

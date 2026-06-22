@@ -673,22 +673,28 @@ const UnifiedHeaderTopbar: FC = () => {
         dark:bg-gray-900/95 dark:backdrop-blur-xl
       `}
     >
-      <div className="mx-auto flex w-full max-w-[1600px] border-b  items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <div
+        className={`mx-auto w-full max-w-[1600px] border-b px-4 py-3 sm:px-6 lg:px-8 ${
+          isAnalyticsRoute
+            ? "grid grid-cols-[auto_1fr_auto] items-center gap-3 sm:grid-cols-3 sm:gap-4"
+            : "flex items-center justify-between gap-3"
+        }`}
+      >
         {/* Left section: Logo / Toggle */}
-        <div className="flex items-center gap-3">
+        <div className={`flex min-w-0 items-center ${isAnalyticsRoute ? "justify-self-start" : "gap-3 sm:gap-4"}`}>
           {isAlumni ? (
             <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
               <Image
-                width={154}
-                height={32}
-                className="h-7 w-auto dark:hidden"
+                width={254}
+                height={80}
+                className="h-7 w-auto dark:hidden border border-red-500"
                 src="/images/logo/UOL-Rebrand-ID_Final-01.png"
                 alt="UOL Alumni Portal"
                 priority
               />
               <Image
-                width={154}
-                height={32}
+                width={254}
+                height={80}
                 className="hidden h-7 w-auto dark:block"
                 src="/images/logo/UOL-Rebrand-ID_Final-01.png"
                 alt="UOL Alumni Portal"
@@ -696,22 +702,24 @@ const UnifiedHeaderTopbar: FC = () => {
               />
             </Link>
           ) : isAnalyticsRoute ? (
-            <Link href="/dashboard" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+            <Link href="/dashboard" className="flex shrink-0 items-center transition-opacity hover:opacity-80">
               <Image
-                width={154}
-                height={32}
-                className="h-7 w-auto dark:hidden"
+                width={308}
+                height={64}
+                className="h-12 w-auto sm:h-14 dark:hidden"
                 src="/images/logo/UOL-Rebrand-ID_Final-01.png"
                 alt="UOL Alumni Portal"
                 priority
+                sizes="(max-width: 640px) 192px, 224px"
               />
               <Image
-                width={154}
-                height={32}
-                className="hidden h-7 w-auto dark:block"
+                width={308}
+                height={64}
+                className="hidden h-12 w-auto sm:h-14 dark:block"
                 src="/images/logo/UOL-Rebrand-ID_Final-01.png"
                 alt="UOL Alumni Portal"
                 priority
+                sizes="(max-width: 640px) 192px, 224px"
               />
             </Link>
           ) : (
@@ -761,11 +769,17 @@ const UnifiedHeaderTopbar: FC = () => {
           )}
         </div>
         {/* Super Admin Actions */}
-       
 
-       
+        {isAnalyticsRoute ? (
+          <h1 className="min-w-0 truncate px-2 text-center text-base font-bold tracking-tight text-[#183D32] dark:text-emerald-300 sm:text-lg lg:text-xl">
+            Portal Analytics
+          </h1>
+        ) : null}
+
         {/* Right section: Actions & User */}
-        <div className="flex items-center gap-2">
+        <div
+          className={`flex items-center gap-2 ${isAnalyticsRoute ? "justify-self-end justify-end" : ""}`}
+        >
           {isSuperAdmin && !isAnalyticsRoute ? (
             <div className="flex shrink-0 flex-col gap-1 sm:flex-row sm:items-center">
               <Link

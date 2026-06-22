@@ -18,6 +18,7 @@ import { Donut } from "../charts/Donut";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import { mapLocation } from "../data/mapPayloadToCards";
 import { colorAt } from "@/components/analytics/v2/charts/chartColors";
+import { facultyBarChartRow, facultyTooltipLabel } from "../utils/facultyLabels";
 
 const VERIFIED_ONLY = { verifiedOnly: true } as const;
 
@@ -34,11 +35,6 @@ const REGION_KEYS = [
 ] as const;
 
 const CHART_REGION_KEYS = ["punjab", "sindh", "islamabad", "kpk", "overseas"] as const;
-
-function truncateFaculty(name: string, max = 16): string {
-  const t = name.trim();
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
-}
 
 function pct(n: number, d: number): string {
   if (!d || d <= 0) return "—";
@@ -138,8 +134,7 @@ export function LocationExpandPanel({
         .sort((a, b) => b.total - a.total)
         .slice(0, 8)
         .map((r) => ({
-          faculty: truncateFaculty(r.faculty),
-          fullName: r.faculty,
+          ...facultyBarChartRow(r.faculty),
           punjab: r.punjab,
           sindh: r.sindh,
           islamabad: r.islamabad,
@@ -175,40 +170,6 @@ export function LocationExpandPanel({
         ))}
       </div>
 
-      <section>
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          Verified location by faculty
-        </h3>
-        <AnalyticsDataTable
-          isLoading={isLoading}
-          columns={[
-            { key: "faculty", label: "Faculty" },
-            ...REGION_KEYS.map((r) => ({ key: r.key, label: r.label, align: "right" as const })),
-            { key: "total", label: "Total", align: "right" },
-            { key: "share", label: "Share", align: "right" },
-          ]}
-          rows={tableRows}
-        />
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Regional distribution
-          </h3>
-          <div className="h-[200px]">
-            <Donut data={location.chartSeries} showLegend minSlicePercent={0.03} />
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Regional counts
-          </h3>
-          <BarMini data={location.chartSeries} height={200} horizontal showLabels />
-        </section>
-      </div>
-
       <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
         <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Top faculties · regional breakdown
@@ -224,9 +185,7 @@ export function LocationExpandPanel({
                 <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={32} />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 10 }}
-                  labelFormatter={(_label, payload) =>
-                    (payload?.[0]?.payload as { fullName?: string })?.fullName ?? _label
-                  }
+                  labelFormatter={facultyTooltipLabel}
                   formatter={(value: number, name: string) => [value.toLocaleString(), name]}
                 />
                 <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} iconType="circle" iconSize={8} />
@@ -255,6 +214,25 @@ export function LocationExpandPanel({
           </div>
         )}
       </section>
+
+      <section>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Location by faculty
+        </h3>
+        <AnalyticsDataTable
+          isLoading={isLoading}
+          columns={[
+            { key: "faculty", label: "Faculty" },
+            ...REGION_KEYS.map((r) => ({ key: r.key, label: r.label, align: "right" as const })),
+            { key: "total", label: "Total", align: "right" },
+            { key: "share", label: "Share", align: "right" },
+          ]}
+          rows={tableRows}
+        />
+      </section>
+
+
+
     </div>
   );
 }

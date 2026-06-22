@@ -16,11 +16,7 @@ import AnalyticsDataTable from "@/components/analytics/management/AnalyticsDataT
 import { Bar as BarMini } from "../charts/Bar";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import { mapAlumniOverview } from "../data/mapPayloadToCards";
-
-function truncateFaculty(name: string, max = 22): string {
-  const t = name.trim();
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
-}
+import { facultyBarChartRow, facultyTooltipLabel } from "../utils/facultyLabels";
 
 function pct(n: number, d: number): string {
   if (!d || d <= 0) return "—";
@@ -85,8 +81,7 @@ export function OverviewExpandPanel({
         .sort((a, b) => b.registrations - a.registrations)
         .slice(0, 8)
         .map((r) => ({
-          faculty: truncateFaculty(r.faculty),
-          fullName: r.faculty,
+          ...facultyBarChartRow(r.faculty),
           total: r.registrations ?? 0,
           verified: r.verified ?? 0,
           active: r.active ?? 0,
@@ -136,34 +131,7 @@ export function OverviewExpandPanel({
           </div>
         ))}
       </div>
-
-      <section>
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          Faculty breakdown
-        </h3>
-        <AnalyticsDataTable
-          isLoading={isLoading}
-          columns={[
-            { key: "faculty", label: "Faculty" },
-            { key: "registrations", label: "Total", align: "right" },
-            { key: "verified", label: "Verified", align: "right" },
-            { key: "active", label: "Active", align: "right" },
-            { key: "verifyRate", label: "Verify %", align: "right" },
-            { key: "activeRate", label: "Active %", align: "right" },
-          ]}
-          rows={tableRows}
-        />
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Headline metrics
-          </h3>
-          <BarMini data={overview.headlineBars} height={200} horizontal={false} showLabels />
-        </section>
-
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
+      <section className="w-full rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
           <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Top faculties · total vs verified vs active
           </h3>
@@ -189,9 +157,7 @@ export function OverviewExpandPanel({
                   />
                   <Tooltip
                     contentStyle={{ fontSize: 11, borderRadius: 10 }}
-                    labelFormatter={(_label, payload) =>
-                      (payload?.[0]?.payload as { fullName?: string })?.fullName ?? _label
-                    }
+                    labelFormatter={facultyTooltipLabel}
                     formatter={(value: number, name: string) => [value.toLocaleString(), name]}
                   />
                   <Legend
@@ -224,7 +190,26 @@ export function OverviewExpandPanel({
             </div>
           )}
         </section>
-      </div>
+
+      <section>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Faculty breakdown
+        </h3>
+        <AnalyticsDataTable
+          isLoading={isLoading}
+          columns={[
+            { key: "faculty", label: "Faculty" },
+            { key: "registrations", label: "Total", align: "right" },
+            { key: "verified", label: "Verified", align: "right" },
+            { key: "active", label: "Active", align: "right" },
+            { key: "verifyRate", label: "Verify %", align: "right" },
+            { key: "activeRate", label: "Active %", align: "right" },
+          ]}
+          rows={tableRows}
+        />
+      </section>
+
+      
     </div>
   );
 }

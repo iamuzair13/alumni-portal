@@ -6,128 +6,84 @@ import { CHART } from "../animation/config";
 import { useReducedMotion } from "../animation/useReducedMotion";
 import { ChartEmpty } from "./ChartEmpty";
 
-function MetricTile({
-  label,
-  value,
-  accent,
-  delay = 0,
-}: {
-  label: string;
-  value: number;
-  accent: "emerald" | "sky" | "violet" | "amber";
-  delay?: number;
-}) {
-  const styles = {
-    emerald: {
-      border: "border-emerald-200/70 dark:border-emerald-500/20",
-      bg: "from-emerald-50/90 to-white dark:from-emerald-500/10 dark:to-gray-900/40",
-      label: "text-emerald-600 dark:text-emerald-400",
-      value: "text-emerald-700 dark:text-emerald-300",
-    },
-    sky: {
-      border: "border-sky-200/70 dark:border-sky-500/20",
-      bg: "from-sky-50/90 to-white dark:from-sky-500/10 dark:to-gray-900/40",
-      label: "text-sky-600 dark:text-sky-400",
-      value: "text-sky-700 dark:text-sky-300",
-    },
-    violet: {
-      border: "border-violet-200/70 dark:border-violet-500/20",
-      bg: "from-violet-50/90 to-white dark:from-violet-500/10 dark:to-gray-900/40",
-      label: "text-violet-600 dark:text-violet-400",
-      value: "text-violet-700 dark:text-violet-300",
-    },
-    amber: {
-      border: "border-amber-200/70 dark:border-amber-500/20",
-      bg: "from-amber-50/90 to-white dark:from-amber-500/10 dark:to-gray-900/40",
-      label: "text-amber-600 dark:text-amber-400",
-      value: "text-amber-700 dark:text-amber-300",
-    },
-  }[accent];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className={`flex min-h-0 flex-col justify-center rounded-lg border bg-gradient-to-br px-2 py-1.5 ${styles.border} ${styles.bg}`}
-    >
-      <p className={`text-[8px] font-semibold uppercase tracking-wider ${styles.label}`}>{label}</p>
-      <p className={`mt-0.5 text-base font-bold tabular-nums leading-none ${styles.value}`}>
-        {value.toLocaleString()}
-      </p>
-    </motion.div>
-  );
-}
-
 export function VelocityCardChart({
-  trackedTotal,
-  beforeGraduation,
-  earlyCount,
-  score,
-  timingBars,
+  rows,
+  total,
 }: {
-  trackedTotal: number;
-  beforeGraduation: number;
-  earlyCount: number;
-  score: number;
-  timingBars: Array<{ label: string; value: number; color: string }>;
+  rows: Array<{ label: string; short: string; count: number; color: string }>;
+  total: number;
 }) {
   const reduced = useReducedMotion();
 
-  if (trackedTotal === 0 && beforeGraduation === 0 && earlyCount === 0) {
+  if (total === 0 && rows.every((r) => r.count === 0)) {
     return <ChartEmpty height={88} message="No transition timing data" />;
   }
 
-  const maxBar = Math.max(...timingBars.map((b) => b.value), 1);
+  const maxBar = Math.max(...rows.map((r) => r.count), 1);
+  const topRow = [...rows].sort((a, b) => b.count - a.count)[0];
 
   return (
-    <div className="flex h-full w-full flex-col gap-1.5">
-      <div className="grid grid-cols-3 gap-1.5">
-        <MetricTile label="Tracked" value={trackedTotal} accent="emerald" delay={0.05} />
-        <MetricTile label="During grad" value={beforeGraduation} accent="sky" delay={0.1} />
-        <MetricTile label="Early" value={earlyCount} accent="violet" delay={0.14} />
-      </div>
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="grid min-h-0 flex-1 grid-cols-6 gap-0.5">
+        {rows.map((bar, i) => {
+          const heightPct = bar.count === 0 ? 0 : Math.max(10, (bar.count / maxBar) * 100);
+          const isLeader = topRow?.label === bar.label && bar.count > 0;
+          const stagger = i * (CHART.progress.staggerMs / 1000);
 
-      {timingBars.length > 0 ? (
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-1">
-          {timingBars.slice(0, 3).map((bar, i) => {
-            const width = Math.max(8, (bar.value / maxBar) * 100);
-            return (
-              <motion.div
-                key={bar.label}
-                initial={{ opacity: 0, x: -4 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.18 + i * 0.06, duration: 0.35 }}
-                className="grid grid-cols-[2.75rem_minmax(0,1fr)_1.75rem] items-center gap-1"
+          return (
+            <div
+              key={bar.label}
+              className={`flex min-h-0 flex-col items-center rounded-lg px-0.5 pb-0.5 pt-1 ${
+                isLeader
+                  ? "bg-gradient-to-b from-emerald-50/80 to-transparent dark:from-emerald-500/[0.08] dark:to-transparent"
+                  : ""
+              }`}
+              title={`${bar.label}: ${bar.count.toLocaleString()}`}
+            >
+              <span
+                className={`mb-0.5 text-[8px] font-semibold tabular-nums leading-none ${
+                  bar.count > 0
+                    ? "text-slate-800 dark:text-slate-100"
+                    : "text-slate-300 dark:text-slate-600"
+                }`}
               >
-                <span className="truncate text-right text-[8px] font-medium text-slate-500 dark:text-slate-400">
-                  {bar.label}
-                </span>
-                <div className="h-1.5 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-500/15">
-                  <motion.div
-                    initial={{ width: reduced ? `${width}%` : 0 }}
-                    animate={{ width: `${width}%` }}
-                    transition={{
-                      delay: reduced ? 0 : i * (CHART.progress.staggerMs / 1000),
-                      duration: reduced ? 0 : CHART.progress.duration,
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
-                    className="h-full rounded-full"
-                    style={{ backgroundColor: bar.color }}
-                  />
-                </div>
-                <span className="text-right text-[8px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
-                  {bar.value.toLocaleString()}
-                </span>
-              </motion.div>
-            );
-          })}
-        </div>
-      ) : null}
+                {bar.count.toLocaleString()}
+              </span>
 
-      <p className="shrink-0 text-center text-[8px] font-medium text-emerald-600/90 dark:text-emerald-400/90">
-        {score}% early transition rate
-      </p>
+              <div className="flex w-full min-h-0 flex-1 items-end">
+                <div className="relative h-full w-full overflow-hidden rounded-md bg-slate-100/80 ring-1 ring-inset ring-slate-200/60 dark:bg-slate-800/50 dark:ring-slate-700/50">
+                  {bar.count > 0 ? (
+                    <motion.div
+                      initial={{ height: reduced ? `${heightPct}%` : 0 }}
+                      animate={{ height: `${heightPct}%` }}
+                      transition={{
+                        delay: reduced ? 0 : stagger,
+                        duration: reduced ? 0 : CHART.progress.duration,
+                        ease: [0.16, 1, 0.3, 1],
+                      }}
+                      className="absolute bottom-0 left-0 right-0 rounded-md"
+                      style={{
+                        background: `linear-gradient(180deg, ${bar.color}ee, ${bar.color}99)`,
+                        boxShadow: isLeader ? `0 0 12px ${bar.color}40` : undefined,
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute bottom-0 left-1/2 h-0.5 w-1.5 -translate-x-1/2 rounded-full bg-slate-200 dark:bg-slate-700" />
+                  )}
+                </div>
+              </div>
+
+              <span
+                className={`mt-1 max-w-full truncate text-center text-[7px] font-medium leading-none ${
+                  bar.count > 0 ? "text-slate-600 dark:text-slate-300" : "text-slate-400 dark:text-slate-600"
+                }`}
+              >
+                {bar.short}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

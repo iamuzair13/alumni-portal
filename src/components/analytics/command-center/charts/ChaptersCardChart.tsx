@@ -14,8 +14,10 @@ export function ChaptersCardChart({
   international: ChartSeriesPoint[];
   height?: number;
 }) {
+  const nationalAlumni = national.filter((p) => p.label === "Alumni");
+  const internationalAlumni = international.filter((p) => p.label === "Alumni");
   const hasData =
-    national.some((p) => p.value > 0) || international.some((p) => p.value > 0);
+    nationalAlumni.some((p) => p.value > 0) || internationalAlumni.some((p) => p.value > 0);
   if (!hasData) return <ChartEmpty height={height} />;
 
   const chartHeight = Math.max(56, height - 18);
@@ -26,13 +28,13 @@ export function ChaptersCardChart({
         <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">
           National
         </p>
-        <Bar data={national} horizontal={false} height={chartHeight} variant="premium" showLabels />
+        <Bar data={nationalAlumni} horizontal={false} height={chartHeight} variant="premium" showLabels />
       </div>
       <div className="flex min-h-0 flex-col">
         <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
           International
         </p>
-        <Bar data={international} horizontal={false} height={chartHeight} variant="premium" showLabels />
+        <Bar data={internationalAlumni} horizontal={false} height={chartHeight} variant="premium" showLabels />
       </div>
     </div>
   );

@@ -17,11 +17,7 @@ import { Donut } from "../charts/Donut";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import { mapPublicationsSurveys } from "../data/mapPayloadToCards";
 import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
-
-function truncateFaculty(name: string, max = 16): string {
-  const t = name.trim();
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
-}
+import { abbreviateFacultyLabel, facultyBarChartRow, facultyTooltipLabel } from "../utils/facultyLabels";
 
 function pct(n: number, d: number): string {
   if (!d || d <= 0) return "—";
@@ -74,8 +70,7 @@ export function PublicationsExpandPanel({
         .sort((a, b) => b.total - a.total)
         .slice(0, 8)
         .map((row) => ({
-          faculty: truncateFaculty(row.faculty),
-          fullName: row.faculty,
+          ...facultyBarChartRow(row.faculty),
           quarter: row.quarter,
           ytd: row.ytd,
         })),
@@ -89,7 +84,7 @@ export function PublicationsExpandPanel({
         .sort((a, b) => b.total - a.total)
         .slice(0, 6)
         .map((row, i) => ({
-          label: truncateFaculty(row.faculty, 20),
+          label: abbreviateFacultyLabel(row.faculty),
           value: row.total,
           color: [
             KPI_COLOR_HEX.violet,
@@ -219,9 +214,7 @@ export function PublicationsExpandPanel({
                   <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={28} />
                   <Tooltip
                     contentStyle={{ fontSize: 11, borderRadius: 10 }}
-                    labelFormatter={(_label, payload) =>
-                      (payload?.[0]?.payload as { fullName?: string })?.fullName ?? _label
-                    }
+                    labelFormatter={facultyTooltipLabel}
                     formatter={(value: number, name: string) => [value.toLocaleString(), name]}
                   />
                   <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} iconType="circle" iconSize={8} />

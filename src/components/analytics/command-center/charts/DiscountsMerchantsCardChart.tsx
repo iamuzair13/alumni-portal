@@ -4,6 +4,8 @@ import React from "react";
 import { motion } from "motion/react";
 import { ChartEmpty } from "./ChartEmpty";
 
+type Accent = "violet" | "amber" | "indigo" | "emerald" | "sky" | "rose";
+
 function MetricTile({
   label,
   value,
@@ -12,7 +14,7 @@ function MetricTile({
 }: {
   label: string;
   value: number;
-  accent: "violet" | "amber" | "indigo" | "emerald";
+  accent: Accent;
   delay?: number;
 }) {
   const styles = {
@@ -40,6 +42,18 @@ function MetricTile({
       label: "text-emerald-600 dark:text-emerald-400",
       value: "text-emerald-700 dark:text-emerald-300",
     },
+    sky: {
+      border: "border-sky-200/70 dark:border-sky-500/20",
+      bg: "from-sky-50/90 to-white dark:from-sky-500/10 dark:to-gray-900/40",
+      label: "text-sky-600 dark:text-sky-400",
+      value: "text-sky-700 dark:text-sky-300",
+    },
+    rose: {
+      border: "border-rose-200/70 dark:border-rose-500/20",
+      bg: "from-rose-50/90 to-white dark:from-rose-500/10 dark:to-gray-900/40",
+      label: "text-rose-600 dark:text-rose-400",
+      value: "text-rose-700 dark:text-rose-300",
+    },
   }[accent];
 
   return (
@@ -61,23 +75,49 @@ export function DiscountsMerchantsCardChart({
   total,
   dining,
   retail,
+  travel,
+  health,
+  professional,
+  financial,
   merchantCount,
 }: {
   total: number;
   dining: number;
   retail: number;
+  travel: number;
+  health: number;
+  professional: number;
+  financial: number;
   merchantCount: number;
 }) {
-  if (total === 0 && dining === 0 && retail === 0 && merchantCount === 0) {
+  const tiles = [
+    { label: "Total discounts", value: total, accent: "violet" as const },
+    { label: "Dining & cafés", value: dining, accent: "amber" as const },
+    { label: "Retail & shopping", value: retail, accent: "indigo" as const },
+    { label: "Travel & leisure", value: travel, accent: "sky" as const },
+    { label: "Health & wellness", value: health, accent: "emerald" as const },
+    { label: "Professional", value: professional, accent: "violet" as const },
+    { label: "Financial", value: financial, accent: "rose" as const },
+    { label: "Partner merchants", value: merchantCount, accent: "emerald" as const },
+  ].filter((tile) => tile.value > 0);
+
+  if (tiles.length === 0) {
     return <ChartEmpty height={100} variant="premium" message="No discounts or merchants yet" />;
   }
 
+  const gridClass = tiles.length === 1 ? "grid-cols-1" : "grid-cols-2";
+
   return (
-    <div className="grid h-full w-full grid-cols-2 gap-2">
-      <MetricTile label="Total discounts" value={total} accent="violet" delay={0.05} />
-      <MetricTile label="Dining & cafés" value={dining} accent="amber" delay={0.1} />
-      <MetricTile label="Retail & shopping" value={retail} accent="indigo" delay={0.14} />
-      <MetricTile label="Partner merchants" value={merchantCount} accent="emerald" delay={0.18} />
+    <div className={`grid h-full w-full ${gridClass} gap-2`}>
+      {tiles.map((tile, i) => (
+        <MetricTile
+          key={tile.label}
+          label={tile.label}
+          value={tile.value}
+          accent={tile.accent}
+          delay={0.05 + i * 0.04}
+        />
+      ))}
     </div>
   );
 }

@@ -114,23 +114,6 @@ export function ActivitiesExpandPanel({
           </div>
         ))}
       </div>
-
-      <section>
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
-          Activity breakdown
-        </h3>
-        <AnalyticsDataTable
-          isLoading={isLoading}
-          columns={[
-            { key: "activity", label: "Activity" },
-            { key: "quarter", label: quarterCol, align: "right" },
-            { key: "ytd", label: "YTD", align: "right" },
-            { key: "share", label: "YTD share", align: "right" },
-          ]}
-          rows={tableRows}
-        />
-      </section>
-
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
           <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
@@ -164,6 +147,24 @@ export function ActivitiesExpandPanel({
           )}
         </section>
       </div>
+
+      <section>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+          Activity breakdown
+        </h3>
+        <AnalyticsDataTable
+          isLoading={isLoading}
+          columns={[
+            { key: "activity", label: "Activity" },
+            { key: "quarter", label: quarterCol, align: "right" },
+            { key: "ytd", label: "YTD", align: "right" },
+            { key: "share", label: "YTD share", align: "right" },
+          ]}
+          rows={tableRows}
+        />
+      </section>
+
+
 
       <p className="text-[10px] text-gray-500 dark:text-gray-400">
         Source: alumni talks & participation records (

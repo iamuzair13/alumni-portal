@@ -286,6 +286,9 @@ export type FacultyMembershipRow = {
   gym: number;
   pool: number;
   qalander: number;
+  gymApproved?: number;
+  poolApproved?: number;
+  qalanderApproved?: number;
 };
 
 export type FacultyDiscountRow = {
@@ -302,11 +305,15 @@ export type FacultyDiscountRow = {
 export type ManagementDashboardSectionD = {
   memberships: {
     totalMemberships: number | null;
+    totalApproved: number | null;
     gymDiscountActive: number | null;
+    gymApproved: number | null;
     swimmingPoolDiscountActive: number | null;
+    swimmingPoolApproved: number | null;
     freeGymThreeMonth: number | null;
     freePoolThreeMonth: number | null;
     qalanderClub: number | null;
+    qalanderApproved: number | null;
     healthcareDiscounts: number | null;
     vehicleStickers: number | null;
   };

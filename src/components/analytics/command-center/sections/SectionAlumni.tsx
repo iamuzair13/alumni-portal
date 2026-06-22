@@ -22,8 +22,9 @@ import { ExpandDrawer } from "../ExpandDrawer";
 import { MasonryGrid } from "../MasonryGrid";
 import { Bar } from "../charts/Bar";
 import { CategoriesCardChart } from "../charts/CategoriesCardChart";
+import { OccupationCardChart } from "../charts/OccupationCardChart";
+import { LocationCardChart } from "../charts/LocationCardChart";
 import { VelocityCardChart } from "../charts/VelocityCardChart";
-import { OccupationRadar } from "../charts/OccupationRadar";
 import { FillChart } from "../charts/FillChart";
 import { staggerDelay } from "../animation/useStaggeredEntrance";
 import { useExpandable } from "../hooks/useExpandable";
@@ -64,6 +65,8 @@ export function SectionAlumni({
   const velocity = mapTransitionVelocity(data, VERIFIED_ONLY);
   const location = mapLocation(data, VERIFIED_ONLY);
   const totalCategories = categories.rows.reduce((s, r) => s + r.count, 0);
+  const totalOccupation = occupation.rows.reduce((s, r) => s + r.count, 0);
+  const totalLocation = location.rows.reduce((s, r) => s + r.count, 0);
 
   const WIDE_DRAWER_IDS = new Set<string>([
     CARD_IDS.overview,
@@ -80,23 +83,23 @@ export function SectionAlumni({
       content: <OverviewExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.categories]: {
-      title: "Alumni Categories (Verified)",
+      title: "Alumni Categories",
       content: <CategoriesExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.occupation]: {
-      title: "Alumni Occupation (Verified)",
+      title: "Alumni Occupation",
       content: <OccupationExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.honor]: {
-      title: "Honor Cards (Verified)",
+      title: "Honor Cards",
       content: <HonorExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.velocity]: {
-      title: "Transition Velocity (Verified)",
+      title: "Transition Velocity",
       content: <VelocityExpandPanel data={data} isLoading={isLoading} />,
     },
     [CARD_IDS.location]: {
-      title: "Location Distribution (Verified)",
+      title: "Location Distribution",
       content: <LocationExpandPanel data={data} isLoading={isLoading} />,
     },
   };
@@ -111,7 +114,7 @@ export function SectionAlumni({
           title="Alumni"
           icon={GraduationCap}
           accent="emerald"
-          primaryValue={overview.primaryValue}
+          primaryValue={`Total - ${overview.primaryValue}`}
           secondaryLabel=''
           masonrySize="md"
           chartFill
@@ -120,7 +123,12 @@ export function SectionAlumni({
           chart={
             <FillChart minHeight={88}>
               {(h) => (
-                <Bar data={overview.headlineBars} height={h} horizontal={false} showLabels />
+                <Bar
+                  data={overview.headlineBars.filter((p) => p.label !== "Total")}
+                  height={h}
+                  horizontal={false}
+                  showLabels
+                />
               )}
             </FillChart>
           }
@@ -136,26 +144,20 @@ export function SectionAlumni({
           chartFill
           delay={staggerDelay(1)}
           onExpand={open}
-          chart={<CategoriesCardChart data={categories.chartSeries} />}
+          chart={<CategoriesCardChart rows={categories.rows} total={totalCategories} />}
         />
         <AnalyticsCard
           id={CARD_IDS.occupation}
           title="Occupation"
           icon={Briefcase}
           accent="emerald"
-          primaryValue={occupation.rows.reduce((s, r) => s + r.count, 0)}
+          primaryValue={totalOccupation}
           secondaryLabel=""
           masonrySize="md"
           chartFill
           delay={staggerDelay(2)}
           onExpand={open}
-          chart={
-            <FillChart minHeight={88}>
-              {(h) => (
-                <OccupationRadar data={occupation.chartSeries} height={h} showLabels />
-              )}
-            </FillChart>
-          }
+          chart={<OccupationCardChart rows={occupation.rows} total={totalOccupation} />}
         />
         <AnalyticsCard
           id={CARD_IDS.honor}
@@ -191,38 +193,20 @@ export function SectionAlumni({
           chartFill
           delay={staggerDelay(4)}
           onExpand={open}
-          chart={
-            <VelocityCardChart
-              trackedTotal={velocity.trackedTotal}
-              beforeGraduation={velocity.buckets.beforeGraduation}
-              earlyCount={velocity.earlyCount}
-              score={velocity.score}
-              timingBars={velocity.timingBars}
-            />
-          }
+          chart={<VelocityCardChart rows={velocity.rows} total={velocity.trackedTotal} />}
         />
         <AnalyticsCard
           id={CARD_IDS.location}
           title="Location Distribution"
           icon={MapPin}
           accent="emerald"
-          primaryValue={location.rows.reduce((s, r) => s + r.count, 0)}
-          secondaryLabel="Verified · top provinces"
+          primaryValue={totalLocation}
+          secondaryLabel="Top provinces"
           masonrySize="sm"
+          chartFill
           delay={staggerDelay(5)}
           onExpand={open}
-          chart={
-            <FillChart minHeight={56}>
-              {(h) => (
-                <Bar
-                  data={location.chartSeries.slice(0, 4)}
-                  height={h}
-                  horizontal={false}
-                  showLabels
-                />
-              )}
-            </FillChart>
-          }
+          chart={<LocationCardChart rows={location.rows} total={totalLocation} />}
         />
       </MasonryGrid>
 

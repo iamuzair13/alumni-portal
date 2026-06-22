@@ -78,6 +78,17 @@ export function SectionPerks({
   const memberships = mapMembershipsPerks(data);
   const discounts = mapDiscountsMerchants(data);
 
+  const discountSummaryParts = discounts.categories
+    .filter((c) => c.value > 0)
+    .map((c) => `${c.value} ${c.label.toLowerCase()}`);
+  if (discounts.merchantCount > 0) {
+    discountSummaryParts.push(`${discounts.merchantCount} merchants`);
+  }
+  const discountSummary =
+    discountSummaryParts.length > 0
+      ? discountSummaryParts.join(" · ")
+      : "No discounts or merchants yet";
+
   const drawers: Record<string, { title: string; content: React.ReactNode }> = {
     [CARD_IDS.chapters]: {
       title: "Chapters",
@@ -113,7 +124,7 @@ export function SectionPerks({
   const jobsTotal = career.jobs.total;
 
   const activityTotal = activities.ytdTotal;
-  const perksTotal = memberships.total;
+  const perksTotal = memberships.totalApproved;
   return (
     <>
       <div className="space-y-3 font-sans antialiased lg:space-y-2.5">
@@ -128,7 +139,7 @@ export function SectionPerks({
               accent="violet"
               variant="premium"
               primaryValue={chapters.national + chapters.international}
-              secondaryLabel={`${chapters.nationalMembers.toLocaleString()} nat · ${chapters.internationalMembers.toLocaleString()} intl alumni`}
+              secondaryLabel={`${chapters.national.toLocaleString()} national · ${chapters.international.toLocaleString()} international`}
               masonrySize="md"
               chartFill
               delay={staggerDelay(0, 0)}
@@ -195,7 +206,7 @@ export function SectionPerks({
         </section>
 
         {/* Perks */}
-        <section aria-label="Perks" className={ccPerksSubsection}>
+        <section aria-label="Perks & Benefits" className={ccPerksSubsection}>
           <h3 className={`${ccPerksSubsectionHeader} ${ccSectionLabel}`}>Perks</h3>
           <MasonryGrid columns="narrow" layout="uniform" className="gap-2 lg:gap-1.5">
             <AnalyticsCard
@@ -205,17 +216,19 @@ export function SectionPerks({
               accent="violet"
               variant="premium"
               primaryValue={perksTotal}
-              secondaryLabel={`${memberships.gym} gym · ${memberships.pool} pool · ${memberships.qalander} qalandar`}
+              secondaryLabel={`${memberships.total} Applications`}
               masonrySize="md"
               chartFill
               delay={staggerDelay(0, 0.16)}
               onExpand={open}
               chart={
                 <MembershipsCardChart
-                  total={memberships.total}
-                  gym={memberships.gym}
-                  pool={memberships.pool}
-                  qalander={memberships.qalander}
+                  gymApproved={memberships.gymApproved}
+                  gymApplied={memberships.gymApplied}
+                  poolApproved={memberships.poolApproved}
+                  poolApplied={memberships.poolApplied}
+                  qalanderApproved={memberships.qalanderApproved}
+                  qalanderApplied={memberships.qalanderApplied}
                 />
               }
             />
@@ -226,7 +239,7 @@ export function SectionPerks({
               accent="violet"
               variant="premium"
               primaryValue={jobsTotal}
-              secondaryLabel={`${career.jobs.uol} UOL · ${career.jobs.other} other · ${career.jobs.quarter} this Q`}
+              secondaryLabel={`${career.jobs.uol} UOL this Q`}
               masonrySize="md"
               chartFill
               delay={staggerDelay(1, 0.16)}
@@ -248,7 +261,7 @@ export function SectionPerks({
               accent="violet"
               variant="premium"
               primaryValue={discounts.total}
-              secondaryLabel={`${discounts.dining} dining · ${discounts.retail} retail · ${discounts.merchantCount} merchants`}
+              secondaryLabel={discountSummary}
               masonrySize="md"
               chartFill
               delay={staggerDelay(2, 0.16)}
@@ -258,6 +271,10 @@ export function SectionPerks({
                   total={discounts.total}
                   dining={discounts.dining}
                   retail={discounts.retail}
+                  travel={discounts.travel}
+                  health={discounts.health}
+                  professional={discounts.professional}
+                  financial={discounts.financial}
                   merchantCount={discounts.merchantCount}
                 />
               }

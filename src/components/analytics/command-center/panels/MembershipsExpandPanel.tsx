@@ -16,6 +16,7 @@ import { Donut } from "../charts/Donut";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import { mapMembershipsPerks } from "../data/mapPayloadToCards";
 import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
+import { facultyBarChartRow, facultyTooltipLabel } from "../utils/facultyLabels";
 
 const MEMBERSHIP_SERIES = [
   { key: "gym", label: "Gym", fill: KPI_COLOR_HEX.indigo },
@@ -23,14 +24,13 @@ const MEMBERSHIP_SERIES = [
   { key: "qalander", label: "Qalandar", fill: KPI_COLOR_HEX.amber },
 ] as const;
 
-function truncateFaculty(name: string, max = 16): string {
-  const t = name.trim();
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
-}
-
 function pct(n: number, d: number): string {
   if (!d || d <= 0) return "—";
   return `${((n / d) * 100).toFixed(1)}%`;
+}
+
+function fmtApprovedApplied(approved: number, applied: number): string {
+  return `${approved.toLocaleString()} (${applied.toLocaleString()} applied)`;
 }
 
 export function MembershipsExpandPanel({
@@ -47,9 +47,9 @@ export function MembershipsExpandPanel({
     const body = facultyRows.map((row) => ({
       faculty: row.faculty,
       total: row.total.toLocaleString(),
-      gym: row.gym.toLocaleString(),
-      pool: row.pool.toLocaleString(),
-      qalander: row.qalander.toLocaleString(),
+      gym: fmtApprovedApplied(row.gymApproved ?? 0, row.gym),
+      pool: fmtApprovedApplied(row.poolApproved ?? 0, row.pool),
+      qalander: fmtApprovedApplied(row.qalanderApproved ?? 0, row.qalander),
       share: pct(row.total, memberships.total),
     }));
     if (!body.length) return body;
@@ -59,17 +59,20 @@ export function MembershipsExpandPanel({
         gym: acc.gym + row.gym,
         pool: acc.pool + row.pool,
         qalander: acc.qalander + row.qalander,
+        gymApproved: acc.gymApproved + (row.gymApproved ?? 0),
+        poolApproved: acc.poolApproved + (row.poolApproved ?? 0),
+        qalanderApproved: acc.qalanderApproved + (row.qalanderApproved ?? 0),
       }),
-      { total: 0, gym: 0, pool: 0, qalander: 0 }
+      { total: 0, gym: 0, pool: 0, qalander: 0, gymApproved: 0, poolApproved: 0, qalanderApproved: 0 }
     );
     return [
       ...body,
       {
         faculty: "Total",
         total: sum.total.toLocaleString(),
-        gym: sum.gym.toLocaleString(),
-        pool: sum.pool.toLocaleString(),
-        qalander: sum.qalander.toLocaleString(),
+        gym: fmtApprovedApplied(sum.gymApproved, sum.gym),
+        pool: fmtApprovedApplied(sum.poolApproved, sum.pool),
+        qalander: fmtApprovedApplied(sum.qalanderApproved, sum.qalander),
         share: memberships.total > 0 ? "100%" : "—",
       },
     ];
@@ -82,11 +85,10 @@ export function MembershipsExpandPanel({
         .sort((a, b) => b.total - a.total)
         .slice(0, 8)
         .map((row) => ({
-          faculty: truncateFaculty(row.faculty),
-          fullName: row.faculty,
-          gym: row.gym,
-          pool: row.pool,
-          qalander: row.qalander,
+          ...facultyBarChartRow(row.faculty),
+          gym: row.gymApproved ?? 0,
+          pool: row.poolApproved ?? 0,
+          qalander: row.qalanderApproved ?? 0,
         })),
     [facultyRows]
   );
@@ -94,36 +96,36 @@ export function MembershipsExpandPanel({
   const typeDistribution = useMemo(
     () =>
       [
-        { label: "Gym", value: memberships.gym, color: KPI_COLOR_HEX.indigo },
-        { label: "Pool", value: memberships.pool, color: KPI_COLOR_HEX.sky },
-        { label: "Qalandar", value: memberships.qalander, color: KPI_COLOR_HEX.amber },
+        { label: "Gym", value: memberships.gymApproved, color: KPI_COLOR_HEX.indigo },
+        { label: "Pool", value: memberships.poolApproved, color: KPI_COLOR_HEX.sky },
+        { label: "Qalandar", value: memberships.qalanderApproved, color: KPI_COLOR_HEX.amber },
       ].filter((p) => p.value > 0),
-    [memberships.gym, memberships.pool, memberships.qalander]
+    [memberships.gymApproved, memberships.poolApproved, memberships.qalanderApproved]
   );
 
   const kpis = [
     {
-      label: "Total memberships",
-      value: memberships.total,
-      sub: "All applications",
+      label: "Approved memberships",
+      value: memberships.totalApproved,
+      sub: `${memberships.total.toLocaleString()} applied total`,
       color: KPI_COLOR_HEX.violet,
     },
     {
       label: "Gym",
-      value: memberships.gym,
-      sub: pct(memberships.gym, memberships.total) + " of total",
+      value: memberships.gymApproved,
+      sub: `${memberships.gymApplied.toLocaleString()} applied · ${pct(memberships.gymApproved, memberships.gymApplied)} approved`,
       color: KPI_COLOR_HEX.indigo,
     },
     {
       label: "Pool",
-      value: memberships.pool,
-      sub: pct(memberships.pool, memberships.total) + " of total",
+      value: memberships.poolApproved,
+      sub: `${memberships.poolApplied.toLocaleString()} applied · ${pct(memberships.poolApproved, memberships.poolApplied)} approved`,
       color: KPI_COLOR_HEX.sky,
     },
     {
       label: "Qalandars club",
-      value: memberships.qalander,
-      sub: pct(memberships.qalander, memberships.total) + " of total",
+      value: memberships.qalanderApproved,
+      sub: `${memberships.qalanderApplied.toLocaleString()} applied · ${pct(memberships.qalanderApproved, memberships.qalanderApplied)} approved`,
       color: KPI_COLOR_HEX.amber,
     },
   ];
@@ -147,41 +149,9 @@ export function MembershipsExpandPanel({
         ))}
       </div>
 
-      <section>
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
-          Memberships by faculty
-        </h3>
-        <AnalyticsDataTable
-          isLoading={isLoading}
-          columns={[
-            { key: "faculty", label: "Faculty" },
-            { key: "total", label: "Total", align: "right" },
-            { key: "gym", label: "Gym", align: "right" },
-            { key: "pool", label: "Pool", align: "right" },
-            { key: "qalander", label: "Qalandar", align: "right" },
-            { key: "share", label: "Share", align: "right" },
-          ]}
-          rows={tableRows}
-        />
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40 lg:col-span-1">
+      <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40 lg:col-span-2 w-full">
           <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Membership mix
-          </h3>
-          <div className="h-[180px]">
-            {typeDistribution.length === 0 ? (
-              <p className="py-12 text-center text-sm text-gray-400">No membership data</p>
-            ) : (
-              <Donut data={typeDistribution} showLegend minSlicePercent={0.04} />
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40 lg:col-span-2">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Top faculties · membership types
+            Top faculties · approved memberships
           </h3>
           {facultyChartData.length === 0 ? (
             <p className="py-12 text-center text-sm text-gray-400">No faculty membership data</p>
@@ -204,9 +174,7 @@ export function MembershipsExpandPanel({
                   <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={28} />
                   <Tooltip
                     contentStyle={{ fontSize: 11, borderRadius: 10 }}
-                    labelFormatter={(_label, payload) =>
-                      (payload?.[0]?.payload as { fullName?: string })?.fullName ?? _label
-                    }
+                    labelFormatter={facultyTooltipLabel}
                     formatter={(value: number, name: string) => [value.toLocaleString(), name]}
                   />
                   <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} iconType="circle" iconSize={8} />
@@ -226,7 +194,25 @@ export function MembershipsExpandPanel({
             </div>
           )}
         </section>
-      </div>
+      <section>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+          Memberships by faculty
+        </h3>
+        <AnalyticsDataTable
+          isLoading={isLoading}
+          columns={[
+            { key: "faculty", label: "Faculty" },
+            { key: "total", label: "Total", align: "right" },
+            { key: "gym", label: "Gym (approved)", align: "right" },
+            { key: "pool", label: "Pool (approved)", align: "right" },
+            { key: "qalander", label: "Qalandar (approved)", align: "right" },
+            { key: "share", label: "Share", align: "right" },
+          ]}
+          rows={tableRows}
+        />
+      </section>
+
+      
     </div>
   );
 }

@@ -385,8 +385,28 @@ export async function GET(req: Request) {
       SELECT
         COUNT(*)::int AS total_count,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(m.status,'pending')) IN ('approved','active'))::int AS active_benefits,
-        COUNT(*) FILTER (WHERE TRIM(COALESCE(m.gym_membership_month,'')) <> '')::int AS gym_count,
-        COUNT(*) FILTER (WHERE TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> '')::int AS swimming_count,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(m.facility_type,''))) = 'gym'
+            OR TRIM(COALESCE(m.gym_membership_month,'')) <> ''
+        )::int AS gym_count,
+        COUNT(*) FILTER (
+          WHERE (
+            LOWER(TRIM(COALESCE(m.facility_type,''))) = 'gym'
+            OR TRIM(COALESCE(m.gym_membership_month,'')) <> ''
+          )
+          AND LOWER(COALESCE(m.status,'pending')) IN ('approved','active')
+        )::int AS gym_approved,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(m.facility_type,''))) = 'pool'
+            OR TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> ''
+        )::int AS swimming_count,
+        COUNT(*) FILTER (
+          WHERE (
+            LOWER(TRIM(COALESCE(m.facility_type,''))) = 'pool'
+            OR TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> ''
+          )
+          AND LOWER(COALESCE(m.status,'pending')) IN ('approved','active')
+        )::int AS swimming_approved,
         COUNT(*) FILTER (
           WHERE LOWER(COALESCE(m.reason,'')) LIKE '%free%' AND LOWER(COALESCE(m.reason,'')) LIKE '%gym%'
         )::int AS free_gym_hint,
@@ -394,8 +414,20 @@ export async function GET(req: Request) {
           WHERE LOWER(COALESCE(m.reason,'')) LIKE '%free%' AND LOWER(COALESCE(m.reason,'')) LIKE '%pool%'
         )::int AS free_pool_hint,
         COUNT(*) FILTER (
-          WHERE LOWER(COALESCE(m.reason,'')) LIKE '%qalander%' OR LOWER(COALESCE(m.reason,'')) LIKE '%qalandar%'
+          WHERE LOWER(COALESCE(m.reason,'')) LIKE '%qalander%'
+            OR LOWER(COALESCE(m.reason,'')) LIKE '%qalandar%'
+            OR LOWER(TRIM(COALESCE(m.facility_type,''))) = 'cricket'
+            OR TRIM(COALESCE(m.cricket_membership_month,'')) <> ''
         )::int AS qalander_hint,
+        COUNT(*) FILTER (
+          WHERE (
+            LOWER(COALESCE(m.reason,'')) LIKE '%qalander%'
+            OR LOWER(COALESCE(m.reason,'')) LIKE '%qalandar%'
+            OR LOWER(TRIM(COALESCE(m.facility_type,''))) = 'cricket'
+            OR TRIM(COALESCE(m.cricket_membership_month,'')) <> ''
+          )
+          AND LOWER(COALESCE(m.status,'pending')) IN ('approved','active')
+        )::int AS qalander_approved,
         COUNT(*) FILTER (
           WHERE LOWER(COALESCE(m.reason,'')) LIKE '%health%' OR LOWER(COALESCE(m.reason,'')) LIKE '%hospital%' OR LOWER(COALESCE(m.reason,'')) LIKE '%ulh%'
         )::int AS healthcare_hint,
@@ -414,12 +446,43 @@ export async function GET(req: Request) {
       SELECT
         COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
         COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE TRIM(COALESCE(m.gym_membership_month,'')) <> '')::int AS gym,
-        COUNT(*) FILTER (WHERE TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> '')::int AS pool,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(m.facility_type,''))) = 'gym'
+            OR TRIM(COALESCE(m.gym_membership_month,'')) <> ''
+        )::int AS gym,
+        COUNT(*) FILTER (
+          WHERE (
+            LOWER(TRIM(COALESCE(m.facility_type,''))) = 'gym'
+            OR TRIM(COALESCE(m.gym_membership_month,'')) <> ''
+          )
+          AND LOWER(COALESCE(m.status,'pending')) IN ('approved','active')
+        )::int AS gym_approved,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(m.facility_type,''))) = 'pool'
+            OR TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> ''
+        )::int AS pool,
+        COUNT(*) FILTER (
+          WHERE (
+            LOWER(TRIM(COALESCE(m.facility_type,''))) = 'pool'
+            OR TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> ''
+          )
+          AND LOWER(COALESCE(m.status,'pending')) IN ('approved','active')
+        )::int AS pool_approved,
         COUNT(*) FILTER (
           WHERE LOWER(COALESCE(m.reason,'')) LIKE '%qalander%'
             OR LOWER(COALESCE(m.reason,'')) LIKE '%qalandar%'
-        )::int AS qalander
+            OR LOWER(TRIM(COALESCE(m.facility_type,''))) = 'cricket'
+            OR TRIM(COALESCE(m.cricket_membership_month,'')) <> ''
+        )::int AS qalander,
+        COUNT(*) FILTER (
+          WHERE (
+            LOWER(COALESCE(m.reason,'')) LIKE '%qalander%'
+            OR LOWER(COALESCE(m.reason,'')) LIKE '%qalandar%'
+            OR LOWER(TRIM(COALESCE(m.facility_type,''))) = 'cricket'
+            OR TRIM(COALESCE(m.cricket_membership_month,'')) <> ''
+          )
+          AND LOWER(COALESCE(m.status,'pending')) IN ('approved','active')
+        )::int AS qalander_approved
       FROM public.alumni_memberships m
       JOIN public.tbl_alumni a ON a.alumniid = m.alumniid
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -2511,11 +2574,15 @@ export async function GET(req: Request) {
       sectionD: {
         memberships: {
           totalMemberships: mb.total_count ?? null,
+          totalApproved: mb.active_benefits ?? null,
           gymDiscountActive: mb.gym_count ?? null,
+          gymApproved: mb.gym_approved ?? null,
           swimmingPoolDiscountActive: mb.swimming_count ?? null,
+          swimmingPoolApproved: mb.swimming_approved ?? null,
           freeGymThreeMonth: mb.free_gym_hint ?? null,
           freePoolThreeMonth: mb.free_pool_hint ?? null,
           qalanderClub: mb.qalander_hint ?? null,
+          qalanderApproved: mb.qalander_approved ?? null,
           healthcareDiscounts: mb.healthcare_hint ?? null,
           vehicleStickers: mb.vehicle_hint ?? null,
         },
@@ -2524,15 +2591,21 @@ export async function GET(req: Request) {
             faculty: string;
             total: number;
             gym: number;
+            gym_approved: number;
             pool: number;
+            pool_approved: number;
             qalander: number;
+            qalander_approved: number;
           };
           return {
             faculty: row.faculty,
             total: Number(row.total ?? 0),
             gym: Number(row.gym ?? 0),
+            gymApproved: Number(row.gym_approved ?? 0),
             pool: Number(row.pool ?? 0),
+            poolApproved: Number(row.pool_approved ?? 0),
             qalander: Number(row.qalander ?? 0),
+            qalanderApproved: Number(row.qalander_approved ?? 0),
           };
         }),
         discountCategories: {

@@ -23,6 +23,7 @@ import {
   transitionVelocityEarlyCount,
 } from "@/components/analytics/v2/utils/chartSeriesBuilders";
 import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
+import { facultyBarChartRow, facultyTooltipLabel } from "../utils/facultyLabels";
 
 const VERIFIED_ONLY = { verifiedOnly: true } as const;
 
@@ -34,11 +35,6 @@ const TIMING_SERIES = [
   { key: "after6Months", label: ">6 mo", fill: KPI_COLOR_HEX.orange },
   { key: "unknown", label: "Other", fill: KPI_COLOR_HEX.slate },
 ] as const;
-
-function truncateFaculty(name: string, max = 16): string {
-  const t = name.trim();
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
-}
 
 function pct(n: number, d: number): string {
   if (!d || d <= 0) return "—";
@@ -164,8 +160,7 @@ export function VelocityExpandPanel({
         .sort((a, b) => b.early - a.early)
         .slice(0, 8)
         .map((r) => ({
-          faculty: truncateFaculty(r.faculty),
-          fullName: r.faculty,
+          ...facultyBarChartRow(r.faculty),
           beforeGraduation: r.beforeGraduation,
           immediateAfterGraduation: r.immediateAfterGraduation,
           within3Months: r.within3Months,
@@ -205,9 +200,39 @@ export function VelocityExpandPanel({
         ))}
       </div>
 
+
+      <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
+        <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Top faculties · transition breakdown
+        </h3>
+        {facultyChartData.length === 0 ? (
+          <p className="py-12 text-center text-sm text-gray-400">No faculty transition data</p>
+        ) : (
+          <div className="h-[240px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={facultyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" vertical={false} />
+                <XAxis dataKey="faculty" tick={{ fontSize: 9, fill: "#6b7280" }} axisLine={false} tickLine={false} interval={0} />
+                <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={32} />
+                <Tooltip
+                  contentStyle={{ fontSize: 11, borderRadius: 10 }}
+                  labelFormatter={facultyTooltipLabel}
+                  formatter={(value: number, name: string) => [value.toLocaleString(), name]}
+                />
+                <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} iconType="circle" iconSize={8} />
+                {TIMING_SERIES.map((s) => (
+                  <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.fill} radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false}>
+                    <LabelList dataKey={s.key} position="top" fontSize={7} fontWeight={600} fill="#6b7280" formatter={(v: number) => (v > 0 ? v.toLocaleString() : "")} />
+                  </Bar>
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </section>
       <section>
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          Verified transition timing by faculty
+          Transition timing by faculty
         </h3>
         <AnalyticsDataTable
           isLoading={isLoading}
@@ -226,62 +251,7 @@ export function VelocityExpandPanel({
         />
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="flex flex-col items-center rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 w-full text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Early transition score
-          </h3>
-          <Gauge score={velocity.score} size={120} />
-        </section>
 
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Timing distribution
-          </h3>
-          <div className="h-[160px]">
-            <Donut data={timingChartSeries} showLegend minSlicePercent={0.04} />
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Timing counts
-          </h3>
-          <BarMini data={timingChartSeries} height={160} horizontal showLabels />
-        </section>
-      </div>
-
-      <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-        <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          Top faculties · transition breakdown
-        </h3>
-        {facultyChartData.length === 0 ? (
-          <p className="py-12 text-center text-sm text-gray-400">No faculty transition data</p>
-        ) : (
-          <div className="h-[240px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={facultyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" vertical={false} />
-                <XAxis dataKey="faculty" tick={{ fontSize: 9, fill: "#6b7280" }} axisLine={false} tickLine={false} interval={0} />
-                <YAxis tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={32} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 10 }}
-                  labelFormatter={(_label, payload) =>
-                    (payload?.[0]?.payload as { fullName?: string })?.fullName ?? _label
-                  }
-                  formatter={(value: number, name: string) => [value.toLocaleString(), name]}
-                />
-                <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} iconType="circle" iconSize={8} />
-                {TIMING_SERIES.map((s) => (
-                  <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.fill} radius={[3, 3, 0, 0]} maxBarSize={18} isAnimationActive={false}>
-                    <LabelList dataKey={s.key} position="top" fontSize={7} fontWeight={600} fill="#6b7280" formatter={(v: number) => (v > 0 ? v.toLocaleString() : "")} />
-                  </Bar>
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

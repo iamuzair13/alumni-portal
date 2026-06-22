@@ -107,17 +107,21 @@ export function AnalyticsCard({
             >
               <Icon className="h-4 w-4" />
             </div>
+            <div className="flex min-w-0 justify-between items-center w-[400px]">
             <span className="truncate text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               {title}
             </span>
+            <span className="inline-block rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-1 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white shadow-sm">
+              <ValueDisplay primaryValue={primaryValue} valueClass="" emptyIdle={emptyIdle} />
+            </span>
+     
+          </div>
           </div>
           <Maximize2 className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:text-slate-500" />
         </div>
 
         <div className="mt-3 flex shrink-0 items-baseline gap-2">
-          <span className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
-            <ValueDisplay primaryValue={primaryValue} valueClass="" emptyIdle={emptyIdle} />
-          </span>
+          
           {trend ? (
             <span
               className={`inline-flex items-center gap-0.5 text-xs font-medium ${
