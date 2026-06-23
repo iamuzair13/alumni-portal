@@ -27,7 +27,7 @@ import {
   getStatusLabel,
   normalizeDbStatus 
 } from "@/lib/card-status-config";
-import { formatCardDeliveryAddressLine } from "@/lib/cardDeliveryAddress";
+import { formatCardDeliveryAddressLabeled } from "@/lib/cardDeliveryAddress";
 
 export type AlumniCardItem = {
   id: string;
@@ -1704,13 +1704,18 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           </td>
           
           <td className="px-4 py-4 hidden lg:table-cell">
-            <div className="max-w-[260px] text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2">
-              {formatCardDeliveryAddressLine(
+            <div className="max-w-[260px] space-y-0.5 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+              {formatCardDeliveryAddressLabeled(
                 alum.deliveryCity,
                 alum.deliverySocietyName,
                 alum.deliveryStreetNo,
                 alum.deliveryHouseNo
-              ) || "-"}
+              ).map(({ label, value }) => (
+                <div key={label} className="line-clamp-1">
+                  <span className="font-medium text-gray-500 dark:text-gray-500">{label}.</span>{" "}
+                  <span className={value === "-" ? "text-gray-400 dark:text-gray-500" : ""}>{value}</span>
+                </div>
+              ))}
             </div>
           </td>
           
