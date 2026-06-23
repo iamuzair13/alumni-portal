@@ -41,33 +41,7 @@ export function OccupationCardChart({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-1">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.35 }}
-        className="flex h-1.5 shrink-0 overflow-hidden rounded-full bg-slate-100/90 dark:bg-slate-800/70"
-        aria-hidden
-      >
-        {bars.map((bar, i) => {
-          const segment = total > 0 ? (bar.value / total) * 100 : 0;
-          if (segment <= 0) return null;
-          return (
-            <motion.div
-              key={bar.label}
-              initial={{ width: reduced ? `${segment}%` : 0 }}
-              animate={{ width: `${segment}%` }}
-              transition={{
-                delay: reduced ? 0 : i * 0.05,
-                duration: reduced ? 0 : 0.45,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className="h-full"
-              style={{ backgroundColor: bar.color }}
-              title={`${bar.label}: ${bar.value.toLocaleString()}`}
-            />
-          );
-        })}
-      </motion.div>
+
 
       <div className="grid min-h-0 flex-1 grid-cols-5 gap-1">
         {bars.map((bar, i) => {
@@ -83,7 +57,7 @@ export function OccupationCardChart({
               }`}
               title={`${bar.label}: ${bar.value.toLocaleString()}`}
             >
-              <span className="text-[8px] font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+              <span className="text-[10px] font-semibold tabular-nums text-slate-700 dark:text-slate-200">
                 {bar.value > 0 ? bar.value.toLocaleString() : "0"}
               </span>
 
@@ -106,7 +80,7 @@ export function OccupationCardChart({
               </div>
 
               <span
-                className="max-w-full truncate text-center text-[7px] font-semibold leading-none"
+                className="max-w-full truncate text-center text-[10px] font-semibold leading-none"
                 style={{ color: bar.color }}
               >
                 {bar.short}
@@ -117,7 +91,7 @@ export function OccupationCardChart({
       </div>
 
       {topBar && topBar.value > 0 ? (
-        <p className="shrink-0 truncate text-center text-[8px] font-medium text-emerald-600/90 dark:text-emerald-400/90">
+        <p className="shrink-0 truncate text-center text-[12px] font-medium text-emerald-600/90 dark:text-emerald-400/90">
           <span className="font-bold tabular-nums">{topPct}%</span>
           {" · "}
           {topBar.label} leads

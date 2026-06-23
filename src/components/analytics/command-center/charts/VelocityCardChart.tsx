@@ -41,7 +41,7 @@ export function VelocityCardChart({
               title={`${bar.label}: ${bar.count.toLocaleString()}`}
             >
               <span
-                className={`mb-0.5 text-[8px] font-semibold tabular-nums leading-none ${
+                className={`mb-0.5 text-[10px] font-semibold tabular-nums leading-none ${
                   bar.count > 0
                     ? "text-slate-800 dark:text-slate-100"
                     : "text-slate-300 dark:text-slate-600"
@@ -74,7 +74,7 @@ export function VelocityCardChart({
               </div>
 
               <span
-                className={`mt-1 max-w-full truncate text-center text-[7px] font-medium leading-none ${
+                className={`mt-1 max-w-full truncate text-center text-[10px] font-medium leading-none ${
                   bar.count > 0 ? "text-slate-600 dark:text-slate-300" : "text-slate-400 dark:text-slate-600"
                 }`}
               >

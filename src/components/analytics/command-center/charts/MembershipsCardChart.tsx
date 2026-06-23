@@ -32,9 +32,9 @@ function MembershipBarRow({
   const stagger = index * (CHART.progress.staggerMs / 1000);
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[2.25rem_minmax(0,1fr)_2.75rem] items-center gap-1 rounded-md px-0.5">
+    <div className="grid h-full min-h-0 grid-cols-[2.5rem_minmax(0,1fr)_2.75rem] items-center gap-1 rounded-md px-0.5">
       <span
-        className="truncate text-[8px] font-semibold leading-none"
+        className="truncate text-[10px] font-semibold leading-none"
         style={{ color: row.color }}
         title={row.label}
       >
@@ -72,7 +72,7 @@ function MembershipBarRow({
         <p className="text-[10px] font-bold tabular-nums text-slate-800 dark:text-slate-100">
           {row.approved.toLocaleString()}
         </p>
-        <p className="mt-0.5 text-[7px] tabular-nums text-slate-400 dark:text-slate-500">
+        <p className="mt-0.5 text-[9px] tabular-nums text-slate-400 dark:text-slate-500">
           /{row.applied.toLocaleString()}
         </p>
       </div>

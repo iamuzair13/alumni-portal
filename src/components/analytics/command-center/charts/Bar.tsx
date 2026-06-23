@@ -9,7 +9,7 @@ import { useAnimationReplay } from "../animation/AnimationReplayContext";
 import { useReducedMotion } from "../animation/useReducedMotion";
 import { ChartEmpty } from "./ChartEmpty";
 
-const labelStyle = { fontSize: 10, fontWeight: 600, fill: "currentColor" } as const;
+const labelStyle = { fontSize: 12, fontWeight: 600, fill: "currentColor" } as const;
 
 function formatBarLabel(value: unknown): string {
   return typeof value === "number" && Number.isFinite(value) ? value.toLocaleString() : "";
@@ -69,7 +69,7 @@ export function BarChartMini({
               type="category"
               dataKey="label"
               width={yAxisWidth}
-              tick={{ fontSize: 10, fill: "currentColor" }}
+              tick={{ fontSize: 12, fill: "currentColor" }}
               className="text-gray-500 dark:text-gray-400"
               axisLine={false}
               tickLine={false}
@@ -111,10 +111,10 @@ export function BarChartMini({
   return (
     <div className="w-full overflow-hidden text-gray-600 dark:text-gray-300" style={{ height }}>
       <ResponsiveContainer width="100%" height={height} key={`bar-v-${replayKey}`}>
-        <BarChart data={chartData} margin={{ top: showLabels ? 16 : 4, right: 4, bottom: 0, left: 4 }}>
+        <BarChart data={chartData} margin={{ top: showLabels ? 20 : 4, right: 4, bottom: 0, left: 4 }}>
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 9, fill: "currentColor" }}
+            tick={{ fontSize: 11, fill: "currentColor" }}
             className="text-gray-500 dark:text-gray-400"
             axisLine={false}
             tickLine={false}
