@@ -18,7 +18,6 @@ export default function AnalyticsDashboardClient() {
     data,
     trends,
     isLoading,
-    dataUpdatedAt,
   } = useCommandCenterData();
 
   const performance = (
@@ -37,7 +36,6 @@ export default function AnalyticsDashboardClient() {
         isLoadingFaculties={isLoadingFaculties}
         periodFilter={periodFilter}
         onPeriodFilterChange={setPeriodFilter}
-        dataUpdatedAt={dataUpdatedAt}
         performance={performance}
       />
     </AnimationReplayProvider>

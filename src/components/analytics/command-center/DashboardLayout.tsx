@@ -5,10 +5,9 @@ import { motion } from "motion/react";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import type { AlumniTrendPoint } from "@/services/dashboardService";
 import type { AnalyticsPeriodFilter } from "@/components/analytics/v2/utils/periodFilter";
-import { CommandCenterHeader } from "./CommandCenterHeader";
+import { CommandCenterUnifiedHeader } from "./CommandCenterUnifiedHeader";
 import { SectionAlumni } from "./sections/SectionAlumni";
 import { SectionPerks } from "./sections/SectionPerks";
-import { SectionTrainedAdmins } from "./sections/SectionTrainedAdmins";
 import { ENTRANCE } from "./animation/config";
 import { getMotionProps, useReducedMotion } from "./animation/useReducedMotion";
 import { useAnimationReplay } from "./animation/AnimationReplayContext";
@@ -26,7 +25,6 @@ export function DashboardLayout({
   isLoadingFaculties,
   periodFilter,
   onPeriodFilterChange,
-  dataUpdatedAt,
   performance,
 }: {
   data: ManagementDashboardPayload | undefined;
@@ -38,7 +36,6 @@ export function DashboardLayout({
   isLoadingFaculties: boolean;
   periodFilter: AnalyticsPeriodFilter;
   onPeriodFilterChange: (f: AnalyticsPeriodFilter) => void;
-  dataUpdatedAt: number;
   performance: React.ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>("alumni");
@@ -52,18 +49,12 @@ export function DashboardLayout({
   });
 
   const alumniColumn = (
-    <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-1.5">
+    <div className="flex h-full min-h-0 flex-col">
       <section
         aria-label="Alumni Intelligence"
-        className={`min-h-0 h-[72vh] overflow-y-auto ${ccSection.alumni}`}
+        className={`min-h-0 flex-1 overflow-y-auto ${ccSection.alumni}`}
       >
         <SectionAlumni data={data} trends={trends} isLoading={isLoading} />
-      </section>
-      <section
-        aria-label="Trained Faculty Admins"
-        className={`h-[13vh] shrink-0 overflow-hidden ${ccSection.admins}`}
-      >
-        <SectionTrainedAdmins data={data} isLoading={isLoading} />
       </section>
     </div>
   );
@@ -81,57 +72,60 @@ export function DashboardLayout({
   );
 
   return (
-    <div className={`flex h-[calc(100dvh-68px)] flex-col overflow-hidden p-1.5 sm:p-2 ${ccPage}`}>
-      <CommandCenterHeader
+    <div className={`flex h-dvh flex-col overflow-hidden ${ccPage}`}>
+      <CommandCenterUnifiedHeader
         facultyFilter={facultyFilter}
         onFacultyChange={onFacultyChange}
         facultyOptions={facultyOptions}
         isLoadingFaculties={isLoadingFaculties}
         periodFilter={periodFilter}
         onPeriodFilterChange={onPeriodFilterChange}
-        dataUpdatedAt={dataUpdatedAt}
         performance={performance}
+        data={data}
+        isLoading={isLoading}
       />
 
-      {/* Mobile / tablet tabs (<1024px) */}
-      <div className="mb-1 flex shrink-0 gap-1 lg:hidden">
-        {(
-          [
-            { id: "alumni" as const, label: "Alumni" },
-            { id: "perks" as const, label: "Perks" },
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              tab === t.id ? ccTabActive : ccTabInactive
-            }`}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-1.5 sm:p-2">
+        {/* Mobile / tablet tabs (<1024px) */}
+        <div className="mb-1 flex shrink-0 gap-1 lg:hidden">
+          {(
+            [
+              { id: "alumni" as const, label: "Alumni" },
+              { id: "perks" as const, label: "Perks" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                tab === t.id ? ccTabActive : ccTabInactive
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Laptop & desktop — equal-height columns, no outer scroll */}
+        <div className="relative z-0 hidden min-h-0 flex-1 gap-2 overflow-hidden lg:grid lg:grid-cols-2 lg:grid-rows-1 xl:grid-cols-12">
+          <div className="flex h-full min-h-0 flex-col lg:col-span-1 xl:col-span-8">{alumniColumn}</div>
+          <section
+            aria-label="Perks and Benefits"
+            className={`flex h-full min-h-0 flex-col overflow-hidden lg:col-span-1 xl:col-span-4 ${ccSection.perks}`}
           >
-            {t.label}
-          </button>
-        ))}
-      </div>
+            {perksPanel}
+          </section>
+        </div>
 
-      {/* Laptop & desktop — equal-height columns, no outer scroll */}
-      <div className="relative z-0 hidden min-h-0 flex-1 gap-2 overflow-hidden lg:grid lg:grid-cols-2 lg:grid-rows-1 xl:grid-cols-12">
-        <div className="flex h-full min-h-0 flex-col lg:col-span-1 xl:col-span-8">{alumniColumn}</div>
-        <section
-          aria-label="Perks and Benefits"
-          className={`flex h-full min-h-0 flex-col overflow-hidden lg:col-span-1 xl:col-span-4 ${ccSection.perks}`}
-        >
-          {perksPanel}
-        </section>
-      </div>
-
-      {/* <1024px: tabbed, scroll within panel */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth lg:hidden">
-        {tab === "alumni" ? (
-          alumniColumn
-        ) : (
-          <section className={ccSection.perks}>{perksPanel}</section>
-        )}
+        {/* <1024px: tabbed, scroll within panel */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth lg:hidden">
+          {tab === "alumni" ? (
+            alumniColumn
+          ) : (
+            <section className={ccSection.perks}>{perksPanel}</section>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -46,8 +46,8 @@ export default function AdminLayout({
       ) : null}
       {/* Main Content Area */}
       <div className={`min-w-0 flex-1 transition-all duration-300 ease-in-out ${mainContentMargin}`}>
-        {/* Header */}
-        <AppHeader />
+        {/* Header — analytics uses its own unified header inside the dashboard */}
+        {!isAnalyticsRoute && <AppHeader />}
         {/* Page Content */}
         <div className="relative z-0 mx-auto min-w-0 max-w-full">{children}</div>
       </div>

@@ -1424,7 +1424,13 @@ export async function GET(req: Request) {
                 grandparent_fac.legacy_faculty_id,
                 fby_res.id
               ) AS faculty_id,
-              LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
+              CASE
+                WHEN LOWER(TRIM(COALESCE(ura.access_level, ''))) IN ('write', 'admin') THEN 'admin'
+                WHEN LOWER(TRIM(COALESCE(ura.access_level, ''))) = 'read' THEN 'viewer'
+                WHEN LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) = 'admin' THEN 'admin'
+                WHEN LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) IN ('viewer', 'user') THEN 'viewer'
+                ELSE 'viewer'
+              END AS user_type,
               ura.created_at AS assignment_at,
               u.created_at AS user_created_at
             FROM public.user_resource_access ura
@@ -1605,7 +1611,13 @@ export async function GET(req: Request) {
               grandparent_fac.legacy_faculty_id,
               fby_res.id
             ) AS faculty_id,
-            LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
+            CASE
+              WHEN LOWER(TRIM(COALESCE(ura.access_level, ''))) IN ('write', 'admin') THEN 'admin'
+              WHEN LOWER(TRIM(COALESCE(ura.access_level, ''))) = 'read' THEN 'viewer'
+              WHEN LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) = 'admin' THEN 'admin'
+              WHEN LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) IN ('viewer', 'user') THEN 'viewer'
+              ELSE 'viewer'
+            END AS user_type,
             ura.created_at AS assignment_at,
             u.created_at AS user_created_at
           FROM public.user_resource_access ura
@@ -1646,7 +1658,10 @@ export async function GET(req: Request) {
           SELECT
             u.id AS user_id,
             COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
-            LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
+            CASE
+              WHEN LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) = 'admin' THEN 'admin'
+              ELSE 'viewer'
+            END AS user_type,
             uaa.created_at AS assignment_at,
             u.created_at AS user_created_at
           FROM public.user_access_assignments uaa
@@ -1757,7 +1772,10 @@ export async function GET(req: Request) {
             SELECT
               u.id AS user_id,
               COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
-              LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) AS user_type,
+              CASE
+                WHEN LOWER(TRIM(COALESCE(NULLIF(TRIM(u.type), ''), NULLIF(TRIM(u.legacy_type), ''), ''))) = 'admin' THEN 'admin'
+                ELSE 'viewer'
+              END AS user_type,
               uaa.created_at AS assignment_at,
               u.created_at AS user_created_at
             FROM public.user_access_assignments uaa
@@ -1867,7 +1885,10 @@ export async function GET(req: Request) {
             SELECT
               tu.userid AS user_id,
               COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
-              LOWER(TRIM(COALESCE(tu.type, ''))) AS user_type,
+              CASE
+                WHEN LOWER(TRIM(COALESCE(tu.type, ''))) = 'admin' THEN 'admin'
+                ELSE 'viewer'
+              END AS user_type,
               uaa.created_at AS assignment_at
             FROM public.user_access_assignments uaa
             INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid

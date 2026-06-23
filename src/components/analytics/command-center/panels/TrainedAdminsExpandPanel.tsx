@@ -76,15 +76,7 @@ export function TrainedAdminsExpandPanel({
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        Role comes from each user&apos;s account type in <code className="text-[10px]">users.type</code>{" "}
-        (or <code className="text-[10px]">legacy_type</code>). Superadmins are org-wide and excluded from
-        faculty rows. Each faculty row counts distinct users with access to that faculty. Training dates
-        use assignment <code className="text-[10px]">created_at</code> from{" "}
-        <code className="text-[10px]">user_resource_access</code> /{" "}
-        <code className="text-[10px]">user_access_assignments</code>. Summing faculty rows can exceed
-        headline totals when one user spans multiple faculties.
-      </p>
+      
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {kpis.map((k) => (
@@ -107,6 +99,7 @@ export function TrainedAdminsExpandPanel({
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
           By faculty (admins &amp; viewers)
         </h3>
+       
         <AnalyticsDataTable
           isLoading={isLoading}
           columns={[
