@@ -2,121 +2,147 @@
 
 import React from "react";
 import { motion } from "motion/react";
+import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
+import { CHART } from "../animation/config";
+import { useReducedMotion } from "../animation/useReducedMotion";
 import type { EngagementActivityRow } from "../data/mapPayloadToCards";
 import { ChartEmpty } from "./ChartEmpty";
 
-function SummaryTile({
-  title,
-  value,
-  subtitle,
-  accent,
-  delay = 0,
-}: {
-  title: string;
-  value: number;
-  subtitle: string;
-  accent: "violet" | "indigo";
-  delay?: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className={`rounded-xl border px-2.5 py-2 ${
-        accent === "violet"
-          ? "border-violet-200/70 bg-gradient-to-br from-violet-50/90 to-white dark:border-violet-500/20 dark:from-violet-500/10 dark:to-gray-900/40"
-          : "border-indigo-200/70 bg-gradient-to-br from-indigo-50/90 to-white dark:border-indigo-500/20 dark:from-indigo-500/10 dark:to-gray-900/40"
-      }`}
-    >
-      <p
-        className={`text-[9px] font-semibold uppercase tracking-wider ${
-          accent === "violet"
-            ? "text-violet-600 dark:text-violet-400"
-            : "text-indigo-600 dark:text-indigo-400"
-        }`}
-      >
-        {title}
-      </p>
-      <p
-        className={`mt-1 text-xl font-bold tabular-nums leading-none ${
-          accent === "violet"
-            ? "text-violet-700 dark:text-violet-300"
-            : "text-indigo-700 dark:text-indigo-300"
-        }`}
-      >
-        {value.toLocaleString()}
-      </p>
-      <p className="mt-1 truncate text-[8px] font-medium text-slate-400 dark:text-slate-500" title={subtitle}>
-        {subtitle}
-      </p>
-    </motion.div>
-  );
-}
+const ACTIVITY_COLORS = [
+  KPI_COLOR_HEX.violet,
+  KPI_COLOR_HEX.indigo,
+  KPI_COLOR_HEX.sky,
+  KPI_COLOR_HEX.emerald,
+  KPI_COLOR_HEX.amber,
+  KPI_COLOR_HEX.rose,
+] as const;
 
-function ActivityRow({ row, delay = 0 }: { row: EngagementActivityRow; delay?: number }) {
+const ACTIVITY_SHORT: Record<string, string> = {
+  Mentorship: "Ment",
+  Seminars: "Sem",
+  Conferences: "Conf",
+  "Alumni Talks": "Talk",
+  "High Achievers": "Achv",
+  Wellbeing: "Well",
+};
+
+function ActivityBarRow({
+  bar,
+  maxBar,
+  isLeader,
+  index,
+  reduced,
+}: {
+  bar: { label: string; short: string; value: number; color: string };
+  maxBar: number;
+  isLeader: boolean;
+  index: number;
+  reduced: boolean;
+}) {
+  const width = bar.value === 0 ? 0 : Math.max(6, (bar.value / maxBar) * 100);
+  const stagger = index * (CHART.progress.staggerMs / 1000);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -4 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay, duration: 0.3 }}
-      className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-violet-100/80 bg-white/70 px-2 py-1 dark:border-violet-500/15 dark:bg-gray-900/30"
+    <div
+      className={`grid h-full min-h-0 grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] items-center gap-1 rounded-md px-0.5 ${
+        isLeader && bar.value > 0 ? "bg-violet-50/60 dark:bg-violet-500/[0.06]" : ""
+      }`}
+      title={bar.label}
     >
-      <span className="min-w-0 truncate text-[10px] font-medium text-slate-600 dark:text-slate-300">
-        {row.activity}
+      <span
+        className="flex h-5 w-7 shrink-0 items-center justify-center rounded text-[9px] font-bold leading-none"
+        style={{
+          color: bar.color,
+          background: `${bar.color}18`,
+          boxShadow: `inset 0 0 0 1px ${bar.color}30`,
+        }}
+      >
+        {bar.short}
       </span>
-      <span className="shrink-0 text-[10px] font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-        <span className="text-violet-600 dark:text-violet-400">{row.quarter.toLocaleString()}</span>
-        <span className="mx-1 text-slate-300 dark:text-slate-600">·</span>
-        <span>{row.ytd.toLocaleString()} YTD</span>
+
+      <div className="relative h-1.5 min-w-0 overflow-hidden rounded-full bg-slate-100/90 dark:bg-slate-800/70">
+        <motion.div
+          initial={{ width: reduced ? `${width}%` : 0 }}
+          animate={{ width: `${width}%` }}
+          transition={{
+            delay: reduced ? 0 : stagger,
+            duration: reduced ? 0 : CHART.progress.duration,
+            ease: [0.16, 1, 0.3, 1],
+          }}
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{
+            background: `linear-gradient(90deg, ${bar.color}, ${bar.color}aa)`,
+          }}
+        />
+      </div>
+
+      <span className="truncate text-right text-[10px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
+        {bar.value.toLocaleString()}
       </span>
-    </motion.div>
+    </div>
   );
 }
 
 export function ActivitiesCardChart({
-  quarterTotal,
+  rows,
   ytdTotal,
-  quarterLabel,
-  topRows,
+  quarterTotal,
+  topByYtd,
 }: {
-  quarterTotal: number;
+  rows: EngagementActivityRow[];
   ytdTotal: number;
-  quarterLabel: string;
-  topRows: EngagementActivityRow[];
+  quarterTotal: number;
+  topByYtd: EngagementActivityRow;
 }) {
+  const reduced = useReducedMotion();
+
   if (ytdTotal === 0 && quarterTotal === 0) {
     return <ChartEmpty height={100} variant="premium" message="No activities recorded yet" />;
   }
 
-  const shortQuarter =
-    quarterLabel.length > 14 ? quarterLabel.replace(/\s\d{4}$/, "") : quarterLabel;
-  const visibleRows = topRows.filter((row) => row.ytd > 0 || row.quarter > 0);
+  const useYtd = ytdTotal > 0;
+  const ranked = [...rows]
+    .sort((a, b) => (useYtd ? b.ytd - a.ytd : b.quarter - a.quarter))
+    .filter((row) => (useYtd ? row.ytd > 0 : row.quarter > 0))
+    .slice(0, 5);
+
+  const total = useYtd ? ytdTotal : quarterTotal;
+  const bars = ranked.map((row, i) => ({
+    label: row.activity,
+    short: ACTIVITY_SHORT[row.activity] ?? row.activity.slice(0, 4),
+    value: useYtd ? row.ytd : row.quarter,
+    color: ACTIVITY_COLORS[i % ACTIVITY_COLORS.length],
+  }));
+
+  const maxBar = Math.max(...bars.map((b) => b.value), 1);
+  const topBar = bars[0];
+  const topPct = total > 0 && topBar ? Math.round((topBar.value / total) * 100) : 0;
+  const leaderLabel = topByYtd.ytd > 0 ? topByYtd.activity : topBar?.label;
 
   return (
-    <div className="flex h-full w-full flex-col gap-2">
-      <div className="grid grid-cols-2 gap-2">
-        <SummaryTile
-          title="This Q"
-          value={quarterTotal}
-          subtitle={shortQuarter}
-          accent="violet"
-          delay={0.05}
-        />
-        <SummaryTile
-          title="YTD"
-          value={ytdTotal}
-          subtitle="6 activity types"
-          accent="indigo"
-          delay={0.1}
-        />
+    <div className="flex h-full min-h-0 w-full flex-col gap-1">
+      <div
+        className="grid min-h-0 flex-1 gap-px"
+        style={{ gridTemplateRows: `repeat(${Math.max(bars.length, 1)}, minmax(0, 1fr))` }}
+      >
+        {bars.map((bar, i) => (
+          <ActivityBarRow
+            key={bar.label}
+            bar={bar}
+            maxBar={maxBar}
+            isLeader={topBar?.label === bar.label}
+            index={i}
+            reduced={reduced}
+          />
+        ))}
       </div>
-      {visibleRows.length > 0 ? (
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-1">
-          {visibleRows.map((row, i) => (
-            <ActivityRow key={row.activity} row={row} delay={0.14 + i * 0.05} />
-          ))}
-        </div>
+
+      {topBar && topBar.value > 0 && leaderLabel ? (
+        <p className="shrink-0 truncate text-center text-[11px] font-medium text-violet-600/90 dark:text-violet-400/90">
+          <span className="font-bold tabular-nums">{topPct}%</span>
+          {" · "}
+          {leaderLabel} leads {useYtd ? "YTD" : "this Q"}
+        </p>
       ) : null}
     </div>
   );

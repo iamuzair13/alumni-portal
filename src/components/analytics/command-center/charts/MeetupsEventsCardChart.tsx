@@ -2,6 +2,8 @@
 
 import React from "react";
 import { motion } from "motion/react";
+import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
+import { CHART } from "../animation/config";
 import { useReducedMotion } from "../animation/useReducedMotion";
 import { ChartEmpty } from "./ChartEmpty";
 
@@ -10,101 +12,10 @@ type StatGroup = {
   quarter: number;
 };
 
-function StatPanel({
-  title,
-  accent,
-  trackClass,
-  valueClass,
-  stats,
-  quarterLabel,
-  delay = 0,
-}: {
-  title: string;
-  accent: "violet" | "emerald";
-  trackClass: string;
-  valueClass: string;
-  stats: StatGroup;
-  quarterLabel: string;
-  delay?: number;
-}) {
-  const reduced = useReducedMotion();
-  const shortQuarter =
-    quarterLabel.length > 14 ? quarterLabel.replace(/\s\d{4}$/, "") : quarterLabel;
-  const share = stats.total > 0 ? Math.max(8, (stats.quarter / stats.total) * 100) : 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className={`flex min-h-0 flex-1 flex-col rounded-xl border px-2.5 py-2 ${
-        accent === "violet"
-          ? "border-violet-200/70 bg-gradient-to-br from-violet-50/90 to-white dark:border-violet-500/20 dark:from-violet-500/10 dark:to-gray-900/40"
-          : "border-emerald-200/70 bg-gradient-to-br from-emerald-50/90 to-white dark:border-emerald-500/20 dark:from-emerald-500/10 dark:to-gray-900/40"
-      }`}
-    >
-      <p
-        className={`text-[9px] font-semibold uppercase tracking-wider ${
-          accent === "violet"
-            ? "text-violet-600 dark:text-violet-400"
-            : "text-emerald-600 dark:text-emerald-400"
-        }`}
-      >
-        {title}
-      </p>
-
-      <div className="mt-2 grid flex-1 grid-cols-2 gap-1.5">
-        <div className="min-w-0">
-          <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400">Total</p>
-          <motion.p
-            className={`text-lg font-bold tabular-nums leading-tight ${valueClass}`}
-            whileHover={reduced ? undefined : { scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 500, damping: 20 }}
-          >
-            {stats.total.toLocaleString()}
-          </motion.p>
-        </div>
-        <div className="min-w-0 text-right">
-          <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400">This Q</p>
-          <motion.p
-            className={`text-lg font-bold tabular-nums leading-tight ${valueClass}`}
-            whileHover={reduced ? undefined : { scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 500, damping: 20 }}
-          >
-            {stats.quarter.toLocaleString()}
-          </motion.p>
-          <p className="mt-0.5 truncate text-[8px] font-medium text-slate-400 dark:text-slate-500" title={quarterLabel}>
-            {shortQuarter}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-2">
-        <div className={`h-1.5 overflow-hidden rounded-full ${trackClass}`}>
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${share}%` }}
-            transition={{
-              delay: reduced ? 0 : delay + 0.15,
-              duration: reduced ? 0 : 0.7,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            className={`h-full rounded-full ${
-              accent === "violet"
-                ? "bg-gradient-to-r from-violet-500 to-violet-400"
-                : "bg-gradient-to-r from-emerald-500 to-emerald-400"
-            }`}
-          />
-        </div>
-        <p className="mt-1 text-[8px] text-slate-400 dark:text-slate-500">
-          {stats.total > 0
-            ? `${Math.round((stats.quarter / stats.total) * 100)}% this quarter`
-            : "No activity"}
-        </p>
-      </div>
-    </motion.div>
-  );
-}
+const MEETUP_META = [
+  { key: "events", label: "Events", short: "Evt", color: KPI_COLOR_HEX.violet },
+  { key: "meetups", label: "Meetups", short: "Mtg", color: KPI_COLOR_HEX.emerald },
+] as const;
 
 export function MeetupsEventsCardChart({
   events,
@@ -115,30 +26,96 @@ export function MeetupsEventsCardChart({
   meetups: StatGroup;
   quarterLabel: string;
 }) {
+  const reduced = useReducedMotion();
+
+  const stats = { events, meetups };
+  const bars = MEETUP_META.map(({ key, label, short, color }) => ({
+    label,
+    short,
+    quarter: stats[key].quarter,
+    total: stats[key].total,
+    color,
+  }));
+
   const hasData =
     events.total > 0 || events.quarter > 0 || meetups.total > 0 || meetups.quarter > 0;
-  if (!hasData) return <ChartEmpty height={88} />;
+  if (!hasData) return <ChartEmpty height={88} variant="premium" />;
+
+  const maxBar = Math.max(...bars.map((b) => b.quarter), 1);
+  const topBar = [...bars].sort((a, b) => b.quarter - a.quarter)[0];
+  const quarterSum = events.quarter + meetups.quarter;
+  const topPct = quarterSum > 0 && topBar ? Math.round((topBar.quarter / quarterSum) * 100) : 0;
+
+  const shortQuarter =
+    quarterLabel.length > 14 ? quarterLabel.replace(/\s\d{4}$/, "") : quarterLabel;
 
   return (
-    <div className="grid h-full w-full grid-cols-2 gap-2">
-      <StatPanel
-        title="Events"
-        accent="violet"
-        trackClass="bg-violet-100 dark:bg-violet-500/15"
-        valueClass="text-violet-700 dark:text-violet-300"
-        stats={events}
-        quarterLabel={quarterLabel}
-        delay={0.05}
-      />
-      <StatPanel
-        title="Meetups"
-        accent="emerald"
-        trackClass="bg-emerald-100 dark:bg-emerald-500/15"
-        valueClass="text-emerald-700 dark:text-emerald-300"
-        stats={meetups}
-        quarterLabel={quarterLabel}
-        delay={0.12}
-      />
+    <div className="flex h-full min-h-0 w-full flex-col gap-1">
+      <div className="grid min-h-0 flex-1 grid-cols-2 gap-1">
+        {bars.map((bar, i) => {
+          const heightPct = bar.quarter === 0 ? 0 : Math.max(8, (bar.quarter / maxBar) * 100);
+          const isLeader = topBar?.label === bar.label && bar.quarter > 0;
+          const stagger = i * (CHART.progress.staggerMs / 1000);
+
+          return (
+            <div
+              key={bar.label}
+              className={`flex min-h-0 flex-col items-center rounded-lg px-0.5 pb-0.5 pt-1 ${
+                isLeader ? "bg-violet-50/60 dark:bg-violet-500/[0.06]" : ""
+              }`}
+              title={`${bar.label}: ${bar.quarter.toLocaleString()} this quarter · ${bar.total.toLocaleString()} total`}
+            >
+              <span className="mb-0.5 text-[10px] font-semibold tabular-nums leading-none text-slate-800 dark:text-slate-100">
+                {bar.total.toLocaleString()}
+              </span>
+
+              <div className="flex w-full min-h-0 flex-1 items-end">
+                <div className="relative h-full w-full overflow-hidden rounded-md bg-slate-100/80 ring-1 ring-inset ring-slate-200/60 dark:bg-slate-800/50 dark:ring-slate-700/50">
+                  {bar.quarter > 0 ? (
+                    <motion.div
+                      initial={{ height: reduced ? `${heightPct}%` : 0 }}
+                      animate={{ height: `${heightPct}%` }}
+                      transition={{
+                        delay: reduced ? 0 : stagger,
+                        duration: reduced ? 0 : CHART.progress.duration,
+                        ease: [0.16, 1, 0.3, 1],
+                      }}
+                      className="absolute bottom-0 left-0 right-0 rounded-md"
+                      style={{
+                        background: `linear-gradient(180deg, ${bar.color}ee, ${bar.color}99)`,
+                        boxShadow: isLeader ? `0 0 12px ${bar.color}40` : undefined,
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute bottom-0 left-1/2 h-0.5 w-1.5 -translate-x-1/2 rounded-full bg-slate-200 dark:bg-slate-700" />
+                  )}
+                </div>
+              </div>
+
+              <span
+                className={`mt-1 max-w-full truncate text-center text-[10px] font-medium leading-none ${
+                  bar.quarter > 0 ? "text-slate-600 dark:text-slate-300" : "text-slate-400 dark:text-slate-600"
+                }`}
+              >
+                {bar.short} · {bar.quarter.toLocaleString()}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {topBar && topBar.quarter > 0 ? (
+        <p
+          className="shrink-0 truncate text-center text-[11px] font-medium text-violet-600/90 dark:text-violet-400/90"
+          title={quarterLabel}
+        >
+          <span className="font-bold tabular-nums">{topPct}%</span>
+          {" · "}
+          {topBar.label} this Q
+          {" · "}
+          {shortQuarter}
+        </p>
+      ) : null}
     </div>
   );
 }

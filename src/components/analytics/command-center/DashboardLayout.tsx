@@ -7,13 +7,13 @@ import type { AlumniTrendPoint } from "@/services/dashboardService";
 import type { AnalyticsPeriodFilter } from "@/components/analytics/v2/utils/periodFilter";
 import { CommandCenterUnifiedHeader } from "./CommandCenterUnifiedHeader";
 import { SectionAlumni } from "./sections/SectionAlumni";
-import { SectionPerks } from "./sections/SectionPerks";
+import { SectionEngagements } from "./sections/SectionEngagements";
 import { ENTRANCE } from "./animation/config";
 import { getMotionProps, useReducedMotion } from "./animation/useReducedMotion";
 import { useAnimationReplay } from "./animation/AnimationReplayContext";
 import { ccPage, ccSection, ccTabActive, ccTabInactive } from "./theme";
 
-type Tab = "alumni" | "perks";
+type Tab = "alumni" | "engagements";
 
 export function DashboardLayout({
   data,
@@ -59,14 +59,14 @@ export function DashboardLayout({
     </div>
   );
 
-  const perksPanel = (
+  const engagementsPanel = (
     <motion.div
-      key={`perks-${replayKey}`}
+      key={`engagements-${replayKey}`}
       {...sidebarEntrance}
       className="flex h-full min-h-0 flex-col"
     >
       <div className="min-h-0 flex-1 overflow-y-auto scroll-smooth [overflow-scrolling:touch]">
-        <SectionPerks data={data} isLoading={isLoading} />
+        <SectionEngagements data={data} isLoading={isLoading} />
       </div>
     </motion.div>
   );
@@ -91,7 +91,7 @@ export function DashboardLayout({
           {(
             [
               { id: "alumni" as const, label: "Alumni" },
-              { id: "perks" as const, label: "Perks" },
+              { id: "engagements" as const, label: "Engagements" },
             ] as const
           ).map((t) => (
             <button
@@ -111,10 +111,10 @@ export function DashboardLayout({
         <div className="relative z-0 hidden min-h-0 flex-1 gap-2 overflow-hidden lg:grid lg:grid-cols-2 lg:grid-rows-1 xl:grid-cols-12">
           <div className="flex h-full min-h-0 flex-col lg:col-span-1 xl:col-span-8">{alumniColumn}</div>
           <section
-            aria-label="Perks and Benefits"
+            aria-label="Engagements"
             className={`flex h-full min-h-0 flex-col overflow-hidden lg:col-span-1 xl:col-span-4 ${ccSection.perks}`}
           >
-            {perksPanel}
+            {engagementsPanel}
           </section>
         </div>
 
@@ -123,7 +123,7 @@ export function DashboardLayout({
           {tab === "alumni" ? (
             alumniColumn
           ) : (
-            <section className={ccSection.perks}>{perksPanel}</section>
+            <section className={ccSection.perks}>{engagementsPanel}</section>
           )}
         </div>
       </div>

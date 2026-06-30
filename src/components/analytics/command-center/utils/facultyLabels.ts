@@ -6,34 +6,37 @@ export function stripFacultyOfPrefix(name: string): string {
   return stripped || trimmed;
 }
 
-const FACULTY_ABBREVIATION_MAP: Array<{ match: RegExp; short: string }> = [
-  { match: /allied\s*health/i, short: "FAHS" },
-  { match: /information\s*technology/i, short: "FIT" },
-  { match: /management\s*sciences?/i, short: "FMS" },
-  { match: /social\s*sciences?/i, short: "FSS" },
-  { match: /medicine\s*&\s*dentistry|ucmd/i, short: "UCMD" },
-  { match: /engineering\s*&\s*technology/i, short: "FET" },
-  { match: /arts\s*&\s*architecture/i, short: "FA&A" },
-  { match: /languages?\s*&\s*literature/i, short: "FLL" },
-  { match: /pharmacy/i, short: "FPh" },
-  { match: /^faculty\s+of\s+sciences?\b/i, short: "FSc" },
-  { match: /\blaw\b/i, short: "FL" },
+/** Fixed abbreviations that do not follow the general F-prefix rules. */
+const SPECIAL_FACULTY_ABBREVIATIONS: Array<{ match: RegExp; short: string }> = [
+  { match: /medicine\s*&\s*dentistry|ucmd|university college of medicine/i, short: "UCMD" },
 ];
 
-/** Short axis label for faculty bar charts — no truncation ellipsis. */
+/**
+ * Short axis label for faculty bar charts.
+ * - Multi-word faculties: first letter of each word, no leading "F" (e.g. Allied Health Sciences → AHS).
+ * - Single-word faculties after "Faculty of": "F" + initial (e.g. Sciences → FS).
+ */
 export function abbreviateFacultyLabel(name: string): string {
   const raw = String(name || "").trim();
   if (!raw) return "N/A";
   if (raw.toLowerCase() === "total") return "Total";
 
-  const mapped = FACULTY_ABBREVIATION_MAP.find((m) => m.match.test(raw));
-  if (mapped) return mapped.short;
+  const special = SPECIAL_FACULTY_ABBREVIATIONS.find((m) => m.match.test(raw));
+  if (special) return special.short;
 
-  const words = stripFacultyOfPrefix(raw)
+  const remainder = stripFacultyOfPrefix(raw);
+  const words = remainder
     .split(/[\s/&,-]+/)
     .filter(Boolean);
-  const abbr = words.map((w) => w[0]?.toUpperCase() ?? "").join("");
-  return abbr || raw.slice(0, 6);
+
+  if (words.length === 0) return raw.slice(0, 6);
+
+  if (words.length === 1) {
+    const initial = words[0][0]?.toUpperCase() ?? "";
+    return initial ? `F${initial}` : raw.slice(0, 6);
+  }
+
+  return words.map((w) => w[0]?.toUpperCase() ?? "").join("");
 }
 
 export function facultyBarChartRow(faculty: string) {
@@ -52,4 +55,5 @@ export function facultyTooltipLabel(
   if (row?.tooltipLabel) return row.tooltipLabel;
   if (row?.fullName) return stripFacultyOfPrefix(row.fullName);
   return label;
+
 }

@@ -18,11 +18,13 @@ type MembershipRow = {
 function MembershipBarRow({
   row,
   maxApplied,
+  isLeader,
   index,
   reduced,
 }: {
   row: MembershipRow;
   maxApplied: number;
+  isLeader: boolean;
   index: number;
   reduced: boolean;
 }) {
@@ -32,7 +34,11 @@ function MembershipBarRow({
   const stagger = index * (CHART.progress.staggerMs / 1000);
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[2.5rem_minmax(0,1fr)_2.75rem] items-center gap-1 rounded-md px-0.5">
+    <div
+      className={`grid h-full min-h-0 grid-cols-[2.5rem_minmax(0,1fr)_2.75rem] items-center gap-1 rounded-md px-0.5 ${
+        isLeader && row.approved > 0 ? "bg-violet-50/60 dark:bg-violet-500/[0.06]" : ""
+      }`}
+    >
       <span
         className="truncate text-[10px] font-semibold leading-none"
         style={{ color: row.color }}
@@ -129,6 +135,8 @@ export function MembershipsCardChart({
   }
 
   const maxApplied = Math.max(...rows.map((r) => r.applied), 1);
+  const topRow = [...rows].sort((a, b) => b.approved - a.approved)[0];
+  const topPct = totalApproved > 0 && topRow ? Math.round((topRow.approved / totalApproved) * 100) : 0;
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-1">
@@ -138,15 +146,25 @@ export function MembershipsCardChart({
             key={row.label}
             row={row}
             maxApplied={maxApplied}
+            isLeader={topRow?.label === row.label}
             index={i}
             reduced={reduced}
           />
         ))}
       </div>
-      <p className="shrink-0 text-center text-[8px] leading-tight text-slate-500 dark:text-slate-400">
-        <span className="font-semibold text-violet-600 dark:text-violet-400">Approved</span>
-        <span className="text-slate-400 dark:text-slate-500"> · /applied</span>
-      </p>
+      {topRow && topRow.approved > 0 ? (
+        <p className="shrink-0 truncate text-center text-[11px] font-medium text-violet-600/90 dark:text-violet-400/90">
+          <span className="font-bold tabular-nums">{topPct}%</span>
+          {" · "}
+          {topRow.label} approved
+          <span className="text-slate-400 dark:text-slate-500"> · /applied</span>
+        </p>
+      ) : (
+        <p className="shrink-0 text-center text-[8px] leading-tight text-slate-500 dark:text-slate-400">
+          <span className="font-semibold text-violet-600 dark:text-violet-400">Approved</span>
+          <span className="text-slate-400 dark:text-slate-500"> · /applied</span>
+        </p>
+      )}
     </div>
   );
 }

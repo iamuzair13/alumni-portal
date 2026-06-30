@@ -36,6 +36,7 @@ import {
   mapLocation,
   mapTransitionVelocity,
 } from "../data/mapPayloadToCards";
+import { SectionPerks } from "./SectionPerks";
 
 const CARD_IDS = {
   overview: "alumni-overview",
@@ -170,7 +171,7 @@ export function SectionAlumni({
           accent="emerald"
           primaryValue={honor.total}
           secondaryLabel={`Delivered · ${honor.delivered.toLocaleString()} cards`}
-          masonrySize="sm"
+          masonrySize="md"
           delay={staggerDelay(3)}
           onExpand={open}
           chart={
@@ -193,7 +194,7 @@ export function SectionAlumni({
           accent="emerald"
           primaryValue={velocity.trackedTotal}
           secondaryLabel={`${duringGradPct}% during grad · ${velocity.score}% early`}
-          masonrySize="sm"
+          masonrySize="md"
           chartFill
           delay={staggerDelay(4)}
           onExpand={open}
@@ -206,13 +207,15 @@ export function SectionAlumni({
           accent="emerald"
           primaryValue={totalLocation}
           secondaryLabel="Top provinces"
-          masonrySize="sm"
+          masonrySize="md"
           chartFill
           delay={staggerDelay(5)}
           onExpand={open}
           chart={<LocationCardChart rows={location.rows} total={totalLocation} />}
         />
       </MasonryGrid>
+
+      <SectionPerks data={data} isLoading={isLoading} />
 
       <ExpandDrawer
         open={!!active}

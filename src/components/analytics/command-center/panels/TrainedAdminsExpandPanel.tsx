@@ -99,7 +99,10 @@ export function TrainedAdminsExpandPanel({
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
           By faculty (admins &amp; viewers)
         </h3>
-       
+        <p className="mb-2 text-[10px] text-gray-500 dark:text-gray-400">
+          Per-faculty admins are users with write access to that faculty (RBAC) or a legacy admin assignment.
+          The total row shows distinct users org-wide; summing faculty rows can exceed it when one admin spans multiple faculties.
+        </p>
         <AnalyticsDataTable
           isLoading={isLoading}
           columns={[
