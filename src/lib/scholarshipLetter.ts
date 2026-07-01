@@ -2,11 +2,11 @@
 
 /** Must stay aligned with the scholarship application form (`Discount Category` select). */
 export const SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS = [
-  { value: "admission-fee-masters-75", label: "Admission Fee Masters 75%" },
-  { value: "admission-fee-phd-75", label: "Admission Fee PhD 75%" },
-  { value: "kinship-15", label: "Kinship Tution Discount 15%" },
-  { value: "tuition-fee-masters-25", label: "Tuition Fee Masters 50%" },
-  { value: "tuition-fee-phd-25", label: "Tuition Fee PhD 25%" },
+  { value: "admission-fee-masters-75", label: "Admission Fee Masters Upto 75%" },
+  { value: "admission-fee-phd-75", label: "Admission Fee PhD Upto 75%" },
+  { value: "kinship-15", label: "Kinship Tution Discount Upto 15%" },
+  { value: "tuition-fee-masters-25", label: "Tuition Fee Masters Upto 50%" },
+  { value: "tuition-fee-phd-25", label: "Tuition Fee PhD Upto 25%" },
 ] as const;
 
 const LEGACY_DISCOUNT_CATEGORY_LABELS: Record<string, string> = {
@@ -119,8 +119,8 @@ export const SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY: Record<
     { value: "PhD", label: "PhD" },
   ],
   "masters-phd": [
-    { value: "Masters", label: "Masters (50% discount)" },
-    { value: "PhD", label: "PhD (25% discount)" },
+    { value: "Masters", label: "Masters ( Upto 50% discount)" },
+    { value: "PhD", label: "PhD ( Upto 25% discount)" },
   ],
   "admission-fee-masters-75": [{ value: "Masters", label: "Masters" }],
   "admission-fee-phd-75": [{ value: "PhD", label: "PhD" }],

@@ -36,16 +36,18 @@ const benefitsData: Record<string, { title: string; description: string; content
                     <tr class="hover:bg-gray-50 transition-colors">
                       <td class="px-4 py-4 font-semibold text-gray-900">Kinship Scholarship Discounts</td>
                       <td class="px-4 py-4 text-gray-700">Alumni immediate family members and siblings</td>
-                      <td class="px-4 py-4 text-gray-700">15% discount on tuition fee (one scholarship at a time, in case the member is eligible for other scholarships e.g., Merit, High Achiever etc.)</td>
+                      <td class="px-4 py-4 text-gray-700"> Upto 15% discount on tuition fee (one scholarship at a time, in case the member is eligible for other scholarships e.g., Merit, High Achiever etc.)</td>
                     </tr>
                     <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
-                      <td class="px-4 py-4 font-semibold text-gray-900">Masters or PhD Alumni Scholarship</td>
+                      <td class="px-4 py-4 font-semibold text-gray-900">Masters or PhD Alumni Scholarship <br/> <span class="text-xs text-gray-500">(Minumum 3 GPA)</span></td>
                       <td class="px-4 py-4 text-gray-700">UOL Alumni (pursuing second degree at UOL)</td>
                       <td class="px-4 py-4 text-gray-700">
                         <ul class="list-disc list-inside space-y-1 text-sm">
-                          <li>Admission Fee: 75% discount</li>
-                          <li>Tuition Fee: 50% discount for Masters, 25% discount for PhD</li>
-                          <li>Additional 5% tuition discount for gold medallists</li>
+                          <li>Admission Fee: Upto 75% discount</li>
+                          <li>Tuition Fee: Upto 50% discount for Masters, Upto 25% discount for PhD</li>
+                          <li>Upto 5% additional tuition discount for gold medallists <br/>
+                          <span class="text-xs text-gray-500">(Scholarship percentage is calculated on the basis of GPA)</span>
+                          </li>
                         </ul>
                       </td>
                     </tr>
