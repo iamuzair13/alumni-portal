@@ -1,5 +1,7 @@
 /** CGPA tier resolution and validation for scholarship discount categories. */
 
+import { discountCategoryLabel } from "@/lib/scholarshipLetter";
+
 export type ScholarshipFlowType = "fee_discount" | "kinship";
 
 export type ScholarshipDiscountCategory = {
@@ -91,6 +93,83 @@ export function formatDiscountPercentDisplay(percent: number | null | undefined)
   const n = Number(percent);
   if (Number.isInteger(n)) return `${n}%`;
   return `${n.toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
+export function formatTierCriteria(cgpaMin: number, cgpaMax: number): string {
+  const fmt = (n: number) => {
+    if (!Number.isFinite(n)) return "—";
+    return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
+  };
+  return `CGPA ${fmt(Number(cgpaMin))} – ${fmt(Number(cgpaMax))}`;
+}
+
+export type ScholarshipDiscountTierPdfRow = {
+  discountPercent: number;
+  title: string;
+  criteria: string;
+};
+
+export function formatTierDiscountTitle(categoryLabel: string, tierPercent: number): string {
+  const label = String(categoryLabel || "").trim();
+  const pctDisplay = formatDiscountPercentDisplay(tierPercent);
+  if (!label) return pctDisplay;
+
+  const base = label
+    .replace(/\s*upto\s+[\d.]+\s*%/gi, "")
+    .replace(/[\d.]+\s*%/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!base) return pctDisplay;
+  return `${base} ${pctDisplay}`;
+}
+
+export function parseDiscountPercentValue(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const s = String(value).trim();
+  if (!s) return null;
+  const direct = Number(s);
+  if (Number.isFinite(direct)) return direct;
+  const match = s.match(/([\d.]+)\s*%/);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function tiersMatchPercent(tierPercent: number, targetPercent: number): boolean {
+  const tier = parseDiscountPercentValue(tierPercent);
+  const target = parseDiscountPercentValue(targetPercent);
+  if (tier == null || target == null) return false;
+  return Math.abs(tier - target) < 0.011;
+}
+
+/** Max discount percent the applicant applied for (category cap), not CGPA-resolved amount. */
+export function categoryAdvertisedMaxPercent(
+  discountType: string | null | undefined,
+  tiers: ScholarshipCgpaDiscountTier[],
+  applyFor?: string | null,
+): number | null {
+  const categoryLabel = discountCategoryLabel(discountType, applyFor);
+  const match = categoryLabel.match(/upto\s+([\d.]+)\s*%/i);
+  if (match) {
+    const n = Number(match[1]);
+    if (Number.isFinite(n)) return n;
+  }
+
+  if (tiers.length === 0) return null;
+  return Math.max(...tiers.map((t) => Number(t.discount_percent)));
+}
+
+export function mapTiersForPdf(
+  tiers: ScholarshipCgpaDiscountTier[],
+  categoryLabel: string,
+): ScholarshipDiscountTierPdfRow[] {
+  return sortTiersForResolution(tiers).map((t) => ({
+    discountPercent: Number(t.discount_percent),
+    title: formatTierDiscountTitle(categoryLabel, Number(t.discount_percent)),
+    criteria: formatTierCriteria(t.cgpa_min, t.cgpa_max),
+  }));
 }
 
 export function slugifyCategoryLabel(label: string): string {

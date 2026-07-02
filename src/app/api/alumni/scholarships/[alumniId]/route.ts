@@ -15,6 +15,14 @@ import {
   parseUploadedDocuments,
 } from "@/lib/scholarshipLetter";
 import { resolveStoredUploadUrl } from "@/lib/uploadsImageUrl";
+import {
+  mapTiersForPdf,
+  parseCgpa,
+  parseDiscountPercentValue,
+  resolveDiscountPercent,
+  type ScholarshipCgpaDiscountTier,
+  type ScholarshipDiscountTierPdfRow,
+} from "@/lib/scholarshipDiscount";
 
 type ScholarshipUploadedDocDb = {
   label?: unknown;
@@ -85,6 +93,51 @@ async function resolveProgramName(idStr: string | undefined): Promise<string | n
   `;
   const r = rows[0] as { program_name: string | null } | undefined;
   return r?.program_name ? String(r.program_name).trim() : null;
+}
+
+async function loadDiscountTiersForPdf(
+  discountType: string | null | undefined,
+  applyFor?: string | null,
+): Promise<{ tiers: ScholarshipDiscountTierPdfRow[]; cgpaTiers: ScholarshipCgpaDiscountTier[] }> {
+  const slug = String(discountType || "").trim();
+  if (!slug) return { tiers: [], cgpaTiers: [] };
+
+  const categoryRows = await sql/* sql */`
+    SELECT id, label FROM public.scholarship_discount_categories
+    WHERE LOWER(slug) = LOWER(${slug})
+    LIMIT 1
+  `;
+  const categoryRow = categoryRows[0] as { id: unknown; label?: unknown } | undefined;
+  if (!categoryRow) return { tiers: [], cgpaTiers: [] };
+
+  const categoryId = Number(categoryRow.id);
+  if (!Number.isFinite(categoryId)) return { tiers: [], cgpaTiers: [] };
+
+  const categoryLabel =
+    String(categoryRow.label || "").trim() || discountCategoryLabel(discountType, applyFor);
+
+  const tierRows = await sql/* sql */`
+    SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+    FROM public.scholarship_cgpa_discount_tiers
+    WHERE category_id = ${categoryId}
+    ORDER BY sort_order ASC, id ASC
+  `;
+
+  const cgpaTiers = (tierRows as Record<string, unknown>[]).map(
+    (row): ScholarshipCgpaDiscountTier => ({
+      id: Number(row.id),
+      category_id: categoryId,
+      cgpa_min: Number(row.cgpa_min),
+      cgpa_max: Number(row.cgpa_max),
+      discount_percent: Number(row.discount_percent),
+      sort_order: Number(row.sort_order) || 0,
+    }),
+  );
+
+  return {
+    tiers: mapTiersForPdf(cgpaTiers, categoryLabel),
+    cgpaTiers,
+  };
 }
 
 export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniId: string }> }) {
@@ -421,6 +474,15 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
     };
 
     if (mode === "letter-pdf") {
+      const { tiers: discountTiers, cgpaTiers } = await loadDiscountTiersForPdf(
+        app.discount_type,
+        app.apply_for,
+      );
+      const alumniCgpa = parseCgpa(app.cgpa);
+      const applicableDiscountPercent =
+        parseDiscountPercentValue(app.applied_discount_percent) ??
+        (alumniCgpa != null ? resolveDiscountPercent(alumniCgpa, cgpaTiers) : null) ??
+        parseDiscountPercentValue(applicationLetter.requestedDiscount);
       const pdfBuffer = await generateScholarshipLetterPDF({
         dateFormatted: applicationLetter.dateFormatted,
         studentName: applicationLetter.studentName,
@@ -429,6 +491,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         previousDegree: applicationLetter.previousDegree,
         cgpaLastDegree: applicationLetter.cgpaLastDegree,
         requestedDiscount: applicationLetter.requestedDiscount,
+        appliedDiscountPercent: applicableDiscountPercent,
+        discountTiers,
         documentsAttached: applicationLetter.documentsAttached,
         sapCode: applicationLetter.sapCode,
         passingOutYear: applicationLetter.passingOutYear,

@@ -7,6 +7,11 @@ import {
   isScholarshipKinshipCategory,
   scholarshipFeeDiscountPercentForPdf,
 } from "@/lib/scholarshipLetter";
+import {
+  type ScholarshipDiscountTierPdfRow,
+  parseDiscountPercentValue,
+  tiersMatchPercent,
+} from "@/lib/scholarshipDiscount";
 import { readFileSync } from "fs";
 import { join } from "path";
 
@@ -68,6 +73,8 @@ export interface ScholarshipLetterPDFData {
   previousDegree: string;
   cgpaLastDegree: string;
   requestedDiscount: string;
+  appliedDiscountPercent?: number | null;
+  discountTiers?: ScholarshipDiscountTierPdfRow[];
   documentsAttached: string[];
   sapCode: string;
   passingOutYear?: string | null;
@@ -332,7 +339,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         tw = doc.getTextWidth(headerTitle);
       }
       doc.text(headerTitle, m + Math.max(0, (W - tw) / 2), y + headerH / 2 + 3.5);
-      y += headerH + 5;
+      y += headerH + 3;
 
       // ── Helpers ──
       const colW = W / 2;
@@ -358,7 +365,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         const v2 = clamp(value2);
         const h1 = textHeight(v1, colW - 5, THEME.font.body);
         const h2 = textHeight(v2, colW - 5, THEME.font.body);
-        const h = Math.max(9, h1 + 5, h2 + 5);
+        const h = Math.max(7.5, h1 + 4, h2 + 4);
 
         drawRule(y + h);
 
@@ -391,7 +398,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
 
       const drawFullRow = (label: string, value: string | null | undefined) => {
         const v = clamp(value);
-        const h = Math.max(9, textHeight(v, W - 5, THEME.font.body) + 5);
+        const h = Math.max(7.5, textHeight(v, W - 5, THEME.font.body) + 4);
         drawRule(y + h);
 
         doc.setFont("helvetica", "bold");
@@ -408,14 +415,14 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       };
 
       const drawSection = (letter: string, title: string) => {
-        const h = 6.5;
+        const h = 6;
         doc.setFillColor(...THEME.colors.brandLight);
         doc.rect(m, y, W, h, "F");
         doc.setFont("helvetica", "bold");
         doc.setFontSize(THEME.font.small);
         doc.setTextColor(...THEME.colors.brand);
-        doc.text(`(${letter})  ${title.toUpperCase()}`, m + 2, y + 4.2);
-        y += h + 2.5;
+        doc.text(`(${letter})  ${title.toUpperCase()}`, m + 2, y + 3.9);
+        y += h + 1.5;
       };
 
       const findChecklistValue = (keywords: string[]) => {
@@ -453,9 +460,10 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       if (data.isKinship) {
         drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
         drawFieldPair("Passing Out Year", data.passingOutYear, "Discount Category", data.scholarshipType);
-        drawFullRow("Applying For", data.applyingFor);
+        drawFieldPair("Applicable Discount", data.requestedDiscount, "Applying For", data.applyingFor);
       } else {
-        drawFieldPair("Discount Category", data.scholarshipType, "Admission Reference No", data.admissionApplicationRef);
+        drawFieldPair("Discount Category", data.scholarshipType, "Applicable Discount", data.requestedDiscount);
+        drawFullRow("Admission Reference No", data.admissionApplicationRef);
       }
 
       // ── Section C ──
@@ -504,7 +512,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       const docColStatusW = W - docColLabelW;
 
       // Header
-      let rowH = 6.5;
+      let rowH = 5.5;
       doc.setFillColor(...THEME.colors.brandLight);
       doc.rect(m, y, docColLabelW, rowH, "F");
       doc.rect(m + docColLabelW, y, docColStatusW, rowH, "F");
@@ -516,7 +524,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       y += rowH;
 
       docItems.forEach((item, i) => {
-        rowH = 6.5;
+        rowH = 5.5;
         if (i % 2 === 1) {
           doc.setFillColor(250, 250, 250);
           doc.rect(m, y, W, rowH, "F");
@@ -540,12 +548,115 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         y += rowH;
       });
 
-      y += 4;
+      y += 2;
 
-      // ── Section E ──
+      // ── Section E (single-page anchored layout) ──
+      const footerY = pageH - 9;
+      const sigH = 14;
+      const sigY = footerY - 5 - sigH;
+      const tierFont = THEME.font.tiny;
+
+      const truncateToWidth = (text: string, maxW: number) => {
+        const value = String(text || "").trim();
+        if (!value) return "—";
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(tierFont);
+        if (doc.getTextWidth(value) <= maxW) return value;
+        let s = value;
+        while (s.length > 0 && doc.getTextWidth(`${s}…`) > maxW) s = s.slice(0, -1);
+        return s.length < value.length ? `${s}…` : s;
+      };
+
+      const drawCheckbox = (cx: number, cy: number, checked: boolean) => {
+        const size = 2.8;
+        doc.setDrawColor(...THEME.colors.border);
+        doc.setLineWidth(0.15);
+        doc.rect(cx, cy, size, size);
+        if (checked) {
+          doc.setDrawColor(...THEME.colors.brand);
+          doc.setLineWidth(0.3);
+          doc.line(cx + 0.5, cy + 1.4, cx + 1.1, cy + 2);
+          doc.line(cx + 1.1, cy + 2, cx + 2.4, cy + 0.7);
+        }
+      };
+
       drawSection("e", "Review & Approval");
 
-      const sigH = 18;
+      const discountTiers = data.discountTiers ?? [];
+      const appliedPct =
+        parseDiscountPercentValue(data.appliedDiscountPercent) ??
+        parseDiscountPercentValue(data.requestedDiscount);
+      const isApplicableTier = (pct: number) =>
+        appliedPct != null && tiersMatchPercent(pct, appliedPct);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(THEME.font.tiny);
+      doc.setTextColor(...THEME.colors.text);
+      doc.text("Table 1.1", m, y + 2.8);
+      y += 4;
+
+      const tierRowH = 5;
+      const tierCheckW = 6;
+      const tierSrW = 7;
+      const tierDiscountW = W * 0.5;
+      const tierCriteriaW = W - tierCheckW - tierSrW - tierDiscountW;
+      const tierDiscountX = m + tierCheckW + tierSrW;
+      const tierCriteriaX = tierDiscountX + tierDiscountW;
+
+      doc.setFillColor(...THEME.colors.brandLight);
+      doc.rect(m, y, W, tierRowH, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(tierFont);
+      doc.setTextColor(...THEME.colors.text);
+      doc.text("SR", m + tierCheckW + 0.5, y + 3.5);
+      doc.text("DISCOUNT", tierDiscountX + 1, y + 3.5);
+      doc.text("CRITERIA", tierCriteriaX + 1, y + 3.5);
+      y += tierRowH;
+
+      if (discountTiers.length === 0) {
+        doc.setDrawColor(...THEME.colors.border);
+        doc.setLineWidth(0.1);
+        doc.line(m, y + tierRowH, m + W, y + tierRowH);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(tierFont);
+        doc.setTextColor(...THEME.colors.muted);
+        doc.text("No discount tiers configured.", m + 1, y + 3.5);
+        y += tierRowH;
+      } else {
+        discountTiers.forEach((tier, i) => {
+          if (y + tierRowH > sigY - 1) return;
+
+          if (i % 2 === 1) {
+            doc.setFillColor(250, 250, 250);
+            doc.rect(m, y, W, tierRowH, "F");
+          }
+          doc.setDrawColor(...THEME.colors.border);
+          doc.setLineWidth(0.1);
+          doc.line(m, y + tierRowH, m + W, y + tierRowH);
+
+          const checked = isApplicableTier(tier.discountPercent);
+          drawCheckbox(m + 1, y + 1.1, checked);
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(tierFont);
+          doc.setTextColor(...THEME.colors.text);
+          doc.text(String(i + 1), m + tierCheckW + 0.5, y + 3.5);
+          doc.text(
+            truncateToWidth(clamp(tier.title), tierDiscountW - 2),
+            tierDiscountX + 1,
+            y + 3.5,
+          );
+          doc.text(
+            truncateToWidth(clamp(tier.criteria), tierCriteriaW - 2),
+            tierCriteriaX + 1,
+            y + 3.5,
+          );
+
+          y += tierRowH;
+        });
+      }
+
+      y = sigY;
       const sigCol = W / 2;
       doc.setDrawColor(...THEME.colors.border);
       doc.setLineWidth(0.2);
@@ -553,14 +664,12 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       doc.rect(m + sigCol + 2, y, sigCol - 2, sigH);
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(THEME.font.small);
+      doc.setFontSize(THEME.font.tiny);
       doc.setTextColor(...THEME.colors.muted);
-      doc.text("Reviewed By (ARO)", m + 2, y + 4.5);
-      doc.text("Approved By (Competent Authority)", m + sigCol + 4, y + 4.5);
-      y += sigH;
+      doc.text("Reviewed By (ARO)", m + 2, y + 4);
+      doc.text("Approved By (Competent Authority)", m + sigCol + 4, y + 4);
 
       // Footer
-      const footerY = pageH - 10;
       doc.setDrawColor(...THEME.colors.brand);
       doc.setLineWidth(0.4);
       doc.line(m, footerY - 4, m + W, footerY - 4);
@@ -571,10 +680,10 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       const fw = doc.getTextWidth(footerText);
       doc.text(footerText, m + (W - fw) / 2, footerY);
 
-      // Safety: enforce max 2 pages (delete accidental extras)
+      // Safety: enforce single page
       const pages = doc.getNumberOfPages();
-      if (pages > 2) {
-        for (let i = pages; i > 2; i--) doc.deletePage(i);
+      if (pages > 1) {
+        for (let i = pages; i > 1; i--) doc.deletePage(i);
       }
 
       resolve(Buffer.from(doc.output("arraybuffer")));
