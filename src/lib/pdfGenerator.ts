@@ -462,7 +462,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         drawFieldPair("Passing Out Year", data.passingOutYear, "Discount Category", data.scholarshipType);
         drawFieldPair("Applicable Discount", data.requestedDiscount, "Applying For", data.applyingFor);
       } else {
-        drawFieldPair("Discount Category", data.scholarshipType, "Applicable Discount", data.requestedDiscount);
+        drawFieldPair("Discount Category", data.scholarshipType, "Applicable Discount(Approved as criteria in table 1.1)", data.requestedDiscount);
         drawFullRow("Admission Reference No", data.admissionApplicationRef);
       }
 
@@ -553,8 +553,8 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       // ── Section E (single-page anchored layout) ──
       const footerY = pageH - 9;
       const sigH = 14;
-      const sigY = footerY - 5 - sigH;
       const tierFont = THEME.font.tiny;
+      const tableBottomLimit = footerY - 8;
 
       const truncateToWidth = (text: string, maxW: number) => {
         const value = String(text || "").trim();
@@ -588,6 +588,19 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         parseDiscountPercentValue(data.requestedDiscount);
       const isApplicableTier = (pct: number) =>
         appliedPct != null && tiersMatchPercent(pct, appliedPct);
+
+      const sigCol = W / 2;
+      doc.setDrawColor(...THEME.colors.border);
+      doc.setLineWidth(0.2);
+      doc.rect(m, y, sigCol - 2, sigH);
+      doc.rect(m + sigCol + 2, y, sigCol - 2, sigH);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(THEME.font.tiny);
+      doc.setTextColor(...THEME.colors.muted);
+      doc.text("Reviewed By (ARO)", m + 2, y + 4);
+      doc.text("Approved By (Competent Authority)", m + sigCol + 4, y + 4);
+      y += sigH + 4;
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(THEME.font.tiny);
@@ -624,7 +637,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         y += tierRowH;
       } else {
         discountTiers.forEach((tier, i) => {
-          if (y + tierRowH > sigY - 1) return;
+          if (y + tierRowH > tableBottomLimit) return;
 
           if (i % 2 === 1) {
             doc.setFillColor(250, 250, 250);
@@ -655,19 +668,6 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           y += tierRowH;
         });
       }
-
-      y = sigY;
-      const sigCol = W / 2;
-      doc.setDrawColor(...THEME.colors.border);
-      doc.setLineWidth(0.2);
-      doc.rect(m, y, sigCol - 2, sigH);
-      doc.rect(m + sigCol + 2, y, sigCol - 2, sigH);
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(THEME.font.tiny);
-      doc.setTextColor(...THEME.colors.muted);
-      doc.text("Reviewed By (ARO)", m + 2, y + 4);
-      doc.text("Approved By (Competent Authority)", m + sigCol + 4, y + 4);
 
       // Footer
       doc.setDrawColor(...THEME.colors.brand);
