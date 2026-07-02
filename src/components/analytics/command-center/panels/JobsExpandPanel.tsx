@@ -12,7 +12,7 @@ function pct(n: number, d: number): string {
   return `${((n / d) * 100).toFixed(1)}%`;
 }
 
-export function CareerExpandPanel({
+export function JobsExpandPanel({
   data,
   isLoading,
 }: {
@@ -128,11 +128,11 @@ export function CareerExpandPanel({
         </div>
       ) : null}
 
-      <div className="flex ">
+      <div className="flex">
         <section className="w-full rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+          <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
             Jobs by category
-          </h3>
+          </h4>
           <AnalyticsDataTable
             isLoading={isLoading}
             columns={[
@@ -147,9 +147,9 @@ export function CareerExpandPanel({
         </section>
 
         <section className="w-full rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+          <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
             Top job categories
-          </h3>
+          </h4>
           {categoryChart.length === 0 ? (
             <p className="py-12 text-center text-sm text-gray-400">No categories recorded</p>
           ) : (

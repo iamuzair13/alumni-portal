@@ -57,7 +57,7 @@ export function occupationChart(
     { label: "Self-employed", value: num(oc?.selfEmployed), color: KPI_COLOR_HEX.sky },
     { label: "Unemployed (searching)", value: num(oc?.unemployedSearching), color: KPI_COLOR_HEX.amber },
     { label: "Unemployed (by choice)", value: num(oc?.unemployedByChoice), color: KPI_COLOR_HEX.orange },
-    { label: "Other", value: num(oc?.other), color: KPI_COLOR_HEX.slate },
+    { label: "Pursuing higher education", value: num(oc?.other), color: KPI_COLOR_HEX.slate },
   ].filter((p) => p.value > 0);
   return {
     chartType: "donut",
@@ -296,17 +296,17 @@ export function careerServicesChart(data: ManagementDashboardPayload | undefined
 export function scholarshipsChart(data: ManagementDashboardPayload | undefined): ChartGroupMeta {
   const scholarships = data?.sectionC?.scholarships;
   const rows = [
-    { label: "Kinship", applied: num(scholarships?.kinship?.applied), processed: num(scholarships?.kinship?.processed) },
-    { label: "Masters / PhD", applied: num(scholarships?.mastersPhd?.applied), processed: num(scholarships?.mastersPhd?.processed) },
-    { label: "IQ programs", applied: num(scholarships?.iqPrograms?.applied), processed: num(scholarships?.iqPrograms?.processed) },
+    { label: "Kinship", applied: num(scholarships?.kinship?.applied), approved: num(scholarships?.kinship?.approved) },
+    { label: "Masters / PhD", applied: num(scholarships?.mastersPhd?.applied), approved: num(scholarships?.mastersPhd?.approved) },
+    { label: "IQ programs", applied: num(scholarships?.iqPrograms?.applied), approved: num(scholarships?.iqPrograms?.approved) },
   ];
-  const totalProcessed = rows.reduce((s, r) => s + r.processed, 0);
+  const totalApproved = rows.reduce((s, r) => s + r.approved, 0);
   return {
     chartType: "stacked-bar",
     chartSeries: rows.map((r, i) => ({ label: r.label, value: r.applied, color: colorAt(i) })),
-    chartSeriesSecondary: rows.map((r, i) => ({ label: r.label, value: r.processed, color: colorAt(i) })),
-    chartMeta: { primaryLabel: "Applied", secondaryLabel: "Processed" },
-    insight: `${totalProcessed.toLocaleString()} processed total`,
+    chartSeriesSecondary: rows.map((r, i) => ({ label: r.label, value: r.approved, color: colorAt(i) })),
+    chartMeta: { primaryLabel: "Applied", secondaryLabel: "Approved" },
+    insight: `${totalApproved.toLocaleString()} approved total`,
   };
 }
 

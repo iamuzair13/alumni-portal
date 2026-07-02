@@ -332,12 +332,26 @@ export async function GET(req: Request) {
 
     const scholarshipsRows = await sql/* sql */`
       SELECT
+        COUNT(*)::int AS total_applied,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) = 'approved')::int AS approved,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('approved','not-approved'))::int AS processed,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%kinship%')::int AS kinship_applied,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%kinship%'
+            AND LOWER(COALESCE(s.status,'pending')) = 'approved'
+        )::int AS kinship_approved,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%kinship%' AND LOWER(COALESCE(s.status,'pending')) IN ('approved','not-approved'))::int AS kinship_processed,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%master%' OR LOWER(COALESCE(s.apply_for,'')) LIKE '%phd%')::int AS masters_phd_applied,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(s.apply_for,'')) LIKE '%master%' OR LOWER(COALESCE(s.apply_for,'')) LIKE '%phd%')
+            AND LOWER(COALESCE(s.status,'pending')) = 'approved'
+        )::int AS masters_phd_approved,
         COUNT(*) FILTER (WHERE (LOWER(COALESCE(s.apply_for,'')) LIKE '%master%' OR LOWER(COALESCE(s.apply_for,'')) LIKE '%phd%') AND LOWER(COALESCE(s.status,'pending')) IN ('approved','not-approved'))::int AS masters_phd_processed,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%iq%')::int AS iq_applied,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%iq%'
+            AND LOWER(COALESCE(s.status,'pending')) = 'approved'
+        )::int AS iq_approved,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%iq%' AND LOWER(COALESCE(s.status,'pending')) IN ('approved','not-approved'))::int AS iq_processed
       FROM public.alumni_scholarships s
       JOIN public.tbl_alumni a ON a.alumniid = s.id
@@ -351,8 +365,13 @@ export async function GET(req: Request) {
       SELECT
         COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
         COUNT(*)::int AS applied,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) = 'approved')::int AS approved,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('approved','not-approved'))::int AS processed,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%kinship%')::int AS kinship_applied,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%kinship%'
+            AND LOWER(COALESCE(s.status,'pending')) = 'approved'
+        )::int AS kinship_approved,
         COUNT(*) FILTER (
           WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%kinship%'
             AND LOWER(COALESCE(s.status,'pending')) IN ('approved','not-approved')
@@ -363,9 +382,17 @@ export async function GET(req: Request) {
         )::int AS masters_applied,
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(s.apply_for,'')) LIKE '%master%' OR LOWER(COALESCE(s.apply_for,'')) LIKE '%phd%')
+            AND LOWER(COALESCE(s.status,'pending')) = 'approved'
+        )::int AS masters_approved,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(s.apply_for,'')) LIKE '%master%' OR LOWER(COALESCE(s.apply_for,'')) LIKE '%phd%')
             AND LOWER(COALESCE(s.status,'pending')) IN ('approved','not-approved')
         )::int AS masters_processed,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%iq%')::int AS iq_applied,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%iq%'
+            AND LOWER(COALESCE(s.status,'pending')) = 'approved'
+        )::int AS iq_approved,
         COUNT(*) FILTER (
           WHERE LOWER(COALESCE(s.apply_for,'')) LIKE '%iq%'
             AND LOWER(COALESCE(s.status,'pending')) IN ('approved','not-approved')
@@ -2247,6 +2274,8 @@ export async function GET(req: Request) {
         totalEventsMeetups: meetupsForKpi,
         jobsPosted: jb.total ?? null,
         scholarshipsProcessed: sc.processed ?? null,
+        scholarshipsApproved: sc.approved ?? null,
+        scholarshipsApplied: sc.total_applied ?? null,
         activeBenefitsDiscounts: mb.active_benefits ?? null,
       },
       sectionA: {
@@ -2558,23 +2587,31 @@ export async function GET(req: Request) {
           const row = r as {
             faculty: string;
             applied: number;
+            approved: number;
             processed: number;
             kinship_applied: number;
+            kinship_approved: number;
             kinship_processed: number;
             masters_applied: number;
+            masters_approved: number;
             masters_processed: number;
             iq_applied: number;
+            iq_approved: number;
             iq_processed: number;
           };
           return {
             faculty: row.faculty,
             applied: Number(row.applied ?? 0),
+            approved: Number(row.approved ?? 0),
             processed: Number(row.processed ?? 0),
             kinshipApplied: Number(row.kinship_applied ?? 0),
+            kinshipApproved: Number(row.kinship_approved ?? 0),
             kinshipProcessed: Number(row.kinship_processed ?? 0),
             mastersApplied: Number(row.masters_applied ?? 0),
+            mastersApproved: Number(row.masters_approved ?? 0),
             mastersProcessed: Number(row.masters_processed ?? 0),
             iqApplied: Number(row.iq_applied ?? 0),
+            iqApproved: Number(row.iq_approved ?? 0),
             iqProcessed: Number(row.iq_processed ?? 0),
           };
         }),
@@ -2586,9 +2623,21 @@ export async function GET(req: Request) {
           upskillCourses: { quarter: cr.upskill_quarter ?? 0, ytd: cr.upskill_ytd ?? 0 },
         },
         scholarships: {
-          kinship: { applied: sc.kinship_applied ?? null, processed: sc.kinship_processed ?? null },
-          mastersPhd: { applied: sc.masters_phd_applied ?? null, processed: sc.masters_phd_processed ?? null },
-          iqPrograms: { applied: sc.iq_applied ?? null, processed: sc.iq_processed ?? null },
+          kinship: {
+            applied: sc.kinship_applied ?? null,
+            approved: sc.kinship_approved ?? null,
+            processed: sc.kinship_processed ?? null,
+          },
+          mastersPhd: {
+            applied: sc.masters_phd_applied ?? null,
+            approved: sc.masters_phd_approved ?? null,
+            processed: sc.masters_phd_processed ?? null,
+          },
+          iqPrograms: {
+            applied: sc.iq_applied ?? null,
+            approved: sc.iq_approved ?? null,
+            processed: sc.iq_processed ?? null,
+          },
         },
         giveBackFinancialAssistance: null,
       },

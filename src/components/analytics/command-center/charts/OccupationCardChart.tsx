@@ -11,8 +11,8 @@ const OCCUPATION_META = [
   { status: "Employed", short: "Emp", color: KPI_COLOR_HEX.emerald },
   { status: "Self-employed", short: "Self", color: KPI_COLOR_HEX.sky },
   { status: "Unemployed (searching)", short: "Srch", color: KPI_COLOR_HEX.amber },
-  { status: "Unemployed (by choice)", short: "Chc", color: KPI_COLOR_HEX.orange },
-  { status: "Other", short: "Oth", color: KPI_COLOR_HEX.slate },
+  { status: "Unemployed (by choice)", short: "Uech", color: KPI_COLOR_HEX.orange },
+  { status: "Pursuing higher education", short: "HiEd", color: KPI_COLOR_HEX.slate },
 ] as const;
 
 export function OccupationCardChart({

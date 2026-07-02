@@ -39,12 +39,17 @@ export default async function Page() {
     );
   }
 
-  const rows = await sql/* sql */`
-    SELECT sapid, alumniname, facultyname, departmentname, yearofending, contactno, personalemail, officialemail, universityemail
-    FROM public.tbl_alumni 
-    WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-    ORDER BY alumniid DESC LIMIT 1`;
-  const r = rows[0] as {
+  const sessionAlumniId =
+    session?.user && (session.user as { userId?: number | null })?.userId
+      ? Number((session.user as { userId?: number | null }).userId)
+      : undefined;
+  const sessionSapid = session?.user
+    ? (session.user as { sapid?: string | null })?.sapid
+      ? String((session.user as { sapid?: string | null }).sapid).trim()
+      : undefined
+    : undefined;
+
+  type AlumniRow = {
     sapid: string | null;
     alumniname: string | null;
     facultyname: string | null;
@@ -54,7 +59,70 @@ export default async function Page() {
     personalemail: string | null;
     officialemail: string | null;
     universityemail: string | null;
-  } | undefined;
+  };
+
+  let r: AlumniRow | undefined;
+
+  if (sessionAlumniId) {
+    const rows = await sql/* sql */`
+      SELECT
+        a.sapid,
+        a.alumniname,
+        COALESCE(f.faculty_name, a.facultyname) AS facultyname,
+        COALESCE(d.department_name, a.departmentname) AS departmentname,
+        a.yearofending,
+        a.contactno,
+        a.personalemail,
+        a.officialemail,
+        a.universityemail
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      WHERE a.alumniid = ${sessionAlumniId}
+      LIMIT 1`;
+    r = rows[0] as AlumniRow | undefined;
+  }
+
+  if (!r && sessionSapid) {
+    const rows = await sql/* sql */`
+      SELECT
+        a.sapid,
+        a.alumniname,
+        COALESCE(f.faculty_name, a.facultyname) AS facultyname,
+        COALESCE(d.department_name, a.departmentname) AS departmentname,
+        a.yearofending,
+        a.contactno,
+        a.personalemail,
+        a.officialemail,
+        a.universityemail
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      WHERE TRIM(COALESCE(a.sapid, '')) = ${sessionSapid}
+      LIMIT 1`;
+    r = rows[0] as AlumniRow | undefined;
+  }
+
+  if (!r && email) {
+    const rows = await sql/* sql */`
+      SELECT
+        a.sapid,
+        a.alumniname,
+        COALESCE(f.faculty_name, a.facultyname) AS facultyname,
+        COALESCE(d.department_name, a.departmentname) AS departmentname,
+        a.yearofending,
+        a.contactno,
+        a.personalemail,
+        a.officialemail,
+        a.universityemail
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      WHERE a.personalemail = ${email} OR a.officialemail = ${email} OR a.universityemail = ${email}
+      ORDER BY a.alumniid DESC
+      LIMIT 1`;
+    r = rows[0] as AlumniRow | undefined;
+  }
   const sapId = String(r?.sapid ?? "");
   const name = String(r?.alumniname ?? session?.user?.name ?? "");
   const emailResolved = String(r?.personalemail ?? r?.officialemail ?? r?.universityemail ?? email);

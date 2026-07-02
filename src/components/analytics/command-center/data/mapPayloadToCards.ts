@@ -99,7 +99,7 @@ export function mapAlumniOccupation(
       { status: "Self-employed", count: num(oc?.selfEmployed) },
       { status: "Unemployed (searching)", count: num(oc?.unemployedSearching) },
       { status: "Unemployed (by choice)", count: num(oc?.unemployedByChoice) },
-      { status: "Other", count: num(oc?.other) },
+      { status: "Pursuing higher education", count: num(oc?.other) },
     ],
   };
 }
@@ -151,7 +151,7 @@ export function mapTransitionVelocity(
   const earlyCount = transitionVelocityEarlyCount(tv);
   const rows = [
     { label: "Before grad", short: "Pre", count: buckets.beforeGraduation, color: KPI_COLOR_HEX.emerald },
-    { label: "Immediate", short: "Imm", count: buckets.immediateAfterGraduation, color: KPI_COLOR_HEX.sky },
+    { label: "After Grad", short: "AG", count: buckets.immediateAfterGraduation, color: KPI_COLOR_HEX.sky },
     { label: "≤3 mo", short: "3mo", count: buckets.within3Months, color: KPI_COLOR_HEX.violet },
     { label: "≤6 mo", short: "6mo", count: buckets.within6Months, color: KPI_COLOR_HEX.amber },
     { label: ">6 mo", short: "6m+", count: buckets.after6Months, color: KPI_COLOR_HEX.orange },
@@ -246,20 +246,54 @@ export function mapCareerBenefits(data: ManagementDashboardPayload | undefined) 
   };
   const scholarshipTotals = {
     kinshipApplied: num(sc?.kinship?.applied),
+    kinshipApproved: num(sc?.kinship?.approved),
     kinshipProcessed: num(sc?.kinship?.processed),
     mastersApplied: num(sc?.mastersPhd?.applied),
+    mastersApproved: num(sc?.mastersPhd?.approved),
     mastersProcessed: num(sc?.mastersPhd?.processed),
     iqApplied: num(sc?.iqPrograms?.applied),
+    iqApproved: num(sc?.iqPrograms?.approved),
     iqProcessed: num(sc?.iqPrograms?.processed),
   };
   const scholarshipsApplied =
-    scholarshipTotals.kinshipApplied +
-    scholarshipTotals.mastersApplied +
-    scholarshipTotals.iqApplied;
+    num(data?.kpis?.scholarshipsApplied) > 0
+      ? num(data?.kpis?.scholarshipsApplied)
+      : scholarshipTotals.kinshipApplied +
+        scholarshipTotals.mastersApplied +
+        scholarshipTotals.iqApplied;
+  const scholarshipsApproved =
+    num(data?.kpis?.scholarshipsApproved) > 0
+      ? num(data?.kpis?.scholarshipsApproved)
+      : scholarshipTotals.kinshipApproved +
+        scholarshipTotals.mastersApproved +
+        scholarshipTotals.iqApproved;
   const scholarshipsProcessed =
     scholarshipTotals.kinshipProcessed +
     scholarshipTotals.mastersProcessed +
     scholarshipTotals.iqProcessed;
+  const scholarshipRows = [
+    {
+      type: "Kinship",
+      short: "Kin",
+      applied: scholarshipTotals.kinshipApplied,
+      approved: scholarshipTotals.kinshipApproved,
+      color: KPI_COLOR_HEX.indigo,
+    },
+    {
+      type: "Masters / PhD",
+      short: "MS",
+      applied: scholarshipTotals.mastersApplied,
+      approved: scholarshipTotals.mastersApproved,
+      color: KPI_COLOR_HEX.violet,
+    },
+    {
+      type: "IQ programs",
+      short: "IQ",
+      applied: scholarshipTotals.iqApplied,
+      approved: scholarshipTotals.iqApproved,
+      color: KPI_COLOR_HEX.amber,
+    },
+  ];
 
   return {
     chart,
@@ -269,8 +303,11 @@ export function mapCareerBenefits(data: ManagementDashboardPayload | undefined) 
     quarterLabel,
     facultyScholarshipRows: data?.sectionC?.facultyScholarshipRows ?? [],
     scholarshipTotals,
+    scholarshipRows,
     scholarshipsApplied,
+    scholarshipsApproved,
     scholarshipsProcessed,
+    scholarshipsPending: Math.max(0, scholarshipsApplied - scholarshipsProcessed),
     careerServices: data?.sectionC?.career,
     kpis: data?.kpis,
   };

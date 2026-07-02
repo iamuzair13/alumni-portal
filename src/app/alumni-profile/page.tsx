@@ -321,6 +321,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           AND s.alumnistories IS NOT NULL
           AND s.alumnistories != ''
           AND TRIM(s.alumnistories) != ''
+          AND LOWER(COALESCE(s.status, 'pending')) = 'approved'
       `;
       successStoryCount = Number((rows[0] as { count?: number | string } | undefined)?.count ?? 0);
     } catch {

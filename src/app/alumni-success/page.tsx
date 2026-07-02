@@ -6,6 +6,8 @@ import AppHeader from "@/layout/AppHeader";
 import { useAlumniStories, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
 import BackButton from "@/components/ui/BackButton";
 import { storyHtmlTextContent } from "@/lib/sanitizeStoryHtml";
+import StoryStatusBadge from "@/components/alumni/StoryStatusBadge";
+import { normalizeStoryStatus } from "@/lib/alumniStories";
 
 type SuccessStory = {
   id: string;
@@ -15,13 +17,13 @@ type SuccessStory = {
   program: string;
   session: string;
   date: string;
+  status: string;
+  rejectionReason?: string | null;
 };
 
 export default function Page() {
   const { data, isLoading, isFetching, isError, error } = useAlumniStories();
-  // Always ensure we have an array, even if data is undefined or error occurred
-  // Since getAlumniStories returns empty array on errors, data should always be an array
-  const storiesData = Array.isArray(data) ? data : [];
+  const storiesData = data?.items ?? [];
   const items: SuccessStory[] = storiesData.map((s: AlumniStoryItem) => ({
     id: s.id,
     title: String(s.title || s.name || "").trim(),
@@ -30,6 +32,8 @@ export default function Page() {
     program: String(s.program || "").trim(),
     session: String(s.session || "").trim(),
     date: s.date,
+    status: s.status,
+    rejectionReason: s.rejectionReason,
   }));
 
   return (
@@ -136,12 +140,22 @@ export default function Page() {
                       )}
                     </div>
                     <div className="p-5">
-                      <h3 className="text-lg font-semibold text-slate-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                        {story.title}
-                      </h3>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className="text-lg font-semibold text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors flex-1">
+                          {story.title}
+                        </h3>
+                        {normalizeStoryStatus(story.status) !== "approved" && (
+                          <StoryStatusBadge status={story.status} size="sm" />
+                        )}
+                      </div>
                       <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 mb-3">
                         {story.short}
                       </p>
+                      {normalizeStoryStatus(story.status) === "not-approved" && story.rejectionReason && (
+                        <p className="text-xs text-rose-600 mb-3 line-clamp-2">
+                          <span className="font-medium">Reason:</span> {story.rejectionReason}
+                        </p>
+                      )}
                       <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
                         <span>{story.program || "N/A"}</span>
                         <span>{story.date ? new Date(story.date).toLocaleDateString() : ""}</span>

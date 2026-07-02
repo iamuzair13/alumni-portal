@@ -22,7 +22,7 @@ const OCCUPATION_AXES = [
   { label: "Self-employed", short: "Self-emp." },
   { label: "Unemployed (searching)", short: "Searching" },
   { label: "Unemployed (by choice)", short: "By choice" },
-  { label: "Other", short: "Other" },
+  { label: "Pursuing higher education", short: "HiEd" },
 ] as const;
 
 const AXIS_COUNT = OCCUPATION_AXES.length;

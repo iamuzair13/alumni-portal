@@ -246,12 +246,16 @@ export type JobCategoryRow = {
 export type FacultyScholarshipRow = {
   faculty: string;
   applied: number;
+  approved: number;
   processed: number;
   kinshipApplied: number;
+  kinshipApproved: number;
   kinshipProcessed: number;
   mastersApplied: number;
+  mastersApproved: number;
   mastersProcessed: number;
   iqApplied: number;
+  iqApproved: number;
   iqProcessed: number;
 };
 
@@ -273,9 +277,9 @@ export type ManagementDashboardSectionC = {
     upskillCourses: QuarterYtd;
   };
   scholarships: {
-    kinship: { applied: number | null; processed: number | null };
-    mastersPhd: { applied: number | null; processed: number | null };
-    iqPrograms: { applied: number | null; processed: number | null };
+    kinship: { applied: number | null; approved: number | null; processed: number | null };
+    mastersPhd: { applied: number | null; approved: number | null; processed: number | null };
+    iqPrograms: { applied: number | null; approved: number | null; processed: number | null };
   };
   giveBackFinancialAssistance: number | null;
 };
@@ -383,6 +387,8 @@ export type ManagementDashboardPayload = {
     totalEventsMeetups: number | null;
     jobsPosted: number | null;
     scholarshipsProcessed: number | null;
+    scholarshipsApproved: number | null;
+    scholarshipsApplied: number | null;
     activeBenefitsDiscounts: number | null;
   };
   sectionA: ManagementDashboardSectionA;

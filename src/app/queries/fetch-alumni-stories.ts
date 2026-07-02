@@ -10,56 +10,69 @@ export type AlumniStoryItem = {
   session: string;
   shortDescription: string;
   imageUrl: string;
+  status: string;
+  rejectionReason?: string | null;
+};
+
+export type AlumniStoriesResponse = {
+  items: AlumniStoryItem[];
+  counts?: {
+    pending: number;
+    approved: number;
+    notApproved: number;
+  };
 };
 
 export const alumniStoriesKey = ["alumni", "stories", "list"] as const;
 
-export async function getAlumniStories(signal?: AbortSignal): Promise<AlumniStoryItem[]> {
-  try {
-  const res = await fetch("/api/alumni-stories", { signal, headers: { accept: "application/json" } });
-    
-    // Parse response regardless of status code
-    const data = await res.json().catch(() => ({ items: [] })) as { items?: AlumniStoryItem[]; error?: string };
-    
-    // If we have items, return them (even if empty - that's a valid state)
-    if (Array.isArray(data.items)) {
-      return data.items;
-    }
-    
-    // If no items array but status is ok, return empty array (no stories is valid)
-    if (res.ok) {
-      return [];
-    }
-    
-    // Only throw error if status is not ok AND we don't have items
-    // But log a warning instead of throwing for better UX
+export function alumniStoriesQueryKey(status?: string) {
+  return status ? [...alumniStoriesKey, status] as const : alumniStoriesKey;
+}
 
-    return []; // Return empty array so UI shows "no stories" message instead of error
+export async function getAlumniStories(
+  signal?: AbortSignal,
+  status?: string
+): Promise<AlumniStoriesResponse> {
+  try {
+    const url = new URL("/api/alumni-stories", typeof window !== "undefined" ? window.location.origin : "");
+    if (status && status !== "all") {
+      url.searchParams.set("status", status);
+    }
+
+    const res = await fetch(url.toString(), { signal, headers: { accept: "application/json" } });
+    const data = (await res.json().catch(() => ({ items: [] }))) as AlumniStoriesResponse & { error?: string };
+
+    if (Array.isArray(data.items)) {
+      return {
+        items: data.items,
+        counts: data.counts,
+      };
+    }
+
+    if (res.ok) {
+      return { items: [] };
+    }
+
+    return { items: [] };
   } catch (err) {
-    // If it's an abort error, re-throw it (for React Query cancellation)
-    if (err instanceof Error && err.name === 'AbortError') {
+    if (err instanceof Error && err.name === "AbortError") {
       throw err;
     }
-    
-    // For network errors or other issues, log but return empty array
-    // This allows the UI to show "no stories" instead of a scary error
-
-    return []; // Return empty array so UI shows friendly "no stories" message
+    return { items: [] };
   }
 }
 
-export function useAlumniStories() {
-  return useQuery<AlumniStoryItem[], Error>({
-    queryKey: alumniStoriesKey,
-    queryFn: ({ signal }) => getAlumniStories(signal),
-    staleTime: 30 * 1000, // 30 seconds - shorter for admin pages to see updates faster
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true, // Refetch when user returns to the tab
-    refetchOnReconnect: true, // Refetch when network reconnects
-    refetchOnMount: true, // Always refetch when component mounts
-    retry: 2, // Retry failed requests 2 times
-    retryDelay: 1000, // Wait 1 second between retries
-    // Return empty array as default so UI doesn't break
-    placeholderData: [],
+export function useAlumniStories(status?: string) {
+  return useQuery<AlumniStoriesResponse, Error>({
+    queryKey: alumniStoriesQueryKey(status),
+    queryFn: ({ signal }) => getAlumniStories(signal, status),
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchOnMount: true,
+    retry: 2,
+    retryDelay: 1000,
+    placeholderData: { items: [] },
   });
 }

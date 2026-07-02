@@ -66,9 +66,23 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
 
   // Fetch story first to get alumni ID
   const storyRows = await sql/* sql */`
-    SELECT s.alumniid, s.alumnistories, s.storytitle, a.sapid, a.alumniname, a.facultyname, a.departmentname, a.yearofending, a.contactno, a.personalemail, a.officialemail, a.universityemail
+    SELECT
+      s.alumniid,
+      s.alumnistories,
+      s.storytitle,
+      a.sapid,
+      a.alumniname,
+      COALESCE(f.faculty_name, a.facultyname) AS facultyname,
+      COALESCE(d.department_name, a.departmentname) AS departmentname,
+      a.yearofending,
+      a.contactno,
+      a.personalemail,
+      a.officialemail,
+      a.universityemail
     FROM public.tblalumnistories s
     INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+    LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+    LEFT JOIN public.tbl_departments d ON d.id = a.department
     WHERE s.id = ${storyId}
     LIMIT 1
   `;

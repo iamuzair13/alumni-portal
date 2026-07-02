@@ -28,7 +28,7 @@ const STATUS_SERIES = [
   { key: "selfEmployed", label: "Self-employed", fill: KPI_COLOR_HEX.sky },
   { key: "unemployedSearching", label: "Searching", fill: KPI_COLOR_HEX.amber },
   { key: "unemployedByChoice", label: "By choice", fill: KPI_COLOR_HEX.orange },
-  { key: "other", label: "Other", fill: KPI_COLOR_HEX.slate },
+  { key: "other", label: "Pursuing higher education", fill: KPI_COLOR_HEX.slate },
 ] as const;
 
 function pct(n: number, d: number): string {
@@ -134,7 +134,7 @@ export function OccupationExpandPanel({
     { label: "Self-employed", value: statusTotals.selfEmployed, color: KPI_COLOR_HEX.sky },
     { label: "Searching", value: statusTotals.unemployedSearching, color: KPI_COLOR_HEX.amber },
     { label: "By choice", value: statusTotals.unemployedByChoice, color: KPI_COLOR_HEX.orange },
-    { label: "Other", value: statusTotals.other, color: KPI_COLOR_HEX.slate },
+    { label: "Pursuing higher education", value: statusTotals.other, color: KPI_COLOR_HEX.slate },
   ];
 
   return (
@@ -221,7 +221,7 @@ export function OccupationExpandPanel({
             { key: "selfEmployed", label: "Self-emp.", align: "right" },
             { key: "unemployedSearching", label: "Searching", align: "right" },
             { key: "unemployedByChoice", label: "By choice", align: "right" },
-            { key: "other", label: "Other", align: "right" },
+            { key: "other", label: "Pursuing higher education", align: "right" },
             { key: "total", label: "Total", align: "right" },
             { key: "share", label: "Share", align: "right" },
           ]}

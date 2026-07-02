@@ -220,6 +220,497 @@ const clamp = (text: unknown): string => {
   return value || "—";
 };
 
+// ─── Shared application-form layout (single-page, consistent spacing) ────────
+type FormMetrics = {
+  rowMinH: number;
+  tableRowH: number;
+  sectionH: number;
+  sectionGap: number;
+  headerH: number;
+  headerGap: number;
+  sigH: number;
+  fontLabel: number;
+  fontBody: number;
+  fontSmall: number;
+  fontTiny: number;
+  maxValueLines: number;
+};
+
+const FORM_METRIC_PRESETS: FormMetrics[] = [
+  {
+    rowMinH: 7.5,
+    tableRowH: 5.5,
+    sectionH: 6,
+    sectionGap: 1.5,
+    headerH: 18,
+    headerGap: 3,
+    sigH: 14,
+    fontLabel: 8,
+    fontBody: 9,
+    fontSmall: 8,
+    fontTiny: 7.5,
+    maxValueLines: 3,
+  },
+  {
+    rowMinH: 6.5,
+    tableRowH: 5,
+    sectionH: 5.5,
+    sectionGap: 1,
+    headerH: 16,
+    headerGap: 2.5,
+    sigH: 12,
+    fontLabel: 7.5,
+    fontBody: 8.5,
+    fontSmall: 7.5,
+    fontTiny: 7,
+    maxValueLines: 2,
+  },
+  {
+    rowMinH: 6,
+    tableRowH: 4.5,
+    sectionH: 5,
+    sectionGap: 0.75,
+    headerH: 15,
+    headerGap: 2,
+    sigH: 11,
+    fontLabel: 7,
+    fontBody: 8,
+    fontSmall: 7,
+    fontTiny: 6.5,
+    maxValueLines: 2,
+  },
+  {
+    rowMinH: 5.5,
+    tableRowH: 4,
+    sectionH: 4.5,
+    sectionGap: 0.5,
+    headerH: 14,
+    headerGap: 2,
+    sigH: 10,
+    fontLabel: 6.5,
+    fontBody: 7.5,
+    fontSmall: 6.5,
+    fontTiny: 6.5,
+    maxValueLines: 1,
+  },
+];
+
+function pickFormMetrics(
+  estimate: (metrics: FormMetrics) => number,
+  availableHeight: number,
+): FormMetrics {
+  for (const preset of FORM_METRIC_PRESETS) {
+    if (estimate(preset) <= availableHeight) return preset;
+  }
+  return FORM_METRIC_PRESETS[FORM_METRIC_PRESETS.length - 1];
+}
+
+function createApplicationFormRenderer(
+  doc: jsPDF,
+  metrics: FormMetrics,
+  opts?: { footerText?: string },
+) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const m = THEME.margin;
+  const W = pageW - m * 2;
+  const colW = W / 2;
+  const footerReserve = 10;
+  const footerY = pageH - footerReserve;
+  const sigBlockH = metrics.sectionH + metrics.sectionGap + metrics.sigH + 2;
+  const contentBottom = footerY - sigBlockH - 4;
+  let y = m;
+
+  const footerText =
+    opts?.footerText ??
+    "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
+
+  const lineHeight = (fontSize: number) => fontSize * 0.38;
+
+  const cappedLines = (text: string, width: number, fontSize: number) => {
+    doc.setFontSize(fontSize);
+    const lines = doc.splitTextToSize(text, width) as string[];
+    if (lines.length <= metrics.maxValueLines) return lines;
+    const kept = lines.slice(0, metrics.maxValueLines);
+    const last = kept[kept.length - 1] ?? "";
+    kept[kept.length - 1] = last.length > 3 ? `${last.slice(0, Math.max(0, last.length - 1))}…` : "…";
+    return kept;
+  };
+
+  const valueBlockHeight = (text: string, width: number) => {
+    const lines = cappedLines(text, width, metrics.fontBody);
+    return Math.max(metrics.rowMinH - 3.5, lines.length * lineHeight(metrics.fontBody));
+  };
+
+  const drawHRule = (yy: number, light = false) => {
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(light ? 0.1 : 0.15);
+    doc.line(m, yy, m + W, yy);
+  };
+
+  const drawVRule = (xx: number, y1: number, y2: number) => {
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(0.1);
+    doc.line(xx, y1, xx, y2);
+  };
+
+  const truncateToWidth = (text: string, maxW: number, fontSize = metrics.fontTiny) => {
+    const value = String(text || "").trim();
+    if (!value) return "—";
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(fontSize);
+    if (doc.getTextWidth(value) <= maxW) return value;
+    let s = value;
+    while (s.length > 0 && doc.getTextWidth(`${s}…`) > maxW) s = s.slice(0, -1);
+    return s.length < value.length ? `${s}…` : s;
+  };
+
+  const drawFormBodyStart = () => {
+    drawHRule(y);
+  };
+
+  const drawHeader = (title: string, logoVariant: "light" | "dark" = "light") => {
+    doc.setFillColor(...THEME.colors.brand);
+    doc.rect(m, y, W, metrics.headerH, "F");
+
+    const logoBase64 = getLogoBase64(logoVariant);
+    if (logoBase64) {
+      try {
+        const logoH = Math.min(9, metrics.headerH - 6);
+        const logoW = logoH * (26 / 9);
+        doc.addImage(
+          logoBase64,
+          "PNG",
+          m + 3,
+          y + (metrics.headerH - logoH) / 2,
+          logoW,
+          logoH,
+          "uol-logo",
+          "FAST",
+        );
+      } catch {
+        // skip logo on failure
+      }
+    }
+
+    doc.setTextColor(...THEME.colors.white);
+    doc.setFont("helvetica", "bold");
+    let fs = Math.min(11, metrics.fontBody + 2);
+    doc.setFontSize(fs);
+    const headerTitle = clamp(title).toUpperCase();
+    let tw = doc.getTextWidth(headerTitle);
+    while (tw > W - 12 && fs > 7) {
+      fs -= 0.5;
+      doc.setFontSize(fs);
+      tw = doc.getTextWidth(headerTitle);
+    }
+    doc.text(headerTitle, m + Math.max(0, (W - tw) / 2), y + metrics.headerH / 2 + fs * 0.12);
+    y += metrics.headerH + metrics.headerGap;
+  };
+
+  const drawSection = (letter: string, title: string) => {
+    doc.setFillColor(...THEME.colors.brandLight);
+    doc.rect(m, y, W, metrics.sectionH, "F");
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(0.1);
+    doc.rect(m, y, W, metrics.sectionH, "S");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontSmall);
+    doc.setTextColor(...THEME.colors.brand);
+    doc.text(`(${letter})  ${title.toUpperCase()}`, m + 2, y + metrics.sectionH * 0.62);
+    y += metrics.sectionH + metrics.sectionGap;
+  };
+
+  const drawFieldPair = (
+    label1: string,
+    value1: string | null | undefined,
+    label2: string,
+    value2: string | null | undefined,
+  ) => {
+    if (y >= contentBottom) return;
+    const v1 = clamp(value1);
+    const v2 = clamp(value2);
+    let h = Math.max(
+      metrics.rowMinH,
+      valueBlockHeight(v1, colW - 6) + 3.5,
+      valueBlockHeight(v2, colW - 6) + 3.5,
+    );
+    if (y + h > contentBottom) h = Math.max(metrics.rowMinH * 0.85, contentBottom - y);
+    if (h <= 0) return;
+    const rowTop = y;
+    drawHRule(y + h);
+    drawVRule(m + colW, rowTop, y + h);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontLabel);
+    doc.setTextColor(...THEME.colors.muted);
+    doc.text(clamp(label1).toUpperCase(), m + 2, y + 3.2);
+    doc.text(clamp(label2).toUpperCase(), m + colW + 2, y + 3.2);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(metrics.fontBody);
+    doc.setTextColor(...THEME.colors.text);
+    doc.text(cappedLines(v1, colW - 6, metrics.fontBody), m + 2, y + 6.5);
+    doc.text(cappedLines(v2, colW - 6, metrics.fontBody), m + colW + 2, y + 6.5);
+    y += h;
+  };
+
+  const drawFullRow = (label: string, value: string | null | undefined) => {
+    if (y >= contentBottom) return;
+    const v = clamp(value);
+    let h = Math.max(metrics.rowMinH, valueBlockHeight(v, W - 6) + 3.5);
+    if (y + h > contentBottom) h = Math.max(metrics.rowMinH * 0.85, contentBottom - y);
+    if (h <= 0) return;
+    drawHRule(y + h);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontLabel);
+    doc.setTextColor(...THEME.colors.muted);
+    doc.text(clamp(label).toUpperCase(), m + 2, y + 3.2);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(metrics.fontBody);
+    doc.setTextColor(...THEME.colors.text);
+    doc.text(cappedLines(v, W - 6, metrics.fontBody), m + 2, y + 6.5);
+    y += h;
+  };
+
+  const drawCheckbox = (cx: number, cy: number, checked: boolean) => {
+    const size = Math.max(2.4, metrics.tableRowH * 0.5);
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(0.15);
+    doc.rect(cx, cy, size, size);
+    if (checked) {
+      doc.setDrawColor(...THEME.colors.brand);
+      doc.setLineWidth(0.25);
+      doc.line(cx + size * 0.15, cy + size * 0.52, cx + size * 0.38, cy + size * 0.78);
+      doc.line(cx + size * 0.38, cy + size * 0.78, cx + size * 0.88, cy + size * 0.22);
+    }
+  };
+
+  const drawChecklistTable = (items: Array<{ label: string; value: string }>) => {
+    const labelColW = W * 0.72;
+    const statusColW = W - labelColW;
+    const rowH = metrics.tableRowH;
+
+    doc.setFillColor(...THEME.colors.brandLight);
+    doc.rect(m, y, W, rowH, "F");
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(0.1);
+    doc.rect(m, y, W, rowH, "S");
+    drawVRule(m + labelColW, y, y + rowH);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontSmall);
+    doc.setTextColor(...THEME.colors.text);
+    doc.text("DOCUMENT", m + 2, y + rowH * 0.72);
+    doc.text("STATUS", m + labelColW + 2, y + rowH * 0.72);
+    y += rowH;
+
+    items.forEach((item, i) => {
+      if (i % 2 === 1) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(m, y, W, rowH, "F");
+      }
+      drawHRule(y + rowH, true);
+      drawVRule(m + labelColW, y, y + rowH);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(metrics.fontSmall);
+      doc.setTextColor(...THEME.colors.text);
+      doc.text(truncateToWidth(item.label, labelColW - 4, metrics.fontSmall), m + 2, y + rowH * 0.72);
+
+      const val = clamp(item.value);
+      if (val === "Yes") doc.setTextColor(...THEME.colors.success);
+      else if (val === "No") doc.setTextColor(...THEME.colors.danger);
+      else doc.setTextColor(...THEME.colors.muted);
+      doc.text(val, m + labelColW + 2, y + rowH * 0.72);
+      doc.setTextColor(...THEME.colors.text);
+      y += rowH;
+    });
+  };
+
+  const drawDiscountTierTable = (
+    tiers: ScholarshipDiscountTierPdfRow[],
+    appliedPct: number | null,
+    bottomLimit: number,
+  ) => {
+    const rowH = metrics.tableRowH;
+    const checkW = 6;
+    const srW = 7;
+    const discountW = W * 0.5;
+    const criteriaW = W - checkW - srW - discountW;
+    const discountX = m + checkW + srW;
+    const criteriaX = discountX + discountW;
+    const isApplicableTier = (pct: number) => appliedPct != null && tiersMatchPercent(pct, appliedPct);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontTiny);
+    doc.setTextColor(...THEME.colors.text);
+    doc.text("Table 1.1 — Applicable Discount Criteria", m, y + 2.5);
+    y += 3.5;
+
+    doc.setFillColor(...THEME.colors.brandLight);
+    doc.rect(m, y, W, rowH, "F");
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(0.1);
+    doc.rect(m, y, W, rowH, "S");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontTiny);
+    doc.setTextColor(...THEME.colors.text);
+    doc.text("SR", m + checkW + 0.5, y + rowH * 0.72);
+    doc.text("DISCOUNT", discountX + 1, y + rowH * 0.72);
+    doc.text("CRITERIA", criteriaX + 1, y + rowH * 0.72);
+    y += rowH;
+
+    if (tiers.length === 0) {
+      drawHRule(y + rowH, true);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(metrics.fontTiny);
+      doc.setTextColor(...THEME.colors.muted);
+      doc.text("No discount tiers configured.", m + 2, y + rowH * 0.72);
+      y += rowH;
+      return;
+    }
+
+    tiers.forEach((tier, i) => {
+      if (y + rowH > bottomLimit) return;
+      if (i % 2 === 1) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(m, y, W, rowH, "F");
+      }
+      drawHRule(y + rowH, true);
+
+      drawCheckbox(m + 1, y + (rowH - Math.max(2.4, rowH * 0.5)) / 2, isApplicableTier(tier.discountPercent));
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(metrics.fontTiny);
+      doc.setTextColor(...THEME.colors.text);
+      doc.text(String(i + 1), m + checkW + 0.5, y + rowH * 0.72);
+      doc.text(truncateToWidth(clamp(tier.title), discountW - 2), discountX + 1, y + rowH * 0.72);
+      doc.text(truncateToWidth(clamp(tier.criteria), criteriaW - 2), criteriaX + 1, y + rowH * 0.72);
+      y += rowH;
+    });
+  };
+
+  const drawSignatureBlock = (leftLabel: string, rightLabel: string) => {
+    y = Math.max(y + 2, contentBottom - sigBlockH);
+    drawSection("e", "Review & Approval");
+
+    const sigCol = W / 2;
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(0.2);
+    doc.rect(m, y, sigCol - 2, metrics.sigH);
+    doc.rect(m + sigCol + 2, y, sigCol - 2, metrics.sigH);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontTiny);
+    doc.setTextColor(...THEME.colors.muted);
+    doc.text(leftLabel, m + 2, y + 4);
+    doc.text(rightLabel, m + sigCol + 4, y + 4);
+    y += metrics.sigH + 2;
+  };
+
+  const drawMembershipSignatures = (leftLabel: string, rightLabel: string) => {
+    y = Math.max(y + 2, contentBottom - metrics.sigH - 2);
+    const sigCol = W / 2;
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(0.2);
+    doc.rect(m, y, sigCol - 2, metrics.sigH);
+    doc.rect(m + sigCol + 2, y, sigCol - 2, metrics.sigH);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontSmall);
+    doc.setTextColor(...THEME.colors.muted);
+    doc.text(leftLabel, m + 2, y + 4.5);
+    doc.text(rightLabel, m + sigCol + 4, y + 4.5);
+    y += metrics.sigH;
+  };
+
+  const drawFooter = () => {
+    doc.setDrawColor(...THEME.colors.brand);
+    doc.setLineWidth(0.35);
+    doc.line(m, footerY - 4, m + W, footerY - 4);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(metrics.fontTiny);
+    doc.setTextColor(...THEME.colors.muted);
+    const fw = doc.getTextWidth(footerText);
+    doc.text(footerText, m + (W - fw) / 2, footerY);
+  };
+
+  const ensureSinglePage = () => {
+    const pages = doc.getNumberOfPages();
+    if (pages > 1) {
+      for (let i = pages; i > 1; i--) doc.deletePage(i);
+    }
+  };
+
+  const remaining = () => contentBottom - y;
+
+  return {
+    m,
+    W,
+    colW,
+    y,
+    contentBottom,
+    footerY,
+    getY: () => y,
+    setY: (next: number) => {
+      y = next;
+    },
+    remaining,
+    drawHeader,
+    drawFormBodyStart,
+    drawSection,
+    drawFieldPair,
+    drawFullRow,
+    drawChecklistTable,
+    drawDiscountTierTable,
+    drawSignatureBlock,
+    drawMembershipSignatures,
+    drawFooter,
+    ensureSinglePage,
+  };
+}
+
+function estimateScholarshipFormHeight(
+  data: ScholarshipLetterPDFData,
+  metrics: FormMetrics,
+): number {
+  const tierCount = data.discountTiers?.length ?? 0;
+  const tierRows = tierCount === 0 ? 1 : tierCount;
+  let rows = 1; // meta
+  rows += 2; // section A
+  rows += data.isKinship ? 3 : 2;
+  if (!data.isKinship) rows += 1; // admission ref
+  rows += data.isKinship ? 5 : 3; // section C
+  const sections = 5;
+  const checklistItems = data.isKinship ? 6 : 5;
+
+  return (
+    metrics.headerH +
+    metrics.headerGap +
+    rows * metrics.rowMinH +
+    sections * (metrics.sectionH + metrics.sectionGap) +
+    3.5 +
+    (1 + tierRows) * metrics.tableRowH +
+    (1 + checklistItems) * metrics.tableRowH +
+    metrics.sigH +
+    14
+  );
+}
+
+function estimateMembershipFormHeight(metrics: FormMetrics): number {
+  const rows = 1 + 2 + 3 + 3 + 2 + 2 + 1 + 1; // meta + sections a–f field rows
+  const sections = 6;
+  return (
+    metrics.headerH +
+    metrics.headerGap +
+    rows * metrics.rowMinH +
+    sections * (metrics.sectionH + metrics.sectionGap) +
+    metrics.sigH +
+    14
+  );
+}
+
 const normalizeAdminVerified = (raw: unknown): "YES" | "NO" | null => {
   const s = String(raw ?? "").trim().toUpperCase();
   if (s === "YES" || s === "Y") return "YES";
@@ -304,126 +795,20 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
   return new Promise((resolve, reject) => {
     try {
       const doc = new jsPDF({ compress: true, unit: "mm" });
-      const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
-      const m = THEME.margin;
-      const W = pageW - m * 2;
-      let y = m;
+      const availableHeight = pageH - THEME.margin * 2 - 24;
 
-      // ── Header ──
-      const headerH = 18;
-      doc.setFillColor(...THEME.colors.brand);
-      doc.rect(m, y, W, headerH, "F");
-
-      const logoBase64 = getLogoBase64("light");
-      if (logoBase64) {
-        try {
-          doc.addImage(logoBase64, "PNG", m + 3, y + 3, 26, 9, "uol-logo", "FAST");
-        } catch {}
-      }
+      const metrics = pickFormMetrics(
+        (preset) => estimateScholarshipFormHeight(data, preset),
+        availableHeight,
+      );
+      const form = createApplicationFormRenderer(doc, metrics);
 
       const headerTitle = isScholarshipKinshipCategory(data.discountType)
-        ? "ALUMNI SCHOLARSHIP APPLICATION (KINSHIP)"
+        ? "Alumni Scholarship Application (Kinship)"
         : isScholarshipFeeDiscountFlow(data.discountType)
-          ? "ALUMNI SCHOLARSHIP APPLICATION (SELF)"
-          : "ALUMNI SCHOLARSHIP APPLICATION";
-
-      doc.setTextColor(...THEME.colors.white);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      let tw = doc.getTextWidth(headerTitle);
-      let fs = 11;
-      while (tw > W - 10 && fs > 7.5) {
-        fs -= 0.5;
-        doc.setFontSize(fs);
-        tw = doc.getTextWidth(headerTitle);
-      }
-      doc.text(headerTitle, m + Math.max(0, (W - tw) / 2), y + headerH / 2 + 3.5);
-      y += headerH + 3;
-
-      // ── Helpers ──
-      const colW = W / 2;
-
-      const textHeight = (txt: string, width: number, fontSize: number) => {
-        doc.setFontSize(fontSize);
-        return doc.splitTextToSize(txt, width).length * fontSize * 0.38;
-      };
-
-      const drawRule = (yy: number) => {
-        doc.setDrawColor(...THEME.colors.border);
-        doc.setLineWidth(0.15);
-        doc.line(m, yy, m + W, yy);
-      };
-
-      const drawFieldPair = (
-        label1: string,
-        value1: string | null | undefined,
-        label2: string,
-        value2: string | null | undefined
-      ) => {
-        const v1 = clamp(value1);
-        const v2 = clamp(value2);
-        const h1 = textHeight(v1, colW - 5, THEME.font.body);
-        const h2 = textHeight(v2, colW - 5, THEME.font.body);
-        const h = Math.max(7.5, h1 + 4, h2 + 4);
-
-        drawRule(y + h);
-
-        // Label 1
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(THEME.font.small);
-        doc.setTextColor(...THEME.colors.muted);
-        doc.text(clamp(label1).toUpperCase(), m + 1, y + 3.2);
-
-        // Value 1
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(THEME.font.body);
-        doc.setTextColor(...THEME.colors.text);
-        doc.text(doc.splitTextToSize(v1, colW - 5), m + 1, y + 6.5);
-
-        // Label 2
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(THEME.font.small);
-        doc.setTextColor(...THEME.colors.muted);
-        doc.text(clamp(label2).toUpperCase(), m + colW + 1, y + 3.2);
-
-        // Value 2
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(THEME.font.body);
-        doc.setTextColor(...THEME.colors.text);
-        doc.text(doc.splitTextToSize(v2, colW - 5), m + colW + 1, y + 6.5);
-
-        y += h;
-      };
-
-      const drawFullRow = (label: string, value: string | null | undefined) => {
-        const v = clamp(value);
-        const h = Math.max(7.5, textHeight(v, W - 5, THEME.font.body) + 4);
-        drawRule(y + h);
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(THEME.font.small);
-        doc.setTextColor(...THEME.colors.muted);
-        doc.text(clamp(label).toUpperCase(), m + 1, y + 3.2);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(THEME.font.body);
-        doc.setTextColor(...THEME.colors.text);
-        doc.text(doc.splitTextToSize(v, W - 5), m + 1, y + 6.5);
-
-        y += h;
-      };
-
-      const drawSection = (letter: string, title: string) => {
-        const h = 6;
-        doc.setFillColor(...THEME.colors.brandLight);
-        doc.rect(m, y, W, h, "F");
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(THEME.font.small);
-        doc.setTextColor(...THEME.colors.brand);
-        doc.text(`(${letter})  ${title.toUpperCase()}`, m + 2, y + 3.9);
-        y += h + 1.5;
-      };
+          ? "Alumni Scholarship Application (Self)"
+          : "Alumni Scholarship Application";
 
       const findChecklistValue = (keywords: string[]) => {
         const docs = data.uploadedDocuments || [];
@@ -439,61 +824,85 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         return "—";
       };
 
-      // ── Meta ──
+      form.drawHeader(headerTitle);
+      form.drawFormBodyStart();
+
       const pdfAppId = String(data.scholarshipApplicationPdfId || "").trim();
       if (pdfAppId) {
-        drawFieldPair("Application Date", data.dateFormatted, "Application ID", pdfAppId);
+        form.drawFieldPair("Application Date", data.dateFormatted, "Application ID", pdfAppId);
       } else {
-        drawFullRow("Application Date", data.dateFormatted);
+        form.drawFullRow("Application Date", data.dateFormatted);
       }
 
-      // ── Section A ──
-      drawSection("a", "Alumni Details");
-      drawFieldPair("Name", data.studentName, "Father's Name", data.fatherName);
-      drawFieldPair("Date of Birth", data.dob, "CNIC", data.cnic);
+      form.drawSection("a", "Alumni Details");
+      form.drawFieldPair("Name", data.studentName, "Father's Name", data.fatherName);
+      form.drawFieldPair("Date of Birth", data.dob, "CNIC", data.cnic);
 
-      // ── Section B ──
-      drawSection("b", data.isKinship ? "Alumni Educational Record" : "Program Applied For");
-      drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
-      drawFieldPair("Department", data.department, "Program", data.isKinship ? data.program : data.requestedProgramDegree);
-
-      if (data.isKinship) {
-        drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
-        drawFieldPair("Passing Out Year", data.passingOutYear, "Discount Category", data.scholarshipType);
-        drawFieldPair("Applicable Discount", data.requestedDiscount, "Applying For", data.applyingFor);
-      } else {
-        drawFieldPair("Discount Category", data.scholarshipType, "Applicable Discount(Approved as criteria in table 1.1)", data.requestedDiscount);
-        drawFullRow("Admission Reference No", data.admissionApplicationRef);
-      }
-
-      // ── Section C ──
-      drawSection(
-        "c",
-        data.isKinship
-          ? "Kin Details — Previous Educational Record & Program Applied For"
-          : "Previous UOL Education Record"
+      form.drawSection("b", data.isKinship ? "Alumni Educational Record" : "Program Applied For");
+      form.drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
+      form.drawFieldPair(
+        "Department",
+        data.department,
+        "Program",
+        data.isKinship ? data.program : data.requestedProgramDegree,
       );
 
       if (data.isKinship) {
-        drawFieldPair("Name", data.kinshipDetails?.kinName, "Father's Name", data.kinshipDetails?.kinFatherName);
-        drawFieldPair("Campus", data.kinshipDetails?.kinCampus, "Faculty", data.kinshipDetails?.kinFaculty);
-        drawFieldPair("Department", data.kinshipDetails?.kinDepartment, "Program", data.kinshipDetails?.kinProgram);
-        drawFieldPair("Admission Ref No", data.kinshipDetails?.kinAdmissionRefNo, "Last Degree / Certificate", data.kinshipDetails?.kinLastDegreeCertificate);
-        drawFullRow("Passing Out Year", data.kinshipDetails?.kinPassingOutYear);
+        form.drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
+        form.drawFieldPair("Passing Out Year", data.passingOutYear, "Discount Category", data.scholarshipType);
+        form.drawFieldPair("Applicable Discount", data.requestedDiscount, "Applying For", data.applyingFor);
       } else {
-        drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
-        drawFieldPair("Department", data.department, "Program", data.previousDegree);
-        drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
-        drawFullRow("Passing Out Year", data.passingOutYear);
+        form.drawFieldPair(
+          "Discount Category",
+          data.scholarshipType,
+          "Applicable Discount (Table 1.1)",
+          data.requestedDiscount,
+        );
+        form.drawFullRow("Admission Reference No", data.admissionApplicationRef);
       }
 
-      // ── Section D ──
-      drawSection("d", "Documents Checklist");
+      const appliedPct =
+        parseDiscountPercentValue(data.appliedDiscountPercent) ??
+        parseDiscountPercentValue(data.requestedDiscount);
+      const tierBottomLimit = form.contentBottom - 90;
+      form.drawDiscountTierTable(data.discountTiers ?? [], appliedPct, tierBottomLimit);
 
+      form.drawSection(
+        "c",
+        data.isKinship
+          ? "Kin Details — Educational Record & Program Applied For"
+          : "Previous UOL Education Record",
+      );
+
+      if (data.isKinship) {
+        form.drawFieldPair("Name", data.kinshipDetails?.kinName, "Father's Name", data.kinshipDetails?.kinFatherName);
+        form.drawFieldPair("Campus", data.kinshipDetails?.kinCampus, "Faculty", data.kinshipDetails?.kinFaculty);
+        form.drawFieldPair("Department", data.kinshipDetails?.kinDepartment, "Program", data.kinshipDetails?.kinProgram);
+        form.drawFieldPair(
+          "Admission Ref No",
+          data.kinshipDetails?.kinAdmissionRefNo,
+          "Last Degree / Certificate",
+          data.kinshipDetails?.kinLastDegreeCertificate,
+        );
+        form.drawFullRow("Passing Out Year", data.kinshipDetails?.kinPassingOutYear);
+      } else {
+        form.drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
+        form.drawFieldPair("Department", data.department, "Program", data.previousDegree);
+        form.drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
+        form.drawFullRow("Passing Out Year", data.passingOutYear);
+      }
+
+      form.drawSection("d", "Documents Checklist");
       const docItems = data.isKinship
         ? [
-            { label: "Copy of Admission Letter", value: findChecklistValue(["copy of admission letter", "kinship-admission-letter", "admission letter"]) },
-            { label: "Academic Certificates / Transcripts (Kin)", value: findChecklistValue(["academic certificates/transcripts (kin)", "kinship-academic-certificates"]) },
+            {
+              label: "Copy of Admission Letter",
+              value: findChecklistValue(["copy of admission letter", "kinship-admission-letter", "admission letter"]),
+            },
+            {
+              label: "Academic Certificates / Transcripts (Kin)",
+              value: findChecklistValue(["academic certificates/transcripts (kin)", "kinship-academic-certificates"]),
+            },
             { label: "Alumni Card", value: findChecklistValue(["alumni card", "kinship-alumni-card"]) },
             { label: "FRC", value: findChecklistValue(["frc", "kinship-frc"]) },
             { label: "CNIC Copy (Kin)", value: findChecklistValue(["cnic copy (kinship)", "kinship-cnic-kin"]) },
@@ -506,185 +915,11 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
             { label: "Curriculum Vitae (CV)", value: findChecklistValue(["curriculum vitae", "cv"]) },
             { label: "CNIC Copy", value: findChecklistValue(["cnic"]) },
           ];
+      form.drawChecklistTable(docItems);
 
-      // Compact checklist table
-      const docColLabelW = W * 0.72;
-      const docColStatusW = W - docColLabelW;
-
-      // Header
-      let rowH = 5.5;
-      doc.setFillColor(...THEME.colors.brandLight);
-      doc.rect(m, y, docColLabelW, rowH, "F");
-      doc.rect(m + docColLabelW, y, docColStatusW, rowH, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(THEME.font.small);
-      doc.setTextColor(...THEME.colors.text);
-      doc.text("DOCUMENT", m + 2, y + 4.2);
-      doc.text("STATUS", m + docColLabelW + 2, y + 4.2);
-      y += rowH;
-
-      docItems.forEach((item, i) => {
-        rowH = 5.5;
-        if (i % 2 === 1) {
-          doc.setFillColor(250, 250, 250);
-          doc.rect(m, y, W, rowH, "F");
-        }
-        doc.setDrawColor(...THEME.colors.border);
-        doc.setLineWidth(0.1);
-        doc.line(m, y + rowH, m + W, y + rowH);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(THEME.font.small);
-        doc.setTextColor(...THEME.colors.text);
-        doc.text(clamp(item.label), m + 2, y + 4.2);
-
-        const val = clamp(item.value);
-        if (val === "Yes") doc.setTextColor(...THEME.colors.success);
-        else if (val === "No") doc.setTextColor(...THEME.colors.danger);
-        else doc.setTextColor(...THEME.colors.muted);
-        doc.text(val, m + docColLabelW + 2, y + 4.2);
-        doc.setTextColor(...THEME.colors.text);
-
-        y += rowH;
-      });
-
-      y += 2;
-
-      // ── Section E (single-page anchored layout) ──
-      const footerY = pageH - 9;
-      const sigH = 14;
-      const tierFont = THEME.font.tiny;
-      const tableBottomLimit = footerY - 8;
-
-      const truncateToWidth = (text: string, maxW: number) => {
-        const value = String(text || "").trim();
-        if (!value) return "—";
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(tierFont);
-        if (doc.getTextWidth(value) <= maxW) return value;
-        let s = value;
-        while (s.length > 0 && doc.getTextWidth(`${s}…`) > maxW) s = s.slice(0, -1);
-        return s.length < value.length ? `${s}…` : s;
-      };
-
-      const drawCheckbox = (cx: number, cy: number, checked: boolean) => {
-        const size = 2.8;
-        doc.setDrawColor(...THEME.colors.border);
-        doc.setLineWidth(0.15);
-        doc.rect(cx, cy, size, size);
-        if (checked) {
-          doc.setDrawColor(...THEME.colors.brand);
-          doc.setLineWidth(0.3);
-          doc.line(cx + 0.5, cy + 1.4, cx + 1.1, cy + 2);
-          doc.line(cx + 1.1, cy + 2, cx + 2.4, cy + 0.7);
-        }
-      };
-
-      drawSection("e", "Review & Approval");
-
-      const discountTiers = data.discountTiers ?? [];
-      const appliedPct =
-        parseDiscountPercentValue(data.appliedDiscountPercent) ??
-        parseDiscountPercentValue(data.requestedDiscount);
-      const isApplicableTier = (pct: number) =>
-        appliedPct != null && tiersMatchPercent(pct, appliedPct);
-
-      const sigCol = W / 2;
-      doc.setDrawColor(...THEME.colors.border);
-      doc.setLineWidth(0.2);
-      doc.rect(m, y, sigCol - 2, sigH);
-      doc.rect(m + sigCol + 2, y, sigCol - 2, sigH);
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(THEME.font.tiny);
-      doc.setTextColor(...THEME.colors.muted);
-      doc.text("Reviewed By (ARO)", m + 2, y + 4);
-      doc.text("Approved By (Competent Authority)", m + sigCol + 4, y + 4);
-      y += sigH + 4;
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(THEME.font.tiny);
-      doc.setTextColor(...THEME.colors.text);
-      doc.text("Table 1.1", m, y + 2.8);
-      y += 4;
-
-      const tierRowH = 5;
-      const tierCheckW = 6;
-      const tierSrW = 7;
-      const tierDiscountW = W * 0.5;
-      const tierCriteriaW = W - tierCheckW - tierSrW - tierDiscountW;
-      const tierDiscountX = m + tierCheckW + tierSrW;
-      const tierCriteriaX = tierDiscountX + tierDiscountW;
-
-      doc.setFillColor(...THEME.colors.brandLight);
-      doc.rect(m, y, W, tierRowH, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(tierFont);
-      doc.setTextColor(...THEME.colors.text);
-      doc.text("SR", m + tierCheckW + 0.5, y + 3.5);
-      doc.text("DISCOUNT", tierDiscountX + 1, y + 3.5);
-      doc.text("CRITERIA", tierCriteriaX + 1, y + 3.5);
-      y += tierRowH;
-
-      if (discountTiers.length === 0) {
-        doc.setDrawColor(...THEME.colors.border);
-        doc.setLineWidth(0.1);
-        doc.line(m, y + tierRowH, m + W, y + tierRowH);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(tierFont);
-        doc.setTextColor(...THEME.colors.muted);
-        doc.text("No discount tiers configured.", m + 1, y + 3.5);
-        y += tierRowH;
-      } else {
-        discountTiers.forEach((tier, i) => {
-          if (y + tierRowH > tableBottomLimit) return;
-
-          if (i % 2 === 1) {
-            doc.setFillColor(250, 250, 250);
-            doc.rect(m, y, W, tierRowH, "F");
-          }
-          doc.setDrawColor(...THEME.colors.border);
-          doc.setLineWidth(0.1);
-          doc.line(m, y + tierRowH, m + W, y + tierRowH);
-
-          const checked = isApplicableTier(tier.discountPercent);
-          drawCheckbox(m + 1, y + 1.1, checked);
-
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(tierFont);
-          doc.setTextColor(...THEME.colors.text);
-          doc.text(String(i + 1), m + tierCheckW + 0.5, y + 3.5);
-          doc.text(
-            truncateToWidth(clamp(tier.title), tierDiscountW - 2),
-            tierDiscountX + 1,
-            y + 3.5,
-          );
-          doc.text(
-            truncateToWidth(clamp(tier.criteria), tierCriteriaW - 2),
-            tierCriteriaX + 1,
-            y + 3.5,
-          );
-
-          y += tierRowH;
-        });
-      }
-
-      // Footer
-      doc.setDrawColor(...THEME.colors.brand);
-      doc.setLineWidth(0.4);
-      doc.line(m, footerY - 4, m + W, footerY - 4);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(THEME.font.tiny);
-      doc.setTextColor(...THEME.colors.muted);
-      const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
-      const fw = doc.getTextWidth(footerText);
-      doc.text(footerText, m + (W - fw) / 2, footerY);
-
-      // Safety: enforce single page
-      const pages = doc.getNumberOfPages();
-      if (pages > 1) {
-        for (let i = pages; i > 1; i--) doc.deletePage(i);
-      }
+      form.drawSignatureBlock("Reviewed By (ARO)", "Approved By (Competent Authority)");
+      form.drawFooter();
+      form.ensureSinglePage();
 
       resolve(Buffer.from(doc.output("arraybuffer")));
     } catch (e) {
@@ -819,163 +1054,54 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
   return new Promise((resolve, reject) => {
     try {
       const doc = new jsPDF({ compress: true, unit: "mm" });
-      const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
-      const m = THEME.margin;
-      const W = pageW - m * 2;
-      let y = m;
+      const availableHeight = pageH - THEME.margin * 2 - 24;
 
-      // Header
-      const headerH = 18;
-      doc.setFillColor(...THEME.colors.brand);
-      doc.rect(m, y, W, headerH, "F");
-      const logoBase64 = getLogoBase64("light");
-      if (logoBase64) {
-        try {
-          doc.addImage(logoBase64, "PNG", m + 3, y + 3, 26, 9, "uol-logo", "FAST");
-        } catch {}
-      }
-      doc.setTextColor(...THEME.colors.white);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      const hTitle = clamp(data.headerTitle).toUpperCase();
-      let tw = doc.getTextWidth(hTitle);
-      let fs = 11;
-      while (tw > W - 10 && fs > 7.5) {
-        fs -= 0.5;
-        doc.setFontSize(fs);
-        tw = doc.getTextWidth(hTitle);
-      }
-      doc.text(hTitle, m + Math.max(0, (W - tw) / 2), y + headerH / 2 + 3.5);
-      y += headerH + 5;
+      const metrics = pickFormMetrics((preset) => estimateMembershipFormHeight(preset), availableHeight);
+      const form = createApplicationFormRenderer(doc, metrics);
 
-      // Helpers
-      const colW = W / 2;
-      const textHeight = (txt: string, width: number, fontSize: number) => {
-        doc.setFontSize(fontSize);
-        return doc.splitTextToSize(txt, width).length * fontSize * 0.38;
-      };
-      const drawRule = (yy: number) => {
-        doc.setDrawColor(...THEME.colors.border);
-        doc.setLineWidth(0.15);
-        doc.line(m, yy, m + W, yy);
-      };
-      const drawFieldPair = (
-        label1: string,
-        value1: string | null | undefined,
-        label2: string,
-        value2: string | null | undefined
-      ) => {
-        const v1 = clamp(value1);
-        const v2 = clamp(value2);
-        const h = Math.max(9, textHeight(v1, colW - 5, THEME.font.body) + 5, textHeight(v2, colW - 5, THEME.font.body) + 5);
-        drawRule(y + h);
+      form.drawHeader(data.headerTitle);
+      form.drawFormBodyStart();
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(THEME.font.small);
-        doc.setTextColor(...THEME.colors.muted);
-        doc.text(clamp(label1).toUpperCase(), m + 1, y + 3.2);
-        doc.text(clamp(label2).toUpperCase(), m + colW + 1, y + 3.2);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(THEME.font.body);
-        doc.setTextColor(...THEME.colors.text);
-        doc.text(doc.splitTextToSize(v1, colW - 5), m + 1, y + 6.5);
-        doc.text(doc.splitTextToSize(v2, colW - 5), m + colW + 1, y + 6.5);
-        y += h;
-      };
-      const drawFullRow = (label: string, value: string | null | undefined) => {
-        const v = clamp(value);
-        const h = Math.max(9, textHeight(v, W - 5, THEME.font.body) + 5);
-        drawRule(y + h);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(THEME.font.small);
-        doc.setTextColor(...THEME.colors.muted);
-        doc.text(clamp(label).toUpperCase(), m + 1, y + 3.2);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(THEME.font.body);
-        doc.setTextColor(...THEME.colors.text);
-        doc.text(doc.splitTextToSize(v, W - 5), m + 1, y + 6.5);
-        y += h;
-      };
-      const drawSection = (letter: string, title: string) => {
-        const h = 6.5;
-        doc.setFillColor(...THEME.colors.brandLight);
-        doc.rect(m, y, W, h, "F");
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(THEME.font.small);
-        doc.setTextColor(...THEME.colors.brand);
-        doc.text(`(${letter})  ${title.toUpperCase()}`, m + 2, y + 4.2);
-        y += h + 2.5;
-      };
-
-      // Meta
       const appRef = String(data.applicationRef || "").trim();
       if (appRef) {
-        drawFieldPair("Application Date", data.dateFormatted, "Application ID", appRef);
+        form.drawFieldPair("Application Date", data.dateFormatted, "Application ID", appRef);
       } else {
-        drawFullRow("Application Date", data.dateFormatted);
+        form.drawFullRow("Application Date", data.dateFormatted);
       }
 
-      // Sections
-      drawSection("a", "Alumni Personal Details");
-      drawFieldPair("Name", data.studentName, "Father's Name", data.fatherName);
-      drawFieldPair("Date of Birth", data.dob, "CNIC", data.cnic);
+      form.drawSection("a", "Alumni Personal Details");
+      form.drawFieldPair("Name", data.studentName, "Father's Name", data.fatherName);
+      form.drawFieldPair("Date of Birth", data.dob, "CNIC", data.cnic);
 
-      drawSection("b", "Alumni Education Details");
-      drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
-      drawFieldPair("Department", data.department, "Program", data.program);
-      drawFieldPair("SAP ID", data.sapCode, "CGPA", data.cgpa);
-      drawFullRow("Passing Out Year", data.passingOutYear);
+      form.drawSection("b", "Alumni Education Details");
+      form.drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
+      form.drawFieldPair("Department", data.department, "Program", data.program);
+      form.drawFieldPair("SAP ID", data.sapCode, "CGPA", data.cgpa);
+      form.drawFullRow("Passing Out Year", data.passingOutYear);
 
-      drawSection("c", "Membership Details");
-      drawFieldPair("Applying For", data.applyingFor, "Discount Type", data.discountType);
-      drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
-      drawFullRow("Preferred Timing", data.preferredTiming);
+      form.drawSection("c", "Membership Details");
+      form.drawFieldPair("Applying For", data.applyingFor, "Discount Type", data.discountType);
+      form.drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
+      form.drawFullRow("Preferred Timing", data.preferredTiming);
 
-      drawSection("d", "Medical & Fitness Information");
-      drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
-      drawFullRow("Allergies", data.allergies);
+      form.drawSection("d", "Medical & Fitness Information");
+      form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
+      form.drawFullRow("Allergies", data.allergies);
 
-      drawSection("e", "Emergency Contact");
-      drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
-      drawFullRow("Contact Number", data.emergencyContactNumber);
+      form.drawSection("e", "Emergency Contact");
+      form.drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
+      form.drawFullRow("Contact Number", data.emergencyContactNumber);
 
-      drawSection("f", "Documents Checklist");
-      drawFieldPair("Alumni Card", data.alumniCardSubmitted, "CNIC", data.cnicDocSubmitted);
+      form.drawSection("f", "Documents Checklist");
+      form.drawChecklistTable([
+        { label: "Alumni Card", value: data.alumniCardSubmitted },
+        { label: "CNIC", value: data.cnicDocSubmitted },
+      ]);
 
-      y += 4;
-
-      // Signatures
-      const sigH = 18;
-      const sigCol = W / 2;
-      doc.setDrawColor(...THEME.colors.border);
-      doc.setLineWidth(0.2);
-      doc.rect(m, y, sigCol - 2, sigH);
-      doc.rect(m + sigCol + 2, y, sigCol - 2, sigH);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(THEME.font.small);
-      doc.setTextColor(...THEME.colors.muted);
-      doc.text("Reviewed By (ARO)", m + 2, y + 4.5);
-      doc.text("Approved By (Competent Authority)", m + sigCol + 4, y + 4.5);
-      y += sigH;
-
-      // Footer
-      const footerY = pageH - 10;
-      doc.setDrawColor(...THEME.colors.brand);
-      doc.setLineWidth(0.4);
-      doc.line(m, footerY - 4, m + W, footerY - 4);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(THEME.font.tiny);
-      doc.setTextColor(...THEME.colors.muted);
-      const ft = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
-      const fw = doc.getTextWidth(ft);
-      doc.text(ft, m + (W - fw) / 2, footerY);
-
-      const pages = doc.getNumberOfPages();
-      if (pages > 2) {
-        for (let i = pages; i > 2; i--) doc.deletePage(i);
-      }
+      form.drawMembershipSignatures("Reviewed By (ARO)", "Approved By (Competent Authority)");
+      form.drawFooter();
+      form.ensureSinglePage();
 
       resolve(Buffer.from(doc.output("arraybuffer")));
     } catch (e) {

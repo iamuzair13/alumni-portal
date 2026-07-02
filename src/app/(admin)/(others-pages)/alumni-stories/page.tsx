@@ -9,12 +9,16 @@ import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
-import { EyeIcon, TrashBinIcon } from "@/icons";
+import { EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAlumniStories, alumniStoriesKey, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
 import AlumniSuccessForm from "@/components/forms/alumni-success";
-import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { canModify, isSuperAdminUser } from "@/lib/alumniProfile";
 import { storyHtmlTextContent } from "@/lib/sanitizeStoryHtml";
+import StoryStatusBadge from "@/components/alumni/StoryStatusBadge";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
+import { normalizeStoryStatus } from "@/lib/alumniStories";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +32,18 @@ type Story = {
   session: string;
   shortDescription: string;
   imageUrl: string;
+  status: string;
+  rejectionReason?: string | null;
 };
+
+type StatusTabKey = "all" | "pending" | "approved" | "notApproved";
+
+const STATUS_TABS: { key: StatusTabKey; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "approved", label: "Approved" },
+  { key: "notApproved", label: "Not Approved" },
+];
 
 // Tabs typing
 type TabKey = "viewStories" | "addStory";
@@ -90,7 +105,7 @@ const Toast: React.FC<{ message: string; type: "success" | "error"; onClose: () 
 // Shimmer skeleton for table rows
 const ShimmerRow: React.FC = () => (
   <TableRow className="relative overflow-hidden">
-    {Array.from({ length: 7 }).map((_, i) => (
+    {Array.from({ length: 8 }).map((_, i) => (
       <TableCell key={i} className="px-4 py-4">
         <div className="h-4 rounded-lg bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 animate-shimmer bg-[length:200%_100%]" 
              style={{ width: i === 0 ? '2rem' : i === 5 ? '2.5rem' : i === 6 ? '5rem' : '80%' }} />
@@ -107,15 +122,35 @@ type StoryListProps = {
   errorMessage?: string | null;
   emptyMessage?: string;
   onDelete?: (id: string) => Promise<void> | void;
+  onApprove?: (id: string) => Promise<void> | void;
+  onReject?: (id: string, reason: string) => Promise<void> | void;
   deletingIds?: Set<string>;
+  reviewingIds?: Set<string>;
   canDelete?: boolean;
+  canReview?: boolean;
   actionMessage?: string | null;
   actionError?: string | null;
 };
 
-const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, errorMessage, emptyMessage, onDelete, deletingIds, canDelete = false }) => {
+const StoryTable: React.FC<StoryListProps> = ({
+  items,
+  loading,
+  isFetching,
+  errorMessage,
+  emptyMessage,
+  onDelete,
+  onApprove,
+  onReject,
+  deletingIds,
+  reviewingIds,
+  canDelete = false,
+  canReview = false,
+}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const rejectModal = useModal();
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
     setCurrentPage(1);
@@ -139,7 +174,7 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
         <Table className="min-w-full">
           <TableHeader className="sticky top-0 z-10">
             <TableRow className="border-b border-gray-100 bg-gray-50/80 backdrop-blur-xl dark:border-white/[0.06] dark:bg-gray-800/80">
-              {["SrNo.", "Date", "Name & Title", "Program & Session", "Short Description", "Image", "Actions"].map((header) => (
+              {["SrNo.", "Date", "Name & Title", "Program & Session", "Short Description", "Status", "Image", "Actions"].map((header) => (
                 <TableCell 
                   key={header} 
                   isHeader 
@@ -160,7 +195,7 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
             
             {!loading && !!errorMessage && (
               <TableRow>
-                <TableCell className="px-5 py-8" colSpan={7}>
+                <TableCell className="px-5 py-8" colSpan={8}>
                   <div className="flex flex-col items-center justify-center gap-4 text-center">
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 dark:bg-red-900/20">
                       <svg className="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,7 +222,7 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
             
             {!loading && !errorMessage && paged.length === 0 && (
               <TableRow>
-                <TableCell className="px-5 py-16" colSpan={7}>
+                <TableCell className="px-5 py-16" colSpan={8}>
                   <div className="flex flex-col items-center justify-center text-center">
                     <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700">
                       <svg className="h-10 w-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,6 +290,13 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
                 </TableCell>
 
                 <TableCell className="px-5 py-4">
+                  <StoryStatusBadge status={story.status} size="sm" />
+                  {normalizeStoryStatus(story.status) === "not-approved" && story.rejectionReason && (
+                    <p className="mt-1 line-clamp-2 text-xs text-rose-600 dark:text-rose-400">{story.rejectionReason}</p>
+                  )}
+                </TableCell>
+
+                <TableCell className="px-5 py-4">
                   <div className="relative h-12 w-12 overflow-hidden rounded-xl ring-2 ring-gray-100 transition-all duration-300 group-hover:ring-blue-200 dark:ring-gray-800 dark:group-hover:ring-blue-800">
                     <img
                       src={safeImageSrc(story.imageUrl)}
@@ -275,6 +317,34 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
                     >
                       <EyeIcon className="h-4 w-4 transition-transform duration-200 group-hover/btn:scale-110" />
                     </Link>
+
+                    {canReview && (normalizeStoryStatus(story.status) === "pending" || normalizeStoryStatus(story.status) === "not-approved") && (
+                      <button
+                        type="button"
+                        onClick={() => onApprove?.(story.id)}
+                        disabled={Boolean(reviewingIds?.has(story.id))}
+                        aria-label={`Approve story for ${story.name}`}
+                        className="group/btn inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-200 transition-all duration-200 hover:bg-emerald-50 hover:shadow-md active:scale-95 disabled:opacity-50"
+                      >
+                        <CheckLineIcon className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    {canReview && (normalizeStoryStatus(story.status) === "pending" || normalizeStoryStatus(story.status) === "approved") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRejectTargetId(story.id);
+                          setRejectionReason("");
+                          rejectModal.openModal();
+                        }}
+                        disabled={Boolean(reviewingIds?.has(story.id))}
+                        aria-label={`Reject story for ${story.name}`}
+                        className="group/btn inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-rose-600 shadow-sm ring-1 ring-rose-200 transition-all duration-200 hover:bg-rose-50 hover:shadow-md active:scale-95 disabled:opacity-50"
+                      >
+                        <CloseLineIcon className="h-4 w-4" />
+                      </button>
+                    )}
 
                     {canDelete && (
                     <button
@@ -333,6 +403,42 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))} />
         </div>
       </div>
+
+      <Modal isOpen={rejectModal.isOpen} onClose={rejectModal.closeModal} className="max-w-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Reject Story</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Please provide a reason so the alumni can revise and resubmit.
+        </p>
+        <textarea
+          value={rejectionReason}
+          onChange={(e) => setRejectionReason(e.target.value)}
+          rows={4}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          placeholder="Enter rejection reason..."
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={rejectModal.closeModal}
+            className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!rejectTargetId || !rejectionReason.trim()) return;
+              await onReject?.(rejectTargetId, rejectionReason.trim());
+              rejectModal.closeModal();
+              setRejectTargetId(null);
+              setRejectionReason("");
+            }}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+          >
+            Confirm Rejection
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -340,17 +446,31 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
 function AlumniPageInner() {
   const [selected, setSelected] = useState<TabKey>("viewStories");
   const [isTabAnimating, setIsTabAnimating] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<StatusTabKey>("all");
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const isSuperAdmin = isSuperAdminUser(session?.user);
-  const { data: rawStories, isLoading, isFetching, isError, error, refetch } = useAlumniStories();
+  const canReviewStories = canModify(session?.user);
+  const statusParam = selectedStatus === "notApproved" ? "not-approved" : selectedStatus;
+  const { data: storiesResponse, isLoading, isFetching, isError, error, refetch } = useAlumniStories(
+    selectedStatus === "all" ? undefined : statusParam
+  );
   const [stories, setStories] = useState<Story[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [reviewingIds, setReviewingIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const statusCounts = useMemo(() => {
+    const c = storiesResponse?.counts;
+    const pending = c?.pending ?? 0;
+    const approved = c?.approved ?? 0;
+    const notApproved = c?.notApproved ?? 0;
+    return { all: pending + approved + notApproved, pending, approved, notApproved };
+  }, [storiesResponse?.counts]);
 
   const filteredStories = useMemo<Story[]>(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -366,7 +486,7 @@ function AlumniPageInner() {
   }, [stories, searchQuery]);
 
   useEffect(() => {
-    const mapped: Story[] = (rawStories ?? []).map((s: AlumniStoryItem) => ({
+    const mapped: Story[] = (storiesResponse?.items ?? []).map((s: AlumniStoryItem) => ({
       id: s.id,
       date: s.date,
       title: s.title,
@@ -375,15 +495,63 @@ function AlumniPageInner() {
       session: s.session,
       shortDescription: s.shortDescription,
       imageUrl: s.imageUrl,
+      status: s.status,
+      rejectionReason: s.rejectionReason,
     }));
     setStories(mapped);
-  }, [rawStories]);
+  }, [storiesResponse?.items]);
 
   useEffect(() => {
-    if (!isLoading && !rawStories && !isError) {
+    if (!isLoading && !storiesResponse?.items && !isError) {
       refetch();
     }
-  }, [isLoading, rawStories, isError, refetch]);
+  }, [isLoading, storiesResponse?.items, isError, refetch]);
+
+  const handleApprove = async (id: string) => {
+    try {
+      setReviewingIds((prev) => new Set(prev).add(id));
+      const res = await fetch(`/api/alumni-stories/${id}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+      if (!res.ok) throw new Error(`Approve failed: ${res.status}`);
+      await queryClient.invalidateQueries({ queryKey: alumniStoriesKey, exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["alumni-stories-counts"] });
+      setToast({ message: "Story approved successfully", type: "success" });
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Failed to approve", type: "error" });
+    } finally {
+      setReviewingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const handleReject = async (id: string, reason: string) => {
+    try {
+      setReviewingIds((prev) => new Set(prev).add(id));
+      const res = await fetch(`/api/alumni-stories/${id}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", rejectionReason: reason }),
+      });
+      if (!res.ok) throw new Error(`Reject failed: ${res.status}`);
+      await queryClient.invalidateQueries({ queryKey: alumniStoriesKey, exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["alumni-stories-counts"] });
+      setToast({ message: "Story rejected", type: "success" });
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Failed to reject", type: "error" });
+    } finally {
+      setReviewingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
 
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
@@ -517,6 +685,26 @@ function AlumniPageInner() {
                   </button>
                 </div>
 
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_TABS.map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setSelectedStatus(tab.key)}
+                      className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                        selectedStatus === tab.key
+                          ? "bg-blue-600 text-white shadow-md"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      {tab.label}
+                      <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+                        {statusCounts[tab.key]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
                 <StoryTable
                   items={filteredStories}
                   loading={isLoading}
@@ -524,7 +712,11 @@ function AlumniPageInner() {
                   errorMessage={isError ? (error?.message ?? "Failed to load data.") : null}
                   emptyMessage="No stories available"
                   deletingIds={deletingIds}
+                  reviewingIds={reviewingIds}
                   canDelete={isSuperAdmin}
+                  canReview={canReviewStories}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
                   onDelete={async (id: string) => {
                     try {
                       setDeletingIds((prev) => new Set(prev).add(id));
@@ -558,7 +750,7 @@ function AlumniPageInner() {
                     </div>
                     <AlumniSuccessForm
                       mode="admin"
-                      onSuccess={() => setToast({ message: "Story saved successfully!", type: "success" })}
+                      onSuccess={() => setToast({ message: "Story published successfully!", type: "success" })}
                     />
                   </div>
                 </div>

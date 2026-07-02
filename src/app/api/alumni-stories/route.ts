@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
-import { storyServerSchema, type ServerStoryPayload } from "@/lib/alumniStories";
+import {
+  storyServerSchema,
+  type ServerStoryPayload,
+  normalizeStoryStatus,
+  isStoryOwner,
+} from "@/lib/alumniStories";
 import { sql, retryDbOperation } from "@/lib/dbconnect";
-
 import { sendSuccessStoryEmail } from "@/lib/email";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { canModify } from "@/lib/alumniProfile";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { sanitizeStoryHtml, storyHtmlTextContent } from "@/lib/sanitizeStoryHtml";
-
 
 type StoryItem = {
   id: string;
@@ -20,6 +24,8 @@ type StoryItem = {
   session: string;
   shortDescription: string;
   imageUrl: string;
+  status: string;
+  rejectionReason: string | null;
 };
 
 type StoryRow = {
@@ -28,6 +34,7 @@ type StoryRow = {
   alumnistories: string | null;
   story_image: string | null;
   status: string | null;
+  rejection_reason: string | null;
   createdat: string | null;
   storytitle: string | null;
   alumniname: string | null;
@@ -36,70 +43,107 @@ type StoryRow = {
   image1: string | null;
 };
 
-export async function GET() {
+function mapStoryRow(r: StoryRow): StoryItem {
+  return {
+    id: String(r.id ?? ""),
+    date: r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString(),
+    title: String(r.storytitle ?? r.alumniname ?? ""),
+    name: String(r.alumniname ?? ""),
+    program: String(r.degreetitle ?? ""),
+    session: String(r.academicsession ?? ""),
+    shortDescription: String(r.alumnistories ?? ""),
+    imageUrl: String(r.story_image ?? r.image1 ?? ""),
+    status: normalizeStoryStatus(r.status),
+    rejectionReason: r.rejection_reason ?? null,
+  };
+}
+
+const BASE_WHERE = sql`
+  s.alumnistories IS NOT NULL
+  AND s.alumnistories != ''
+  AND TRIM(s.alumnistories) != ''
+  AND LENGTH(TRIM(REGEXP_REPLACE(s.alumnistories, '<[^>]+>', '', 'g'))) > 0
+  AND COALESCE(a.alumniname, '') != ''
+`;
+
+export async function GET(req: Request) {
   try {
     const session = await auth();
-    
-    // Check if user is alumni - alumni users should see only their own story
-    const userType = session?.user ? String((session.user as { type?: string })?.type || "").toLowerCase().trim() : "";
+    const url = new URL(req.url);
+    const statusFilter = url.searchParams.get("status");
+
+    const userType = session?.user
+      ? String((session.user as { type?: string })?.type || "")
+          .toLowerCase()
+          .trim()
+      : "";
     const isAlumni = userType === "alumni";
-    
-    // For alumni users, get their alumni ID to filter stories
+    const isStaff = Boolean(session?.user && !isAlumni);
+
     let alumniIdFilter: ReturnType<typeof sql> | null = null;
     if (isAlumni && session?.user) {
-      // Get SAP ID from session
-      const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null;
+      const userSapid = (session.user as { sapid?: string | null })?.sapid
+        ? String((session.user as { sapid?: string | null }).sapid).trim()
+        : null;
       const userEmail = session.user.email ? String(session.user.email) : null;
-      
+
       if (userSapid) {
-        // Try to get alumni ID from SAP ID
         const sapRows = await sql/* sql */`
-          SELECT alumniid FROM public.tbl_alumni 
-          WHERE sapid = ${userSapid} 
+          SELECT alumniid FROM public.tbl_alumni
+          WHERE sapid = ${userSapid}
           LIMIT 1
         `;
         if (sapRows[0]) {
           const alumniId = Number((sapRows[0] as { alumniid: number }).alumniid);
           alumniIdFilter = sql` AND s.alumniid = ${alumniId}`;
-
         }
       }
-      
-      // Fallback to email lookup if SAP ID not found
+
       if (!alumniIdFilter && userEmail) {
         const emailRows = await sql/* sql */`
-          SELECT alumniid FROM public.tbl_alumni 
+          SELECT alumniid FROM public.tbl_alumni
           WHERE personalemail = ${userEmail} OR officialemail = ${userEmail} OR universityemail = ${userEmail}
-          ORDER BY alumniid DESC 
+          ORDER BY alumniid DESC
           LIMIT 1
         `;
         if (emailRows[0]) {
           const alumniId = Number((emailRows[0] as { alumniid: number }).alumniid);
           alumniIdFilter = sql` AND s.alumniid = ${alumniId}`;
-
         }
       }
-      
-      if (!alumniIdFilter) {
 
-        // Return empty array if alumni ID not found
+      if (!alumniIdFilter) {
         return NextResponse.json({ items: [] }, { status: 200 });
       }
     }
-    
-    // Build access filter only for admin/viewer users (not for alumni)
-    const accessFilter = isAlumni 
-      ? { hasFilter: false, sql: null } 
+
+    const accessFilter = isAlumni
+      ? { hasFilter: false, sql: null }
       : await buildAccessFilterSQL(session, "");
-    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
-    
-    const rows = await retryDbOperation(async () => await sql/* sql */`
-      SELECT 
+    const accessFilterCondition =
+      accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+
+    let statusCondition = sql``;
+    if (!isAlumni && !isStaff) {
+      statusCondition = sql` AND LOWER(COALESCE(s.status, 'pending')) = 'approved'`;
+    } else if (isStaff && statusFilter && statusFilter !== "all") {
+      const normalized =
+        statusFilter === "notApproved" || statusFilter === "not-approved" || statusFilter === "not approved"
+          ? "not-approved"
+          : statusFilter.toLowerCase();
+      statusCondition = sql` AND LOWER(COALESCE(s.status, 'pending')) = ${normalized}`;
+    }
+
+    const rows = await retryDbOperation(
+      async () =>
+        await sql/* sql */`
+      SELECT
         s.id,
         s.alumniid,
         s.alumnistories,
         s.story_image,
         s.status,
+        s.rejection_reason,
         s.createdat,
         s.storytitle,
         a.alumniname,
@@ -108,82 +152,76 @@ export async function GET() {
         a.image1
       FROM public.tblalumnistories s
       INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
-      WHERE s.alumnistories IS NOT NULL 
-        AND s.alumnistories != ''
-        AND TRIM(s.alumnistories) != ''
-        AND LENGTH(TRIM(REGEXP_REPLACE(s.alumnistories, '<[^>]+>', '', 'g'))) > 0
-        AND COALESCE(a.alumniname, '') != ''
+      WHERE ${BASE_WHERE}
         ${alumniIdFilter || sql``}
         ${accessFilterCondition}
+        ${statusCondition}
       ORDER BY s.createdat DESC NULLS LAST
-      LIMIT 200` as StoryRow[]);
-    
-    const items = rows.map((r): StoryItem => {
-      const id = String(r.id ?? "");
-      const date = r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString();
-      const title = String(r.storytitle ?? r.alumniname ?? "");
-      const name = String(r.alumniname ?? "");
-      const program = String(r.degreetitle ?? "");
-      const session = String(r.academicsession ?? "");
-      const shortDescription = String(r.alumnistories ?? "");
-      const imageUrl = String(r.story_image ?? r.image1 ?? "");
-      return { id, date, title, name, program, session, shortDescription, imageUrl };
-    });
-    
-    // Always return items array, even if empty (no stories is a valid state)
-    return NextResponse.json({ items }, { status: 200 });
+      LIMIT 200` as StoryRow[]
+    );
+
+    const items = rows.map(mapStoryRow);
+
+    let counts: { pending: number; approved: number; notApproved: number } | undefined;
+    if (isStaff) {
+      const countRows = await sql/* sql */`
+        SELECT LOWER(COALESCE(s.status, 'pending')) AS status, COUNT(*)::int AS count
+        FROM public.tblalumnistories s
+        INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+        WHERE ${BASE_WHERE}
+          ${accessFilterCondition}
+        GROUP BY LOWER(COALESCE(s.status, 'pending'))
+      ` as Array<{ status: string; count: number }>;
+
+      counts = { pending: 0, approved: 0, notApproved: 0 };
+      for (const row of countRows) {
+        const s = String(row.status || "").toLowerCase();
+        if (s === "approved") counts.approved = Number(row.count || 0);
+        else if (s === "not-approved" || s === "not approved") counts.notApproved = Number(row.count || 0);
+        else counts.pending += Number(row.count || 0);
+      }
+    }
+
+    return NextResponse.json({ items, ...(counts ? { counts } : {}) }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch stories";
+    const isConnectionError =
+      err instanceof Error &&
+      (err.message.includes("CONNECT_TIMEOUT") ||
+        err.message.includes("ETIMEDOUT") ||
+        err.message.includes("timeout") ||
+        (err as Error & { code?: string }).code === "CONNECT_TIMEOUT" ||
+        (err as Error & { code?: string }).code === "ETIMEDOUT");
 
-    // Check for connection timeout errors
-    const isConnectionError = err instanceof Error && (
-      err.message.includes('CONNECT_TIMEOUT') ||
-      err.message.includes('ETIMEDOUT') ||
-      err.message.includes('timeout') ||
-      (err as Error & { code?: string }).code === 'CONNECT_TIMEOUT' ||
-      (err as Error & { code?: string }).code === 'ETIMEDOUT'
-    );
-    
-    // For any error, return empty array so UI can handle it gracefully
-    // This prevents the "Failed to fetch" error from breaking the page
     if (isConnectionError) {
-
-      return NextResponse.json({ 
-        items: [], // Return empty array so UI shows "no stories" instead of error
-        error: "Database connection timeout. Please try again in a moment.",
-        retryable: true
-      }, { status: 200 }); // Return 200 with empty array so client doesn't treat it as error
+      return NextResponse.json(
+        {
+          items: [],
+          error: "Database connection timeout. Please try again in a moment.",
+          retryable: true,
+        },
+        { status: 200 }
+      );
     }
-    
-    // For other errors, also return empty array with 200 status
-    // The client can check if items.length === 0 to show appropriate message
 
-    return NextResponse.json({ 
-      items: [], // Return empty array so UI shows "no stories" instead of error
-      error: msg 
-    }, { status: 200 }); // Return 200 so client doesn't treat it as error
+    return NextResponse.json({ items: [], error: msg }, { status: 200 });
   }
 }
 
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    
-    // SECURITY: Require authentication
+
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
-    // Check if request is FormData (for image upload) or JSON
+
     const contentType = req.headers.get("content-type") || "";
     let v: ServerStoryPayload;
     let storyImageFilename: string | null = null;
-    
+
     if (contentType.includes("multipart/form-data")) {
-      // Handle FormData with image upload
       const formData = await req.formData();
-      
-      // Extract form fields
       const sapId = String(formData.get("sapId") || "");
       const name = String(formData.get("name") || "");
       const email = String(formData.get("email") || "");
@@ -194,48 +232,37 @@ export async function POST(req: Request) {
       const storyTitle = String(formData.get("storyTitle") || "");
       const storyHtml = String(formData.get("storyHtml") || "");
       const imageFile = formData.get("storyImage") as File | null;
-      
-      // Validate and save image if provided
+
       if (imageFile && imageFile.size > 0) {
-        // Validate file type
         const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
         if (!allowedTypes.includes(imageFile.type)) {
-          return NextResponse.json({ 
-            error: "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed." 
-          }, { status: 400 });
+          return NextResponse.json(
+            { error: "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed." },
+            { status: 400 }
+          );
         }
-        
-        // Validate file size (max 5MB)
-        const maxSize = 5 * 1024 * 1024; // 5MB
+
+        const maxSize = 5 * 1024 * 1024;
         if (imageFile.size > maxSize) {
-          return NextResponse.json({ 
-            error: "File size exceeds 5MB limit" 
-          }, { status: 400 });
+          return NextResponse.json({ error: "File size exceeds 5MB limit" }, { status: 400 });
         }
-        
-        // Generate unique filename (max 50 chars as per schema VARCHAR(50))
+
         const timestamp = Date.now();
         const extension = imageFile.name.split(".").pop() || "jpg";
-        // Format: story-{timestamp}.{ext} - ensure it fits in VARCHAR(50)
         const baseFilename = `story-${timestamp}.${extension}`;
         storyImageFilename = baseFilename.length > 50 ? baseFilename.slice(0, 50) : baseFilename;
-        
-        // Create uploads directory if it doesn't exist
+
         const uploadsDir = join(process.cwd(), "public", "images");
         if (!existsSync(uploadsDir)) {
           await mkdir(uploadsDir, { recursive: true });
         }
-        
-        // Save file
+
         const filePath = join(uploadsDir, storyImageFilename);
         const bytes = await imageFile.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        await writeFile(filePath, buffer);
-
+        await writeFile(filePath, Buffer.from(bytes));
       }
-      
-      // Build payload object for validation
-      const payload = {
+
+      const parsed = storyServerSchema.safeParse({
         sapId,
         name,
         email,
@@ -245,171 +272,152 @@ export async function POST(req: Request) {
         contactNumber,
         storyTitle,
         storyHtml,
-      };
-      
-      const parsed = storyServerSchema.safeParse(payload);
+      });
       if (!parsed.success) {
-
-        return NextResponse.json({ 
-          message: "Validation failed", 
-          issues: parsed.error.format()
-        }, { status: 422 });
+        return NextResponse.json({ message: "Validation failed", issues: parsed.error.format() }, { status: 422 });
       }
       v = parsed.data;
     } else {
-      // Handle JSON request (backward compatibility)
       const body = await req.json();
       const parsed = storyServerSchema.safeParse(body);
       if (!parsed.success) {
-
-
-        return NextResponse.json({ 
-          message: "Validation failed", 
-          issues: parsed.error.format(),
-          received: body 
-        }, { status: 422 });
+        return NextResponse.json(
+          { message: "Validation failed", issues: parsed.error.format(), received: body },
+          { status: 422 }
+        );
       }
       v = parsed.data;
     }
-    
+
     const cleanHtml = sanitizeStoryHtml(v.storyHtml);
     const textContent = storyHtmlTextContent(v.storyHtml);
     if (!textContent || textContent.length === 0) {
-      return NextResponse.json({ 
-        message: "Story content is required and cannot be empty after sanitization" 
-      }, { status: 400 });
+      return NextResponse.json(
+        { message: "Story content is required and cannot be empty after sanitization" },
+        { status: 400 }
+      );
     }
 
-    const alumniRows = await sql/* sql */`
-      SELECT alumniid, sapid, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE sapid = ${v.sapId} LIMIT 1` as { alumniid: number; sapid: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }[];
+    const alumniRows = (await sql/* sql */`
+      SELECT alumniid, sapid, personalemail, universityemail, officialemail
+      FROM public.tbl_alumni WHERE sapid = ${v.sapId} LIMIT 1`) as Array<{
+      alumniid: number;
+      sapid: string | null;
+      personalemail: string | null;
+      universityemail: string | null;
+      officialemail: string | null;
+    }>;
     const alumniId = alumniRows[0]?.alumniid;
     if (!alumniId) {
       return NextResponse.json({ message: "SAP ID not found in tbl_alumni" }, { status: 404 });
     }
-    
-    // SECURITY: Check if user is admin/superadmin or owns this alumni record
-    const { canModify } = await import("@/lib/alumniProfile");
+
     const isAdmin = canModify(session.user);
-    
-    if (!isAdmin) {
-      // If not admin, verify ownership
-      const userEmail = session.user.email ? String(session.user.email) : null;
-      const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null;
-      const row = alumniRows[0];
-      
-      const isOwnerBySapid = userSapid && row.sapid && userSapid.toLowerCase().trim() === row.sapid.toLowerCase().trim();
-      const isOwnerByEmail = userEmail && (
-        (row.personalemail && row.personalemail.toLowerCase().trim() === userEmail.toLowerCase().trim()) ||
-        (row.universityemail && row.universityemail.toLowerCase().trim() === userEmail.toLowerCase().trim()) ||
-        (row.officialemail && row.officialemail.toLowerCase().trim() === userEmail.toLowerCase().trim())
-      );
-      
-      if (!isOwnerBySapid && !isOwnerByEmail) {
-        return NextResponse.json({ error: "Forbidden: You can only create stories for your own profile" }, { status: 403 });
-      }
-    } else {
-      // For admin/viewer users, check access filter
-      const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+    const owner = isStoryOwner(session.user, alumniRows[0]);
+
+    if (!isAdmin && !owner) {
+      return NextResponse.json({ error: "Forbidden: You can only create stories for your own profile" }, { status: 403 });
+    }
+
+    if (isAdmin) {
       const accessFilter = await buildAccessFilterSQL(session, "");
-      
       if (accessFilter.hasFilter && accessFilter.sql) {
         const accessCheck = await sql/* sql */`
-          SELECT alumniid FROM public.tbl_alumni 
-          WHERE alumniid = ${alumniId} 
+          SELECT alumniid FROM public.tbl_alumni
+          WHERE alumniid = ${alumniId}
           AND (${accessFilter.sql})
           LIMIT 1
         `;
-        
         if (!accessCheck[0]) {
           return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
         }
       }
     }
 
-    // Update contact number if provided
     if (v.contactNumber) {
       await sql/* sql */`
-        UPDATE public.tbl_alumni 
+        UPDATE public.tbl_alumni
         SET contactno = ${v.contactNumber}
         WHERE alumniid = ${alumniId}`;
     }
 
+    const storyStatus = isAdmin && !owner ? "approved" : "pending";
+    const reviewerId = isAdmin && !owner ? (session.user as { userId?: number })?.userId ?? null : null;
+
     try {
-      // Insert new story - allow multiple stories per alumni
-      // Schema columns: id (PK, auto-increment), alumniid (FK), alumnistories (TEXT), story_image (VARCHAR(50)), status (VARCHAR(20)), createdat (TIMESTAMP), storytitle (TEXT)
-
-
-
-      const result = await sql/* sql */`
-        INSERT INTO public.tblalumnistories (alumniid, alumnistories, story_image, status, createdat, storytitle)
-        VALUES (${alumniId}, ${cleanHtml}, ${storyImageFilename}, NULL, NOW(), ${v.storyTitle})
+      await sql/* sql */`
+        INSERT INTO public.tblalumnistories (
+          alumniid, alumnistories, story_image, status, createdat, storytitle,
+          rejection_reason, reviewed_by, reviewed_at
+        )
+        VALUES (
+          ${alumniId}, ${cleanHtml}, ${storyImageFilename}, ${storyStatus}, NOW(), ${v.storyTitle},
+          NULL, ${reviewerId}, ${isAdmin && !owner ? sql`NOW()` : null}
+        )
         RETURNING id`;
-      
-      const newStoryId = result[0] ? Number((result[0] as { id: number }).id) : null;
-
-      // Verify the story was saved by querying it back
-      if (newStoryId) {
-        const verifyQuery = await sql/* sql */`
-          SELECT s.id, s.alumniid, s.alumnistories, a.alumniname
-          FROM public.tblalumnistories s
-          INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
-          WHERE s.id = ${newStoryId}
-          LIMIT 1
-        `;
-
-        if (verifyQuery.length > 0) {
-          const story = verifyQuery[0] as { id: number; alumniid: number; alumnistories: string | null; alumniname: string | null };
-
-        }
-      }
     } catch (dbError) {
-
-
-      return NextResponse.json({ 
-        message: "Failed to save story to database",
-        error: dbError instanceof Error ? dbError.message : "Unknown database error",
-        details: process.env.NODE_ENV === 'development' ? (dbError instanceof Error ? dbError.stack : undefined) : undefined
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          message: "Failed to save story to database",
+          error: dbError instanceof Error ? dbError.message : "Unknown database error",
+          details:
+            process.env.NODE_ENV === "development"
+              ? dbError instanceof Error
+                ? dbError.stack
+                : undefined
+              : undefined,
+        },
+        { status: 500 }
+      );
     }
-    
-    // Send confirmation email
+
     try {
-      const alumniRows = await sql/* sql */`
+      const emailRows = await sql/* sql */`
         SELECT alumniname, personalemail, officialemail, universityemail
-        FROM public.tbl_alumni 
+        FROM public.tbl_alumni
         WHERE alumniid = ${alumniId}
         LIMIT 1
       `;
-      const alumni = alumniRows[0] as {
+      const alumni = emailRows[0] as {
         alumniname: string | null;
         personalemail: string | null;
         officialemail: string | null;
         universityemail: string | null;
       } | undefined;
-      
+
       if (alumni) {
         const alumniEmail = alumni.personalemail || alumni.officialemail || alumni.universityemail;
         const alumniName = alumni.alumniname || "Alumni";
-        
-        if (alumniEmail) {
-          // Send email asynchronously (don't wait for it to complete)
-          sendSuccessStoryEmail(alumniEmail, alumniName).catch((err) => {
-
-          });
+        if (alumniEmail && storyStatus === "pending") {
+          sendSuccessStoryEmail(alumniEmail, alumniName).catch(() => {});
         }
       }
-    } catch (emailError) {
+    } catch {
       // Don't fail the request if email fails
-
     }
-    
-    return NextResponse.json({ ok: true, alumniid: alumniId, message: "Story saved successfully" }, { status: 201 });
-  } catch (err) {
 
+    return NextResponse.json(
+      {
+        ok: true,
+        alumniid: alumniId,
+        message: storyStatus === "approved" ? "Story published successfully" : "Story submitted for review",
+        status: storyStatus,
+      },
+      { status: 201 }
+    );
+  } catch (err) {
     const msg = err instanceof Error ? err.message : "Invalid JSON";
-    const statusCode = err instanceof Error && msg.includes("Unauthorized") ? 401 :
-                      err instanceof Error && msg.includes("Forbidden") ? 403 :
-                      err instanceof Error && msg.includes("not found") ? 404 : 400;
-    return NextResponse.json({ message: msg, error: err instanceof Error ? err.stack : undefined }, { status: statusCode });
+    const statusCode =
+      err instanceof Error && msg.includes("Unauthorized")
+        ? 401
+        : err instanceof Error && msg.includes("Forbidden")
+          ? 403
+          : err instanceof Error && msg.includes("not found")
+            ? 404
+            : 400;
+    return NextResponse.json(
+      { message: msg, error: err instanceof Error ? err.stack : undefined },
+      { status: statusCode }
+    );
   }
 }

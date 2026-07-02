@@ -169,7 +169,7 @@ export function VelocityExpandPanel({
   const kpis = [
     { label: "Early transition", value: `${velocity.score}%`, sub: `${early.toLocaleString()} alumni`, color: KPI_COLOR_HEX.emerald },
     { label: "Before graduation", value: bucketTotals.beforeGraduation, sub: pct(bucketTotals.beforeGraduation, tracked), color: KPI_COLOR_HEX.emerald },
-    { label: "Immediate", value: bucketTotals.immediateAfterGraduation, sub: pct(bucketTotals.immediateAfterGraduation, tracked), color: KPI_COLOR_HEX.sky },
+    { label: "After Grad", value: bucketTotals.immediateAfterGraduation, sub: pct(bucketTotals.immediateAfterGraduation, tracked), color: KPI_COLOR_HEX.sky },
     { label: "Within 3 months", value: bucketTotals.within3Months, sub: pct(bucketTotals.within3Months, tracked), color: KPI_COLOR_HEX.violet },
     { label: "Tracked responses", value: tracked, sub: pct(tracked, verifiedTotal) + " of verified", color: KPI_COLOR_HEX.slate },
   ];
@@ -234,7 +234,7 @@ export function VelocityExpandPanel({
           columns={[
             { key: "faculty", label: "Faculty" },
             { key: "beforeGraduation", label: "Before grad", align: "right" },
-            { key: "immediateAfterGraduation", label: "Immediate", align: "right" },
+            { key: "immediateAfterGraduation", label: "After Grad", align: "right" },
             { key: "within3Months", label: "≤3 mo", align: "right" },
             { key: "within6Months", label: "≤6 mo", align: "right" },
             { key: "after6Months", label: ">6 mo", align: "right" },

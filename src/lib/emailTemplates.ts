@@ -50,6 +50,8 @@ export const EMAIL_ACTION_TYPE = {
   LQCC_MEMBERSHIP_NOT_APPROVED: "membership.lqcc.not_approved",
 
   SUCCESS_STORY_RECEIVED: "alumni.success_story.received",
+  SUCCESS_STORY_APPROVED: "alumni.success_story.approved",
+  SUCCESS_STORY_NOT_APPROVED: "alumni.success_story.not_approved",
 
   ALUMNI_TALK_APPLICATION_ACK: "alumni.talk.application.ack",
   ALUMNI_TALK_CONFIRM: "alumni.talk.confirm",
@@ -435,6 +437,27 @@ export function generateAdminActionEmail(input: {
       ${extraBodyHtml}
     `;
     return { subject, html: createEmailTemplate(subject, greeting, body, footerRegards()) };
+  }
+
+  if (input.actionType === EMAIL_ACTION_TYPE.SUCCESS_STORY_APPROVED) {
+    const subject = "Success Story - Approved";
+    const body = `
+      <p style="margin: 0; color: #333333; font-size: 16px;">We are pleased to inform you that your success story has been approved and is now published on the Alumni Portal.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Thank you for sharing your journey and inspiring fellow UOL graduates.</p>
+      ${extraBodyHtml}
+    `;
+    return { subject, html: createEmailTemplate(subject, greeting, body, footerWarmRegards()) };
+  }
+
+  if (input.actionType === EMAIL_ACTION_TYPE.SUCCESS_STORY_NOT_APPROVED) {
+    const subject = "Success Story - Not Approved";
+    const body = `
+      <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for sharing your success story with the UOL Alumni community.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After reviewing your submission, we regret to inform you that it has not been approved at this time.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">You are welcome to revise your story and submit it again for review.</p>
+      ${extraBodyHtml}
+    `;
+    return { subject, html: createEmailTemplate(subject, greeting, body, footerWarmRegards()) };
   }
 
   if (input.actionType === EMAIL_ACTION_TYPE.ALUMNI_TALK_APPLICATION_ACK) {

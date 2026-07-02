@@ -142,6 +142,15 @@ export default function AlumniSuccessForm({
     mode: "onChange",
   });
 
+  React.useEffect(() => {
+    if (isAdmin) return;
+    if (faculty) setValue("faculty", faculty, { shouldValidate: true });
+    if (department) setValue("department", department, { shouldValidate: true });
+    if (name) setValue("name", name, { shouldValidate: true });
+    if (passingYear != null) setValue("passingYear", passingYear, { shouldValidate: true });
+    if (initialContactNumber) setValue("contactNumber", initialContactNumber, { shouldValidate: true });
+  }, [isAdmin, faculty, department, name, passingYear, initialContactNumber, setValue]);
+
 
   React.useEffect(() => {
     if (!isAdmin || orgLoading || !dbFaculties.length || selectedFacultyId !== "") return;
@@ -328,7 +337,9 @@ export default function AlumniSuccessForm({
       await queryClient.invalidateQueries({ queryKey: alumniStoriesKey });
       await queryClient.refetchQueries({ queryKey: alumniStoriesKey });
       
-      toast.success(storyId ? "Story updated successfully!" : "Success story submitted successfully!", {
+      toast.success(
+        storyId ? "Changes submitted for review!" : "Story submitted for review!",
+        {
         duration: 4000,
         style: {
           background: '#d1fae5',

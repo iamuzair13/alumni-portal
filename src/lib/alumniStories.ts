@@ -37,3 +37,47 @@ export const storyServerSchema = z.object({
 });
 
 export type ServerStoryPayload = z.infer<typeof storyServerSchema>;
+
+export const STORY_STATUSES = ["pending", "approved", "not-approved"] as const;
+export type StoryStatus = (typeof STORY_STATUSES)[number];
+
+export function normalizeStoryStatus(status: string | null | undefined): StoryStatus {
+  const s = String(status || "pending").toLowerCase().trim();
+  if (s === "approved") return "approved";
+  if (s === "not-approved" || s === "not approved" || s === "rejected" || s === "declined") {
+    return "not-approved";
+  }
+  return "pending";
+}
+
+export function isStoryApproved(status: string | null | undefined): boolean {
+  return normalizeStoryStatus(status) === "approved";
+}
+
+type AlumniContactRow = {
+  sapid: string | null;
+  personalemail: string | null;
+  officialemail: string | null;
+  universityemail: string | null;
+};
+
+export function isStoryOwner(
+  sessionUser: { email?: string | null; sapid?: string | null } | null | undefined,
+  alumni: AlumniContactRow
+): boolean {
+  if (!sessionUser) return false;
+  const userEmail = sessionUser.email ? String(sessionUser.email) : null;
+  const userSapid = sessionUser.sapid ? String(sessionUser.sapid).trim() : null;
+  const isOwnerBySapid =
+    Boolean(userSapid && alumni.sapid && userSapid.toLowerCase() === alumni.sapid.toLowerCase().trim());
+  const isOwnerByEmail =
+    Boolean(
+      userEmail &&
+        [
+          alumni.personalemail,
+          alumni.officialemail,
+          alumni.universityemail,
+        ].some((e) => e && e.toLowerCase().trim() === userEmail.toLowerCase().trim())
+    );
+  return isOwnerBySapid || isOwnerByEmail;
+}
