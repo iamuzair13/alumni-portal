@@ -73,11 +73,19 @@ export async function GET(request: Request, ctx: { params: Promise<{ path?: stri
 
     let fileBuffer: Buffer | null = null;
     for (const dir of collectUploadDirs()) {
-      const filePath = join(dir, filename);
-      if (existsSync(filePath)) {
-        fileBuffer = await readFile(filePath);
-        break;
+      const directPath = join(dir, filename);
+      const candidatePaths = [
+        directPath,
+        join(dir, "alumni-images", "thumbnail", filename),
+        join(dir, "alumni-images", "card", filename),
+      ];
+      for (const filePath of candidatePaths) {
+        if (existsSync(filePath)) {
+          fileBuffer = await readFile(filePath);
+          break;
+        }
       }
+      if (fileBuffer) break;
     }
 
     if (!fileBuffer) {

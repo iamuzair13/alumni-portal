@@ -86,11 +86,16 @@ export default function PassportPhotoCropModal({ isOpen, file, onClose, onCroppe
   }, [containerSize, aspect]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    if (!file) return;
+    if (!isOpen || !file) {
+      setLoaded(null);
+      setZoom(1);
+      setOffset({ x: 0, y: 0 });
+      return;
+    }
 
     const url = URL.createObjectURL(file);
     let canceled = false;
+    setLoaded(null);
 
     (async () => {
       try {

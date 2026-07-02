@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
+import { normalizePublicImageFilename, viewStoredUploadUrl } from "@/lib/uploadsImageUrl";
 import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
 import {
   CardStatusSelect,
@@ -829,6 +830,66 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
     };
 
+    const loadCardPictureFile = async (): Promise<File> => {
+      const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, { cache: "no-store" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || `Failed to load card (${res.status})`);
+      }
+
+      const j = await res.json();
+      const card = (j?.card ?? null) as {
+        cardpicture?: string | null;
+        card_image?: string | null;
+        image_candidates?: string[] | null;
+      } | null;
+
+      const rawSources = [
+        ...(Array.isArray(card?.image_candidates) ? card.image_candidates : []),
+        String(card?.cardpicture ?? card?.card_image ?? "").trim(),
+      ].filter(Boolean);
+
+      if (rawSources.length === 0) {
+        const alumniRes = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/full-details`, { cache: "no-store" });
+        if (!alumniRes.ok) {
+          const jj = await alumniRes.json().catch(() => ({}));
+          throw new Error(jj?.error || `No card picture found (${alumniRes.status})`);
+        }
+        const jj = await alumniRes.json().catch(() => ({}));
+        const alumni = (jj?.item ?? null) as { image2?: string | null; image1?: string | null } | null;
+        const alumniRaw = String(alumni?.image2 ?? alumni?.image1 ?? "").trim();
+        if (!alumniRaw) {
+          throw new Error("No card picture found for this applicant");
+        }
+        rawSources.push(alumniRaw);
+      }
+
+      const seen = new Set<string>();
+      const imageUrls: string[] = [];
+      for (const raw of rawSources) {
+        const storedUrl = viewStoredUploadUrl(raw);
+        if (storedUrl && !seen.has(storedUrl)) {
+          seen.add(storedUrl);
+          imageUrls.push(storedUrl);
+        }
+        if (/^https?:\/\//i.test(raw) && !seen.has(raw)) {
+          seen.add(raw);
+          imageUrls.push(raw);
+        }
+      }
+
+      for (const imageUrl of imageUrls) {
+        const imgRes = await fetch(imageUrl, { cache: "no-store" });
+        if (!imgRes.ok) continue;
+        const blob = await imgRes.blob();
+        if (!blob.type.startsWith("image/")) continue;
+        const basename = normalizePublicImageFilename(imageUrl) || imageUrl.split("/").pop() || "card-picture.jpg";
+        return new File([blob], basename, { type: blob.type || "image/jpeg" });
+      }
+
+      throw new Error("Failed to load card picture");
+    };
+
     const handleEditPicture = async () => {
       if (!sapId || sapId.trim() === "") {
         toast.error("Invalid SAP ID");
@@ -840,75 +901,27 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         return;
       }
 
+      setIsSavingPicture(true);
+      setShowCropModal(false);
+      setPendingCropFile(null);
+
       try {
-        setIsSavingPicture(true);
-        setShowCropModal(true);
-        setPendingCropFile(null);
-
-        const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, { cache: "no-store" });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j?.error || `Failed to load card (${res.status})`);
-        }
-        const j = await res.json();
-        const card = (j?.card ?? null) as { cardpicture?: string | null; card_image?: string | null } | null;
-        let raw = String(card?.cardpicture ?? card?.card_image ?? "").trim();
-
-        // Some card records do not store cardpicture/card_image, even though the picture exists
-        // (e.g. stored only in tbl_alumni image1/image2). Fallback to alumni profile image.
-        if (!raw) {
-          const alumniRes = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/full-details`, { cache: "no-store" });
-          if (!alumniRes.ok) {
-            const jj = await alumniRes.json().catch(() => ({}));
-            throw new Error(jj?.error || `No card picture found (${alumniRes.status})`);
-          }
-          const jj = await alumniRes.json().catch(() => ({}));
-          const alumni = (jj?.item ?? null) as { image2?: string | null; image1?: string | null } | null;
-          raw = String(alumni?.image2 ?? alumni?.image1 ?? "").trim();
-          if (!raw) {
-            throw new Error("No card picture found for this applicant");
-          }
-        }
-
-        // cardpicture/card_image may be just a filename, or already contain a path.
-        // Normalize to a public URL that Next can serve.
-        const normalized = raw
-          .replace(/\\/g, "/")
-          .replace(/^public\//, "")
-          .replace(/^\.\//, "")
-          .replace(/^\/public\//, "/")
-          .trim();
-        const imageUrl = /^https?:\/\//i.test(normalized)
-          ? normalized
-          : normalized.startsWith("/")
-            ? normalized
-            : normalized.toLowerCase().startsWith("images/")
-              ? `/${normalized}`
-              : `/images/${normalized}`;
-
-        const imgRes = await fetch(imageUrl, { cache: "no-store" });
-        if (!imgRes.ok) {
-          throw new Error(`Failed to load image (${imgRes.status})`);
-        }
-        const blob = await imgRes.blob();
-        const inferredType = blob.type || "image/jpeg";
-        const safeName = raw.split("/").pop() || "card-picture.jpg";
-        const existingFile = new File([blob], safeName, { type: inferredType });
-
+        const existingFile = await loadCardPictureFile();
         setPendingCropFile(existingFile);
+        setShowCropModal(true);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to load card picture";
         toast.error(msg);
         setPendingCropFile(null);
+        setShowCropModal(false);
       } finally {
         setIsSavingPicture(false);
       }
     };
 
     const uploadCroppedPicture = async (cropped: File) => {
-      const alumniId = alumItem.alumniid;
-      if (!alumniId) {
-        toast.error("Missing alumniId for this record");
+      if (!sapId || sapId.trim() === "") {
+        toast.error("Invalid SAP ID");
         return;
       }
 
@@ -916,12 +929,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       const loadingToast = toast.loading("Saving picture...");
       try {
         const formData = new FormData();
-        formData.append("alumniId", String(alumniId));
-        formData.append("sapId", String(sapId));
         formData.append("image", cropped);
 
-        const res = await fetch("/api/alumni-cards", {
-          method: "POST",
+        const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}/image`, {
+          method: "PATCH",
           body: formData,
         });
 
