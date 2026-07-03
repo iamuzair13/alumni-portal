@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import {
   storyServerSchema,
   storyAlumniSubmitSchema,
+  storyAlumniSelfSubmitWithoutSapSchema,
   parseStoryCriteriaFromBody,
   type ServerStoryPayload,
   type AlumniSubmitStoryPayload,
   normalizeStoryStatus,
   isStoryOwner,
+  sapIdNumericRegex,
 } from "@/lib/alumniStories";
+import {
+  lookupAlumniForStorySubmit,
+  injectResolvedStorySapId,
+  type AlumniStorySubmitRow,
+} from "@/lib/alumniStorySubmit";
 import { sql, retryDbOperation } from "@/lib/dbconnect";
 import { sendSuccessStoryEmail } from "@/lib/email";
 import { auth } from "@/lib/auth";
@@ -291,7 +298,29 @@ export async function POST(req: Request) {
       };
     }
 
-    const baseParsed = storyServerSchema.safeParse(rawPayload);
+    const isAdmin = canModify(session.user);
+    let preResolvedAlumni: AlumniStorySubmitRow | null = null;
+
+    if (!isAdmin) {
+      preResolvedAlumni = await lookupAlumniForStorySubmit(
+        session.user as { email?: string | null; sapid?: string | null; userId?: number | null },
+        String(rawPayload.sapId ?? ""),
+        String(rawPayload.email ?? "")
+      );
+      injectResolvedStorySapId(
+        rawPayload,
+        preResolvedAlumni,
+        session.user as { email?: string | null; sapid?: string | null; userId?: number | null }
+      );
+    }
+
+    const hasValidSapId = sapIdNumericRegex.test(String(rawPayload.sapId ?? "").trim());
+    const baseSchema =
+      !isAdmin && preResolvedAlumni && !hasValidSapId
+        ? storyAlumniSelfSubmitWithoutSapSchema
+        : storyServerSchema;
+
+    const baseParsed = baseSchema.safeParse(rawPayload);
     if (!baseParsed.success) {
       return NextResponse.json(
         { message: "Validation failed", issues: baseParsed.error.format(), received: rawPayload },
@@ -299,7 +328,8 @@ export async function POST(req: Request) {
       );
     }
 
-    let v: ServerStoryPayload | AlumniSubmitStoryPayload = baseParsed.data;
+    let v: ServerStoryPayload | AlumniSubmitStoryPayload | Omit<AlumniSubmitStoryPayload, "sapId"> =
+      baseParsed.data as ServerStoryPayload;
 
     const cleanHtml = sanitizeStoryHtml(v.storyHtml);
     const textContent = storyHtmlTextContent(v.storyHtml);
@@ -310,30 +340,35 @@ export async function POST(req: Request) {
       );
     }
 
-    const alumniRows = (await sql/* sql */`
+    const alumniRows = preResolvedAlumni
+      ? [preResolvedAlumni]
+      : ((await sql/* sql */`
       SELECT alumniid, sapid, personalemail, universityemail, officialemail
-      FROM public.tbl_alumni WHERE sapid = ${v.sapId} LIMIT 1`) as Array<{
+      FROM public.tbl_alumni WHERE sapid = ${String((v as ServerStoryPayload).sapId ?? rawPayload.sapId ?? "")} LIMIT 1`) as Array<{
       alumniid: number;
       sapid: string | null;
       personalemail: string | null;
       universityemail: string | null;
       officialemail: string | null;
-    }>;
+    }>);
     const alumniId = alumniRows[0]?.alumniid;
     if (!alumniId) {
       return NextResponse.json({ message: "SAP ID not found in tbl_alumni" }, { status: 404 });
     }
 
-    const isAdmin = canModify(session.user);
+    const isAdminUser = isAdmin;
     const owner = isStoryOwner(session.user, alumniRows[0]);
 
-    if (!isAdmin && !owner) {
+    if (!isAdminUser && !owner) {
       return NextResponse.json({ error: "Forbidden: You can only create stories for your own profile" }, { status: 403 });
     }
 
-    const requiresCriteria = !isAdmin;
+    const requiresCriteria = !isAdminUser;
     if (requiresCriteria) {
-      const criteriaParsed = storyAlumniSubmitSchema.safeParse(rawPayload);
+      const criteriaSchema = hasValidSapId
+        ? storyAlumniSubmitSchema
+        : storyAlumniSelfSubmitWithoutSapSchema;
+      const criteriaParsed = criteriaSchema.safeParse(rawPayload);
       if (!criteriaParsed.success) {
         return NextResponse.json({ message: "Validation failed", issues: criteriaParsed.error.format() }, { status: 422 });
       }
@@ -349,7 +384,7 @@ export async function POST(req: Request) {
     const signatureConfirmed: boolean | null =
       requiresCriteria && "signatureConfirmed" in v ? (v.signatureConfirmed ?? null) : null;
 
-    if (isAdmin) {
+    if (isAdminUser) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       if (accessFilter.hasFilter && accessFilter.sql) {
         const accessCheck = await sql/* sql */`

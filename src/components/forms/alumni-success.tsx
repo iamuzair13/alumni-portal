@@ -12,8 +12,9 @@ import Underline from "@tiptap/extension-underline";
 import DOMPurify from "dompurify";
 import { useQueryClient } from "@tanstack/react-query";
 import { alumniStoriesKey } from "@/app/queries/fetch-alumni-stories";
-import { storyFormSchema, storyCriteriaFieldsSchema } from "@/lib/alumniStories";
+import { storyFormSchema, storyCriteriaFieldsSchema, pickStorySapId } from "@/lib/alumniStories";
 import { useOrgDatasets } from "@/hooks/useOrgDatasets";
+import { useSession } from "next-auth/react";
 
 type Props = {
   mode?: "alumni" | "admin";
@@ -92,6 +93,10 @@ export default function AlumniSuccessForm({
   const isAdmin = mode === "admin";
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const sessionSapid = (session?.user as { sapid?: string | null } | undefined)?.sapid
+    ? String((session?.user as { sapid?: string | null }).sapid).trim()
+    : "";
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(
     existingImageUrl
@@ -320,7 +325,9 @@ export default function AlumniSuccessForm({
       return;
     }
 
-    const resolvedSapId = isAdmin ? String((vals as AdminFormVals).sapId ?? "").trim() : sapId;
+    const resolvedSapId = isAdmin
+      ? String((vals as AdminFormVals).sapId ?? "").trim()
+      : pickStorySapId(sapId, sessionSapid) ?? "";
     const resolvedEmail = isAdmin ? String((vals as AdminFormVals).email ?? "").trim() : email;
 
     const loadingToast = toast.loading(storyId ? "Updating your story..." : "Submitting your success story...");
@@ -373,8 +380,16 @@ export default function AlumniSuccessForm({
       toast.dismiss(loadingToast);
       
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.message || `Failed (${res.status})`);
+        const err = await res.json().catch(() => ({})) as {
+          message?: string;
+          issues?: Record<string, { _errors?: string[] }>;
+        };
+        const issueMessages = err?.issues
+          ? Object.values(err.issues)
+              .flatMap((issue) => issue?._errors ?? [])
+              .filter(Boolean)
+          : [];
+        throw new Error(issueMessages[0] || err?.message || `Failed (${res.status})`);
       }
       
       // Invalidate and refetch stories to show the new/updated story

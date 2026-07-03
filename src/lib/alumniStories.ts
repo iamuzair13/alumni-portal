@@ -2,6 +2,15 @@ import { z } from "zod";
 
 export const sapIdNumericRegex = /^\d{4,20}$/;
 
+/** First candidate that matches the story SAP ID pattern (4–20 digits). */
+export function pickStorySapId(...candidates: (string | null | undefined)[]): string | null {
+  for (const candidate of candidates) {
+    const value = String(candidate ?? "").trim();
+    if (sapIdNumericRegex.test(value)) return value;
+  }
+  return null;
+}
+
 /** True when HTML has visible text (not only empty tags). */
 export function storyHtmlHasText(html: string): boolean {
   if (!html || !html.trim()) return false;
@@ -35,8 +44,8 @@ export const storyFormSchema = z.object({
   email: z.string().trim().email("Enter a valid email address"),
   faculty: z.string().trim().min(1, "Faculty is required"),
   department: z.string().trim().min(1, "Department is required"),
-  passingYear: z.number().int().min(1900).max(2100).optional(),
-  contactNumber: z.string().trim().max(50).optional(),
+  passingYear: z.number().int().min(1900).max(2100).nullish(),
+  contactNumber: z.string().trim().max(50).nullish(),
   storyTitle: z.string().trim().min(1, "Story title is required").max(200, "Title must be under 200 chars"),
   storyHtml: z
     .string()
@@ -55,8 +64,8 @@ export const storyServerSchema = z.object({
   email: z.string().trim().email(),
   faculty: z.string().trim().min(1),
   department: z.string().trim().min(1),
-  passingYear: z.number().int().min(1900).max(2100).optional(),
-  contactNumber: z.string().trim().max(50).optional(),
+  passingYear: z.number().int().min(1900).max(2100).nullish(),
+  contactNumber: z.string().trim().max(50).nullish(),
   storyTitle: z.string().trim().min(1).max(200),
   storyHtml: z.string().trim().min(1),
   criteriaHighlight: z.string().trim().max(250).optional(),
@@ -68,6 +77,11 @@ export const storyServerSchema = z.object({
 export type ServerStoryPayload = z.infer<typeof storyServerSchema>;
 
 export const storyAlumniSubmitSchema = storyServerSchema.merge(storyCriteriaFieldsSchema);
+
+/** Alumni self-submit when SAP ID is resolved server-side from session/DB. */
+export const storyAlumniSelfSubmitWithoutSapSchema = storyServerSchema
+  .omit({ sapId: true })
+  .merge(storyCriteriaFieldsSchema);
 
 export type AlumniSubmitStoryPayload = z.infer<typeof storyAlumniSubmitSchema>;
 

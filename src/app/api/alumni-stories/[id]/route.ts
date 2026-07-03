@@ -3,13 +3,19 @@ import { sql, retryDbOperation } from "@/lib/dbconnect";
 import {
   storyServerSchema,
   storyAlumniSubmitSchema,
+  storyAlumniSelfSubmitWithoutSapSchema,
   parseStoryCriteriaFromBody,
   normalizeStoryStatus,
   isStoryApproved,
   isStoryOwner,
   type ServerStoryPayload,
   type AlumniSubmitStoryPayload,
+  sapIdNumericRegex,
 } from "@/lib/alumniStories";
+import {
+  lookupAlumniForStorySubmit,
+  injectResolvedStorySapId,
+} from "@/lib/alumniStorySubmit";
 import { auth } from "@/lib/auth";
 import { canModify, isSuperAdminUser } from "@/lib/alumniProfile";
 import { writeFile, mkdir } from "fs/promises";
@@ -275,16 +281,40 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       };
     }
 
-    const baseParsed = storyServerSchema.safeParse(rawPayload);
+    let preResolvedAlumni = null;
+    if (!isSuperAdmin) {
+      preResolvedAlumni = await lookupAlumniForStorySubmit(
+        session.user as { email?: string | null; sapid?: string | null; userId?: number | null },
+        String(rawPayload.sapId ?? ""),
+        String(rawPayload.email ?? "")
+      );
+      injectResolvedStorySapId(
+        rawPayload,
+        preResolvedAlumni,
+        session.user as { email?: string | null; sapid?: string | null; userId?: number | null }
+      );
+    }
+
+    const hasValidSapId = sapIdNumericRegex.test(String(rawPayload.sapId ?? "").trim());
+    const baseSchema =
+      !isSuperAdmin && preResolvedAlumni && !hasValidSapId
+        ? storyAlumniSelfSubmitWithoutSapSchema
+        : storyServerSchema;
+
+    const baseParsed = baseSchema.safeParse(rawPayload);
     if (!baseParsed.success) {
       return NextResponse.json({ message: "Validation failed", issues: baseParsed.error.format() }, { status: 422 });
     }
 
-    let v: ServerStoryPayload | AlumniSubmitStoryPayload = baseParsed.data;
+    let v: ServerStoryPayload | AlumniSubmitStoryPayload | Omit<AlumniSubmitStoryPayload, "sapId"> =
+      baseParsed.data as ServerStoryPayload;
 
     const requiresCriteria = !isSuperAdmin;
     if (requiresCriteria) {
-      const criteriaParsed = storyAlumniSubmitSchema.safeParse(rawPayload);
+      const criteriaSchema = hasValidSapId
+        ? storyAlumniSubmitSchema
+        : storyAlumniSelfSubmitWithoutSapSchema;
+      const criteriaParsed = criteriaSchema.safeParse(rawPayload);
       if (!criteriaParsed.success) {
         return NextResponse.json({ message: "Validation failed", issues: criteriaParsed.error.format() }, { status: 422 });
       }

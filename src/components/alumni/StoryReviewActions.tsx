@@ -26,6 +26,7 @@ export default function StoryReviewActions({
   variant = "bar",
 }: Props) {
   const queryClient = useQueryClient();
+  const approveModal = useModal();
   const rejectModal = useModal();
   const [rejectionText, setRejectionText] = useState("");
   const [loading, setLoading] = useState<"approve" | "reject" | null>(null);
@@ -53,13 +54,14 @@ export default function StoryReviewActions({
         throw new Error((j as { error?: string }).error || "Failed to approve story");
       }
       toast.success("Story approved and published.");
+      approveModal.closeModal();
       await invalidate();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to approve story");
     } finally {
       setLoading(null);
     }
-  }, [storyId, invalidate]);
+  }, [storyId, invalidate, approveModal]);
 
   const handleReject = useCallback(async () => {
     const reason = rejectionText.trim();
@@ -89,17 +91,22 @@ export default function StoryReviewActions({
     }
   }, [storyId, rejectionText, rejectModal, invalidate]);
 
+  const closeRejectModal = () => {
+    rejectModal.closeModal();
+    setRejectionText("");
+  };
+
   const actions = (
     <div className="flex flex-wrap items-center gap-2">
       {(isPending || isRejected) && (
         <button
           type="button"
-          onClick={handleApprove}
+          onClick={() => approveModal.openModal()}
           disabled={loading !== null}
           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           <CheckLineIcon className="h-4 w-4" />
-          {loading === "approve" ? "Approving..." : "Approve"}
+          Approve
         </button>
       )}
       {(isPending || normalized === "approved") && (
@@ -116,40 +123,73 @@ export default function StoryReviewActions({
     </div>
   );
 
+  const modals = (
+    <>
+      <Modal isOpen={approveModal.isOpen} onClose={approveModal.closeModal} className="max-w-lg p-6">
+        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Approve Story</h3>
+        <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+          Are you sure you want to approve this success story? It will be published and visible to the alumni
+          community.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={approveModal.closeModal}
+            disabled={loading === "approve"}
+            className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleApprove}
+            disabled={loading === "approve"}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {loading === "approve" ? "Approving..." : "Confirm Approval"}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={rejectModal.isOpen} onClose={closeRejectModal} className="max-w-lg p-6">
+        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Reject Story</h3>
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Are you sure you want to reject this story? Please provide a reason so the alumni can revise and resubmit.
+        </p>
+        <textarea
+          value={rejectionText}
+          onChange={(e) => setRejectionText(e.target.value)}
+          rows={4}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+          placeholder="Enter rejection reason..."
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={closeRejectModal}
+            disabled={loading === "reject"}
+            className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleReject}
+            disabled={loading === "reject"}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+          >
+            {loading === "reject" ? "Rejecting..." : "Confirm Rejection"}
+          </button>
+        </div>
+      </Modal>
+    </>
+  );
+
   if (variant === "inline") {
     return (
       <>
         {actions}
-        <Modal isOpen={rejectModal.isOpen} onClose={rejectModal.closeModal} className="max-w-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Reject Story</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Please provide a reason so the alumni can revise and resubmit.
-          </p>
-          <textarea
-            value={rejectionText}
-            onChange={(e) => setRejectionText(e.target.value)}
-            rows={4}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-            placeholder="Enter rejection reason..."
-          />
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={rejectModal.closeModal}
-              className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleReject}
-              disabled={loading === "reject"}
-              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
-            >
-              {loading === "reject" ? "Rejecting..." : "Confirm Rejection"}
-            </button>
-          </div>
-        </Modal>
+        {modals}
       </>
     );
   }
@@ -172,37 +212,7 @@ export default function StoryReviewActions({
           {actions}
         </div>
       </div>
-
-      <Modal isOpen={rejectModal.isOpen} onClose={rejectModal.closeModal} className="max-w-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Reject Story</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Please provide a reason so the alumni can revise and resubmit.
-        </p>
-        <textarea
-          value={rejectionText}
-          onChange={(e) => setRejectionText(e.target.value)}
-          rows={4}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-          placeholder="Enter rejection reason..."
-        />
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={rejectModal.closeModal}
-            className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleReject}
-            disabled={loading === "reject"}
-            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
-          >
-            {loading === "reject" ? "Rejecting..." : "Confirm Rejection"}
-          </button>
-        </div>
-      </Modal>
+      {modals}
     </>
   );
 }

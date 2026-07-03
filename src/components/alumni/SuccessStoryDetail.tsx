@@ -82,57 +82,79 @@ export default function SuccessStoryDetail({
         ? "No"
         : "Not provided";
 
+  const toolbar = (
+    <div className="flex items-center justify-between gap-4">
+      <Link
+        href={backHref}
+        className="inline-flex items-center rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="mr-2 h-4 w-4 fill-current">
+          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+        </svg>
+        {backLabel}
+      </Link>
+      {story.status && (
+        <StoryStatusBadge status={story.status} className="bg-white/90 backdrop-blur-sm" />
+      )}
+    </div>
+  );
+
+  const titleBlock = (
+    <div className="min-w-0 flex-1">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">
+        Alumni Success Story
+      </p>
+      <h1 className="text-2xl font-bold leading-tight text-white sm:text-3xl md:text-4xl lg:text-5xl">{title}</h1>
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/90">
+        {story.name && <span className="font-medium">{story.name}</span>}
+        {story.program && (
+          <>
+            <span className="hidden text-white/40 sm:inline">•</span>
+            <span>{story.program}</span>
+          </>
+        )}
+        {story.session && (
+          <>
+            <span className="hidden text-white/40 sm:inline">•</span>
+            <span>Session {story.session}</span>
+          </>
+        )}
+        <span className="hidden text-white/40 sm:inline">•</span>
+        <time dateTime={story.date}>{formattedDate}</time>
+      </div>
+    </div>
+  );
+
   return (
     <article
       className={`overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900 ${className}`}
     >
-      {/* Hero */}
-      <div className="relative min-h-[280px] md:min-h-[360px]">
-        {imageSrc ? (
-          <Image src={imageSrc} alt={title} fill className="object-cover" unoptimized priority />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-blue-900 to-indigo-950" />
-        )}
+      {/* Hero banner */}
+      <div className="relative min-h-[280px] overflow-hidden md:min-h-[320px]">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-blue-900 to-indigo-950" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
 
-        <div className="relative z-10 flex h-full min-h-[280px] flex-col justify-between p-6 md:min-h-[360px] md:p-10">
-          <div className="flex items-center justify-between gap-4">
-            <Link
-              href={backHref}
-              className="inline-flex items-center rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="mr-2 h-4 w-4 fill-current">
-                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-              </svg>
-              {backLabel}
-            </Link>
-            {story.status && (
-              <StoryStatusBadge status={story.status} className="bg-white/90 backdrop-blur-sm" />
-            )}
-          </div>
+        <div className="relative z-10 flex min-h-[280px] flex-col p-6 md:min-h-[320px] md:p-10">
+          {toolbar}
 
-          <div className="mt-auto max-w-4xl">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">
-              Alumni Success Story
-            </p>
-            <h1 className="text-3xl font-bold leading-tight text-white md:text-5xl">{title}</h1>
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/90">
-              {story.name && <span className="font-medium">{story.name}</span>}
-              {story.program && (
-                <>
-                  <span className="hidden text-white/40 sm:inline">•</span>
-                  <span>{story.program}</span>
-                </>
-              )}
-              {story.session && (
-                <>
-                  <span className="hidden text-white/40 sm:inline">•</span>
-                  <span>Session {story.session}</span>
-                </>
-              )}
-              <span className="hidden text-white/40 sm:inline">•</span>
-              <time dateTime={story.date}>{formattedDate}</time>
-            </div>
+          <div className="mt-6 flex flex-1 flex-col items-stretch gap-6 md:mt-8 md:flex-row md:items-center md:justify-between md:gap-10">
+            {titleBlock}
+
+            {imageSrc && (
+              <div className="flex shrink-0 justify-center md:justify-end">
+                <div className="overflow-hidden rounded-xl border border-white/25 bg-black/25 p-1 shadow-xl backdrop-blur-sm">
+                  <Image
+                    src={imageSrc}
+                    alt={title}
+                    width={400}
+                    height={500}
+                    className="block h-auto max-h-[180px] w-auto max-w-[160px] object-contain object-center sm:max-h-[220px] sm:max-w-[200px] md:max-h-[260px] md:max-w-[240px]"
+                    unoptimized
+                    priority
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

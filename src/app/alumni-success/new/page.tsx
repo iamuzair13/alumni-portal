@@ -8,6 +8,7 @@ export const viewport: Viewport = {
 
 import Link from "next/link";
 import AlumniSuccessForm from "@/components/forms/alumni-success";
+import { pickStorySapId } from "@/lib/alumniStories";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import AppHeader from "@/layout/AppHeader";
@@ -51,6 +52,7 @@ export default async function Page() {
 
   type AlumniRow = {
     sapid: string | null;
+    registrationno: string | null;
     alumniname: string | null;
     facultyname: string | null;
     departmentname: string | null;
@@ -67,6 +69,7 @@ export default async function Page() {
     const rows = await sql/* sql */`
       SELECT
         a.sapid,
+        a.registrationno,
         a.alumniname,
         COALESCE(f.faculty_name, a.facultyname) AS facultyname,
         COALESCE(d.department_name, a.departmentname) AS departmentname,
@@ -87,6 +90,7 @@ export default async function Page() {
     const rows = await sql/* sql */`
       SELECT
         a.sapid,
+        a.registrationno,
         a.alumniname,
         COALESCE(f.faculty_name, a.facultyname) AS facultyname,
         COALESCE(d.department_name, a.departmentname) AS departmentname,
@@ -107,6 +111,7 @@ export default async function Page() {
     const rows = await sql/* sql */`
       SELECT
         a.sapid,
+        a.registrationno,
         a.alumniname,
         COALESCE(f.faculty_name, a.facultyname) AS facultyname,
         COALESCE(d.department_name, a.departmentname) AS departmentname,
@@ -123,7 +128,7 @@ export default async function Page() {
       LIMIT 1`;
     r = rows[0] as AlumniRow | undefined;
   }
-  const sapId = String(r?.sapid ?? "");
+  const sapId = pickStorySapId(r?.sapid, r?.registrationno, sessionSapid) ?? "";
   const name = String(r?.alumniname ?? session?.user?.name ?? "");
   const emailResolved = String(r?.personalemail ?? r?.officialemail ?? r?.universityemail ?? email);
   const faculty = String(r?.facultyname ?? "");

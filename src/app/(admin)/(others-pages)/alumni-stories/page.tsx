@@ -149,7 +149,9 @@ const StoryTable: React.FC<StoryListProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const rejectModal = useModal();
+  const approveModal = useModal();
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
+  const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
@@ -321,7 +323,10 @@ const StoryTable: React.FC<StoryListProps> = ({
                     {canReview && (normalizeStoryStatus(story.status) === "pending" || normalizeStoryStatus(story.status) === "not-approved") && (
                       <button
                         type="button"
-                        onClick={() => onApprove?.(story.id)}
+                        onClick={() => {
+                          setApproveTargetId(story.id);
+                          approveModal.openModal();
+                        }}
                         disabled={Boolean(reviewingIds?.has(story.id))}
                         aria-label={`Approve story for ${story.name}`}
                         className="group/btn inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-200 transition-all duration-200 hover:bg-emerald-50 hover:shadow-md active:scale-95 disabled:opacity-50"
@@ -404,10 +409,57 @@ const StoryTable: React.FC<StoryListProps> = ({
         </div>
       </div>
 
-      <Modal isOpen={rejectModal.isOpen} onClose={rejectModal.closeModal} className="max-w-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Reject Story</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Please provide a reason so the alumni can revise and resubmit.
+      <Modal
+        isOpen={approveModal.isOpen}
+        onClose={() => {
+          approveModal.closeModal();
+          setApproveTargetId(null);
+        }}
+        className="max-w-lg p-6"
+      >
+        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Approve Story</h3>
+        <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+          Are you sure you want to approve this success story? It will be published and visible to the alumni
+          community.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              approveModal.closeModal();
+              setApproveTargetId(null);
+            }}
+            className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!approveTargetId) return;
+              await onApprove?.(approveTargetId);
+              approveModal.closeModal();
+              setApproveTargetId(null);
+            }}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            Confirm Approval
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={rejectModal.isOpen}
+        onClose={() => {
+          rejectModal.closeModal();
+          setRejectTargetId(null);
+          setRejectionReason("");
+        }}
+        className="max-w-lg p-6"
+      >
+        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Reject Story</h3>
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Are you sure you want to reject this story? Please provide a reason so the alumni can revise and resubmit.
         </p>
         <textarea
           value={rejectionReason}
@@ -433,7 +485,8 @@ const StoryTable: React.FC<StoryListProps> = ({
               setRejectTargetId(null);
               setRejectionReason("");
             }}
-            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+            disabled={!rejectionReason.trim()}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
           >
             Confirm Rejection
           </button>
