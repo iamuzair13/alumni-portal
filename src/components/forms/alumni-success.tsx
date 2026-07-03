@@ -12,7 +12,7 @@ import Underline from "@tiptap/extension-underline";
 import DOMPurify from "dompurify";
 import { useQueryClient } from "@tanstack/react-query";
 import { alumniStoriesKey } from "@/app/queries/fetch-alumni-stories";
-import { storyFormSchema } from "@/lib/alumniStories";
+import { storyFormSchema, storyCriteriaFieldsSchema } from "@/lib/alumniStories";
 import { useOrgDatasets } from "@/hooks/useOrgDatasets";
 
 type Props = {
@@ -27,6 +27,9 @@ type Props = {
   existingStory?: string;
   existingTitle?: string;
   existingImageUrl?: string;
+  existingCriteriaHighlight?: string;
+  existingCriteriaInspires?: string;
+  existingCriteriaReplicable?: boolean | null;
   storyId?: string;
   onSuccess?: () => void;
   redirectAfterSave?: string;
@@ -51,14 +54,14 @@ const alumniSchema = z.object({
     (val) => hasContent(val),
     { message: "Story is required. Please enter your success story." }
   ),
-});
+}).merge(storyCriteriaFieldsSchema);
 
 const adminSchema = storyFormSchema.extend({
   passingYear: z.number().int().min(1900).max(2100).optional().nullable(),
   contactNumber: z.string().max(50).optional(),
 });
 
-type AlumniFormVals = z.infer<typeof alumniSchema>;
+type AlumniFormVals = z.input<typeof alumniSchema>;
 type AdminFormVals = z.infer<typeof adminSchema>;
 type FormVals = AlumniFormVals | AdminFormVals;
 
@@ -79,6 +82,9 @@ export default function AlumniSuccessForm({
   existingStory = "",
   existingTitle = "",
   existingImageUrl = "",
+  existingCriteriaHighlight = "",
+  existingCriteriaInspires = "",
+  existingCriteriaReplicable = null,
   storyId,
   onSuccess,
   redirectAfterSave,
@@ -126,6 +132,10 @@ export default function AlumniSuccessForm({
     contactNumber: initialContactNumber || "",
     storyTitle: existingTitle || "",
     storyHtml: existingStory || "",
+    criteriaHighlight: existingCriteriaHighlight || "",
+    criteriaInspires: existingCriteriaInspires || "",
+    criteriaReplicable: undefined,
+    signatureConfirmed: false,
   };
   
   const { 
@@ -149,7 +159,23 @@ export default function AlumniSuccessForm({
     if (name) setValue("name", name, { shouldValidate: true });
     if (passingYear != null) setValue("passingYear", passingYear, { shouldValidate: true });
     if (initialContactNumber) setValue("contactNumber", initialContactNumber, { shouldValidate: true });
-  }, [isAdmin, faculty, department, name, passingYear, initialContactNumber, setValue]);
+    if (existingCriteriaHighlight) setValue("criteriaHighlight", existingCriteriaHighlight, { shouldValidate: true });
+    if (existingCriteriaInspires) setValue("criteriaInspires", existingCriteriaInspires, { shouldValidate: true });
+    if (existingCriteriaReplicable === true || existingCriteriaReplicable === false) {
+      setValue("criteriaReplicable", existingCriteriaReplicable, { shouldValidate: true });
+    }
+  }, [
+    isAdmin,
+    faculty,
+    department,
+    name,
+    passingYear,
+    initialContactNumber,
+    existingCriteriaHighlight,
+    existingCriteriaInspires,
+    existingCriteriaReplicable,
+    setValue,
+  ]);
 
 
   React.useEffect(() => {
@@ -262,6 +288,22 @@ export default function AlumniSuccessForm({
     setImagePreview(previewUrl);
   };
 
+  const watchedName = watch("name");
+
+  const appendCriteriaToFormData = (formData: FormData, alumniVals: AlumniFormVals) => {
+    formData.append("criteriaHighlight", alumniVals.criteriaHighlight);
+    formData.append("criteriaInspires", alumniVals.criteriaInspires);
+    formData.append("criteriaReplicable", String(alumniVals.criteriaReplicable));
+    formData.append("signatureConfirmed", String(alumniVals.signatureConfirmed));
+  };
+
+  const criteriaPayload = (alumniVals: AlumniFormVals) => ({
+    criteriaHighlight: alumniVals.criteriaHighlight,
+    criteriaInspires: alumniVals.criteriaInspires,
+    criteriaReplicable: alumniVals.criteriaReplicable,
+    signatureConfirmed: alumniVals.signatureConfirmed,
+  });
+
   const onSubmit = async (vals: FormVals) => {
     const htmlContent = editor?.getHTML() || vals.storyHtml;
     
@@ -303,6 +345,7 @@ export default function AlumniSuccessForm({
         if (vals.contactNumber) formData.append("contactNumber", vals.contactNumber);
         formData.append("storyTitle", vals.storyTitle);
         formData.append("storyHtml", sanitizedHtml);
+        if (!isAdmin) appendCriteriaToFormData(formData, vals as AlumniFormVals);
         formData.append("storyImage", imageFile);
 
         res = await fetch(endpoint, { method, body: formData });
@@ -317,6 +360,7 @@ export default function AlumniSuccessForm({
           contactNumber: vals.contactNumber || null,
           storyTitle: vals.storyTitle,
           storyHtml: sanitizedHtml,
+          ...(!isAdmin ? criteriaPayload(vals as AlumniFormVals) : {}),
         };
 
         res = await fetch(endpoint, {
@@ -803,6 +847,117 @@ export default function AlumniSuccessForm({
               <p className="text-xs text-gray-500 dark:text-gray-400">Upload an image to accompany your story (JPEG, PNG, GIF, or WebP, max 5MB)</p>
             </div>
           </div>
+
+          {!isAdmin && (
+            <>
+              <div className="md:col-span-2 mt-2 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-base font-semibold text-gray-800 dark:text-gray-100">Criteria for Success Story</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Please answer the following before submitting your story.</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="criteriaHighlight" className={labelBase}>
+                  What does the story highlight? An innovative approach, exceptional achievement, or inspiring journey. Please explain.
+                  <span className="text-rose-600 ml-1">*</span>
+                </label>
+                <input
+                  id="criteriaHighlight"
+                  type="text"
+                  maxLength={250}
+                  {...register("criteriaHighlight")}
+                  className={`${inputBase} ${"criteriaHighlight" in errors && errors.criteriaHighlight ? "border-rose-500 bg-rose-50" : ""}`}
+                  placeholder="One line only"
+                  aria-label="Story highlight explanation"
+                />
+                {"criteriaHighlight" in errors && errors.criteriaHighlight && (
+                  <span className={errorText}>{errors.criteriaHighlight.message}</span>
+                )}
+                <p className="mt-1 text-xs text-gray-500">1 line only</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="criteriaInspires" className={labelBase}>
+                  Does your story inspire, motivate, or encourage others to take action? If yes, how?
+                  <span className="text-rose-600 ml-1">*</span>
+                </label>
+                <input
+                  id="criteriaInspires"
+                  type="text"
+                  maxLength={250}
+                  {...register("criteriaInspires")}
+                  className={`${inputBase} ${"criteriaInspires" in errors && errors.criteriaInspires ? "border-rose-500 bg-rose-50" : ""}`}
+                  placeholder="One line only"
+                  aria-label="Inspiration explanation"
+                />
+                {"criteriaInspires" in errors && errors.criteriaInspires && (
+                  <span className={errorText}>{errors.criteriaInspires.message}</span>
+                )}
+                <p className="mt-1 text-xs text-gray-500">1 line only</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <span className={labelBase}>
+                  Does your story provide valuable lessons, practical knowledge, or a model that others can replicate?
+                  <span className="text-rose-600 ml-1">*</span>
+                </span>
+                <Controller
+                  name="criteriaReplicable"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex items-center gap-6 mt-2">
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="criteriaReplicable"
+                          checked={field.value === true}
+                          onChange={() => field.onChange(true)}
+                          className="h-4 w-4 text-[#007bff] border-gray-300 focus:ring-[#007bff]"
+                        />
+                        Yes
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="criteriaReplicable"
+                          checked={field.value === false}
+                          onChange={() => field.onChange(false)}
+                          className="h-4 w-4 text-[#007bff] border-gray-300 focus:ring-[#007bff]"
+                        />
+                        No
+                      </label>
+                    </div>
+                  )}
+                />
+                {"criteriaReplicable" in errors && errors.criteriaReplicable && (
+                  <span className={errorText}>{errors.criteriaReplicable.message}</span>
+                )}
+              </div>
+
+              <div className="md:col-span-2">
+                <div className="flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                  <input
+                    type="checkbox"
+                    id="signatureConfirmed"
+                    {...register("signatureConfirmed")}
+                    className="mt-1 h-4 w-4 text-[#007bff] border-gray-300 rounded focus:ring-[#007bff]"
+                  />
+                  <label htmlFor="signatureConfirmed" className="text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                    {watchedName?.trim() ? (
+                      <>
+                        I, <span className="font-semibold">{watchedName.trim()}</span>, confirm this story is true and authorize its publication.
+                      </>
+                    ) : (
+                      <>I confirm this story is true and authorize its publication.</>
+                    )}
+                    <span className="text-rose-600 ml-1">*</span>
+                  </label>
+                </div>
+                {"signatureConfirmed" in errors && errors.signatureConfirmed && (
+                  <span className={errorText}>{errors.signatureConfirmed.message}</span>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Submit Button */}

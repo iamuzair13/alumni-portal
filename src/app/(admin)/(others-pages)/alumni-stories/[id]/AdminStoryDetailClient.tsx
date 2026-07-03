@@ -19,6 +19,11 @@ type DetailItem = {
   imageUrl: string;
   status: string;
   rejectionReason?: string | null;
+  criteriaHighlight?: string | null;
+  criteriaInspires?: string | null;
+  criteriaReplicable?: boolean | null;
+  signatureConfirmed?: boolean | null;
+  signatureConfirmedAt?: string | null;
 };
 
 export default function AdminStoryDetailClient({ id }: { id: string }) {
@@ -87,6 +92,7 @@ export default function AdminStoryDetailClient({ id }: { id: string }) {
         story={story}
         backHref="/alumni-stories?tab=viewStories"
         backLabel="Back to Stories"
+        showSubmissionCriteria
         adminActions={
           canReview ? (
             <StoryReviewActions

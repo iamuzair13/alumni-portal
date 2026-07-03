@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { sql, retryDbOperation } from "@/lib/dbconnect";
-import { storyServerSchema, normalizeStoryStatus, isStoryApproved, isStoryOwner } from "@/lib/alumniStories";
+import {
+  storyServerSchema,
+  storyAlumniSubmitSchema,
+  parseStoryCriteriaFromBody,
+  normalizeStoryStatus,
+  isStoryApproved,
+  isStoryOwner,
+  type ServerStoryPayload,
+  type AlumniSubmitStoryPayload,
+} from "@/lib/alumniStories";
 import { auth } from "@/lib/auth";
 import { canModify, isSuperAdminUser } from "@/lib/alumniProfile";
 import { writeFile, mkdir } from "fs/promises";
@@ -18,6 +27,11 @@ type StoryDetailRow = {
   reviewed_at: string | null;
   createdat: string | null;
   storytitle: string | null;
+  criteria_highlight: string | null;
+  criteria_inspires: string | null;
+  criteria_replicable: boolean | null;
+  signature_confirmed: boolean | null;
+  signature_confirmed_at: string | null;
   alumniname: string | null;
   degreetitle: string | null;
   academicsession: string | null;
@@ -41,6 +55,13 @@ function mapStoryDetail(r: StoryDetailRow) {
     status: normalizeStoryStatus(r.status),
     rejectionReason: r.rejection_reason ?? null,
     reviewedAt: r.reviewed_at ? new Date(r.reviewed_at).toISOString() : null,
+    criteriaHighlight: r.criteria_highlight ?? null,
+    criteriaInspires: r.criteria_inspires ?? null,
+    criteriaReplicable: r.criteria_replicable ?? null,
+    signatureConfirmed: r.signature_confirmed ?? null,
+    signatureConfirmedAt: r.signature_confirmed_at
+      ? new Date(r.signature_confirmed_at).toISOString()
+      : null,
   };
 }
 
@@ -67,6 +88,11 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         s.reviewed_at,
         s.createdat,
         s.storytitle,
+        s.criteria_highlight,
+        s.criteria_inspires,
+        s.criteria_replicable,
+        s.signature_confirmed,
+        s.signature_confirmed_at,
         a.alumniname,
         a.degreetitle,
         a.academicsession,
@@ -178,7 +204,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     const contentType = req.headers.get("content-type") || "";
-    let v: ReturnType<typeof storyServerSchema.parse>;
+    let rawPayload: Record<string, unknown>;
     let storyImageFilename: string | null = null;
 
     if (contentType.includes("multipart/form-data")) {
@@ -193,6 +219,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       const storyTitle = String(formData.get("storyTitle") || "");
       const storyHtml = String(formData.get("storyHtml") || "");
       const imageFile = formData.get("storyImage") as File | null;
+      const criteria = parseStoryCriteriaFromBody({
+        criteriaHighlight: formData.get("criteriaHighlight"),
+        criteriaInspires: formData.get("criteriaInspires"),
+        criteriaReplicable: formData.get("criteriaReplicable"),
+        signatureConfirmed: formData.get("signatureConfirmed"),
+      });
 
       if (imageFile && imageFile.size > 0) {
         const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
@@ -223,7 +255,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         await writeFile(filePath, Buffer.from(bytes));
       }
 
-      const parsed = storyServerSchema.safeParse({
+      rawPayload = {
         sapId,
         name,
         email,
@@ -233,19 +265,40 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         contactNumber,
         storyTitle,
         storyHtml,
-      });
-      if (!parsed.success) {
-        return NextResponse.json({ message: "Validation failed", issues: parsed.error.format() }, { status: 422 });
-      }
-      v = parsed.data;
+        ...criteria,
+      };
     } else {
       const body = await req.json();
-      const parsed = storyServerSchema.safeParse(body);
-      if (!parsed.success) {
-        return NextResponse.json({ message: "Validation failed", issues: parsed.error.format() }, { status: 422 });
-      }
-      v = parsed.data;
+      rawPayload = {
+        ...body,
+        ...parseStoryCriteriaFromBody(body),
+      };
     }
+
+    const baseParsed = storyServerSchema.safeParse(rawPayload);
+    if (!baseParsed.success) {
+      return NextResponse.json({ message: "Validation failed", issues: baseParsed.error.format() }, { status: 422 });
+    }
+
+    let v: ServerStoryPayload | AlumniSubmitStoryPayload = baseParsed.data;
+
+    const requiresCriteria = !isSuperAdmin;
+    if (requiresCriteria) {
+      const criteriaParsed = storyAlumniSubmitSchema.safeParse(rawPayload);
+      if (!criteriaParsed.success) {
+        return NextResponse.json({ message: "Validation failed", issues: criteriaParsed.error.format() }, { status: 422 });
+      }
+      v = criteriaParsed.data;
+    }
+
+    const criteriaHighlight: string | null =
+      requiresCriteria && "criteriaHighlight" in v ? (v.criteriaHighlight ?? null) : null;
+    const criteriaInspires: string | null =
+      requiresCriteria && "criteriaInspires" in v ? (v.criteriaInspires ?? null) : null;
+    const criteriaReplicable: boolean | null =
+      requiresCriteria && "criteriaReplicable" in v ? (v.criteriaReplicable ?? null) : null;
+    const signatureConfirmed: boolean | null =
+      requiresCriteria && "signatureConfirmed" in v ? (v.signatureConfirmed ?? null) : null;
 
     const cleanHtml = sanitizeStoryHtml(v.storyHtml);
     const resetModeration = !isSuperAdmin;
@@ -261,7 +314,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
               status = 'pending',
               rejection_reason = NULL,
               reviewed_by = NULL,
-              reviewed_at = NULL
+              reviewed_at = NULL,
+              criteria_highlight = ${criteriaHighlight},
+              criteria_inspires = ${criteriaInspires},
+              criteria_replicable = ${criteriaReplicable},
+              signature_confirmed = ${signatureConfirmed},
+              signature_confirmed_at = ${signatureConfirmed === true ? sql`NOW()` : null}
           WHERE id = ${storyId}
           RETURNING id`
         : sql/* sql */`
@@ -281,7 +339,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
               status = 'pending',
               rejection_reason = NULL,
               reviewed_by = NULL,
-              reviewed_at = NULL
+              reviewed_at = NULL,
+              criteria_highlight = ${criteriaHighlight},
+              criteria_inspires = ${criteriaInspires},
+              criteria_replicable = ${criteriaReplicable},
+              signature_confirmed = ${signatureConfirmed},
+              signature_confirmed_at = ${signatureConfirmed === true ? sql`NOW()` : null}
           WHERE id = ${storyId}
           RETURNING id`
         : sql/* sql */`

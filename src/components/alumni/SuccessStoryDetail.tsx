@@ -15,6 +15,11 @@ export type SuccessStoryDetailData = {
   imageUrl: string;
   status?: string;
   rejectionReason?: string | null;
+  criteriaHighlight?: string | null;
+  criteriaInspires?: string | null;
+  criteriaReplicable?: boolean | null;
+  signatureConfirmed?: boolean | null;
+  signatureConfirmedAt?: string | null;
 };
 
 type Props = {
@@ -26,6 +31,8 @@ type Props = {
   className?: string;
   showStatusBanner?: boolean;
   adminActions?: React.ReactNode;
+  /** When true, shows the submission criteria panel (admin review views). */
+  showSubmissionCriteria?: boolean;
 };
 
 function resolveImageSrc(imageUrl: string): string | null {
@@ -45,6 +52,7 @@ export default function SuccessStoryDetail({
   className = "",
   showStatusBanner = false,
   adminActions,
+  showSubmissionCriteria = false,
 }: Props) {
   const title = story.title?.trim() || story.name?.trim() || "Success Story";
   const imageSrc = resolveImageSrc(story.imageUrl);
@@ -57,6 +65,22 @@ export default function SuccessStoryDetail({
     : "N/A";
   const status = normalizeStoryStatus(story.status);
   const showBanner = showStatusBanner && status !== "approved";
+  const hasCriteria =
+    Boolean(story.criteriaHighlight?.trim()) ||
+    Boolean(story.criteriaInspires?.trim()) ||
+    story.criteriaReplicable === true ||
+    story.criteriaReplicable === false ||
+    story.signatureConfirmed === true;
+
+  const criteriaValue = (value: string | null | undefined) =>
+    value?.trim() ? value.trim() : "Not provided";
+
+  const replicableLabel =
+    story.criteriaReplicable === true
+      ? "Yes"
+      : story.criteriaReplicable === false
+        ? "No"
+        : "Not provided";
 
   return (
     <article
@@ -161,6 +185,64 @@ export default function SuccessStoryDetail({
 
       {/* Admin review panel */}
       {adminActions && <div className="border-b border-gray-200 px-6 py-4 md:px-10 dark:border-gray-700">{adminActions}</div>}
+
+      {showSubmissionCriteria && (
+        <div className="border-b border-gray-200 bg-slate-50 px-6 py-6 md:px-10 dark:border-gray-700 dark:bg-gray-800/40">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Submission Criteria</h2>
+          {!hasCriteria ? (
+            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+              No submission criteria recorded for this story.
+            </p>
+          ) : (
+            <dl className="mt-4 space-y-4 text-sm">
+              <div>
+                <dt className="font-medium text-gray-700 dark:text-gray-300">
+                  What does the story highlight? An innovative approach, exceptional achievement, or inspiring journey.
+                </dt>
+                <dd className="mt-1 text-gray-900 dark:text-gray-100">
+                  {criteriaValue(story.criteriaHighlight)}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-gray-700 dark:text-gray-300">
+                  Does your story inspire, motivate, or encourage others to take action? If yes, how?
+                </dt>
+                <dd className="mt-1 text-gray-900 dark:text-gray-100">
+                  {criteriaValue(story.criteriaInspires)}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-gray-700 dark:text-gray-300">
+                  Does your story provide valuable lessons, practical knowledge, or a model that others can replicate?
+                </dt>
+                <dd className="mt-1 text-gray-900 dark:text-gray-100">{replicableLabel}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-gray-700 dark:text-gray-300">Alumni signature</dt>
+                <dd className="mt-1 text-gray-900 dark:text-gray-100">
+                  {story.signatureConfirmed ? (
+                    <>
+                      I, <span className="font-semibold">{story.name}</span>, confirm this story is true and authorize
+                      its publication.
+                      {story.signatureConfirmedAt
+                        ? ` Confirmed on ${new Date(story.signatureConfirmedAt).toLocaleString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}.`
+                        : ""}
+                    </>
+                  ) : (
+                    "Not confirmed"
+                  )}
+                </dd>
+              </div>
+            </dl>
+          )}
+        </div>
+      )}
 
       {/* Article body */}
       <div className="px-6 py-8 md:px-10 md:py-12">

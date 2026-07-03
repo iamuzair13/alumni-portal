@@ -1257,3 +1257,11 @@ WHERE status IS NULL
 
 CREATE INDEX IF NOT EXISTS idx_tblalumnistories_status
   ON public.tblalumnistories (LOWER(COALESCE(status, 'pending')));
+
+-- Success story submission criteria and alumni signature confirmation
+ALTER TABLE public.tblalumnistories
+  ADD COLUMN IF NOT EXISTS criteria_highlight VARCHAR(250) NULL,
+  ADD COLUMN IF NOT EXISTS criteria_inspires VARCHAR(250) NULL,
+  ADD COLUMN IF NOT EXISTS criteria_replicable BOOLEAN NULL,
+  ADD COLUMN IF NOT EXISTS signature_confirmed BOOLEAN NULL,
+  ADD COLUMN IF NOT EXISTS signature_confirmed_at TIMESTAMPTZ NULL;

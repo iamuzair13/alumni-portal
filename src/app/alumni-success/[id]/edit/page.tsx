@@ -70,6 +70,9 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
       s.alumniid,
       s.alumnistories,
       s.storytitle,
+      s.criteria_highlight,
+      s.criteria_inspires,
+      s.criteria_replicable,
       a.sapid,
       a.alumniname,
       COALESCE(f.faculty_name, a.facultyname) AS facultyname,
@@ -111,6 +114,9 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     alumniid: number;
     alumnistories: string | null;
     storytitle: string | null;
+    criteria_highlight: string | null;
+    criteria_inspires: string | null;
+    criteria_replicable: boolean | null;
     sapid: string | null;
     alumniname: string | null;
     facultyname: string | null;
@@ -220,6 +226,9 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
               contactNumber={contactNumber}
               existingStory={existingStory}
               existingTitle={existingTitle}
+              existingCriteriaHighlight={String(r?.criteria_highlight ?? "")}
+              existingCriteriaInspires={String(r?.criteria_inspires ?? "")}
+              existingCriteriaReplicable={r?.criteria_replicable ?? null}
               storyId={id}
             />
           </div>

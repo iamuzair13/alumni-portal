@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import {
   storyServerSchema,
+  storyAlumniSubmitSchema,
+  parseStoryCriteriaFromBody,
   type ServerStoryPayload,
+  type AlumniSubmitStoryPayload,
   normalizeStoryStatus,
   isStoryOwner,
 } from "@/lib/alumniStories";
@@ -217,7 +220,7 @@ export async function POST(req: Request) {
     }
 
     const contentType = req.headers.get("content-type") || "";
-    let v: ServerStoryPayload;
+    let rawPayload: Record<string, unknown>;
     let storyImageFilename: string | null = null;
 
     if (contentType.includes("multipart/form-data")) {
@@ -232,6 +235,12 @@ export async function POST(req: Request) {
       const storyTitle = String(formData.get("storyTitle") || "");
       const storyHtml = String(formData.get("storyHtml") || "");
       const imageFile = formData.get("storyImage") as File | null;
+      const criteria = parseStoryCriteriaFromBody({
+        criteriaHighlight: formData.get("criteriaHighlight"),
+        criteriaInspires: formData.get("criteriaInspires"),
+        criteriaReplicable: formData.get("criteriaReplicable"),
+        signatureConfirmed: formData.get("signatureConfirmed"),
+      });
 
       if (imageFile && imageFile.size > 0) {
         const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
@@ -262,7 +271,7 @@ export async function POST(req: Request) {
         await writeFile(filePath, Buffer.from(bytes));
       }
 
-      const parsed = storyServerSchema.safeParse({
+      rawPayload = {
         sapId,
         name,
         email,
@@ -272,22 +281,25 @@ export async function POST(req: Request) {
         contactNumber,
         storyTitle,
         storyHtml,
-      });
-      if (!parsed.success) {
-        return NextResponse.json({ message: "Validation failed", issues: parsed.error.format() }, { status: 422 });
-      }
-      v = parsed.data;
+        ...criteria,
+      };
     } else {
       const body = await req.json();
-      const parsed = storyServerSchema.safeParse(body);
-      if (!parsed.success) {
-        return NextResponse.json(
-          { message: "Validation failed", issues: parsed.error.format(), received: body },
-          { status: 422 }
-        );
-      }
-      v = parsed.data;
+      rawPayload = {
+        ...body,
+        ...parseStoryCriteriaFromBody(body),
+      };
     }
+
+    const baseParsed = storyServerSchema.safeParse(rawPayload);
+    if (!baseParsed.success) {
+      return NextResponse.json(
+        { message: "Validation failed", issues: baseParsed.error.format(), received: rawPayload },
+        { status: 422 }
+      );
+    }
+
+    let v: ServerStoryPayload | AlumniSubmitStoryPayload = baseParsed.data;
 
     const cleanHtml = sanitizeStoryHtml(v.storyHtml);
     const textContent = storyHtmlTextContent(v.storyHtml);
@@ -319,6 +331,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden: You can only create stories for your own profile" }, { status: 403 });
     }
 
+    const requiresCriteria = !isAdmin;
+    if (requiresCriteria) {
+      const criteriaParsed = storyAlumniSubmitSchema.safeParse(rawPayload);
+      if (!criteriaParsed.success) {
+        return NextResponse.json({ message: "Validation failed", issues: criteriaParsed.error.format() }, { status: 422 });
+      }
+      v = criteriaParsed.data;
+    }
+
+    const criteriaHighlight: string | null =
+      requiresCriteria && "criteriaHighlight" in v ? (v.criteriaHighlight ?? null) : null;
+    const criteriaInspires: string | null =
+      requiresCriteria && "criteriaInspires" in v ? (v.criteriaInspires ?? null) : null;
+    const criteriaReplicable: boolean | null =
+      requiresCriteria && "criteriaReplicable" in v ? (v.criteriaReplicable ?? null) : null;
+    const signatureConfirmed: boolean | null =
+      requiresCriteria && "signatureConfirmed" in v ? (v.signatureConfirmed ?? null) : null;
+
     if (isAdmin) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       if (accessFilter.hasFilter && accessFilter.sql) {
@@ -348,11 +378,15 @@ export async function POST(req: Request) {
       await sql/* sql */`
         INSERT INTO public.tblalumnistories (
           alumniid, alumnistories, story_image, status, createdat, storytitle,
-          rejection_reason, reviewed_by, reviewed_at
+          rejection_reason, reviewed_by, reviewed_at,
+          criteria_highlight, criteria_inspires, criteria_replicable,
+          signature_confirmed, signature_confirmed_at
         )
         VALUES (
           ${alumniId}, ${cleanHtml}, ${storyImageFilename}, ${storyStatus}, NOW(), ${v.storyTitle},
-          NULL, ${reviewerId}, ${isAdmin && !owner ? sql`NOW()` : null}
+          NULL, ${reviewerId}, ${isAdmin && !owner ? sql`NOW()` : null},
+          ${criteriaHighlight}, ${criteriaInspires}, ${criteriaReplicable},
+          ${signatureConfirmed}, ${signatureConfirmed === true ? sql`NOW()` : null}
         )
         RETURNING id`;
     } catch (dbError) {
