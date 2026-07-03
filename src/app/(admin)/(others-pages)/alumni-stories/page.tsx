@@ -150,8 +150,10 @@ const StoryTable: React.FC<StoryListProps> = ({
   const [pageSize, setPageSize] = useState(10);
   const rejectModal = useModal();
   const approveModal = useModal();
+  const deleteModal = useModal();
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
@@ -169,6 +171,9 @@ const StoryTable: React.FC<StoryListProps> = ({
   const totalPages = Math.max(1, Math.ceil(safeItems.length / pageSize));
   const startIdx = (currentPage - 1) * pageSize;
   const paged = safeItems.slice(startIdx, startIdx + pageSize);
+  const deleteTargetStory = deleteTargetId
+    ? safeItems.find((story) => story.id === deleteTargetId)
+    : undefined;
 
   return (
     <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white/80 shadow-xl shadow-gray-200/50 backdrop-blur-sm dark:border-white/[0.08] dark:bg-gray-900/60 dark:shadow-none">
@@ -354,7 +359,10 @@ const StoryTable: React.FC<StoryListProps> = ({
                     {canDelete && (
                     <button
                       type="button"
-                      onClick={() => onDelete?.(story.id)}
+                      onClick={() => {
+                        setDeleteTargetId(story.id);
+                        deleteModal.openModal();
+                      }}
                       disabled={Boolean(deletingIds?.has(story.id))}
                       aria-label={`Delete story for ${story.name}`}
                       className="group/btn inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-600 shadow-sm ring-1 ring-gray-200 transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 hover:shadow-md hover:ring-rose-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700 dark:hover:bg-rose-900/20 dark:hover:text-rose-400 dark:hover:ring-rose-800"
@@ -489,6 +497,57 @@ const StoryTable: React.FC<StoryListProps> = ({
             className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
           >
             Confirm Rejection
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={deleteModal.isOpen}
+        onClose={() => {
+          deleteModal.closeModal();
+          setDeleteTargetId(null);
+        }}
+        className="max-w-lg p-6"
+      >
+        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Delete Story</h3>
+        <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+          Are you sure you want to permanently delete
+          {deleteTargetStory ? (
+            <>
+              {" "}
+              <span className="font-medium text-gray-900 dark:text-white">
+                {deleteTargetStory.title || deleteTargetStory.name}
+              </span>
+            </>
+          ) : (
+            " this story"
+          )}
+          ? This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              deleteModal.closeModal();
+              setDeleteTargetId(null);
+            }}
+            disabled={Boolean(deleteTargetId && deletingIds?.has(deleteTargetId))}
+            className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!deleteTargetId) return;
+              await onDelete?.(deleteTargetId);
+              deleteModal.closeModal();
+              setDeleteTargetId(null);
+            }}
+            disabled={Boolean(deleteTargetId && deletingIds?.has(deleteTargetId))}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+          >
+            {deleteTargetId && deletingIds?.has(deleteTargetId) ? "Deleting..." : "Confirm Delete"}
           </button>
         </div>
       </Modal>
