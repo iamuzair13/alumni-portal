@@ -5,6 +5,7 @@ export function getCorsHeaders(origin?: string | null) {
     'http://alumni.uol.edu.pk',
     'http://localhost:3000',
     'http://localhost:3001',
+    '127.0.0.1:3000',
   ];
 
   // For external public APIs, be permissive but secure
