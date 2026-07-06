@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 
+function stableImageVersion(image: string): number {
+  let hash = 0;
+  for (let i = 0; i < image.length; i += 1) {
+    hash = (hash * 31 + image.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
 export async function GET() {
   try {
     const session = await auth();
@@ -28,7 +36,7 @@ export async function GET() {
           if (image) {
             return NextResponse.json({ 
               image,
-              timestamp: Date.now()
+              timestamp: stableImageVersion(image),
             }, { status: 200 });
           }
         }
@@ -78,7 +86,7 @@ export async function GET() {
     
     return NextResponse.json({ 
       image,
-      timestamp: Date.now() // Add timestamp for cache busting
+      timestamp: image ? stableImageVersion(image) : 0,
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch profile image";

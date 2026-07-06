@@ -35,6 +35,10 @@ type LeadershipSettings = {
   association_leadership: boolean;
 };
 
+type ScholarshipSettings = {
+  scholarship_application: boolean;
+};
+
 type RoleCriterion = {
   id: number;
   label: string;
@@ -79,6 +83,25 @@ async function fetchLeadershipSettings(): Promise<LeadershipSettings> {
 
 async function updateLeadershipSetting(formType: "chapter_leadership" | "association_leadership", isEnabled: boolean) {
   const res = await fetch("/api/leadership/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ formType, isEnabled }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any)?.error || "Failed to update setting");
+  return data as { success: boolean; message?: string };
+}
+
+async function fetchScholarshipSettings(): Promise<ScholarshipSettings> {
+  const res = await fetch("/api/scholarship/settings");
+  if (!res.ok) {
+    return { scholarship_application: true };
+  }
+  return res.json();
+}
+
+async function updateScholarshipSetting(formType: "scholarship_application", isEnabled: boolean) {
+  const res = await fetch("/api/scholarship/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ formType, isEnabled }),
@@ -344,6 +367,14 @@ function SetupPageContent() {
     queryKey: ["leadership-settings"],
     queryFn: fetchLeadershipSettings,
     enabled: isSuperAdmin && selected === "leadership",
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: scholarshipSettings, refetch: refetchScholarshipSettings } = useQuery({
+    queryKey: ["scholarship-settings"],
+    queryFn: fetchScholarshipSettings,
+    enabled: isSuperAdmin && selected === "scholarships",
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
@@ -1208,6 +1239,39 @@ function SetupPageContent() {
 
         {selected === "scholarships" && isSuperAdmin && (
           <div className="mt-6 space-y-6">
+            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-4 shadow-sm dark:text-gray-300 dark:bg-gray-900">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 dark:text-gray-300 dark:bg-gray-900">Form Settings</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex-1 min-w-0">
+                    <label className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate dark:text-gray-300 dark:bg-gray-900">Scholarship Application</label>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate dark:text-gray-300 dark:bg-gray-900">Enable/disable form</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const currentValue = scholarshipSettings?.scholarship_application ?? true;
+                        await updateScholarshipSetting("scholarship_application", !currentValue);
+                        pushToast("success", `Scholarship Application form ${!currentValue ? "enabled" : "disabled"}`);
+                        await refetchScholarshipSettings();
+                      } catch (e) {
+                        pushToast("error", e instanceof Error ? e.message : "Failed");
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                      scholarshipSettings?.scholarship_application ?? true ? "bg-blue-600" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        scholarshipSettings?.scholarship_application ?? true ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-5 shadow-sm">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Scholarship Discount Categories</h3>

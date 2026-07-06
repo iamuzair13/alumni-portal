@@ -55,9 +55,22 @@ function SessionExpirationHandler({ children }: { children: React.ReactNode }) {
 
     // Override fetch to handle 401 errors
     window.fetch = async function(...args: Parameters<typeof fetch>): Promise<Response> {
-      inFlight += 1;
-      if (inFlight === 1) {
-        progressStart();
+      const requestUrl =
+        typeof args[0] === "string"
+          ? args[0]
+          : args[0] instanceof Request
+            ? args[0].url
+            : "";
+      const skipProgress =
+        requestUrl.includes("/api/uploads/images/") ||
+        requestUrl.includes("/_next/image") ||
+        requestUrl.includes("/_next/static/");
+
+      if (!skipProgress) {
+        inFlight += 1;
+        if (inFlight === 1) {
+          progressStart();
+        }
       }
 
       try {
@@ -91,9 +104,11 @@ function SessionExpirationHandler({ children }: { children: React.ReactNode }) {
 
         return response;
       } finally {
-        inFlight = Math.max(0, inFlight - 1);
-        if (inFlight === 0) {
-          progressStop();
+        if (!skipProgress) {
+          inFlight = Math.max(0, inFlight - 1);
+          if (inFlight === 0) {
+            progressStop();
+          }
         }
       }
     };

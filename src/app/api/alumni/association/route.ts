@@ -16,6 +16,8 @@ import {
   parseRequiredAdditionalAchievements,
   parseRequiredPlanStrategy,
 } from "@/lib/leadershipApplicationFields";
+import { storedUploadUrlFromClient } from "@/lib/uploadsImageUrl";
+import { findExistingUploadFilePath } from "@/lib/resolveUploadFilePath";
 
 export async function GET(request: NextRequest) {
 
@@ -351,12 +353,40 @@ export async function POST(request: NextRequest) {
         )
       : null;
 
-    const cvFileUrlValue = typeof cvFileUrl === "string" && cvFileUrl.trim() ? cvFileUrl.trim().slice(0, 500) : null;
-    const additionalFile1UrlValue = typeof additionalFile1Url === "string" && additionalFile1Url.trim() ? additionalFile1Url.trim().slice(0, 500) : null;
-    const additionalFile2UrlValue = typeof additionalFile2Url === "string" && additionalFile2Url.trim() ? additionalFile2Url.trim().slice(0, 500) : null;
+    const cvFileUrlValue = storedUploadUrlFromClient(
+      typeof cvFileUrl === "string" ? cvFileUrl : null
+    );
+    const additionalFile1UrlValue = storedUploadUrlFromClient(
+      typeof additionalFile1Url === "string" ? additionalFile1Url : null
+    );
+    const additionalFile2UrlValue = storedUploadUrlFromClient(
+      typeof additionalFile2Url === "string" ? additionalFile2Url : null
+    );
 
     if (!cvFileUrlValue) {
       return NextResponse.json({ error: "CV upload is required" }, { status: 400 });
+    }
+
+    if (!findExistingUploadFilePath(cvFileUrlValue)) {
+      return NextResponse.json(
+        {
+          error:
+            "CV file was not found on the server. Please upload your CV again before submitting.",
+        },
+        { status: 400 }
+      );
+    }
+    if (additionalFile1UrlValue && !findExistingUploadFilePath(additionalFile1UrlValue)) {
+      return NextResponse.json(
+        { error: "Additional document 1 was not found on the server. Please upload it again." },
+        { status: 400 }
+      );
+    }
+    if (additionalFile2UrlValue && !findExistingUploadFilePath(additionalFile2UrlValue)) {
+      return NextResponse.json(
+        { error: "Additional document 2 was not found on the server. Please upload it again." },
+        { status: 400 }
+      );
     }
 
     // Check if alumni already has a pending application (by alumni_id)

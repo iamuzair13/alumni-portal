@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { readFile } from "fs/promises";
-import { existsSync } from "fs";
-import { extname, join } from "path";
-import { getUploadsImagesDir } from "@/lib/uploadsDir";
+import { extname } from "path";
+import { readUploadFileBuffer } from "@/lib/resolveUploadFilePath";
 
 function contentTypeFromFilename(filename: string): string {
   const ext = extname(filename).toLowerCase();
@@ -31,13 +29,6 @@ function decodeFilenameOnce(raw: string): string {
   }
 }
 
-/** Same disk folder as /api/uploads/images; serves public /images/<file> for event assets. */
-function collectUploadDirs(): string[] {
-  const primary = getUploadsImagesDir();
-  const cwdFallback = join(process.cwd(), "public", "images");
-  return [...new Set([primary, cwdFallback])];
-}
-
 export async function GET(request: Request, ctx: { params: Promise<{ path?: string[] }> }) {
   try {
     const params = await ctx.params;
@@ -58,14 +49,10 @@ export async function GET(request: Request, ctx: { params: Promise<{ path?: stri
       return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
     }
 
-    let fileBuffer: Buffer | null = null;
-    for (const dir of collectUploadDirs()) {
-      const filePath = join(dir, filename);
-      if (existsSync(filePath)) {
-        fileBuffer = await readFile(filePath);
-        break;
-      }
-    }
+    const resolved =
+      (await readUploadFileBuffer(filename)) ??
+      (await readUploadFileBuffer(segments.join("/")));
+    const fileBuffer = resolved?.buffer ?? null;
 
     if (!fileBuffer) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

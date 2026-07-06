@@ -1,6 +1,5 @@
 "use client";
-import Image from "next/image";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useSession, signOut } from "next-auth/react";
@@ -8,75 +7,64 @@ import { useRouter } from "next/navigation";
 import { useCurrentUserImage } from "@/app/queries/alumni-profile";
 import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
+const PLACEHOLDER_AVATAR = "/images/person.jpg";
+const failedAvatarUrls = new Set<string>();
+
 export default function UserDropdown() {
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
-  const [imageError, setImageError] = useState(false);
   const [openUpwards, setOpenUpwards] = useState(false);
+  const [avatarFallbackTick, setAvatarFallbackTick] = useState(0);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const router = useRouter();
 
   const t = String(((session?.user ?? {}) as { type?: string }).type || "").toLowerCase();
   const isAlumni = t === "alumni";
   const isAdminUser = t === "admin" || t === "viewer" || t === "superadmin";
-  
-  // Fetch current user's profile image from database for both alumni and admin users
+
   const { data: userImageData } = useCurrentUserImage((isAlumni || isAdminUser) && status === "authenticated");
-  
-  // Reset image error when image data changes
-  useEffect(() => {
-    if (userImageData?.image) {
-      setImageError(false);
-    }
-  }, [userImageData?.image]);
-  
-  // Determine which image to use: database image for alumni/admin, session image for others
-  const profileImage = useMemo(() => {
-    // If image error occurred, always use fallback
-    if (imageError) return "/images/person.jpg";
-    
-    if ((isAlumni || isAdminUser) && userImageData?.image) {
-      let imagePath = userImageData.image.trim();
-      
-      // If empty after trim, fallback to default
-      if (!imagePath) return "/images/person.jpg";
-      
-      // Fix typo: replace "tumbnail" with "thumbnail" if present
-      // Remove old path references
-      imagePath = imagePath.replace(/\/tumbnail\//g, "/");
-      imagePath = imagePath.replace(/\/alumni-images\/thumbnail\//g, "/");
-      imagePath = imagePath.replace(/\/alumni-images\/card\//g, "/");
-      
-      // Runtime uploads are served via API (see uploadsImageUrl); plain /images/* may 404 on production.
-      if (!imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
-        if (!imagePath.startsWith("/") && !imagePath.includes("/")) {
-          imagePath = uploadsImageUrl(imagePath);
-        } else if (/^\/images\/[^/]+$/u.test(imagePath)) {
-          imagePath = uploadsImageUrl(imagePath);
-        } else if (!imagePath.startsWith("/")) {
-          imagePath = `/${imagePath}`;
-        }
+
+  const resolvedUserImagePath = useMemo(() => {
+    if (!(isAlumni || isAdminUser) || !userImageData?.image) return null;
+
+    let imagePath = userImageData.image.trim();
+    if (!imagePath) return null;
+
+    imagePath = imagePath.replace(/\/tumbnail\//g, "/");
+    imagePath = imagePath.replace(/\/alumni-images\/thumbnail\//g, "/");
+    imagePath = imagePath.replace(/\/alumni-images\/card\//g, "/");
+
+    if (!imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
+      if (!imagePath.startsWith("/") && !imagePath.includes("/")) {
+        imagePath = uploadsImageUrl(imagePath);
+      } else if (/^\/images\/[^/]+$/u.test(imagePath)) {
+        imagePath = uploadsImageUrl(imagePath);
+      } else if (!imagePath.startsWith("/")) {
+        imagePath = `/${imagePath}`;
       }
-      
-      // Add cache busting timestamp
-      const separator = imagePath.includes('?') ? '&' : '?';
-      return `${imagePath}${separator}t=${userImageData.timestamp || Date.now()}`;
     }
-    // Fallback to session image or Google image, then default
+
+    return imagePath;
+  }, [isAlumni, isAdminUser, userImageData?.image]);
+
+  const avatarSrc = useMemo(() => {
+    if (resolvedUserImagePath && !failedAvatarUrls.has(resolvedUserImagePath)) {
+      return resolvedUserImagePath;
+    }
+
     const sessionImage = session?.user?.image;
     if (sessionImage && sessionImage.includes("googleusercontent")) {
       return sessionImage;
     }
-    return "/images/person.jpg";
-  }, [isAlumni, isAdminUser, userImageData, session?.user?.image, imageError]);
+
+    return PLACEHOLDER_AVATAR;
+  }, [resolvedUserImagePath, session?.user?.image, avatarFallbackTick]);
 
 function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   e.stopPropagation();
   setIsOpen((prev) => {
     const next = !prev;
     if (next) {
-      // If there isn't enough space below, open upwards (mobile panel case).
-      // This avoids the menu being rendered off-screen.
       const rect = buttonRef.current?.getBoundingClientRect();
       if (rect) {
         const spaceBelow = window.innerHeight - rect.bottom;
@@ -90,25 +78,26 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   function closeDropdown() {
     setIsOpen(false);
   }
-  
+
   return (
     <div className="relative overflow-visible">
       <button
         ref={buttonRef}
-        onClick={toggleDropdown} 
+        onClick={toggleDropdown}
         className="dropdown-toggle flex  items-center rounded-xl px-2 py-1.5 text-[#183D32] transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 dark:text-emerald-200 dark:hover:bg-gray-800 dark:focus-visible:ring-emerald-400/30 "
       >
         <span className="mr-3 h-11 w-11 overflow-hidden rounded-full border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={avatarSrc}
+            alt="User"
             width={44}
             height={44}
-            src={profileImage}
-            alt="User"
-            key={profileImage} // Force re-render when image changes
+            className="h-full w-full object-cover"
             onError={() => {
-              // Set error state to trigger fallback to default image
-              if (!imageError) {
-                setImageError(true);
+              if (resolvedUserImagePath && !failedAvatarUrls.has(resolvedUserImagePath)) {
+                failedAvatarUrls.add(resolvedUserImagePath);
+                setAvatarFallbackTick((tick) => tick + 1);
               }
             }}
           />
@@ -184,10 +173,9 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
         </ul>
         <button
           type="button"
-          onClick={async () => { 
-            setIsOpen(false); 
-            await signOut({ redirect: false }); 
-            // Use window.location for reliable redirect on Plesk server
+          onClick={async () => {
+            setIsOpen(false);
+            await signOut({ redirect: false });
             window.location.href = "/signin";
           }}
           className="group mt-3 flex items-center gap-3 rounded-lg px-3 py-2 text-theme-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white"

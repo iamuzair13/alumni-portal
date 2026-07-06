@@ -24,9 +24,9 @@ import { twMerge } from "tailwind-merge";
 import { Loader2, FileText, Eye, Download } from "lucide-react";
 import {
   downloadStoredUploadUrl,
-  resolveStoredUploadUrl,
   viewStoredUploadUrl,
 } from "@/lib/uploadsImageUrl";
+import AlumniProfilePhoto from "@/components/ui/AlumniProfilePhoto";
 
 type RoleCriterion = {
   id: number;
@@ -226,17 +226,10 @@ function AssessmentApplicantSummary({
   <div className="flex flex-col sm:flex-row">
     {/* Profile Section */}
     <div className="flex items-start gap-4 p-5 sm:border-r sm:border-gray-100 dark:sm:border-gray-800">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <AlumniProfilePhoto
         src={photoSrc}
         alt={`${alumniName} profile`}
         className="h-16 w-16 shrink-0 rounded-xl border border-gray-100 object-cover bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-        onError={(e) => {
-          const img = e.currentTarget;
-          if (!img.src.includes("/images/person.jpg")) {
-            img.src = ALUMNI_PROFILE_PLACEHOLDER;
-          }
-        }}
       />
       <div className="min-w-0">
         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
@@ -430,9 +423,9 @@ function starsText(value: number | null | undefined): string {
 function documentsFromItem(item: unknown) {
   const obj = (item ?? {}) as Record<string, unknown>;
   const docs: Array<{ key: string; label: string; url: string }> = [];
-  const cv = resolveStoredUploadUrl(String(obj.cvFileUrl || "").trim());
-  const f1 = resolveStoredUploadUrl(String(obj.additionalFile1Url || "").trim());
-  const f2 = resolveStoredUploadUrl(String(obj.additionalFile2Url || "").trim());
+  const cv = String(obj.cvFileUrl || "").trim();
+  const f1 = String(obj.additionalFile1Url || "").trim();
+  const f2 = String(obj.additionalFile2Url || "").trim();
   if (cv) docs.push({ key: "cv", label: "CV", url: cv });
   if (f1) docs.push({ key: "file1", label: "Additional Document 1", url: f1 });
   if (f2) docs.push({ key: "file2", label: "Additional Document 2", url: f2 });
@@ -2794,17 +2787,10 @@ export default function LeadershipPage() {
                             <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
                               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Personal Information</div>
                               <div className="mt-3 flex flex-col sm:flex-row gap-4">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
+                                <AlumniProfilePhoto
                                   src={photoSrc}
                                   alt={`${item.name || "Alumni"} profile`}
                                   className="h-24 w-24 shrink-0 rounded-lg border border-gray-200 object-cover bg-gray-100 dark:border-gray-600 dark:bg-gray-800"
-                                  onError={(e) => {
-                                    const img = e.currentTarget;
-                                    if (!img.src.includes("/images/person.jpg")) {
-                                      img.src = ALUMNI_PROFILE_PLACEHOLDER;
-                                    }
-                                  }}
                                 />
                                 <div className="min-w-0 flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700 dark:text-gray-300">
                                   <div><span className="font-medium">Full Name:</span> {item.name || "-"}</div>

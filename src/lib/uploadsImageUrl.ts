@@ -25,7 +25,21 @@ export function normalizePublicImageFilename(raw: string | null | undefined): st
   const lastSlash = s.lastIndexOf("/");
   if (lastSlash >= 0) s = s.slice(lastSlash + 1);
 
-  return s.trim();
+  s = s.trim();
+  if (!s) return "";
+
+  // Strip accidental duplicate `images/` prefix from legacy DB values.
+  let sl2 = s.toLowerCase();
+  while (sl2.startsWith("images/")) {
+    s = s.slice("images/".length);
+    sl2 = s.toLowerCase();
+  }
+
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
 }
 
 /** Value stored in `tbl_events.image*` columns: `/images/<filename>` (filename only, no subdirs). */
@@ -33,6 +47,15 @@ export function eventImageStoredFromBasename(basename: string): string {
   const f = normalizePublicImageFilename(basename);
   if (!f) return "";
   return `/images/${f}`;
+}
+
+/** Canonical value for DB columns that reference user uploads: `/images/<filename>`. */
+export function storedUploadUrlFromClient(raw: string | null | undefined, maxLen = 500): string | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const stored = eventImageStoredFromBasename(s);
+  const value = stored || s;
+  return value.slice(0, maxLen);
 }
 
 /**

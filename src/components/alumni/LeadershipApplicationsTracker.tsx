@@ -10,9 +10,9 @@ import { useQuery } from "@tanstack/react-query";
 import { formatObtainedMarkDisplay } from "@/lib/leadershipMarks";
 import {
   downloadStoredUploadUrl,
-  resolveStoredUploadUrl,
   viewStoredUploadUrl,
 } from "@/lib/uploadsImageUrl";
+import AlumniProfilePhoto from "@/components/ui/AlumniProfilePhoto";
 
 const ALUMNI_PROFILE_PLACEHOLDER = "/images/person.jpg";
 
@@ -54,9 +54,9 @@ async function fetchApplicationDetails(input: ViewApp) {
 
 function documentsFromItem(item: any) {
   const docs: Array<{ key: string; label: string; url: string }> = [];
-  const cv = resolveStoredUploadUrl(String(item?.cvFileUrl || "").trim());
-  const f1 = resolveStoredUploadUrl(String(item?.additionalFile1Url || "").trim());
-  const f2 = resolveStoredUploadUrl(String(item?.additionalFile2Url || "").trim());
+  const cv = String(item?.cvFileUrl || "").trim();
+  const f1 = String(item?.additionalFile1Url || "").trim();
+  const f2 = String(item?.additionalFile2Url || "").trim();
   if (cv) docs.push({ key: "cv", label: "CV", url: cv });
   if (f1) docs.push({ key: "file1", label: "Additional Document 1", url: f1 });
   if (f2) docs.push({ key: "file2", label: "Additional Document 2", url: f2 });
@@ -344,17 +344,10 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                   <div className="space-y-4">
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                       <div className="min-w-0 flex gap-4">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <AlumniProfilePhoto
                           src={photoSrc}
                           alt={`${item.name || "Alumni"} profile`}
                           className="h-20 w-20 shrink-0 rounded-lg border border-slate-200 object-cover bg-slate-100"
-                          onError={(e) => {
-                            const img = e.currentTarget;
-                            if (!img.src.includes("/images/person.jpg")) {
-                              img.src = ALUMNI_PROFILE_PLACEHOLDER;
-                            }
-                          }}
                         />
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-gray-900">Leadership Application Details</div>

@@ -7,7 +7,7 @@ function normalizeEnvPath(raw: string | undefined): string | null {
   return isAbsolute(v) ? v : resolve(process.cwd(), v);
 }
 
-function detectProjectRootFromCwd(): string {
+export function detectProjectRootFromCwd(): string {
   const cwd = process.cwd();
   let currentPath = cwd;
 

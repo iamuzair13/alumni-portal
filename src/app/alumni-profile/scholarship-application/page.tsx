@@ -1,6 +1,7 @@
 "use client";
 import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
 import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
@@ -21,6 +22,14 @@ import {
   type ScholarshipCategoryWithTiers,
 } from "@/lib/scholarshipDiscount";
 import Link from "next/link";
+
+async function fetchScholarshipFormSettings() {
+  const res = await fetch("/api/scholarship/settings");
+  if (!res.ok) {
+    return { scholarship_application: true };
+  }
+  return res.json();
+}
 
 function ScholarshipApplicationContent() {
   const searchParams = useSearchParams();
@@ -47,6 +56,14 @@ function ScholarshipApplicationContent() {
   
   const { data, isLoading } = useAlumniFullDetails(sapId || undefined);
 
+  const { data: formSettings, isLoading: settingsLoading } = useQuery({
+    queryKey: ["scholarship-settings"],
+    queryFn: fetchScholarshipFormSettings,
+    staleTime: 60 * 1000,
+  });
+
+  const isFormEnabled = formSettings?.scholarship_application ?? true;
+
   const [formData, setFormData] = useState({
     discountType: "",
     applyingFor: "",
@@ -70,6 +87,11 @@ function ScholarshipApplicationContent() {
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isFormEnabled) {
+      setCategoriesLoading(false);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       setCategoriesLoading(true);
@@ -92,7 +114,7 @@ function ScholarshipApplicationContent() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isFormEnabled]);
 
   const selectedCategory = findCategoryBySlug(formData.discountType, scholarshipCategories);
   const profileCgpa = parseCgpa((data as { cgpa?: number | null })?.cgpa);
@@ -720,7 +742,7 @@ function ScholarshipApplicationContent() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || settingsLoading) {
     return (
       <>
         <AppHeader />
@@ -735,6 +757,35 @@ function ScholarshipApplicationContent() {
                   </svg>
                   <p className="text-sm text-gray-600">Loading...</p>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (!isFormEnabled) {
+    return (
+      <>
+        <AppHeader />
+        <PageBanner title="Scholarship Application" />
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mb-6">
+              <BackButton />
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="rounded-lg border-2 border-gray-300 bg-gray-50 p-8 text-center">
+                <div className="mb-4">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Applications will open soon.</h3>
+                <p className="text-sm text-gray-500">
+                  Scholarship applications are currently disabled. Please check back later.
+                </p>
               </div>
             </div>
           </div>

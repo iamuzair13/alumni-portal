@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join, extname } from "path";
 import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
+import { getUploadsImagesDir } from "@/lib/uploadsDir";
 import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -52,7 +53,7 @@ async function saveFileToUploads(opts: { file: File; prefix: string; slot: strin
   const baseNoExt = safeOriginal.replace(/\.[^.]+$/, "");
   const filename = `${prefix}-${slot}-${timestamp}-${randomSuffix}-${baseNoExt}${ext}`.slice(0, 180);
 
-  const uploadsDir = join(process.cwd(), "public", "images");
+  const uploadsDir = getUploadsImagesDir();
   if (!existsSync(uploadsDir)) {
     await mkdir(uploadsDir, { recursive: true });
   }
@@ -61,6 +62,9 @@ async function saveFileToUploads(opts: { file: File; prefix: string; slot: strin
   const buffer = Buffer.from(bytes);
   const filePath = join(uploadsDir, filename);
   await writeFile(filePath, buffer);
+  if (!existsSync(filePath)) {
+    throw new Error("Failed to save uploaded file to disk");
+  }
 
   return {
     filename,

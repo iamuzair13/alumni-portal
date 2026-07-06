@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { readFile } from "fs/promises";
-import { existsSync } from "fs";
-import { extname, join } from "path";
-import { getUploadsImagesDir } from "@/lib/uploadsDir";
+import { extname } from "path";
+import { readUploadFileBuffer } from "@/lib/resolveUploadFilePath";
 
 function contentTypeFromFilename(filename: string): string {
   const ext = extname(filename).toLowerCase();
@@ -24,13 +22,6 @@ function isSafeFilename(filename: string): boolean {
   if (filename.includes("/")) return false;
   if (filename.includes("\\")) return false;
   return true;
-}
-
-/** Same logical folder as writes; include legacy cwd-based path for older deployments. */
-function collectUploadDirs(): string[] {
-  const primary = getUploadsImagesDir();
-  const cwdFallback = join(process.cwd(), "public", "images");
-  return [...new Set([primary, cwdFallback])];
 }
 
 function decodeFilenameOnce(raw: string): string {
@@ -66,27 +57,16 @@ export async function GET(request: Request, ctx: { params: Promise<{ path?: stri
     }
 
     filename = decodeFilenameOnce(filename);
+    filename = filename.split("?")[0]?.split("#")[0]?.trim() ?? "";
 
     if (!filename || !isSafeFilename(filename)) {
       return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
     }
 
-    let fileBuffer: Buffer | null = null;
-    for (const dir of collectUploadDirs()) {
-      const directPath = join(dir, filename);
-      const candidatePaths = [
-        directPath,
-        join(dir, "alumni-images", "thumbnail", filename),
-        join(dir, "alumni-images", "card", filename),
-      ];
-      for (const filePath of candidatePaths) {
-        if (existsSync(filePath)) {
-          fileBuffer = await readFile(filePath);
-          break;
-        }
-      }
-      if (fileBuffer) break;
-    }
+    const resolved =
+      (await readUploadFileBuffer(filename)) ??
+      (await readUploadFileBuffer(segments.join("/")));
+    const fileBuffer = resolved?.buffer ?? null;
 
     if (!fileBuffer) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

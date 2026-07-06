@@ -228,6 +228,6 @@ export function useCurrentUserImage(enabled: boolean = true) {
     gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: true,
+    refetchOnMount: false,
   });
 }

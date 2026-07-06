@@ -9,6 +9,8 @@ import {
   parseRequiredAdditionalAchievements,
   parseRequiredPlanStrategy,
 } from "@/lib/leadershipApplicationFields";
+import { storedUploadUrlFromClient } from "@/lib/uploadsImageUrl";
+import { findExistingUploadFilePath } from "@/lib/resolveUploadFilePath";
 
 export async function GET() {
   try {
@@ -234,12 +236,34 @@ export async function POST(request: NextRequest) {
         )
       : null;
 
-    const cvFileUrlValue = typeof body.cvFileUrl === "string" && body.cvFileUrl.trim() ? body.cvFileUrl.trim().slice(0, 500) : null;
-    const additionalFile1UrlValue = typeof body.additionalFile1Url === "string" && body.additionalFile1Url.trim() ? body.additionalFile1Url.trim().slice(0, 500) : null;
-    const additionalFile2UrlValue = typeof body.additionalFile2Url === "string" && body.additionalFile2Url.trim() ? body.additionalFile2Url.trim().slice(0, 500) : null;
+    const cvFileUrlValue = storedUploadUrlFromClient(body.cvFileUrl);
+    const additionalFile1UrlValue = storedUploadUrlFromClient(body.additionalFile1Url);
+    const additionalFile2UrlValue = storedUploadUrlFromClient(body.additionalFile2Url);
 
     if (!cvFileUrlValue) {
       return NextResponse.json({ error: "CV upload is required" }, { status: 400 });
+    }
+
+    if (!findExistingUploadFilePath(cvFileUrlValue)) {
+      return NextResponse.json(
+        {
+          error:
+            "CV file was not found on the server. Please upload your CV again before submitting.",
+        },
+        { status: 400 }
+      );
+    }
+    if (additionalFile1UrlValue && !findExistingUploadFilePath(additionalFile1UrlValue)) {
+      return NextResponse.json(
+        { error: "Additional document 1 was not found on the server. Please upload it again." },
+        { status: 400 }
+      );
+    }
+    if (additionalFile2UrlValue && !findExistingUploadFilePath(additionalFile2UrlValue)) {
+      return NextResponse.json(
+        { error: "Additional document 2 was not found on the server. Please upload it again." },
+        { status: 400 }
+      );
     }
 
     // Check if alumni already has a pending application (by alumniid)
