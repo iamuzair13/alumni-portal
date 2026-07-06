@@ -1,15 +1,15 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
-import { EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
+import { EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon, PencilIcon } from "@/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAlumniStories, alumniStoriesKey, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
 import AlumniSuccessForm from "@/components/forms/alumni-success";
@@ -19,6 +19,7 @@ import StoryStatusBadge from "@/components/alumni/StoryStatusBadge";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { normalizeStoryStatus } from "@/lib/alumniStories";
+import { StoryActionEmailBlock } from "@/components/alumni/StoryActionEmailBlock";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,8 @@ type Story = {
   imageUrl: string;
   status: string;
   rejectionReason?: string | null;
+  alumniId?: number;
+  email?: string | null;
 };
 
 type StatusTabKey = "all" | "pending" | "approved" | "notApproved";
@@ -114,6 +117,226 @@ const ShimmerRow: React.FC = () => (
   </TableRow>
 );
 
+const STORY_ACTIONS_MENU_WIDTH = 256;
+const STORY_ACTIONS_MENU_MAX_HEIGHT = 360;
+
+function StoryActionsDropdown({
+  story,
+  isOpen,
+  onToggle,
+  onClose,
+  canReview,
+  canDelete,
+  isProcessing,
+  onView,
+  onEdit,
+  onApprove,
+  onReject,
+  onDelete,
+}: {
+  story: Story;
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  canReview: boolean;
+  canDelete: boolean;
+  isProcessing: boolean;
+  onView: (story: Story) => void;
+  onEdit: (story: Story) => void;
+  onApprove: (story: Story) => void;
+  onReject: (story: Story) => void;
+  onDelete: (story: Story) => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const gap = 8;
+    const top = rect.bottom + gap;
+    let left = rect.right - STORY_ACTIONS_MENU_WIDTH;
+    if (left < 8) left = 8;
+    if (left + STORY_ACTIONS_MENU_WIDTH > window.innerWidth - 8) {
+      left = window.innerWidth - STORY_ACTIONS_MENU_WIDTH - 8;
+    }
+    const spaceBelow = window.innerHeight - top - 8;
+    const maxHeight = Math.max(160, Math.min(STORY_ACTIONS_MENU_MAX_HEIGHT, spaceBelow));
+    setMenuPosition({ top, left, maxHeight });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updateMenuPosition();
+    const handleReposition = () => updateMenuPosition();
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+    };
+  }, [isOpen, updateMenuPosition]);
+
+  const normalized = normalizeStoryStatus(story.status);
+  const canApprove = canReview && (normalized === "pending" || normalized === "not-approved");
+  const canReject = canReview && (normalized === "pending" || normalized === "approved");
+
+  const menu =
+    isOpen && menuPosition && typeof document !== "undefined"
+      ? createPortal(
+          <>
+            <div className="fixed inset-0 z-[9998]" aria-hidden="true" onClick={onClose} />
+            <div
+              role="menu"
+              className="fixed z-[9999] w-64 origin-top-right overflow-y-auto rounded-xl border border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900 shadow-2xl shadow-black/10 dark:shadow-black/30 ring-1 ring-black/5 dark:ring-white/5 py-1.5"
+              style={{
+                top: menuPosition.top,
+                left: menuPosition.left,
+                maxHeight: menuPosition.maxHeight,
+              }}
+            >
+              <div className="px-3 pt-2 pb-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Story</p>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onView(story);
+                  onClose();
+                }}
+                className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+              >
+                <EyeIcon className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                View Details
+              </button>
+
+              {canReview && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onEdit(story);
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                >
+                  <PencilIcon className="h-4 w-4 shrink-0 text-amber-500/80 group-hover:text-amber-600 dark:group-hover:text-amber-400" />
+                  <span className="group-hover:text-amber-700 dark:group-hover:text-amber-300">Edit Story</span>
+                </button>
+              )}
+
+              {canReview && (canApprove || canReject) && (
+                <>
+                  <div className="my-1.5 mx-3 border-t border-gray-100 dark:border-gray-800" />
+                  <div className="px-3 py-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Review</p>
+                  </div>
+                  {canApprove && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onApprove(story);
+                        onClose();
+                      }}
+                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                    >
+                      <CheckLineIcon className="h-4 w-4 shrink-0 text-emerald-500/80 group-hover:text-emerald-600 dark:group-hover:text-emerald-400" />
+                      <span className="group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Approve</span>
+                    </button>
+                  )}
+                  {canReject && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onReject(story);
+                        onClose();
+                      }}
+                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                    >
+                      <CloseLineIcon className="h-4 w-4 shrink-0 text-rose-500/80 group-hover:text-rose-600 dark:group-hover:text-rose-400" />
+                      <span className="group-hover:text-rose-700 dark:group-hover:text-rose-300">Reject</span>
+                    </button>
+                  )}
+                </>
+              )}
+
+              {canDelete && (
+                <>
+                  <div className="my-1.5 mx-3 border-t border-gray-100 dark:border-gray-800" />
+                  <div className="px-3 py-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Danger</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onDelete(story);
+                      onClose();
+                    }}
+                    className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  >
+                    <TrashBinIcon className="h-4 w-4" />
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
+          </>,
+          document.body
+        )
+      : null;
+
+  return (
+    <div className="relative ml-auto shrink-0">
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={isProcessing}
+        onClick={() => {
+          if (!isOpen) updateMenuPosition();
+          onToggle();
+        }}
+        className={`dropdown-toggle inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[140px] ${
+          isProcessing
+            ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-400 cursor-not-allowed"
+            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow-md"
+        }`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-label={`Actions for ${story.name}`}
+      >
+        {isProcessing ? (
+          <>
+            <svg className="h-4 w-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <span>Processing…</span>
+          </>
+        ) : (
+          <>
+            <span>Actions</span>
+            <svg
+              className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </>
+        )}
+      </button>
+      {menu}
+    </div>
+  );
+}
+
 // Stories table component with modern styling
 type StoryListProps = {
   items: Story[];
@@ -146,8 +369,10 @@ const StoryTable: React.FC<StoryListProps> = ({
   canDelete = false,
   canReview = false,
 }) => {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const rejectModal = useModal();
   const approveModal = useModal();
   const deleteModal = useModal();
@@ -174,6 +399,12 @@ const StoryTable: React.FC<StoryListProps> = ({
   const deleteTargetStory = deleteTargetId
     ? safeItems.find((story) => story.id === deleteTargetId)
     : undefined;
+  const approveTargetStory = approveTargetId
+    ? safeItems.find((story) => story.id === approveTargetId)
+    : undefined;
+  const rejectTargetStory = rejectTargetId
+    ? safeItems.find((story) => story.id === rejectTargetId)
+    : undefined;
 
   return (
     <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white/80 shadow-xl shadow-gray-200/50 backdrop-blur-sm dark:border-white/[0.08] dark:bg-gray-900/60 dark:shadow-none">
@@ -185,7 +416,9 @@ const StoryTable: React.FC<StoryListProps> = ({
                 <TableCell 
                   key={header} 
                   isHeader 
-                  className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                  className={`px-5 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 ${
+                    header === "Actions" ? "text-right" : "text-left"
+                  }`}
                 >
                   {header}
                 </TableCell>
@@ -315,69 +548,31 @@ const StoryTable: React.FC<StoryListProps> = ({
                   </div>
                 </TableCell>
 
-                <TableCell className="px-5 py-4">
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/alumni-stories/${story.id}`}
-                      aria-label={`View story for ${story.name}`}
-                      className="group/btn inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-600 shadow-sm ring-1 ring-gray-200 transition-all duration-200 hover:bg-blue-50 hover:text-blue-600 hover:shadow-md hover:ring-blue-200 active:scale-95 dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 dark:hover:ring-blue-800"
-                    >
-                      <EyeIcon className="h-4 w-4 transition-transform duration-200 group-hover/btn:scale-110" />
-                    </Link>
-
-                    {canReview && (normalizeStoryStatus(story.status) === "pending" || normalizeStoryStatus(story.status) === "not-approved") && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setApproveTargetId(story.id);
-                          approveModal.openModal();
-                        }}
-                        disabled={Boolean(reviewingIds?.has(story.id))}
-                        aria-label={`Approve story for ${story.name}`}
-                        className="group/btn inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-200 transition-all duration-200 hover:bg-emerald-50 hover:shadow-md active:scale-95 disabled:opacity-50"
-                      >
-                        <CheckLineIcon className="h-4 w-4" />
-                      </button>
-                    )}
-
-                    {canReview && (normalizeStoryStatus(story.status) === "pending" || normalizeStoryStatus(story.status) === "approved") && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRejectTargetId(story.id);
-                          setRejectionReason("");
-                          rejectModal.openModal();
-                        }}
-                        disabled={Boolean(reviewingIds?.has(story.id))}
-                        aria-label={`Reject story for ${story.name}`}
-                        className="group/btn inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-rose-600 shadow-sm ring-1 ring-rose-200 transition-all duration-200 hover:bg-rose-50 hover:shadow-md active:scale-95 disabled:opacity-50"
-                      >
-                        <CloseLineIcon className="h-4 w-4" />
-                      </button>
-                    )}
-
-                    {canDelete && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDeleteTargetId(story.id);
-                        deleteModal.openModal();
-                      }}
-                      disabled={Boolean(deletingIds?.has(story.id))}
-                      aria-label={`Delete story for ${story.name}`}
-                      className="group/btn inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-600 shadow-sm ring-1 ring-gray-200 transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 hover:shadow-md hover:ring-rose-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700 dark:hover:bg-rose-900/20 dark:hover:text-rose-400 dark:hover:ring-rose-800"
-                    >
-                      {deletingIds?.has(story.id) ? (
-                        <svg className="h-4 w-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                      ) : (
-                        <TrashBinIcon className="h-4 w-4 transition-transform duration-200 group-hover/btn:scale-110" />
-                      )}
-                    </button>
-                    )}
-                  </div>
+                <TableCell className="px-5 py-4 text-right sticky right-0 z-20 bg-white dark:bg-gray-900/60 w-[180px] overflow-visible">
+                  <StoryActionsDropdown
+                    story={story}
+                    isOpen={openActionMenuId === story.id}
+                    onToggle={() => setOpenActionMenuId(openActionMenuId === story.id ? null : story.id)}
+                    onClose={() => setOpenActionMenuId(null)}
+                    canReview={canReview}
+                    canDelete={canDelete}
+                    isProcessing={Boolean(reviewingIds?.has(story.id) || deletingIds?.has(story.id))}
+                    onView={(s) => router.push(`/alumni-stories/${s.id}`)}
+                    onEdit={(s) => router.push(`/alumni-stories/${s.id}/edit`)}
+                    onApprove={(s) => {
+                      setApproveTargetId(s.id);
+                      approveModal.openModal();
+                    }}
+                    onReject={(s) => {
+                      setRejectTargetId(s.id);
+                      setRejectionReason("");
+                      rejectModal.openModal();
+                    }}
+                    onDelete={(s) => {
+                      setDeleteTargetId(s.id);
+                      deleteModal.openModal();
+                    }}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -426,10 +621,21 @@ const StoryTable: React.FC<StoryListProps> = ({
         className="max-w-lg p-6"
       >
         <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Approve Story</h3>
-        <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
           Are you sure you want to approve this success story? It will be published and visible to the alumni
           community.
         </p>
+        {approveTargetStory && (
+          <StoryActionEmailBlock
+            action="approve"
+            storyId={approveTargetStory.id}
+            storyTitle={approveTargetStory.title}
+            alumniName={approveTargetStory.name}
+            alumniId={approveTargetStory.alumniId}
+            recipientEmail={approveTargetStory.email}
+            disabled={Boolean(approveTargetStory && reviewingIds?.has(approveTargetStory.id))}
+          />
+        )}
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -476,6 +682,18 @@ const StoryTable: React.FC<StoryListProps> = ({
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           placeholder="Enter rejection reason..."
         />
+        {rejectTargetStory && (
+          <StoryActionEmailBlock
+            action="reject"
+            storyId={rejectTargetStory.id}
+            storyTitle={rejectTargetStory.title}
+            alumniName={rejectTargetStory.name}
+            alumniId={rejectTargetStory.alumniId}
+            recipientEmail={rejectTargetStory.email}
+            rejectionReason={rejectionReason}
+            disabled={Boolean(rejectTargetStory && (reviewingIds?.has(rejectTargetStory.id) || !rejectionReason.trim()))}
+          />
+        )}
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
@@ -609,6 +827,8 @@ function AlumniPageInner() {
       imageUrl: s.imageUrl,
       status: s.status,
       rejectionReason: s.rejectionReason,
+      alumniId: s.alumniId,
+      email: s.email,
     }));
     setStories(mapped);
   }, [storiesResponse?.items]);

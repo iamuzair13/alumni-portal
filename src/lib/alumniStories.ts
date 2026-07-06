@@ -76,6 +76,19 @@ export const storyServerSchema = z.object({
 
 export type ServerStoryPayload = z.infer<typeof storyServerSchema>;
 
+/** Admin edit: criteria editable; alumni signature is not re-required. */
+export const storyAdminEditCriteriaSchema = z.object({
+  criteriaHighlight: singleLineString("Story highlight explanation"),
+  criteriaInspires: singleLineString("Inspiration explanation"),
+  criteriaReplicable: z
+    .union([z.boolean(), z.undefined()])
+    .refine((v): v is boolean => v === true || v === false, { message: "Please select Yes or No" }),
+});
+
+export const adminEditSchema = storyServerSchema.merge(storyAdminEditCriteriaSchema);
+
+export type AdminEditStoryPayload = z.infer<typeof adminEditSchema>;
+
 export const storyAlumniSubmitSchema = storyServerSchema.merge(storyCriteriaFieldsSchema);
 
 /** Alumni self-submit when SAP ID is resolved server-side from session/DB. */

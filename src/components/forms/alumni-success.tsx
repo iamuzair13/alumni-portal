@@ -12,7 +12,12 @@ import Underline from "@tiptap/extension-underline";
 import DOMPurify from "dompurify";
 import { useQueryClient } from "@tanstack/react-query";
 import { alumniStoriesKey } from "@/app/queries/fetch-alumni-stories";
-import { storyFormSchema, storyCriteriaFieldsSchema, pickStorySapId } from "@/lib/alumniStories";
+import {
+  storyFormSchema,
+  storyCriteriaFieldsSchema,
+  adminEditSchema,
+  pickStorySapId,
+} from "@/lib/alumniStories";
 import { useOrgDatasets } from "@/hooks/useOrgDatasets";
 import { useSession } from "next-auth/react";
 
@@ -31,6 +36,8 @@ type Props = {
   existingCriteriaHighlight?: string;
   existingCriteriaInspires?: string;
   existingCriteriaReplicable?: boolean | null;
+  existingSignatureConfirmed?: boolean | null;
+  existingSignatureConfirmedAt?: string | null;
   storyId?: string;
   onSuccess?: () => void;
   redirectAfterSave?: string;
@@ -64,7 +71,8 @@ const adminSchema = storyFormSchema.extend({
 
 type AlumniFormVals = z.input<typeof alumniSchema>;
 type AdminFormVals = z.infer<typeof adminSchema>;
-type FormVals = AlumniFormVals | AdminFormVals;
+type AdminEditFormVals = z.infer<typeof adminEditSchema>;
+type FormVals = AlumniFormVals | AdminFormVals | AdminEditFormVals;
 
 const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:outline-gray-700";
 const labelBase = "mb-2 text-sm text-slate-900 font-medium block dark:text-gray-100";
@@ -86,11 +94,14 @@ export default function AlumniSuccessForm({
   existingCriteriaHighlight = "",
   existingCriteriaInspires = "",
   existingCriteriaReplicable = null,
+  existingSignatureConfirmed = null,
+  existingSignatureConfirmedAt = null,
   storyId,
   onSuccess,
   redirectAfterSave,
 }: Props) {
   const isAdmin = mode === "admin";
+  const isAdminEdit = isAdmin && Boolean(storyId);
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
@@ -129,6 +140,16 @@ export default function AlumniSuccessForm({
     storyHtml: existingStory || "",
   };
 
+  const adminEditDefaults: AdminEditFormVals = {
+    ...adminDefaults,
+    criteriaHighlight: existingCriteriaHighlight || "",
+    criteriaInspires: existingCriteriaInspires || "",
+    criteriaReplicable:
+      existingCriteriaReplicable === true || existingCriteriaReplicable === false
+        ? existingCriteriaReplicable
+        : undefined,
+  };
+
   const alumniDefaults: AlumniFormVals = {
     name: name || "",
     faculty: faculty || "",
@@ -151,14 +172,14 @@ export default function AlumniSuccessForm({
     formState: { errors, isSubmitting }, 
     reset,
     setValue
-  } = useForm<AdminFormVals | AlumniFormVals>({
-    resolver: zodResolver(isAdmin ? adminSchema : alumniSchema),
-    defaultValues: isAdmin ? adminDefaults : alumniDefaults,
+  } = useForm<AdminFormVals | AdminEditFormVals | AlumniFormVals>({
+    resolver: zodResolver(isAdminEdit ? adminEditSchema : isAdmin ? adminSchema : alumniSchema),
+    defaultValues: isAdminEdit ? adminEditDefaults : isAdmin ? adminDefaults : alumniDefaults,
     mode: "onChange",
   });
 
   React.useEffect(() => {
-    if (isAdmin) return;
+    if (isAdmin && !isAdminEdit) return;
     if (faculty) setValue("faculty", faculty, { shouldValidate: true });
     if (department) setValue("department", department, { shouldValidate: true });
     if (name) setValue("name", name, { shouldValidate: true });
@@ -171,6 +192,7 @@ export default function AlumniSuccessForm({
     }
   }, [
     isAdmin,
+    isAdminEdit,
     faculty,
     department,
     name,
@@ -295,18 +317,32 @@ export default function AlumniSuccessForm({
 
   const watchedName = watch("name");
 
-  const appendCriteriaToFormData = (formData: FormData, alumniVals: AlumniFormVals) => {
-    formData.append("criteriaHighlight", alumniVals.criteriaHighlight);
-    formData.append("criteriaInspires", alumniVals.criteriaInspires);
-    formData.append("criteriaReplicable", String(alumniVals.criteriaReplicable));
-    formData.append("signatureConfirmed", String(alumniVals.signatureConfirmed));
+  const appendCriteriaToFormData = (formData: FormData, criteriaVals: {
+    criteriaHighlight: string;
+    criteriaInspires: string;
+    criteriaReplicable: boolean | undefined;
+    signatureConfirmed?: boolean;
+  }) => {
+    formData.append("criteriaHighlight", criteriaVals.criteriaHighlight);
+    formData.append("criteriaInspires", criteriaVals.criteriaInspires);
+    formData.append("criteriaReplicable", String(criteriaVals.criteriaReplicable));
+    if (criteriaVals.signatureConfirmed !== undefined) {
+      formData.append("signatureConfirmed", String(criteriaVals.signatureConfirmed));
+    }
   };
 
-  const criteriaPayload = (alumniVals: AlumniFormVals) => ({
-    criteriaHighlight: alumniVals.criteriaHighlight,
-    criteriaInspires: alumniVals.criteriaInspires,
-    criteriaReplicable: alumniVals.criteriaReplicable,
-    signatureConfirmed: alumniVals.signatureConfirmed,
+  const criteriaPayload = (criteriaVals: {
+    criteriaHighlight: string;
+    criteriaInspires: string;
+    criteriaReplicable: boolean | undefined;
+    signatureConfirmed?: boolean;
+  }) => ({
+    criteriaHighlight: criteriaVals.criteriaHighlight,
+    criteriaInspires: criteriaVals.criteriaInspires,
+    criteriaReplicable: criteriaVals.criteriaReplicable,
+    ...(criteriaVals.signatureConfirmed !== undefined
+      ? { signatureConfirmed: criteriaVals.signatureConfirmed }
+      : {}),
   });
 
   const onSubmit = async (vals: FormVals) => {
@@ -330,7 +366,13 @@ export default function AlumniSuccessForm({
       : pickStorySapId(sapId, sessionSapid) ?? "";
     const resolvedEmail = isAdmin ? String((vals as AdminFormVals).email ?? "").trim() : email;
 
-    const loadingToast = toast.loading(storyId ? "Updating your story..." : "Submitting your success story...");
+    const loadingToast = toast.loading(
+      storyId
+        ? isAdminEdit
+          ? "Saving story changes..."
+          : "Updating your story..."
+        : "Submitting your success story..."
+    );
     try {
       const sanitizedHtml = DOMPurify.sanitize(htmlContent, {
         ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
@@ -352,7 +394,11 @@ export default function AlumniSuccessForm({
         if (vals.contactNumber) formData.append("contactNumber", vals.contactNumber);
         formData.append("storyTitle", vals.storyTitle);
         formData.append("storyHtml", sanitizedHtml);
-        if (!isAdmin) appendCriteriaToFormData(formData, vals as AlumniFormVals);
+        if (!isAdmin) {
+          appendCriteriaToFormData(formData, vals as AlumniFormVals);
+        } else if (isAdminEdit) {
+          appendCriteriaToFormData(formData, vals as AdminEditFormVals);
+        }
         formData.append("storyImage", imageFile);
 
         res = await fetch(endpoint, { method, body: formData });
@@ -367,7 +413,11 @@ export default function AlumniSuccessForm({
           contactNumber: vals.contactNumber || null,
           storyTitle: vals.storyTitle,
           storyHtml: sanitizedHtml,
-          ...(!isAdmin ? criteriaPayload(vals as AlumniFormVals) : {}),
+          ...(!isAdmin
+            ? criteriaPayload(vals as AlumniFormVals)
+            : isAdminEdit
+              ? criteriaPayload(vals as AdminEditFormVals)
+              : {}),
         };
 
         res = await fetch(endpoint, {
@@ -397,7 +447,11 @@ export default function AlumniSuccessForm({
       await queryClient.refetchQueries({ queryKey: alumniStoriesKey });
       
       toast.success(
-        storyId ? "Changes submitted for review!" : "Story submitted for review!",
+        storyId
+          ? isAdminEdit
+            ? "Story updated successfully!"
+            : "Changes submitted for review!"
+          : "Story submitted for review!",
         {
         duration: 4000,
         style: {
@@ -618,6 +672,7 @@ export default function AlumniSuccessForm({
                     id="contactNumber"
                     type="tel"
                     {...field}
+                    value={field.value ?? ""}
                     className={`${inputBase} ${errors.contactNumber ? "border-rose-500 bg-rose-50" : ""}`}
                     placeholder="Enter your contact number"
                     aria-label="Contact Number"
@@ -863,11 +918,15 @@ export default function AlumniSuccessForm({
             </div>
           </div>
 
-          {!isAdmin && (
+          {(!isAdmin || isAdminEdit) && (
             <>
               <div className="md:col-span-2 mt-2 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <h4 className="text-base font-semibold text-gray-800 dark:text-gray-100">Criteria for Success Story</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Please answer the following before submitting your story.</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {isAdminEdit
+                    ? "Edit the submission criteria recorded for this story."
+                    : "Please answer the following before submitting your story."}
+                </p>
               </div>
 
               <div className="md:col-span-2">
@@ -948,29 +1007,51 @@ export default function AlumniSuccessForm({
                 )}
               </div>
 
-              <div className="md:col-span-2">
-                <div className="flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-                  <input
-                    type="checkbox"
-                    id="signatureConfirmed"
-                    {...register("signatureConfirmed")}
-                    className="mt-1 h-4 w-4 text-[#007bff] border-gray-300 rounded focus:ring-[#007bff]"
-                  />
-                  <label htmlFor="signatureConfirmed" className="text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
-                    {watchedName?.trim() ? (
-                      <>
-                        I, <span className="font-semibold">{watchedName.trim()}</span>, confirm this story is true and authorize its publication.
-                      </>
-                    ) : (
-                      <>I confirm this story is true and authorize its publication.</>
-                    )}
-                    <span className="text-rose-600 ml-1">*</span>
-                  </label>
+              {!isAdmin && (
+                <div className="md:col-span-2">
+                  <div className="flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                    <input
+                      type="checkbox"
+                      id="signatureConfirmed"
+                      {...register("signatureConfirmed")}
+                      className="mt-1 h-4 w-4 text-[#007bff] border-gray-300 rounded focus:ring-[#007bff]"
+                    />
+                    <label htmlFor="signatureConfirmed" className="text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                      {watchedName?.trim() ? (
+                        <>
+                          I, <span className="font-semibold">{watchedName.trim()}</span>, confirm this story is true and authorize its publication.
+                        </>
+                      ) : (
+                        <>I confirm this story is true and authorize its publication.</>
+                      )}
+                      <span className="text-rose-600 ml-1">*</span>
+                    </label>
+                  </div>
+                  {"signatureConfirmed" in errors && errors.signatureConfirmed && (
+                    <span className={errorText}>{errors.signatureConfirmed.message}</span>
+                  )}
                 </div>
-                {"signatureConfirmed" in errors && errors.signatureConfirmed && (
-                  <span className={errorText}>{errors.signatureConfirmed.message}</span>
-                )}
-              </div>
+              )}
+
+              {isAdminEdit && (
+                <div className="md:col-span-2">
+                  <div className="rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Alumni signature attestation</p>
+                    <p className="mt-1 text-sm text-gray-800 dark:text-gray-200">
+                      {existingSignatureConfirmed
+                        ? watchedName?.trim()
+                          ? `${watchedName.trim()} confirmed this story is true and authorized its publication.`
+                          : "The alumni confirmed this story is true and authorized its publication."
+                        : "No signature attestation recorded for this story."}
+                    </p>
+                    {existingSignatureConfirmed && existingSignatureConfirmedAt && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Signed on {new Date(existingSignatureConfirmedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

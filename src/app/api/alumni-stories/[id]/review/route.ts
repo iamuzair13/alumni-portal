@@ -4,8 +4,6 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { normalizeStoryStatus } from "@/lib/alumniStories";
-import { sendEmail } from "@/lib/email";
-import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -36,14 +34,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
 
     const storyRows = await sql/* sql */`
-      SELECT
-        s.id,
-        s.status,
-        s.storytitle,
-        a.alumniname,
-        a.personalemail,
-        a.officialemail,
-        a.universityemail
+      SELECT s.id, s.status
       FROM public.tblalumnistories s
       INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
       WHERE s.id = ${storyId}
@@ -54,16 +45,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!storyRows[0]) {
       return NextResponse.json({ error: "Story not found or access denied" }, { status: 404 });
     }
-
-    const story = storyRows[0] as {
-      id: number;
-      status: string | null;
-      storytitle: string | null;
-      alumniname: string | null;
-      personalemail: string | null;
-      officialemail: string | null;
-      universityemail: string | null;
-    };
 
     const newStatus = action === "approve" ? "approved" : "not-approved";
     const reviewerId = (session?.user as { userId?: number })?.userId ?? null;
@@ -89,36 +70,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         `;
       }
     });
-
-    const alumniName = String(story.alumniname || "Alumni");
-    const alumniEmail = String(
-      story.personalemail || story.officialemail || story.universityemail || ""
-    );
-    const storyTitle = String(story.storytitle || "Success Story");
-    const portalBase = process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk";
-    const editUrl = `${portalBase}/alumni-success/${storyId}/edit`;
-    const viewUrl = `${portalBase}/alumni-success/${storyId}`;
-
-    if (alumniEmail) {
-      const emailAction =
-        action === "approve"
-          ? EMAIL_ACTION_TYPE.SUCCESS_STORY_APPROVED
-          : EMAIL_ACTION_TYPE.SUCCESS_STORY_NOT_APPROVED;
-      const extraBodyHtml =
-        action === "approve"
-          ? `<p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your story "<strong>${storyTitle}</strong>" is now live on the Alumni Portal.</p>
-             <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;"><a href="${viewUrl}" style="color: #2563eb;">View your published story</a></p>`
-          : `<p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your story "<strong>${storyTitle}</strong>" could not be approved at this time.</p>
-             <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;"><strong>Reason:</strong> ${rejectionReason}</p>
-             <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">You may revise your story and submit it again for review. <a href="${editUrl}" style="color: #2563eb;">Edit your story</a></p>`;
-
-      const { subject, html } = generateAdminActionEmail({
-        actionType: emailAction,
-        alumniName,
-        extraBodyHtml,
-      });
-      sendEmail({ to: alumniEmail, subject, html }).catch(() => {});
-    }
 
     return NextResponse.json(
       {

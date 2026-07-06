@@ -12,6 +12,8 @@ export type AlumniStoryItem = {
   imageUrl: string;
   status: string;
   rejectionReason?: string | null;
+  alumniId?: number;
+  email?: string | null;
 };
 
 export type AlumniStoriesResponse = {

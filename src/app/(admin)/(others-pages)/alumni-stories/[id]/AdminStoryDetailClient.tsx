@@ -19,6 +19,8 @@ type DetailItem = {
   imageUrl: string;
   status: string;
   rejectionReason?: string | null;
+  alumniId?: number;
+  email?: string | null;
   criteriaHighlight?: string | null;
   criteriaInspires?: string | null;
   criteriaReplicable?: boolean | null;
@@ -93,12 +95,18 @@ export default function AdminStoryDetailClient({ id }: { id: string }) {
         backHref="/alumni-stories?tab=viewStories"
         backLabel="Back to Stories"
         showSubmissionCriteria
+        editHref={canReview ? `/alumni-stories/${id}/edit` : null}
+        editLabel="Edit Story"
         adminActions={
           canReview ? (
             <StoryReviewActions
               storyId={story.id}
               status={story.status}
               rejectionReason={story.rejectionReason}
+              alumniId={story.alumniId}
+              recipientEmail={story.email}
+              alumniName={story.name}
+              storyTitle={story.title}
               onReviewed={() => {
                 setReloadKey((k) => k + 1);
                 router.refresh();

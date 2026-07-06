@@ -4,12 +4,14 @@ import {
   storyServerSchema,
   storyAlumniSubmitSchema,
   storyAlumniSelfSubmitWithoutSapSchema,
+  adminEditSchema,
   parseStoryCriteriaFromBody,
   normalizeStoryStatus,
   isStoryApproved,
   isStoryOwner,
   type ServerStoryPayload,
   type AlumniSubmitStoryPayload,
+  type AdminEditStoryPayload,
   sapIdNumericRegex,
 } from "@/lib/alumniStories";
 import {
@@ -18,10 +20,13 @@ import {
 } from "@/lib/alumniStorySubmit";
 import { auth } from "@/lib/auth";
 import { canModify, isSuperAdminUser } from "@/lib/alumniProfile";
+import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { getUploadsImagesDir } from "@/lib/uploadsDir";
 import { sanitizeStoryHtml } from "@/lib/sanitizeStoryHtml";
+import { pickAlumniContactEmail } from "@/lib/successStoryEmailContent";
 
 type StoryDetailRow = {
   id: number;
@@ -48,8 +53,8 @@ type StoryDetailRow = {
   universityemail: string | null;
 };
 
-function mapStoryDetail(r: StoryDetailRow) {
-  return {
+function mapStoryDetail(r: StoryDetailRow, opts?: { includeContact?: boolean }) {
+  const detail = {
     id: String(r.id ?? ""),
     date: r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString(),
     title: String(r.storytitle ?? r.alumniname ?? ""),
@@ -69,6 +74,16 @@ function mapStoryDetail(r: StoryDetailRow) {
       ? new Date(r.signature_confirmed_at).toISOString()
       : null,
   };
+
+  if (opts?.includeContact) {
+    return {
+      ...detail,
+      alumniId: Number(r.alumniid),
+      email: pickAlumniContactEmail(r.personalemail, r.officialemail, r.universityemail),
+    };
+  }
+
+  return detail;
 }
 
 export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -143,7 +158,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       );
     }
 
-    return NextResponse.json(mapStoryDetail(r), { status: 200 });
+    return NextResponse.json(mapStoryDetail(r, { includeContact: staff }), { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch story";
     const isConnectionError =
@@ -201,11 +216,30 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     };
 
     const alumniId = Number(story.alumniid);
-    const isSuperAdmin = isSuperAdminUser(session.user);
+    const isStaffEditor = canModify(session.user);
+    const isOwner = isStoryOwner(session.user, story);
 
-    if (!isSuperAdmin) {
-      if (!isStoryOwner(session.user, story)) {
-        return NextResponse.json({ error: "Forbidden: You can only update your own stories" }, { status: 403 });
+    if (!isStaffEditor && !isOwner) {
+      return NextResponse.json(
+        { error: "Forbidden: You can only update your own stories" },
+        { status: 403 }
+      );
+    }
+
+    if (isStaffEditor) {
+      const accessFilter = await buildAccessFilterSQL(session, "");
+      if (accessFilter.hasFilter && accessFilter.sql) {
+        const accessCheck = await sql/* sql */`
+          SELECT s.id
+          FROM public.tblalumnistories s
+          INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+          WHERE s.id = ${storyId}
+            AND (${accessFilter.sql})
+          LIMIT 1
+        `;
+        if (!accessCheck[0]) {
+          return NextResponse.json({ error: "Story not found or access denied" }, { status: 404 });
+        }
       }
     }
 
@@ -251,7 +285,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         const baseFilename = `story-${timestamp}.${extension}`;
         storyImageFilename = baseFilename.length > 50 ? baseFilename.slice(0, 50) : baseFilename;
 
-        const uploadsDir = join(process.cwd(), "public", "images");
+        const uploadsDir = getUploadsImagesDir();
         if (!existsSync(uploadsDir)) {
           await mkdir(uploadsDir, { recursive: true });
         }
@@ -282,7 +316,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     let preResolvedAlumni = null;
-    if (!isSuperAdmin) {
+    if (!isStaffEditor) {
       preResolvedAlumni = await lookupAlumniForStorySubmit(
         session.user as { email?: string | null; sapid?: string | null; userId?: number | null },
         String(rawPayload.sapId ?? ""),
@@ -296,21 +330,22 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     const hasValidSapId = sapIdNumericRegex.test(String(rawPayload.sapId ?? "").trim());
-    const baseSchema =
-      !isSuperAdmin && preResolvedAlumni && !hasValidSapId
-        ? storyAlumniSelfSubmitWithoutSapSchema
-        : storyServerSchema;
+    const baseSchema = isStaffEditor
+      ? adminEditSchema
+      : !preResolvedAlumni || hasValidSapId
+        ? storyServerSchema
+        : storyAlumniSelfSubmitWithoutSapSchema;
 
     const baseParsed = baseSchema.safeParse(rawPayload);
     if (!baseParsed.success) {
       return NextResponse.json({ message: "Validation failed", issues: baseParsed.error.format() }, { status: 422 });
     }
 
-    let v: ServerStoryPayload | AlumniSubmitStoryPayload | Omit<AlumniSubmitStoryPayload, "sapId"> =
+    let v: ServerStoryPayload | AlumniSubmitStoryPayload | AdminEditStoryPayload | Omit<AlumniSubmitStoryPayload, "sapId"> =
       baseParsed.data as ServerStoryPayload;
 
-    const requiresCriteria = !isSuperAdmin;
-    if (requiresCriteria) {
+    const requiresAlumniCriteria = !isStaffEditor;
+    if (requiresAlumniCriteria) {
       const criteriaSchema = hasValidSapId
         ? storyAlumniSubmitSchema
         : storyAlumniSelfSubmitWithoutSapSchema;
@@ -322,16 +357,28 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     const criteriaHighlight: string | null =
-      requiresCriteria && "criteriaHighlight" in v ? (v.criteriaHighlight ?? null) : null;
+      requiresAlumniCriteria && "criteriaHighlight" in v
+        ? (v.criteriaHighlight ?? null)
+        : isStaffEditor && "criteriaHighlight" in v
+          ? (v.criteriaHighlight ?? null)
+          : null;
     const criteriaInspires: string | null =
-      requiresCriteria && "criteriaInspires" in v ? (v.criteriaInspires ?? null) : null;
+      requiresAlumniCriteria && "criteriaInspires" in v
+        ? (v.criteriaInspires ?? null)
+        : isStaffEditor && "criteriaInspires" in v
+          ? (v.criteriaInspires ?? null)
+          : null;
     const criteriaReplicable: boolean | null =
-      requiresCriteria && "criteriaReplicable" in v ? (v.criteriaReplicable ?? null) : null;
+      requiresAlumniCriteria && "criteriaReplicable" in v
+        ? (v.criteriaReplicable ?? null)
+        : isStaffEditor && "criteriaReplicable" in v
+          ? (v.criteriaReplicable ?? null)
+          : null;
     const signatureConfirmed: boolean | null =
-      requiresCriteria && "signatureConfirmed" in v ? (v.signatureConfirmed ?? null) : null;
+      requiresAlumniCriteria && "signatureConfirmed" in v ? (v.signatureConfirmed ?? null) : null;
 
     const cleanHtml = sanitizeStoryHtml(v.storyHtml);
-    const resetModeration = !isSuperAdmin;
+    const resetModeration = !isStaffEditor;
 
     const updateQuery = storyImageFilename
       ? resetModeration
@@ -357,7 +404,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
           SET alumnistories = ${cleanHtml},
               story_image = ${storyImageFilename},
               storytitle = ${v.storyTitle},
-              createdat = NOW()
+              createdat = NOW(),
+              criteria_highlight = ${criteriaHighlight},
+              criteria_inspires = ${criteriaInspires},
+              criteria_replicable = ${criteriaReplicable}
           WHERE id = ${storyId}
           RETURNING id`
       : resetModeration
@@ -381,7 +431,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
           UPDATE public.tblalumnistories
           SET alumnistories = ${cleanHtml},
               storytitle = ${v.storyTitle},
-              createdat = NOW()
+              createdat = NOW(),
+              criteria_highlight = ${criteriaHighlight},
+              criteria_inspires = ${criteriaInspires},
+              criteria_replicable = ${criteriaReplicable}
           WHERE id = ${storyId}
           RETURNING id`;
 
@@ -391,7 +444,17 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ error: "Story not found" }, { status: 404 });
     }
 
-    if (v.contactNumber) {
+    if (isStaffEditor) {
+      await sql/* sql */`
+        UPDATE public.tbl_alumni
+        SET alumniname = ${v.name},
+            facultyname = ${v.faculty},
+            departmentname = ${v.department},
+            yearofending = ${v.passingYear ?? null},
+            contactno = ${v.contactNumber ?? null},
+            personalemail = ${v.email}
+        WHERE alumniid = ${alumniId}`;
+    } else if (v.contactNumber) {
       await sql/* sql */`
         UPDATE public.tbl_alumni
         SET contactno = ${v.contactNumber}

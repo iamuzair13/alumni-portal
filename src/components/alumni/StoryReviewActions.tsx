@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useCallback, useState } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import { CheckLineIcon, CloseLineIcon } from "@/icons";
+import { CheckLineIcon, CloseLineIcon, PencilIcon } from "@/icons";
 import StoryStatusBadge from "@/components/alumni/StoryStatusBadge";
+import { StoryActionEmailBlock } from "@/components/alumni/StoryActionEmailBlock";
 import { alumniStoriesKey } from "@/app/queries/fetch-alumni-stories";
 import { normalizeStoryStatus } from "@/lib/alumniStories";
 
@@ -14,6 +16,10 @@ type Props = {
   storyId: string;
   status: string;
   rejectionReason?: string | null;
+  alumniId?: number | null;
+  recipientEmail?: string | null;
+  alumniName?: string | null;
+  storyTitle?: string | null;
   onReviewed?: () => void;
   variant?: "bar" | "inline";
 };
@@ -22,6 +28,10 @@ export default function StoryReviewActions({
   storyId,
   status,
   rejectionReason,
+  alumniId,
+  recipientEmail,
+  alumniName,
+  storyTitle,
   onReviewed,
   variant = "bar",
 }: Props) {
@@ -98,6 +108,13 @@ export default function StoryReviewActions({
 
   const actions = (
     <div className="flex flex-wrap items-center gap-2">
+      <Link
+        href={`/alumni-stories/${encodeURIComponent(storyId)}/edit`}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-medium text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-300 dark:ring-blue-800"
+      >
+        <PencilIcon className="h-4 w-4" />
+        Edit Story
+      </Link>
       {(isPending || isRejected) && (
         <button
           type="button"
@@ -127,10 +144,19 @@ export default function StoryReviewActions({
     <>
       <Modal isOpen={approveModal.isOpen} onClose={approveModal.closeModal} className="max-w-lg p-6">
         <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Approve Story</h3>
-        <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
           Are you sure you want to approve this success story? It will be published and visible to the alumni
           community.
         </p>
+        <StoryActionEmailBlock
+          action="approve"
+          storyId={storyId}
+          storyTitle={storyTitle}
+          alumniName={alumniName}
+          alumniId={alumniId}
+          recipientEmail={recipientEmail}
+          disabled={loading === "approve"}
+        />
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -162,6 +188,16 @@ export default function StoryReviewActions({
           rows={4}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           placeholder="Enter rejection reason..."
+        />
+        <StoryActionEmailBlock
+          action="reject"
+          storyId={storyId}
+          storyTitle={storyTitle}
+          alumniName={alumniName}
+          alumniId={alumniId}
+          recipientEmail={recipientEmail}
+          rejectionReason={rejectionText}
+          disabled={loading === "reject" || !rejectionText.trim()}
         />
         <div className="mt-4 flex justify-end gap-2">
           <button

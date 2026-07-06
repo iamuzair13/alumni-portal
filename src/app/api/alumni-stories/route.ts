@@ -24,6 +24,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { sanitizeStoryHtml, storyHtmlTextContent } from "@/lib/sanitizeStoryHtml";
+import { pickAlumniContactEmail } from "@/lib/successStoryEmailContent";
 
 type StoryItem = {
   id: string;
@@ -36,6 +37,8 @@ type StoryItem = {
   imageUrl: string;
   status: string;
   rejectionReason: string | null;
+  alumniId?: number;
+  email?: string | null;
 };
 
 type StoryRow = {
@@ -51,10 +54,13 @@ type StoryRow = {
   degreetitle: string | null;
   academicsession: string | null;
   image1: string | null;
+  personalemail?: string | null;
+  officialemail?: string | null;
+  universityemail?: string | null;
 };
 
-function mapStoryRow(r: StoryRow): StoryItem {
-  return {
+function mapStoryRow(r: StoryRow, opts?: { includeContact?: boolean }): StoryItem {
+  const item: StoryItem = {
     id: String(r.id ?? ""),
     date: r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString(),
     title: String(r.storytitle ?? r.alumniname ?? ""),
@@ -66,6 +72,13 @@ function mapStoryRow(r: StoryRow): StoryItem {
     status: normalizeStoryStatus(r.status),
     rejectionReason: r.rejection_reason ?? null,
   };
+
+  if (opts?.includeContact) {
+    item.alumniId = Number(r.alumniid);
+    item.email = pickAlumniContactEmail(r.personalemail, r.officialemail, r.universityemail);
+  }
+
+  return item;
 }
 
 const BASE_WHERE = sql`
@@ -160,6 +173,7 @@ export async function GET(req: Request) {
         a.degreetitle,
         a.academicsession,
         a.image1
+        ${isStaff ? sql`, a.personalemail, a.officialemail, a.universityemail` : sql``}
       FROM public.tblalumnistories s
       INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
       WHERE ${BASE_WHERE}
@@ -170,7 +184,7 @@ export async function GET(req: Request) {
       LIMIT 200` as StoryRow[]
     );
 
-    const items = rows.map(mapStoryRow);
+    const items = rows.map((r) => mapStoryRow(r as StoryRow, { includeContact: isStaff }));
 
     let counts: { pending: number; approved: number; notApproved: number } | undefined;
     if (isStaff) {
