@@ -71,7 +71,7 @@ const adminSchema = storyFormSchema.extend({
 
 type AlumniFormVals = z.input<typeof alumniSchema>;
 type AdminFormVals = z.infer<typeof adminSchema>;
-type AdminEditFormVals = z.infer<typeof adminEditSchema>;
+type AdminEditFormVals = z.input<typeof adminEditSchema>;
 type FormVals = AlumniFormVals | AdminFormVals | AdminEditFormVals;
 
 const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:outline-gray-700";
