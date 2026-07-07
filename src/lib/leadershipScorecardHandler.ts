@@ -5,8 +5,9 @@ import { logAdminAction } from "@/lib/adminActivityLog";
 import { fetchBulkLeadershipScorecardPayload } from "@/lib/leadershipScorecardData";
 import { generateBulkLeadershipScorecardPDF } from "@/lib/scorecardGenerator";
 
-const VALID_ROLES = new Set(["president", "vice_president", "coordinator"]);
+const VALID_ROLES = new Set(["president", "vice_president", "coordinator", "all_roles"]);
 const VALID_TYPES = new Set(["chapter", "association"]);
+const ALL_SCORECARD_ROLES = ["president", "vice_president", "coordinator"] as const;
 
 function parsePositiveInt(value: string | null): number | null {
   if (!value) return null;
@@ -52,16 +53,34 @@ export async function handleBulkLeadershipScorecardDownload(
     return NextResponse.json({ error: "Association selection is required" }, { status: 400 });
   }
 
-  const payload = await fetchBulkLeadershipScorecardPayload({
+  const fetchInput = {
     session,
-    role: role as "president" | "vice_president" | "coordinator",
     type: type as "chapter" | "association",
     nationalChapterId,
     internationalChapterId,
     associationId,
-  });
+  };
 
-  const pdfBuffer = await generateBulkLeadershipScorecardPDF(payload);
+  const payloads =
+    role === "all_roles"
+      ? await Promise.all(
+          ALL_SCORECARD_ROLES.map((scorecardRole) =>
+            fetchBulkLeadershipScorecardPayload({ ...fetchInput, role: scorecardRole })
+          )
+        )
+      : [
+          await fetchBulkLeadershipScorecardPayload({
+            ...fetchInput,
+            role: role as "president" | "vice_president" | "coordinator",
+          }),
+        ];
+
+  const pdfBuffer = await generateBulkLeadershipScorecardPDF(
+    role === "all_roles" ? payloads : payloads[0]
+  );
+
+  const primaryPayload = payloads[0];
+  const totalApplicantCount = payloads.reduce((sum, p) => sum + p.applicants.length, 0);
 
   await logAdminAction({
     session,
@@ -78,8 +97,16 @@ export async function handleBulkLeadershipScorecardDownload(
         nationalChapterId,
         internationalChapterId,
         associationId,
-        categoryLabel: payload.categoryLabel,
-        applicantCount: payload.applicants.length,
+        categoryLabel: primaryPayload.categoryLabel,
+        applicantCount: totalApplicantCount,
+        ...(role === "all_roles"
+          ? {
+              rolesIncluded: ALL_SCORECARD_ROLES,
+              applicantCountByRole: Object.fromEntries(
+                payloads.map((p) => [p.role, p.applicants.length])
+              ),
+            }
+          : {}),
         downloadedBy: (session.user as { email?: string }).email ?? null,
         downloadedAt: new Date().toISOString(),
       },
@@ -87,8 +114,8 @@ export async function handleBulkLeadershipScorecardDownload(
   });
 
   const dateStamp = new Date().toISOString().slice(0, 10);
-  const slug = payload.categoryLabel
-    ? payload.categoryLabel.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()
+  const slug = primaryPayload.categoryLabel
+    ? primaryPayload.categoryLabel.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()
     : type;
   const filename = `leadership-scorecard-${type}-${role}-${slug}-${dateStamp}.pdf`;
   return new NextResponse(new Uint8Array(pdfBuffer), {

@@ -48,6 +48,7 @@ export default function StoryReviewActions({
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: alumniStoriesKey });
     await queryClient.invalidateQueries({ queryKey: ["alumni-stories-counts"] });
+    await queryClient.invalidateQueries({ queryKey: ["dashboard-tab-counts"] });
     onReviewed?.();
   }, [queryClient, onReviewed]);
 

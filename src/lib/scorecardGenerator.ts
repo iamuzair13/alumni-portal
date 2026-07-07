@@ -75,19 +75,30 @@ function chunkApplicants<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
-export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): Promise<Buffer> {
+export function generateBulkLeadershipScorecardPDF(
+  data: BulkScorecardPayload | BulkScorecardPayload[]
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
+      const payloads = Array.isArray(data) ? data : [data];
+      const isMultiRole = payloads.length > 1;
       const doc = new jsPDF({ compress: true, unit: "mm", orientation: "landscape" });
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
       const m = THEME.margin;
       const W = pageW - m * 2;
       let y = m;
+      let activePayload = payloads[0];
 
-      const pageBottom = () => pageH - m - 10;
+      const pageBottom = () => pageH - m - 12;
       const lineH = (size: number) => size * 0.38;
       let allowVerticalPageBreak = false;
+
+      const startNewContentPage = () => {
+        drawPageFooter();
+        doc.addPage();
+        y = m;
+      };
 
       const setStyle = (size: number, bold = false, color: [number, number, number] = THEME.colors.text) => {
         doc.setFontSize(size);
@@ -111,33 +122,55 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
       };
 
       const ensureSpace = (need: number) => {
-        if (!allowVerticalPageBreak || y + need <= pageBottom()) return;
-        drawPageFooter();
-        doc.addPage();
-        y = m;
+        if (!allowVerticalPageBreak || y + need <= pageBottom()) return false;
+        startNewContentPage();
+        return true;
       };
 
       const startApplicantBatchPage = (batchIdx: number) => {
         if (batchIdx > 0) {
-          drawPageFooter();
-          doc.addPage();
-          y = m;
+          startNewContentPage();
         }
       };
 
-      const drawContinuationHeader = (batchStart: number, batchEnd: number) => {
+      const drawContinuationHeader = (batchStart: number, batchEnd: number, roleLabel?: string) => {
         const barH = 10;
         doc.setFillColor(...THEME.colors.brandLight);
         doc.setDrawColor(...THEME.colors.brand);
         doc.setLineWidth(0.3);
         doc.rect(m, y, W, barH, "S");
         setStyle(THEME.font.small, true, THEME.colors.brand);
+        const rolePrefix = roleLabel ? `${roleLabel} — ` : "";
         doc.text(
-          `Leadership Scorecard — Applicants ${batchStart}–${batchEnd}`,
-          m + 4,
-          y + 6.5
+          `${rolePrefix}Leadership Scorecard — Applicants ${batchStart}–${batchEnd}`,
+          m + 2,
+          y + 4
         );
         y += barH + 4;
+      };
+
+      const drawRoleSectionBanner = (roleLabel: string, roleIndex: number) => {
+        const barH = 14;
+        ensureSpace(barH + 5);
+        doc.setFillColor(...THEME.colors.brand);
+        doc.setDrawColor(...THEME.colors.brand);
+        doc.setLineWidth(0.3);
+        doc.rect(m, y, W, barH, "F");
+
+        setStyle(THEME.font.h2, true, THEME.colors.white);
+        doc.text(roleLabel.toUpperCase(), m + 4, y + 6.5);
+        setStyle(THEME.font.small, false, [220, 240, 230] as [number, number, number]);
+        doc.text("All Applicants", m + 4, y + 11.5);
+
+        const badge = `${roleIndex + 1} of ${payloads.length}`;
+        setStyle(THEME.font.small, true, THEME.colors.brand);
+        const badgeW = doc.getTextWidth(badge) + 8;
+        const badgeX = pageW - m - badgeW - 2;
+        doc.setFillColor(...THEME.colors.white);
+        doc.roundedRect(badgeX, y + 3.5, badgeW, 7, 1.5, 1.5, "F");
+        doc.text(badge, badgeX + 4, y + 8.5);
+
+        y += barH + 5;
       };
 
       const drawBrandedHeader = () => {
@@ -149,7 +182,10 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
         doc.setFontSize(THEME.font.h1);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(255, 255, 255);
-        doc.text("Leadership Scorecard", titleX, y + 9);
+        const headerTitle = isMultiRole
+          ? `Leadership Scorecard — ${bulkScorecardRoleLabel(activePayload.role)}`
+          : "Leadership Scorecard";
+        doc.text(headerTitle, titleX, y + 9);
         doc.setFontSize(THEME.font.small);
         doc.setFont("helvetica", "normal");
         doc.text("Office of Alumni Relations — University of Lahore", titleX, y + 15);
@@ -167,14 +203,14 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
 
         y += headerH + 5;
 
-        const roleLabel = bulkScorecardRoleLabel(data.role);
-        const typeLabel = data.leadershipType === "chapter" ? "Chapter" : "Association";
+        const roleLabel = bulkScorecardRoleLabel(activePayload.role);
+        const typeLabel = activePayload.leadershipType === "chapter" ? "Chapter" : "Association";
         const infoPairs = [
           { label: "Role", value: roleLabel },
           { label: "Type", value: typeLabel },
-          ...(data.categoryLabel ? [{ label: "Category", value: data.categoryLabel }] : []),
-          { label: "Generated", value: data.generatedAt },
-          { label: "Applicants", value: String(data.applicants.length) },
+          ...(activePayload.categoryLabel ? [{ label: "Category", value: activePayload.categoryLabel }] : []),
+          { label: "Generated", value: activePayload.generatedAt },
+          { label: "Applicants", value: String(activePayload.applicants.length) },
         ];
 
         const colCount = infoPairs.length;
@@ -200,16 +236,21 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
         y += maxRowH + 6;
       };
 
-      const drawSectionTitle = (title: string, opts?: { compact?: boolean }) => {
+      const drawSectionTitle = (
+        title: string,
+        opts?: { compact?: boolean; roleLabel?: string }
+      ) => {
         const barH = opts?.compact ? 5.5 : 6.5;
         y += opts?.compact ? 0 : SECTION_GAP;
+        ensureSpace(barH + 2);
         doc.setFillColor(...THEME.colors.brandLight);
         doc.setDrawColor(...THEME.colors.brand);
         doc.setLineWidth(0.3);
         doc.rect(m, y, 2.5, barH, "F");
         doc.rect(m, y, W, barH, "S");
         setStyle(THEME.font.small, true, THEME.colors.brand);
-        doc.text(title.toUpperCase(), m + 5, y + 4.3);
+        const displayTitle = opts?.roleLabel ? `${title} — ${opts.roleLabel}` : title;
+        doc.text(displayTitle.toUpperCase(), m + 5, y + 4.3);
         y += barH + 2;
       };
 
@@ -218,6 +259,38 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
         applicantW: number;
         batch: BulkScorecardPayload["applicants"];
         batchLabel?: string;
+        payload: BulkScorecardPayload;
+      };
+
+      const measureTableHeaderHeight = (ctx: TableContext): number => {
+        setStyle(HEADER_FONT, true, THEME.colors.white);
+        const nameColW = ctx.applicantW - CELL_PAD * 2;
+        const questionsLabelLines = doc.splitTextToSize("Questions", ctx.questionsW - CELL_PAD * 2);
+        const applicantNameLines = ctx.batch.map((applicant) =>
+          doc.splitTextToSize(applicant.name || "—", nameColW)
+        );
+        const maxNameLines = Math.max(
+          questionsLabelLines.length,
+          ...applicantNameLines.map((lines) => lines.length),
+          1
+        );
+        return Math.max(MIN_HEADER_ROW_H, maxNameLines * lineH(HEADER_FONT) + CELL_PAD * 2);
+      };
+
+      const measureTableRowHeight = (
+        ctx: TableContext,
+        question: string,
+        marks: Array<number | string | null>,
+        bold = false
+      ): number => {
+        setStyle(TABLE_FONT, bold, THEME.colors.text);
+        const qLines = doc.splitTextToSize(question, ctx.questionsW - CELL_PAD * 2);
+        const markLineCounts = marks.map((mark) => {
+          const text = formatMarkCell(mark);
+          return doc.splitTextToSize(text, ctx.applicantW - CELL_PAD * 2).length;
+        });
+        const rowLines = Math.max(qLines.length, ...markLineCounts, 1);
+        return Math.max(MIN_HEADER_ROW_H - 1, rowLines * lineH(TABLE_FONT) + CELL_PAD * 2);
       };
 
       const drawTableHeader = (ctx: TableContext) => {
@@ -229,15 +302,7 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
         const applicantNameLines = ctx.batch.map((applicant) =>
           doc.splitTextToSize(applicant.name || "—", nameColW)
         );
-        const maxNameLines = Math.max(
-          questionsLabelLines.length,
-          ...applicantNameLines.map((lines) => lines.length),
-          1
-        );
-        const headerRowH = Math.max(
-          MIN_HEADER_ROW_H,
-          maxNameLines * lineH(HEADER_FONT) + CELL_PAD * 2
-        );
+        const headerRowH = measureTableHeaderHeight(ctx);
         const textStartY = y + CELL_PAD + lineH(HEADER_FONT);
 
         doc.setFillColor(...THEME.colors.brand);
@@ -268,15 +333,9 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
         shaded: boolean,
         bold = false
       ) => {
-        const qLines = doc.splitTextToSize(question, ctx.questionsW - CELL_PAD * 2);
-        const markLineCounts = marks.map((mark) => {
-          const text = formatMarkCell(mark);
-          return doc.splitTextToSize(text, ctx.applicantW - CELL_PAD * 2).length;
-        });
-        const rowLines = Math.max(qLines.length, ...markLineCounts, 1);
-        const rowH = Math.max(MIN_HEADER_ROW_H - 1, rowLines * lineH(TABLE_FONT) + CELL_PAD * 2);
-
+        const rowH = measureTableRowHeight(ctx, question, marks, bold);
         const totalW = ctx.questionsW + ctx.applicantW * ctx.batch.length;
+        const qLines = doc.splitTextToSize(question, ctx.questionsW - CELL_PAD * 2);
 
         if (shaded) {
           doc.setFillColor(248, 250, 248);
@@ -305,6 +364,73 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
         y += rowH;
       };
 
+      const drawTableContinuationLabel = (sectionLabel: string, roleLabel?: string) => {
+        const barH = 7;
+        ensureSpace(barH + 2);
+        doc.setFillColor(...THEME.colors.brandLight);
+        doc.setDrawColor(...THEME.colors.brand);
+        doc.setLineWidth(0.2);
+        doc.rect(m, y, W, barH, "S");
+        setStyle(THEME.font.tiny, true, THEME.colors.brand);
+        const prefix = roleLabel ? `${roleLabel} — ` : "";
+        doc.text(`${prefix}${sectionLabel} (continued)`, m + 3, y + 4.5);
+        y += barH + 2;
+      };
+
+      const drawCriteriaTable = (
+        ctx: TableContext,
+        criteria: BulkScorecardCriterion[],
+        emptyMessage: string,
+        opts?: { sectionLabel?: string; roleLabel?: string }
+      ) => {
+        if (criteria.length === 0) {
+          setStyle(TABLE_FONT, false, THEME.colors.muted);
+          doc.text(emptyMessage, m, y);
+          y += 6;
+          return;
+        }
+
+        let needsHeader = true;
+
+        const ensureTableHeader = () => {
+          const headerH = measureTableHeaderHeight(ctx);
+          if (y + headerH > pageBottom()) {
+            startNewContentPage();
+            if (opts?.sectionLabel) {
+              drawTableContinuationLabel(opts.sectionLabel, opts.roleLabel);
+            }
+          }
+          drawTableHeader(ctx);
+          needsHeader = false;
+        };
+
+        criteria.forEach((criterion, idx) => {
+          const question = criterionQuestionText(criterion);
+          const marks = ctx.batch.map((a) => a.marksByCriterionId[criterion.id] ?? null);
+          const rowH = measureTableRowHeight(ctx, question, marks);
+
+          if (needsHeader) {
+            const headerH = measureTableHeaderHeight(ctx);
+            if (y + headerH + rowH > pageBottom()) {
+              startNewContentPage();
+              if (opts?.sectionLabel) {
+                drawTableContinuationLabel(opts.sectionLabel, opts.roleLabel);
+              }
+            }
+            ensureTableHeader();
+          } else if (y + rowH > pageBottom()) {
+            startNewContentPage();
+            needsHeader = true;
+            if (opts?.sectionLabel) {
+              drawTableContinuationLabel(opts.sectionLabel, opts.roleLabel);
+            }
+            ensureTableHeader();
+          }
+
+          drawTableRow(ctx, question, marks, idx % 2 === 1);
+        });
+      };
+
       const sumApplicantObtainedMarks = (
         applicant: BulkScorecardPayload["applicants"][number],
         criteria: BulkScorecardCriterion[]
@@ -330,7 +456,11 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
         );
       };
 
-      const drawSummaryRows = (ctx: TableContext, allCriteria: BulkScorecardCriterion[]) => {
+      const drawSummaryRows = (
+        ctx: TableContext,
+        allCriteria: BulkScorecardCriterion[],
+        opts?: { sectionLabel?: string; roleLabel?: string }
+      ) => {
         if (ctx.batch.length === 0 || allCriteria.length === 0) return;
 
         const criteriaMax = sumCriteriaMaximumMarks(allCriteria);
@@ -367,55 +497,56 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
         ];
 
         summaryRows.forEach((row, idx) => {
+          const rowH = measureTableRowHeight(ctx, row.label, row.values, true);
+          if (y + rowH > pageBottom()) {
+            startNewContentPage();
+            if (opts?.sectionLabel) {
+              drawTableContinuationLabel(opts.sectionLabel, opts.roleLabel);
+            }
+            drawTableHeader(ctx);
+          }
           drawTableRow(ctx, row.label, row.values, idx % 2 === 1, true);
         });
       };
 
-      const drawCriteriaTable = (
-        ctx: TableContext,
-        criteria: BulkScorecardCriterion[],
-        emptyMessage: string
-      ) => {
-        if (criteria.length === 0) {
-          setStyle(TABLE_FONT, false, THEME.colors.muted);
-          doc.text(emptyMessage, m, y);
-          y += 6;
-          return;
-        }
-
-        drawTableHeader(ctx);
-        criteria.forEach((criterion, idx) => {
-          const marks = ctx.batch.map((a) => a.marksByCriterionId[criterion.id] ?? null);
-          drawTableRow(ctx, criterionQuestionText(criterion), marks, idx % 2 === 1);
-        });
-      };
-
       const drawApplicantBatchScorecard = (
-        batch: BulkScorecardPayload["applicants"],
         batchIdx: number,
-        perPage: number
+        perPage: number,
+        ctx: TableContext,
+        payloadIdx: number
       ) => {
+        const roleLabel = bulkScorecardRoleLabel(ctx.payload.role);
+        const sectionRoleLabel = isMultiRole ? roleLabel : undefined;
+
         startApplicantBatchPage(batchIdx);
 
         if (batchIdx === 0) {
+          if (isMultiRole) {
+            drawRoleSectionBanner(roleLabel, payloadIdx);
+          }
           allowVerticalPageBreak = true;
           drawBrandedHeader();
-          allowVerticalPageBreak = false;
         } else {
           const batchStart = batchIdx * perPage + 1;
-          const batchEnd = batchIdx * perPage + batch.length;
-          drawContinuationHeader(batchStart, batchEnd);
+          const batchEnd = batchIdx * perPage + ctx.batch.length;
+          drawContinuationHeader(
+            batchStart,
+            batchEnd,
+            isMultiRole ? roleLabel : undefined
+          );
         }
 
-        const questionsW = W * QUESTIONS_COL_RATIO;
-        const ctx: TableContext = {
-          questionsW,
-          applicantW: (W - questionsW) / Math.max(batch.length, 1),
-          batch,
+        allowVerticalPageBreak = true;
+        const tableOpts = {
+          sectionLabel: "Scorecard",
+          roleLabel: sectionRoleLabel,
         };
 
-        drawSectionTitle("Section 1: Mandatory Criteria", { compact: batchIdx > 0 });
-        if (data.applicants.length === 0) {
+        drawSectionTitle("Section 1: Mandatory Criteria", {
+          compact: batchIdx > 0,
+          roleLabel: sectionRoleLabel,
+        });
+        if (ctx.payload.applicants.length === 0) {
           setStyle(TABLE_FONT, false, THEME.colors.muted);
           doc.text(
             "No applications found for the selected role, type, and chapter or association.",
@@ -424,24 +555,55 @@ export function generateBulkLeadershipScorecardPDF(data: BulkScorecardPayload): 
           );
           y += 6;
         } else {
-          drawCriteriaTable(ctx, data.criteria.mandatory, "No mandatory criteria defined.");
+          drawCriteriaTable(
+            ctx,
+            ctx.payload.criteria.mandatory,
+            "No mandatory criteria defined.",
+            { ...tableOpts, sectionLabel: "Section 1: Mandatory Criteria" }
+          );
         }
 
-        drawSectionTitle("Section 2: Optional Criteria", { compact: true });
-        if (data.applicants.length > 0) {
-          drawCriteriaTable(ctx, data.criteria.optional, "No optional criteria defined.");
-          const allCriteria = [...data.criteria.mandatory, ...data.criteria.optional];
+        drawSectionTitle("Section 2: Optional Criteria", {
+          compact: true,
+          roleLabel: sectionRoleLabel,
+        });
+        if (ctx.payload.applicants.length > 0) {
+          drawCriteriaTable(
+            ctx,
+            ctx.payload.criteria.optional,
+            "No optional criteria defined.",
+            { ...tableOpts, sectionLabel: "Section 2: Optional Criteria" }
+          );
+          const allCriteria = [...ctx.payload.criteria.mandatory, ...ctx.payload.criteria.optional];
           if (allCriteria.length > 0) {
             y += 1;
-            drawSummaryRows(ctx, allCriteria);
+            drawSummaryRows(ctx, allCriteria, {
+              ...tableOpts,
+              sectionLabel: "Summary",
+            });
           }
         }
+        allowVerticalPageBreak = false;
       };
 
-      const perPage = maxApplicantsPerPage(pageW, m);
-      const batches = chunkApplicants(data.applicants, perPage);
-      batches.forEach((batch, batchIdx) => {
-        drawApplicantBatchScorecard(batch, batchIdx, perPage);
+      payloads.forEach((payload, payloadIdx) => {
+        activePayload = payload;
+        if (payloadIdx > 0) {
+          startNewContentPage();
+        }
+
+        const perPage = maxApplicantsPerPage(pageW, m);
+        const batches = chunkApplicants(payload.applicants, perPage);
+        batches.forEach((batch, batchIdx) => {
+          const questionsW = W * QUESTIONS_COL_RATIO;
+          const ctx: TableContext = {
+            questionsW,
+            applicantW: (W - questionsW) / Math.max(batch.length, 1),
+            batch,
+            payload,
+          };
+          drawApplicantBatchScorecard(batchIdx, perPage, ctx, payloadIdx);
+        });
       });
 
       const pageCount = doc.getNumberOfPages();

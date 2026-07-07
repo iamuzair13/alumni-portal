@@ -569,7 +569,9 @@ export default function LeadershipPage() {
   const [applicationRoleFilter, setApplicationRoleFilter] = useState<RoleFilter>("all");
   const [hasAdditionalAchievementsFilter, setHasAdditionalAchievementsFilter] = useState(false);
   const [scorecardModalOpen, setScorecardModalOpen] = useState(false);
-  const [scorecardRole, setScorecardRole] = useState<"" | "president" | "vice_president" | "coordinator">("");
+  const [scorecardRole, setScorecardRole] = useState<
+    "" | "all_roles" | "president" | "vice_president" | "coordinator"
+  >("");
   const [scorecardType, setScorecardType] = useState<"" | "chapter" | "association">("");
   const [scorecardChapterCategory, setScorecardChapterCategory] = useState<"" | "national" | "international">("");
   const [scorecardCategoryItemId, setScorecardCategoryItemId] = useState<number | null>(null);
@@ -1005,7 +1007,14 @@ export default function LeadershipPage() {
     queryKey: ["leadership-scorecard-options", scorecardRole],
     queryFn: () =>
       fetchScorecardFilterOptions(
-        scorecardRole ? { role: scorecardRole as RoleFilter } : undefined
+        scorecardRole
+          ? {
+              role:
+                scorecardRole === "all_roles"
+                  ? "all"
+                  : (scorecardRole as RoleFilter),
+            }
+          : undefined
       ),
     enabled: scorecardModalOpen && !!scorecardRole,
     staleTime: 0,
@@ -1809,13 +1818,21 @@ export default function LeadershipPage() {
                   <select
                     value={scorecardRole}
                     onChange={(e) => {
-                      setScorecardRole(e.target.value as "" | "president" | "vice_president" | "coordinator");
+                      setScorecardRole(
+                        e.target.value as
+                          | ""
+                          | "all_roles"
+                          | "president"
+                          | "vice_president"
+                          | "coordinator"
+                      );
                       setScorecardChapterCategory("");
                       setScorecardCategoryItemId(null);
                     }}
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   >
                     <option value="">Select role</option>
+                    <option value="all_roles">All Roles</option>
                     <option value="president">President</option>
                     <option value="vice_president">Vice President</option>
                     <option value="coordinator">Coordinator</option>
@@ -1884,7 +1901,9 @@ export default function LeadershipPage() {
                         </select>
                         {!scorecardOptionsLoading && scorecardRole && scorecardNationalChapters.length === 0 && (
                           <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-                            No national chapters with applications for this role.
+                            {scorecardRole === "all_roles"
+                              ? "No national chapters with applications for any role."
+                              : "No national chapters with applications for this role."}
                           </p>
                         )}
                       </div>
@@ -1914,7 +1933,9 @@ export default function LeadershipPage() {
                         </select>
                         {!scorecardOptionsLoading && scorecardRole && scorecardInternationalChapters.length === 0 && (
                           <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-                            No international chapters with applications for this role.
+                            {scorecardRole === "all_roles"
+                              ? "No international chapters with applications for any role."
+                              : "No international chapters with applications for this role."}
                           </p>
                         )}
                       </div>
@@ -1947,7 +1968,9 @@ export default function LeadershipPage() {
                     </select>
                     {!scorecardOptionsLoading && scorecardRole && scorecardAssociations.length === 0 && (
                       <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-                        No associations with applications for this role.
+                        {scorecardRole === "all_roles"
+                          ? "No associations with applications for any role."
+                          : "No associations with applications for this role."}
                       </p>
                     )}
                   </div>

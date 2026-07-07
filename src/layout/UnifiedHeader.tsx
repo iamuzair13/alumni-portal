@@ -41,6 +41,7 @@ type MenuKey =
   | "AlumniTabs"
   | "AlumniCards"
   | "AlumniTalks"
+  | "AlumniStories"
   | "AlumniChapters"
   | "AlumniAssociation"
   | "AlumniScholarships"
@@ -70,6 +71,7 @@ const MENU_TABS: TabConfig[] = [
   { key: "AlumniTabs", label: "Dashboard", urlTab: "dashboard", showCounter: false },
   { key: "AlumniCards", label: "Alumni Cards", urlTab: "alumni-cards", showCounter: true },
   { key: "AlumniTalks", label: "Alumni Talks", urlTab: "alumni-talks", showCounter: true },
+  { key: "AlumniStories", label: "Success Stories", urlTab: "alumni-stories", showCounter: true },
   { key: "AlumniChapters", label: "Alumni Chapters", urlTab: "alumni-chapters", showCounter: false },
   { key: "AlumniAssociation", label: "Alumni Association", urlTab: "alumni-association", showCounter: false },
   { key: "AlumniScholarships", label: "Alumni Scholarships", urlTab: "alumni-scholarships", showCounter: true },
@@ -89,6 +91,7 @@ const urlTabToMenuKey: Record<string, MenuKey> = {
   dashboard: "AlumniTabs",
   "alumni-cards": "AlumniCards",
   "alumni-talks": "AlumniTalks",
+  "alumni-stories": "AlumniStories",
   "alumni-chapters": "AlumniChapters",
   "alumni-association": "AlumniAssociation",
   "alumni-scholarships": "AlumniScholarships",
@@ -102,6 +105,7 @@ const menuKeyToUrlTab: Record<MenuKey, string> = {
   AlumniTabs: "dashboard",
   AlumniCards: "alumni-cards",
   AlumniTalks: "alumni-talks",
+  AlumniStories: "alumni-stories",
   AlumniChapters: "alumni-chapters",
   AlumniAssociation: "alumni-association",
   AlumniScholarships: "alumni-scholarships",
@@ -116,13 +120,15 @@ const menuKeyToUrlTab: Record<MenuKey, string> = {
    ═══════════════════════════════════════════════════════════════ */
 
 async function fetchTabCounts(): Promise<Partial<Record<MenuKey, PairCounts>>> {
-  const [cardsRes, talksRes, scholarshipsRes, membershipsRes, leadershipRes] = await Promise.all([
-    fetch("/api/alumni-cards/counts", { headers: { accept: "application/json" } }),
-    fetch("/api/alumni/talks", { headers: { accept: "application/json" } }),
-    fetch("/api/alumni/scholarships?limit=1&page=1", { headers: { accept: "application/json" } }),
-    fetch("/api/alumni/memberships?limit=1&page=1", { headers: { accept: "application/json" } }),
-    fetch("/api/leadership/counts", { headers: { accept: "application/json" } }),
-  ]);
+  const [cardsRes, talksRes, storiesRes, scholarshipsRes, membershipsRes, leadershipRes] =
+    await Promise.all([
+      fetch("/api/alumni-cards/counts", { headers: { accept: "application/json" } }),
+      fetch("/api/alumni/talks", { headers: { accept: "application/json" } }),
+      fetch("/api/alumni-stories/counts", { headers: { accept: "application/json" } }),
+      fetch("/api/alumni/scholarships?limit=1&page=1", { headers: { accept: "application/json" } }),
+      fetch("/api/alumni/memberships?limit=1&page=1", { headers: { accept: "application/json" } }),
+      fetch("/api/leadership/counts", { headers: { accept: "application/json" } }),
+    ]);
 
   const next: Partial<Record<MenuKey, PairCounts>> = {};
 
@@ -164,6 +170,14 @@ async function fetchTabCounts(): Promise<Partial<Record<MenuKey, PairCounts>>> {
     next.AlumniTalks = {
       all: Number(j.counts?.all || 0),
       secondary: pending + pendingConfirmation + confirmed,
+    };
+  }
+
+  if (storiesRes.ok) {
+    const j = (await storiesRes.json()) as { pending?: number; approved?: number };
+    next.AlumniStories = {
+      all: Number(j.pending || 0),
+      secondary: Number(j.approved || 0),
     };
   }
 
@@ -393,6 +407,7 @@ const TabContent: FC<{ selected: MenuKey }> = ({ selected }) => {
     AlumniTabs: <AlumniTabs />,
     AlumniCards: <AlumniCards />,
     AlumniTalks: <AlumniTalksTab />,
+    AlumniStories: <AlumniTabs />,
     AlumniChapters: <AlumniChaptersTab />,
     AlumniAssociation: <AlumniAssociationTab />,
     AlumniScholarships: <AlumniScholarshipsTab />,
@@ -443,6 +458,9 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
     if (p === "/leadership" || p.startsWith("/leadership/")) {
       return "Leadership";
     }
+    if (p === "/alumni-stories" || p.startsWith("/alumni-stories/")) {
+      return "AlumniStories";
+    }
     const tabFromUrl = safeSearchParams.get("tab");
     if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) {
       return urlTabToMenuKey[tabFromUrl];
@@ -484,6 +502,10 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
       setSelected(tab);
       if (tab === "Leadership") {
         router.push("/leadership", { scroll: false });
+        return;
+      }
+      if (tab === "AlumniStories") {
+        router.push("/alumni-stories?tab=viewStories", { scroll: false });
         return;
       }
       const urlTab = menuKeyToUrlTab[tab];

@@ -66,6 +66,8 @@ const navItems: NavItem[] = [
 
       { name: "Alumni Talks", path: "/dashboard?tab=alumni-talks" },
 
+      { name: "Success Stories", path: "/alumni-stories?tab=viewStories" },
+
       { name: "Alumni Chapters", path: "/dashboard?tab=alumni-chapters" },
 
       { name: "Alumni Association", path: "/dashboard?tab=alumni-association" },
@@ -230,30 +232,6 @@ const AppSidebarContent: React.FC = () => {
 
   });
 
-  const {
-    data: storyCountsData,
-    isLoading: storyCountsLoading,
-    isFetching: storyCountsFetching,
-  } = useQuery({
-    queryKey: ["alumni-stories-counts"],
-    queryFn: async () => {
-      const res = await fetch("/api/alumni-stories/counts", { headers: { accept: "application/json" } });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error((j as { error?: string })?.error || `Failed (${res.status})`);
-      }
-      const j = (await res.json()) as { pending?: number };
-      return { pending: Number(j.pending || 0) };
-    },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-    refetchOnMount: false,
-    enabled: isAdmin || isSuperAdmin,
-  });
-
-
 
   useEffect(() => {
 
@@ -266,7 +244,7 @@ const AppSidebarContent: React.FC = () => {
     }
 
     if (pathname === "/alumni-stories") {
-      queryClient.invalidateQueries({ queryKey: ["alumni-stories-counts"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-tab-counts"], exact: false });
     }
 
   }, [pathname, queryClient]);
@@ -371,14 +349,7 @@ const AppSidebarContent: React.FC = () => {
 
                 >
 
-                  <span className="inline-flex items-center gap-2">
-                    {nav.name}
-                    {nav.name === "Success Stories" && storyCountsData && storyCountsData.pending > 0 && (
-                      <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none bg-amber-400/90 text-amber-950 border border-amber-300/50">
-                        {storyCountsLoading || storyCountsFetching ? "…" : storyCountsData.pending}
-                      </span>
-                    )}
-                  </span>
+                  {nav.name}
 
                 </span>
 
