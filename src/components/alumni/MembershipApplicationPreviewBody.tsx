@@ -8,58 +8,54 @@ type Props = {
   application?: MembershipApplicationPreview;
 };
 
-const DETAIL_SECTIONS = (application: MembershipApplicationPreview) =>
-  [
-    {
-      title: "(a) Alumni Personal Details",
-      rows: [
-        ["Name", application.studentName],
-        ["Father's Name", application.fatherName],
-        ["DOB", application.dob],
-        ["CNIC", application.cnic],
-      ],
-    },
-    {
-      title: "(b) Alumni Education Details",
-      rows: [
-        ["Campus", application.campus],
-        ["Faculty", application.faculty],
-        ["Department", application.department],
-        ["Program", application.program],
-        ["SAP ID", application.sapCode],
-        ["CGPA", application.cgpa],
-        ["Passing Out Year", application.passingOutYear],
-      ],
-    },
-    {
-      title: "(c) Membership Details",
-      rows: [
-        ["Applying For", application.applyingFor],
-        ["Discount Type", application.discountType],
-        ["Membership Type", application.membershipType],
-        ["Membership Start Date", application.membershipStartDate],
-        ["Preferred Timing", application.preferredTiming],
-      ],
-    },
-    {
-      title: "(d) Medical & Fitness Information",
-      rows: [
-        ["Medical Conditions", application.medicalConditions],
-        ["Allergies", application.allergies],
-        ["Physical Disability", application.physicalDisability],
-      ],
-    },
-    {
-      title: "(e) Emergency Contact",
-      rows: [
-        ["Contact Name", application.emergencyContactName],
-        ["Relationship", application.emergencyContactRelationship],
-        ["Contact Number", application.emergencyContactNumber],
-      ],
-    },
-  ] as const;
-
 export function MembershipApplicationPreviewBody({ membershipId, email, application }: Props) {
+  const detailSections = application
+    ? [
+        {
+          title: "(a) Alumni Personal Details",
+          rows: [
+            ["Name", application.studentName],
+            ["Father's Name", application.fatherName],
+            ["DOB", application.dob],
+            ["CNIC", application.cnic],
+          ],
+        },
+        {
+          title: "(b) Alumni Education Details",
+          rows: [
+            ["Campus", application.campus],
+            ["Faculty", application.faculty],
+            ["Department", application.department],
+            ["Program", application.program],
+            ["SAP ID", application.sapCode],
+            ["CGPA", application.cgpa],
+            ["Passing Out Year", application.passingOutYear],
+          ],
+        },
+        {
+          title: `(c) ${application.membershipSectionTitle}`,
+          rows: application.membershipRows,
+        },
+        ...(application.extraSectionTitle
+          ? [
+              {
+                title: application.facilityType === "pool" ? "(d) Swimming Information" : "(c) Playing Information",
+                rows: application.extraRows,
+              },
+            ]
+          : [
+              {
+                title: "(d) Medical & Fitness Information",
+                rows: application.extraRows,
+              },
+            ]),
+        {
+          title: application.facilityType === "gym" ? "(e) Emergency Contact" : "Emergency Contact",
+          rows: application.emergencyRows,
+        },
+      ]
+    : [];
+
   return (
     <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
       <div className="text-sm text-gray-700 dark:text-gray-300">
@@ -92,7 +88,7 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
           </div>
 
           <div className="space-y-6">
-            {DETAIL_SECTIONS(application).map((section) => (
+            {detailSections.map((section) => (
               <div
                 key={section.title}
                 className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700"
@@ -139,19 +135,15 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
                   <tbody className="divide-y divide-slate-100 bg-white dark:divide-gray-700 dark:bg-gray-900">
                     {(application.uploadedDocuments?.length
                       ? application.uploadedDocuments
-                      : [
-                          { label: "Alumni Card", filename: "", url: "" },
-                          { label: "CNIC", filename: "", url: "" },
-                        ]
+                      : application.documentsChecklist.map((doc) => ({
+                          label: doc.label,
+                          filename: "",
+                          url: "",
+                        }))
                     ).map((doc) => {
                       const submitted =
-                        doc.label === "Alumni Card"
-                          ? application.documentsChecklist.alumniCard
-                          : doc.label === "CNIC"
-                            ? application.documentsChecklist.cnic
-                            : doc.url || doc.filename
-                              ? "Yes"
-                              : "No";
+                        application.documentsChecklist.find((item) => item.label === doc.label)?.status ??
+                        (doc.url || doc.filename ? "Yes" : "No");
                       return (
                         <tr key={doc.label} className="bg-white dark:bg-gray-900">
                           <td className="px-4 py-3">
@@ -184,8 +176,31 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
                 </table>
               </div>
             </div>
-
-            
+            {application.declarationText ? (
+              <div className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700">
+                <div className="bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 dark:bg-gray-800 dark:text-gray-100">
+                  (e) Declaration
+                </div>
+                <div className="px-4 py-3 text-sm text-slate-900 dark:text-gray-100">
+                  {application.declarationText}
+                </div>
+              </div>
+            ) : null}
+            {application.facilityType !== "gym" ? (
+              <div className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700">
+                <div className="bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 dark:bg-gray-800 dark:text-gray-100">
+                  Review and Approval
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4 p-4">
+                  <div className="min-h-20 rounded-lg border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                    Reviewed By (ARO)
+                  </div>
+                  <div className="min-h-20 rounded-lg border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                    Approved By (Competent Authority)
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : (

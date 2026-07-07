@@ -10,8 +10,8 @@ import { ChartEmpty } from "./ChartEmpty";
 const OCCUPATION_META = [
   { status: "Employed", short: "Emp", color: KPI_COLOR_HEX.emerald },
   { status: "Self-employed", short: "Self", color: KPI_COLOR_HEX.sky },
-  { status: "Unemployed (searching)", short: "Srch", color: KPI_COLOR_HEX.amber },
-  { status: "Unemployed (by choice)", short: "Uech", color: KPI_COLOR_HEX.orange },
+  { status: "Unemployed (searching)", short: "UE(s)", color: KPI_COLOR_HEX.amber },
+  { status: "Unemployed (by choice)", short: "UE(c)", color: KPI_COLOR_HEX.orange },
   { status: "Pursuing higher education", short: "HiEd", color: KPI_COLOR_HEX.slate },
 ] as const;
 

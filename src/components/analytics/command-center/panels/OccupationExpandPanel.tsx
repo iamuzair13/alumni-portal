@@ -26,8 +26,8 @@ const VERIFIED_ONLY = { verifiedOnly: true } as const;
 const STATUS_SERIES = [
   { key: "employed", label: "Employed", fill: KPI_COLOR_HEX.emerald },
   { key: "selfEmployed", label: "Self-employed", fill: KPI_COLOR_HEX.sky },
-  { key: "unemployedSearching", label: "Searching", fill: KPI_COLOR_HEX.amber },
-  { key: "unemployedByChoice", label: "By choice", fill: KPI_COLOR_HEX.orange },
+  { key: "unemployedSearching", label: "Searching for Job", fill: KPI_COLOR_HEX.amber },
+  { key: "unemployedByChoice", label: "Unemployed By choice", fill: KPI_COLOR_HEX.orange },
   { key: "other", label: "Pursuing higher education", fill: KPI_COLOR_HEX.slate },
 ] as const;
 
@@ -132,8 +132,8 @@ export function OccupationExpandPanel({
   const kpis = [
     { label: "Employed", value: statusTotals.employed, color: KPI_COLOR_HEX.emerald },
     { label: "Self-employed", value: statusTotals.selfEmployed, color: KPI_COLOR_HEX.sky },
-    { label: "Searching", value: statusTotals.unemployedSearching, color: KPI_COLOR_HEX.amber },
-    { label: "By choice", value: statusTotals.unemployedByChoice, color: KPI_COLOR_HEX.orange },
+    { label: "Searching for Job", value: statusTotals.unemployedSearching, color: KPI_COLOR_HEX.amber },
+    { label: "Unemployed By choice", value: statusTotals.unemployedByChoice, color: KPI_COLOR_HEX.orange },
     { label: "Pursuing higher education", value: statusTotals.other, color: KPI_COLOR_HEX.slate },
   ];
 
@@ -219,8 +219,8 @@ export function OccupationExpandPanel({
             { key: "faculty", label: "Faculty" },
             { key: "employed", label: "Employed", align: "right" },
             { key: "selfEmployed", label: "Self-emp.", align: "right" },
-            { key: "unemployedSearching", label: "Searching", align: "right" },
-            { key: "unemployedByChoice", label: "By choice", align: "right" },
+            { key: "unemployedSearching", label: "Searching for Job", align: "right" },
+            { key: "unemployedByChoice", label: "Unemployed By choice", align: "right" },
             { key: "other", label: "Pursuing higher education", align: "right" },
             { key: "total", label: "Total", align: "right" },
             { key: "share", label: "Share", align: "right" },

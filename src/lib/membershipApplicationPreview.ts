@@ -12,6 +12,8 @@ export type MembershipUploadedDocument = {
   url: string;
 };
 
+export type MembershipPreviewRow = [string, string];
+
 export type MembershipDbRow = {
   created_at: string | null;
   status: string | null;
@@ -67,10 +69,23 @@ export type MembershipApplicationPreview = {
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactNumber: string;
-  documentsChecklist: {
-    alumniCard: string;
-    cnic: string;
-  };
+  validTill: string;
+  poolLocation: string;
+  swimmingLevel: string;
+  hasMedicalCondition: string;
+  membershipCategory: string;
+  playingCategory: string;
+  playingRole: string;
+  previousClub: string;
+  highestPlayingLevel: string;
+  injuryHistory: string;
+  declarationText: string;
+  membershipSectionTitle: string;
+  extraSectionTitle: string | null;
+  membershipRows: MembershipPreviewRow[];
+  extraRows: MembershipPreviewRow[];
+  emergencyRows: MembershipPreviewRow[];
+  documentsChecklist: Array<{ label: string; status: string }>;
   uploadedDocuments: MembershipUploadedDocument[];
 };
 
@@ -143,15 +158,51 @@ function toUploadedDocument(
 }
 
 function buildUploadedDocuments(
+  facilityType: CampusFacilityType,
   details: CampusMembershipApplicationDetails | null,
 ): MembershipUploadedDocument[] {
-  const checklist: Array<{ key: "alumniCard" | "cnic"; label: string }> = [
+  const checklist: Array<{
+    key: "alumniCard" | "cnic" | "medicalFitnessCertificate" | "previousClubLetter";
+    label: string;
+  }> = [
     { key: "alumniCard", label: "Alumni Card" },
     { key: "cnic", label: "CNIC" },
   ];
+  if (facilityType === "cricket") {
+    checklist.push(
+      { key: "medicalFitnessCertificate", label: "Medical Fitness Certificate" },
+      { key: "previousClubLetter", label: "Previous Club Letter (if any)" },
+    );
+  }
   return checklist.map(({ key, label }) =>
     toUploadedDocument(details?.documents?.[key] ?? null, label),
   );
+}
+
+function buildDocumentsChecklist(
+  facilityType: CampusFacilityType,
+  details: CampusMembershipApplicationDetails | null,
+) {
+  const rows = [
+    { label: "Alumni Card", status: docSubmittedLabel(details?.documents?.alumniCard) },
+    {
+      label: facilityType === "pool" ? "CNIC Copy" : "CNIC",
+      status: docSubmittedLabel(details?.documents?.cnic),
+    },
+  ];
+  if (facilityType === "cricket") {
+    rows.push(
+      {
+        label: "Medical Fitness Certificate",
+        status: docSubmittedLabel(details?.documents?.medicalFitnessCertificate),
+      },
+      {
+        label: "Previous Club Letter (if any)",
+        status: docSubmittedLabel(details?.documents?.previousClubLetter),
+      },
+    );
+  }
+  return rows;
 }
 
 export function buildMembershipApplicationPreview(
@@ -175,6 +226,87 @@ export function buildMembershipApplicationPreview(
     row.gym_membership_month ||
     row.swimmingpool_membership_month ||
     row.cricket_membership_month;
+  const validTillRaw = details?.validTill;
+  const poolLocation = missing(details?.poolDetails?.poolLocation || "The University of Lahore");
+  const swimmingLevel = missing(details?.poolDetails?.swimmingLevel);
+  const hasMedicalCondition = missing(details?.poolDetails?.hasMedicalCondition);
+  const membershipCategory = missing(details?.cricketDetails?.membershipCategory);
+  const playingCategory = missing(details?.cricketDetails?.playingCategory);
+  const playingRole = missing(details?.cricketDetails?.playingRole);
+  const previousClub = missing(details?.cricketDetails?.previousClub);
+  const highestPlayingLevel = missing(details?.cricketDetails?.highestPlayingLevel);
+  const injuryHistory = missing(details?.cricketDetails?.injuryHistory);
+
+  const membershipSectionTitle =
+    facilityType === "pool"
+      ? "Membership Details"
+      : facilityType === "cricket"
+        ? "Cricket Membership Details"
+        : "Membership Details";
+
+  const extraSectionTitle =
+    facilityType === "pool"
+      ? "Swimming Information"
+      : facilityType === "cricket"
+        ? "Playing Information"
+        : null;
+
+  const membershipRows: MembershipPreviewRow[] =
+    facilityType === "pool"
+      ? [
+          ["Membership Type", details?.membershipType || row.membership_type || "Missing"],
+          ["Pool Location", poolLocation],
+          ["Preferred Session", details?.preferredTiming || row.preferred_timing || "Missing"],
+          ["Valid From", formatDateLong(membershipStartRaw)],
+          ["Valid To", formatDateLong(validTillRaw)],
+        ]
+      : facilityType === "cricket"
+        ? [
+            ["Membership Category", membershipCategory],
+            ["Membership Type", details?.membershipType || row.membership_type || "Missing"],
+            ["Playing Category", playingCategory],
+            ["Playing Role", playingRole],
+            ["Preferred Practice Session", details?.preferredTiming || row.preferred_timing || "Missing"],
+            ["Valid From", formatDateLong(membershipStartRaw)],
+            ["Valid Till", formatDateLong(validTillRaw)],
+          ]
+        : [
+            ["Applying For", details?.applyingFor || config.applyingFor],
+            ["Discount Type", details?.discountType || row.discount_type || config.discountType],
+            ["Membership Type", details?.membershipType || row.membership_type || "Missing"],
+            ["Membership Start Date", formatDateLong(membershipStartRaw)],
+            ["Preferred Timing", details?.preferredTiming || row.preferred_timing || "Missing"],
+          ];
+
+  const extraRows: MembershipPreviewRow[] =
+    facilityType === "pool"
+      ? [
+          ["Swimming Level", swimmingLevel],
+          ["Any Medical Condition", hasMedicalCondition],
+        ]
+      : facilityType === "cricket"
+        ? [
+            ["Previous Club (if any)", previousClub],
+            ["Highest Playing Level", highestPlayingLevel],
+            ["Any Injury History", injuryHistory],
+          ]
+        : [
+            ["Medical Conditions", missing(details?.medicalConditions)],
+            ["Allergies", missing(details?.allergies)],
+            ["Physical Disability", missing(details?.physicalDisability)],
+          ];
+
+  const emergencyRows: MembershipPreviewRow[] =
+    facilityType === "gym"
+      ? [
+          ["Contact Name", missing(details?.emergencyContactName)],
+          ["Relationship", missing(details?.emergencyContactRelationship)],
+          ["Contact Number", missing(details?.emergencyContactNumber)],
+        ]
+      : [
+          ["Name", missing(details?.emergencyContactName)],
+          ["Phone", missing(details?.emergencyContactNumber)],
+        ];
 
   return {
     title: config.pageTitle,
@@ -209,17 +341,34 @@ export function buildMembershipApplicationPreview(
     emergencyContactName: missing(details?.emergencyContactName),
     emergencyContactRelationship: missing(details?.emergencyContactRelationship),
     emergencyContactNumber: missing(details?.emergencyContactNumber),
-    documentsChecklist: {
-      alumniCard: docSubmittedLabel(details?.documents?.alumniCard),
-      cnic: docSubmittedLabel(details?.documents?.cnic),
-    },
-    uploadedDocuments: buildUploadedDocuments(details),
+    validTill: formatDateLong(validTillRaw),
+    poolLocation,
+    swimmingLevel,
+    hasMedicalCondition,
+    membershipCategory,
+    playingCategory,
+    playingRole,
+    previousClub,
+    highestPlayingLevel,
+    injuryHistory,
+    declarationText:
+      facilityType === "pool"
+        ? "I agree to follow all pool safety rules and understand that management reserves the right to suspend membership for violation of regulations."
+        : "",
+    membershipSectionTitle,
+    extraSectionTitle,
+    membershipRows,
+    extraRows,
+    emergencyRows,
+    documentsChecklist: buildDocumentsChecklist(facilityType, details),
+    uploadedDocuments: buildUploadedDocuments(facilityType, details),
   };
 }
 
 export function buildMembershipFormPDFData(row: MembershipDbRow): MembershipFormPDFData {
   const preview = buildMembershipApplicationPreview(row);
   return {
+    facilityType: preview.facilityType,
     headerTitle: preview.headerTitle,
     dateFormatted: preview.dateFormatted,
     applicationRef: preview.applicationRef,
@@ -245,7 +394,17 @@ export function buildMembershipFormPDFData(row: MembershipDbRow): MembershipForm
     emergencyContactName: preview.emergencyContactName,
     emergencyContactRelationship: preview.emergencyContactRelationship,
     emergencyContactNumber: preview.emergencyContactNumber,
-    alumniCardSubmitted: preview.documentsChecklist.alumniCard,
-    cnicDocSubmitted: preview.documentsChecklist.cnic,
+    validTill: preview.validTill,
+    poolLocation: preview.poolLocation,
+    swimmingLevel: preview.swimmingLevel,
+    hasMedicalCondition: preview.hasMedicalCondition,
+    membershipCategory: preview.membershipCategory,
+    playingCategory: preview.playingCategory,
+    playingRole: preview.playingRole,
+    previousClub: preview.previousClub,
+    highestPlayingLevel: preview.highestPlayingLevel,
+    injuryHistory: preview.injuryHistory,
+    declarationText: preview.declarationText,
+    documentsChecklist: preview.documentsChecklist,
   };
 }

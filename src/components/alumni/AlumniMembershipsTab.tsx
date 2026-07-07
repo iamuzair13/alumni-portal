@@ -324,7 +324,7 @@ export const AlumniMembershipsTab: React.FC = () => {
       setPendingAction(null);
       setRejectionReason("");
       confirmModal.closeModal();
-    } catch (e) {
+    } catch {
       // Error already handled in handleApprove/handleUnapprove/handleDelete
     }
   }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove, handleDelete]);
@@ -919,8 +919,10 @@ export const AlumniMembershipsTab: React.FC = () => {
                     );
                   }
 
-                  const isGym = Boolean(it?.gymMembershipMonth);
-                  const isPool = Boolean(it?.swimmingPoolMembershipMonth);
+                  const facilityType = String(it?.facilityType || "").trim().toLowerCase();
+                  const isGym = facilityType === "gym" || Boolean(it?.gymMembershipMonth);
+                  const isPool = facilityType === "pool" || Boolean(it?.swimmingPoolMembershipMonth);
+                  const isCricket = facilityType === "cricket" || Boolean(it?.cricketMembershipMonth);
 
                   const actionType =
                     pendingAction.type === "approve"
@@ -928,12 +930,16 @@ export const AlumniMembershipsTab: React.FC = () => {
                         ? EMAIL_ACTION_TYPE.UOL_GYM_MEMBERSHIP_APPROVED
                         : isPool
                           ? EMAIL_ACTION_TYPE.SWIMMING_POOL_MEMBERSHIP_APPROVED
-                          : EMAIL_ACTION_TYPE.ALUMNI_MEMBERSHIP_APPROVED
+                          : isCricket
+                            ? EMAIL_ACTION_TYPE.LQCC_MEMBERSHIP_APPROVED
+                            : EMAIL_ACTION_TYPE.ALUMNI_MEMBERSHIP_APPROVED
                       : isGym
                         ? EMAIL_ACTION_TYPE.UOL_GYM_MEMBERSHIP_NOT_APPROVED
                         : isPool
                           ? EMAIL_ACTION_TYPE.SWIMMING_POOL_MEMBERSHIP_NOT_APPROVED
-                          : EMAIL_ACTION_TYPE.ALUMNI_MEMBERSHIP_NOT_APPROVED;
+                          : isCricket
+                            ? EMAIL_ACTION_TYPE.LQCC_MEMBERSHIP_NOT_APPROVED
+                            : EMAIL_ACTION_TYPE.ALUMNI_MEMBERSHIP_NOT_APPROVED;
                   const tpl = generateAdminActionEmail({ actionType, alumniName: pendingAction.name });
 
                   return (

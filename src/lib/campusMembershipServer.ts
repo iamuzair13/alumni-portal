@@ -4,6 +4,11 @@ import {
   formatMembershipMonthFromDate,
   type CampusFacilityType,
   type CampusMembershipApplicationDetails,
+  type CricketHighestPlayingLevel,
+  type CricketMembershipCategory,
+  type CricketPlayingCategory,
+  type CricketPlayingRole,
+  type PoolSwimmingLevel,
 } from "@/lib/campusMembership";
 import type { SavedMembershipDocument } from "@/lib/campusMembershipUpload";
 
@@ -11,6 +16,7 @@ export type CampusMembershipSubmitBody = {
   alumniId: string | number;
   membershipType: string;
   membershipStartDate: string;
+  validTill?: string;
   preferredTiming: string;
   medicalConditions?: string;
   allergies?: string;
@@ -18,9 +24,25 @@ export type CampusMembershipSubmitBody = {
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactNumber: string;
+  declarationAccepted?: boolean;
+  poolDetails?: {
+    poolLocation?: string;
+    swimmingLevel?: PoolSwimmingLevel | "";
+    hasMedicalCondition?: "Yes" | "No" | "";
+  };
+  cricketDetails?: {
+    membershipCategory?: CricketMembershipCategory | "";
+    playingCategory?: CricketPlayingCategory | "";
+    playingRole?: CricketPlayingRole | "";
+    previousClub?: string;
+    highestPlayingLevel?: CricketHighestPlayingLevel | "";
+    injuryHistory?: string;
+  };
   documents: {
     alumniCard: SavedMembershipDocument;
     cnic: SavedMembershipDocument;
+    medicalFitnessCertificate?: SavedMembershipDocument | null;
+    previousClubLetter?: SavedMembershipDocument | null;
   };
 };
 
@@ -61,9 +83,32 @@ export function buildApplicationDetails(
     emergencyContactName: body.emergencyContactName.trim(),
     emergencyContactRelationship: body.emergencyContactRelationship.trim(),
     emergencyContactNumber: body.emergencyContactNumber.trim(),
+    validTill: (body.validTill || "").trim(),
+    declarationAccepted: Boolean(body.declarationAccepted),
+    poolDetails:
+      facilityType === "pool"
+        ? {
+            poolLocation: (body.poolDetails?.poolLocation || "").trim(),
+            swimmingLevel: body.poolDetails?.swimmingLevel || "",
+            hasMedicalCondition: body.poolDetails?.hasMedicalCondition || "",
+          }
+        : undefined,
+    cricketDetails:
+      facilityType === "cricket"
+        ? {
+            membershipCategory: body.cricketDetails?.membershipCategory || "",
+            playingCategory: body.cricketDetails?.playingCategory || "",
+            playingRole: body.cricketDetails?.playingRole || "",
+            previousClub: (body.cricketDetails?.previousClub || "").trim(),
+            highestPlayingLevel: body.cricketDetails?.highestPlayingLevel || "",
+            injuryHistory: (body.cricketDetails?.injuryHistory || "").trim(),
+          }
+        : undefined,
     documents: {
       alumniCard: body.documents.alumniCard,
       cnic: body.documents.cnic,
+      medicalFitnessCertificate: body.documents.medicalFitnessCertificate || null,
+      previousClubLetter: body.documents.previousClubLetter || null,
     },
   };
 }

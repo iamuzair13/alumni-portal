@@ -105,6 +105,7 @@ export interface ScholarshipLetterPDFData {
 }
 
 export interface MembershipFormPDFData {
+  facilityType: "gym" | "pool" | "cricket";
   headerTitle: string;
   dateFormatted: string;
   applicationRef: string | null;
@@ -130,8 +131,18 @@ export interface MembershipFormPDFData {
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactNumber: string;
-  alumniCardSubmitted: string;
-  cnicDocSubmitted: string;
+  validTill: string;
+  poolLocation: string;
+  swimmingLevel: string;
+  hasMedicalCondition: string;
+  membershipCategory: string;
+  playingCategory: string;
+  playingRole: string;
+  previousClub: string;
+  highestPlayingLevel: string;
+  injuryHistory: string;
+  declarationText: string;
+  documentsChecklist: Array<{ label: string; status: string }>;
 }
 
 export interface UpskillApplicationData {
@@ -490,7 +501,6 @@ function createApplicationFormRenderer(
 
   const drawChecklistTable = (items: Array<{ label: string; value: string }>) => {
     const labelColW = W * 0.72;
-    const statusColW = W - labelColW;
     const rowH = metrics.tableRowH;
 
     doc.setFillColor(...THEME.colors.brandLight);
@@ -698,14 +708,24 @@ function estimateScholarshipFormHeight(
   );
 }
 
-function estimateMembershipFormHeight(metrics: FormMetrics): number {
-  const rows = 1 + 2 + 3 + 3 + 2 + 2 + 1 + 1; // meta + sections a–f field rows
-  const sections = 6;
+function estimateMembershipFormHeight(
+  metrics: FormMetrics,
+  facilityType: "gym" | "pool" | "cricket",
+  checklistCount: number,
+): number {
+  const rows =
+    facilityType === "pool"
+      ? 1 + 2 + 3 + 3 + 2 + 2
+      : facilityType === "cricket"
+        ? 1 + 2 + 4 + 3 + 2 + 2
+        : 1 + 2 + 3 + 3 + 2 + 2;
+  const sections = facilityType === "gym" ? 6 : 7;
   return (
     metrics.headerH +
     metrics.headerGap +
     rows * metrics.rowMinH +
     sections * (metrics.sectionH + metrics.sectionGap) +
+    (1 + checklistCount) * metrics.tableRowH +
     metrics.sigH +
     14
   );
@@ -1057,7 +1077,15 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       const pageH = doc.internal.pageSize.getHeight();
       const availableHeight = pageH - THEME.margin * 2 - 24;
 
-      const metrics = pickFormMetrics((preset) => estimateMembershipFormHeight(preset), availableHeight);
+      const metrics = pickFormMetrics(
+        (preset) =>
+          estimateMembershipFormHeight(
+            preset,
+            data.facilityType,
+            Math.max(2, data.documentsChecklist?.length ?? 0),
+          ),
+        availableHeight,
+      );
       const form = createApplicationFormRenderer(doc, metrics);
 
       form.drawHeader(data.headerTitle);
@@ -1080,24 +1108,56 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       form.drawFieldPair("SAP ID", data.sapCode, "CGPA", data.cgpa);
       form.drawFullRow("Passing Out Year", data.passingOutYear);
 
-      form.drawSection("c", "Membership Details");
-      form.drawFieldPair("Applying For", data.applyingFor, "Discount Type", data.discountType);
-      form.drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
-      form.drawFullRow("Preferred Timing", data.preferredTiming);
+      if (data.facilityType === "pool") {
+        form.drawSection("c", "Membership Details");
+        form.drawFieldPair("Membership Type", data.membershipType, "Pool Location", data.poolLocation);
+        form.drawFieldPair("Preferred Session", data.preferredTiming, "Valid From", data.membershipStartDate);
+        form.drawFullRow("Valid To", data.validTill);
 
-      form.drawSection("d", "Medical & Fitness Information");
-      form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
-      form.drawFullRow("Allergies", data.allergies);
+        form.drawSection("d", "Swimming Information");
+        form.drawFieldPair("Swimming Level", data.swimmingLevel, "Any Medical Condition", data.hasMedicalCondition);
 
-      form.drawSection("e", "Emergency Contact");
-      form.drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
-      form.drawFullRow("Contact Number", data.emergencyContactNumber);
+        form.drawSection("e", "Emergency Contact");
+        form.drawFieldPair("Name", data.emergencyContactName, "Phone", data.emergencyContactNumber);
 
-      form.drawSection("f", "Documents Checklist");
-      form.drawChecklistTable([
-        { label: "Alumni Card", value: data.alumniCardSubmitted },
-        { label: "CNIC", value: data.cnicDocSubmitted },
-      ]);
+        form.drawSection("f", "Document Checklist");
+        form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
+
+        form.drawSection("g", "Declaration");
+        form.drawFullRow("Declaration", data.declarationText);
+      } else if (data.facilityType === "cricket") {
+        form.drawSection("c", "Cricket Membership Details");
+        form.drawFieldPair("Membership Category", data.membershipCategory, "Membership Type", data.membershipType);
+        form.drawFieldPair("Playing Category", data.playingCategory, "Playing Role", data.playingRole);
+        form.drawFieldPair("Preferred Practice Session", data.preferredTiming, "Valid From", data.membershipStartDate);
+        form.drawFullRow("Valid Till", data.validTill);
+
+        form.drawSection("d", "Playing Information");
+        form.drawFullRow("Previous Club (if any)", data.previousClub);
+        form.drawFieldPair("Highest Playing Level", data.highestPlayingLevel, "Any Injury History", data.injuryHistory);
+
+        form.drawSection("e", "Emergency Contact");
+        form.drawFieldPair("Name", data.emergencyContactName, "Phone", data.emergencyContactNumber);
+
+        form.drawSection("f", "Document Checklist");
+        form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
+      } else {
+        form.drawSection("c", "Membership Details");
+        form.drawFieldPair("Applying For", data.applyingFor, "Discount Type", data.discountType);
+        form.drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
+        form.drawFullRow("Preferred Timing", data.preferredTiming);
+
+        form.drawSection("d", "Medical & Fitness Information");
+        form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
+        form.drawFullRow("Allergies", data.allergies);
+
+        form.drawSection("e", "Emergency Contact");
+        form.drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
+        form.drawFullRow("Contact Number", data.emergencyContactNumber);
+
+        form.drawSection("f", "Documents Checklist");
+        form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
+      }
 
       form.drawMembershipSignatures("Reviewed By (ARO)", "Approved By (Competent Authority)");
       form.drawFooter();

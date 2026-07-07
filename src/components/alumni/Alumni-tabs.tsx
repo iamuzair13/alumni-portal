@@ -2646,9 +2646,11 @@ export const AlumniTabs: React.FC = () => {
     await executePendingAction();
   }, [pendingAction, mutatingIds, executePendingAction]);
 
-  const handleView = useCallback((sapid: string) => {
+  const handleView = useCallback((sapId?: string | null, registrationNo?: string | null) => {
     if (typeof window === "undefined") return;
-    const url = `/alumni-profile?sapid=${encodeURIComponent(sapid)}`;
+    const identifier = String(sapId || registrationNo || "").trim();
+    if (!identifier) return;
+    const url = `/alumni-profile?sapid=${encodeURIComponent(identifier)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
@@ -5609,7 +5611,7 @@ export const AlumniTabs: React.FC = () => {
                                   <button
                                     key={`${alum.id}-action-view`}
                                     type="button"
-                                    onClick={() => handleView(alum.id)}
+                                    onClick={() => handleView(alum.sapId, alum.registrationNo)}
                                     disabled={isBusy}
                                     aria-disabled={isBusy}
                                     className={`p-1.5 sm:p-2 text-blue-600 dark:text-blue-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg hover:text-blue-700 dark:hover:text-blue-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -5632,21 +5634,21 @@ export const AlumniTabs: React.FC = () => {
                                 if (alum.verifyStatus === "verified") {
                                   // Verified: can unverify
                                   actions = [
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   // Unverified: can verify
                                   actions = [
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
@@ -5656,20 +5658,20 @@ export const AlumniTabs: React.FC = () => {
                                 // Other tabs: show context-appropriate actions
                                 if (alum.verifyStatus === "verified") {
                                   actions = [
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   actions = [
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },

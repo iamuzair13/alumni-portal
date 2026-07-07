@@ -6,8 +6,14 @@ import toast from "react-hot-toast";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
 import {
   CAMPUS_FACILITY_CONFIG,
+  CRICKET_HIGHEST_PLAYING_LEVEL_OPTIONS,
+  CRICKET_MEMBERSHIP_CATEGORY_OPTIONS,
+  CRICKET_PLAYING_CATEGORY_OPTIONS,
+  CRICKET_PLAYING_ROLE_OPTIONS,
+  MEDICAL_CONDITION_OPTIONS,
   MEMBERSHIP_TYPE_OPTIONS,
   PREFERRED_TIMING_OPTIONS,
+  SWIMMING_LEVEL_OPTIONS,
   type CampusFacilityType,
 } from "@/lib/campusMembership";
 import MembershipDatePicker from "@/components/forms/membership-date-picker";
@@ -90,8 +96,21 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
   const [emergencyContactName, setEmergencyContactName] = useState("");
   const [emergencyContactRelationship, setEmergencyContactRelationship] = useState("");
   const [emergencyContactNumber, setEmergencyContactNumber] = useState("");
+  const [validTill, setValidTill] = useState("");
+  const [poolLocation] = useState("The University of Lahore");
+  const [swimmingLevel, setSwimmingLevel] = useState("");
+  const [hasMedicalCondition, setHasMedicalCondition] = useState("");
+  const [declarationAccepted, setDeclarationAccepted] = useState(false);
+  const [membershipCategory, setMembershipCategory] = useState("Alumni");
+  const [playingCategory, setPlayingCategory] = useState("");
+  const [playingRole, setPlayingRole] = useState("");
+  const [previousClub, setPreviousClub] = useState("");
+  const [highestPlayingLevel, setHighestPlayingLevel] = useState("");
+  const [injuryHistory, setInjuryHistory] = useState("");
   const [alumniCardFile, setAlumniCardFile] = useState<File | null>(null);
   const [cnicFile, setCnicFile] = useState<File | null>(null);
+  const [medicalFitnessCertificateFile, setMedicalFitnessCertificateFile] = useState<File | null>(null);
+  const [previousClubLetterFile, setPreviousClubLetterFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fileAccept = "application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp";
@@ -104,6 +123,15 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
     }
   }, [membershipStartDate]);
 
+  useEffect(() => {
+    if (!membershipStartDate || facilityType === "gym") return;
+    const d = new Date(membershipStartDate);
+    if (Number.isNaN(d.getTime())) return;
+    const next = new Date(d);
+    next.setFullYear(next.getFullYear() + 1);
+    setValidTill(next.toISOString().slice(0, 10));
+  }, [membershipStartDate, facilityType]);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const effectiveAlumniId = alumniId || String(data?.alumniid ?? "");
@@ -115,12 +143,40 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
       toast.error("Please complete all required membership details.");
       return;
     }
-    if (!emergencyContactName.trim() || !emergencyContactRelationship.trim() || !emergencyContactNumber.trim()) {
+    if (
+      !emergencyContactName.trim() ||
+      !emergencyContactNumber.trim() ||
+      (facilityType === "gym" && !emergencyContactRelationship.trim())
+    ) {
       toast.error("Please complete all emergency contact fields.");
       return;
     }
+    if ((facilityType === "pool" || facilityType === "cricket") && !validTill) {
+      toast.error("Please provide the valid till date.");
+      return;
+    }
+    if (facilityType === "pool") {
+      if (!poolLocation.trim() || !swimmingLevel || !hasMedicalCondition) {
+        toast.error("Please complete all swimming information fields.");
+        return;
+      }
+      if (!declarationAccepted) {
+        toast.error("Please accept the pool declaration before submitting.");
+        return;
+      }
+    }
+    if (facilityType === "cricket") {
+      if (!membershipCategory || !playingCategory || !playingRole || !highestPlayingLevel) {
+        toast.error("Please complete all cricket membership details.");
+        return;
+      }
+    }
     if (!alumniCardFile || !cnicFile) {
       toast.error("Please upload all required documents.");
+      return;
+    }
+    if (facilityType === "cricket" && !medicalFitnessCertificateFile) {
+      toast.error("Please upload the medical fitness certificate.");
       return;
     }
     setIsSubmitting(true);
@@ -130,6 +186,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
       fd.set("alumniId", effectiveAlumniId);
       fd.set("membershipType", membershipType);
       fd.set("membershipStartDate", membershipStartDate);
+      fd.set("validTill", validTill);
       fd.set("preferredTiming", preferredTiming);
       fd.set("medicalConditions", medicalConditions.trim());
       fd.set("allergies", allergies.trim());
@@ -137,8 +194,24 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
       fd.set("emergencyContactName", emergencyContactName.trim());
       fd.set("emergencyContactRelationship", emergencyContactRelationship.trim());
       fd.set("emergencyContactNumber", emergencyContactNumber.trim());
+      fd.set("poolLocation", poolLocation.trim());
+      fd.set("swimmingLevel", swimmingLevel);
+      fd.set("hasMedicalCondition", hasMedicalCondition);
+      fd.set("declarationAccepted", String(declarationAccepted));
+      fd.set("membershipCategory", membershipCategory);
+      fd.set("playingCategory", playingCategory);
+      fd.set("playingRole", playingRole);
+      fd.set("previousClub", previousClub.trim());
+      fd.set("highestPlayingLevel", highestPlayingLevel);
+      fd.set("injuryHistory", injuryHistory.trim());
       fd.set("alumniCardFile", alumniCardFile);
       fd.set("cnicFile", cnicFile);
+      if (medicalFitnessCertificateFile) {
+        fd.set("medicalFitnessCertificateFile", medicalFitnessCertificateFile);
+      }
+      if (previousClubLetterFile) {
+        fd.set("previousClubLetterFile", previousClubLetterFile);
+      }
 
       const res = await fetch(config.submitApiPath, {
         method: "POST",
@@ -219,59 +292,280 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
         <Section title="(c) Membership Details">
           <Field label="Applying For" value={config.applyingFor} readOnly />
           <Field label="Discount Type" value={config.discountType} readOnly />
-          <div>
-            <label htmlFor="membershipType" className={labelBase}>Membership Type <span className="text-red-500">*</span></label>
-            <select id="membershipType" value={membershipType} onChange={(e) => setMembershipType(e.target.value)} className={inputBase} required>
-              <option value="">Select membership type</option>
-              {MEMBERSHIP_TYPE_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-            </select>
-          </div>
-          <MembershipDatePicker
-            id="membershipStartDate"
-            label="Membership Start Date"
-            value={membershipStartDate}
-            onChange={setMembershipStartDate}
-            required
-            inputClassName={`${inputBase} pr-10 cursor-pointer`}
-            labelClassName={labelBase}
-          />
-          <div className="sm:col-span-2">
-            <label htmlFor="preferredTiming" className={labelBase}>Preferred Timing <span className="text-red-500">*</span></label>
-            <select id="preferredTiming" value={preferredTiming} onChange={(e) => setPreferredTiming(e.target.value)} className={inputBase} required>
-              <option value="">Select preferred timing</option>
-              {PREFERRED_TIMING_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-            </select>
-          </div>
+          {facilityType === "cricket" ? (
+            <>
+              <SelectField
+                id="membershipCategory"
+                label="Membership Category"
+                value={membershipCategory}
+                onChange={setMembershipCategory}
+                options={CRICKET_MEMBERSHIP_CATEGORY_OPTIONS}
+                required
+              />
+              <SelectField
+                id="membershipType"
+                label="Membership Type"
+                value={membershipType}
+                onChange={setMembershipType}
+                options={MEMBERSHIP_TYPE_OPTIONS}
+                required
+              />
+              <SelectField
+                id="playingCategory"
+                label="Playing Category"
+                value={playingCategory}
+                onChange={setPlayingCategory}
+                options={CRICKET_PLAYING_CATEGORY_OPTIONS}
+                required
+              />
+              <SelectField
+                id="playingRole"
+                label="Playing Role"
+                value={playingRole}
+                onChange={setPlayingRole}
+                options={CRICKET_PLAYING_ROLE_OPTIONS}
+                required
+              />
+              <SelectField
+                id="preferredTiming"
+                label="Preferred Practice Session"
+                value={preferredTiming}
+                onChange={setPreferredTiming}
+                options={PREFERRED_TIMING_OPTIONS}
+                required
+              />
+              <MembershipDatePicker
+                id="membershipStartDate"
+                label="Valid From"
+                value={membershipStartDate}
+                onChange={setMembershipStartDate}
+                required
+                inputClassName={`${inputBase} pr-10 cursor-pointer`}
+                labelClassName={labelBase}
+              />
+              <EditableField
+                id="validTill"
+                label="Valid Till"
+                value={validTill}
+                onChange={setValidTill}
+                required
+                type="date"
+              />
+            </>
+          ) : facilityType === "pool" ? (
+            <>
+              <SelectField
+                id="membershipType"
+                label="Membership Type"
+                value={membershipType}
+                onChange={setMembershipType}
+                options={MEMBERSHIP_TYPE_OPTIONS}
+                required
+              />
+              <Field label="Pool Location" value={poolLocation} readOnly />
+              <SelectField
+                id="preferredTiming"
+                label="Preferred Session"
+                value={preferredTiming}
+                onChange={setPreferredTiming}
+                options={PREFERRED_TIMING_OPTIONS}
+                required
+              />
+              <MembershipDatePicker
+                id="membershipStartDate"
+                label="Valid From"
+                value={membershipStartDate}
+                onChange={setMembershipStartDate}
+                required
+                inputClassName={`${inputBase} pr-10 cursor-pointer`}
+                labelClassName={labelBase}
+              />
+              <EditableField
+                id="validTill"
+                label="Valid To"
+                value={validTill}
+                onChange={setValidTill}
+                required
+                type="date"
+              />
+            </>
+          ) : (
+            <>
+              <SelectField
+                id="membershipType"
+                label="Membership Type"
+                value={membershipType}
+                onChange={setMembershipType}
+                options={MEMBERSHIP_TYPE_OPTIONS}
+                required
+              />
+              <MembershipDatePicker
+                id="membershipStartDate"
+                label="Membership Start Date"
+                value={membershipStartDate}
+                onChange={setMembershipStartDate}
+                required
+                inputClassName={`${inputBase} pr-10 cursor-pointer`}
+                labelClassName={labelBase}
+              />
+              <SelectField
+                id="preferredTiming"
+                label="Preferred Timing"
+                value={preferredTiming}
+                onChange={setPreferredTiming}
+                options={PREFERRED_TIMING_OPTIONS}
+                required
+                fullWidth
+              />
+            </>
+          )}
         </Section>
-        <Section title="(d) Medical & Fitness Information">
-          <EditableField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} placeholder="None if not applicable" />
-          <EditableField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} placeholder="None if not applicable" />
-          <EditableField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} placeholder="None if not applicable" fullWidth />
-        </Section>
-        <Section title="(e) Emergency Contact">
-          <EditableField id="emergencyContactName" label="Contact Name" value={emergencyContactName} onChange={setEmergencyContactName} required />
-          <EditableField id="emergencyContactRelationship" label="Relationship" value={emergencyContactRelationship} onChange={setEmergencyContactRelationship} required />
-          <EditableField id="emergencyContactNumber" label="Contact Number" value={emergencyContactNumber} onChange={setEmergencyContactNumber} required fullWidth type="tel" />
-        </Section>
-        <Section title="(f) Documents Checklist">
-          <DocumentUploadField
-            id="alumniCardFile"
-            label="Alumni Card"
-            file={alumniCardFile}
-            onChange={setAlumniCardFile}
-            accept={fileAccept}
-          />
-          <DocumentUploadField
-            id="cnicFile"
-            label="CNIC"
-            file={cnicFile}
-            onChange={setCnicFile}
-            accept={fileAccept}
-          />
-          <p className="sm:col-span-2 text-xs text-gray-500">
+        {facilityType === "pool" ? (
+          <>
+            <Section title="(c) Swimming Information">
+              <SelectField
+                id="swimmingLevel"
+                label="Swimming Level"
+                value={swimmingLevel}
+                onChange={setSwimmingLevel}
+                options={SWIMMING_LEVEL_OPTIONS}
+                required
+              />
+              <SelectField
+                id="hasMedicalCondition"
+                label="Any Medical Condition"
+                value={hasMedicalCondition}
+                onChange={setHasMedicalCondition}
+                options={MEDICAL_CONDITION_OPTIONS}
+                required
+              />
+            </Section>
+            <Section title="Emergency Contact">
+              <EditableField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={setEmergencyContactName} required />
+              <EditableField id="emergencyContactNumber" label="Phone" value={emergencyContactNumber} onChange={setEmergencyContactNumber} required type="tel" />
+            </Section>
+            <Section title="(d) Document Checklist">
+              <DocumentUploadField
+                id="alumniCardFile"
+                label="Alumni Card"
+                file={alumniCardFile}
+                onChange={setAlumniCardFile}
+                accept={fileAccept}
+              />
+              <DocumentUploadField
+                id="cnicFile"
+                label="CNIC Copy"
+                file={cnicFile}
+                onChange={setCnicFile}
+                accept={fileAccept}
+              />
+            </Section>
+            <Section title="(e) Declaration">
+              <CheckboxField
+                id="declarationAccepted"
+                checked={declarationAccepted}
+                onChange={setDeclarationAccepted}
+                label="I agree to follow all pool safety rules and understand that management reserves the right to suspend membership for violation of regulations."
+                required
+                fullWidth
+              />
+              <Field label="E-Signature" value={missing(data.alumniname)} readOnly fullWidth />
+            </Section>
+          </>
+        ) : facilityType === "cricket" ? (
+          <>
+            <Section title="(c) Playing Information">
+              <EditableField id="previousClub" label="Previous Club (if any)" value={previousClub} onChange={setPreviousClub} fullWidth />
+              <SelectField
+                id="highestPlayingLevel"
+                label="Highest Playing Level"
+                value={highestPlayingLevel}
+                onChange={setHighestPlayingLevel}
+                options={CRICKET_HIGHEST_PLAYING_LEVEL_OPTIONS}
+                required
+                fullWidth
+              />
+              <EditableField id="injuryHistory" label="Any Injury History" value={injuryHistory} onChange={setInjuryHistory} fullWidth />
+            </Section>
+            <Section title="Emergency Contact">
+              <EditableField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={setEmergencyContactName} required />
+              <EditableField id="emergencyContactNumber" label="Phone" value={emergencyContactNumber} onChange={setEmergencyContactNumber} required type="tel" />
+            </Section>
+            <Section title="(d) Document Checklist">
+              <DocumentUploadField
+                id="alumniCardFile"
+                label="Alumni Card"
+                file={alumniCardFile}
+                onChange={setAlumniCardFile}
+                accept={fileAccept}
+              />
+              <DocumentUploadField
+                id="cnicFile"
+                label="CNIC"
+                file={cnicFile}
+                onChange={setCnicFile}
+                accept={fileAccept}
+              />
+              <DocumentUploadField
+                id="medicalFitnessCertificateFile"
+                label="Medical Fitness Certificate"
+                file={medicalFitnessCertificateFile}
+                onChange={setMedicalFitnessCertificateFile}
+                accept={fileAccept}
+              />
+              <DocumentUploadField
+                id="previousClubLetterFile"
+                label="Previous Club Letter (if any)"
+                file={previousClubLetterFile}
+                onChange={setPreviousClubLetterFile}
+                accept={fileAccept}
+                required={false}
+              />
+            </Section>
+          </>
+        ) : (
+          <>
+            <Section title="(d) Medical & Fitness Information">
+              <EditableField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} placeholder="None if not applicable" />
+              <EditableField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} placeholder="None if not applicable" />
+              <EditableField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} placeholder="None if not applicable" fullWidth />
+            </Section>
+            <Section title="(e) Emergency Contact">
+              <EditableField id="emergencyContactName" label="Contact Name" value={emergencyContactName} onChange={setEmergencyContactName} required />
+              <EditableField id="emergencyContactRelationship" label="Relationship" value={emergencyContactRelationship} onChange={setEmergencyContactRelationship} required />
+              <EditableField id="emergencyContactNumber" label="Contact Number" value={emergencyContactNumber} onChange={setEmergencyContactNumber} required fullWidth type="tel" />
+            </Section>
+            <Section title="(f) Documents Checklist">
+              <DocumentUploadField
+                id="alumniCardFile"
+                label="Alumni Card"
+                file={alumniCardFile}
+                onChange={setAlumniCardFile}
+                accept={fileAccept}
+              />
+              <DocumentUploadField
+                id="cnicFile"
+                label="CNIC"
+                file={cnicFile}
+                onChange={setCnicFile}
+                accept={fileAccept}
+              />
+            </Section>
+          </>
+        )}
+        {facilityType !== "gym" && (
+          <Section title="(E) Review and Approval">
+            <div className="sm:col-span-2 grid sm:grid-cols-2 gap-4">
+              <ReadOnlyBox label="Reviewed By (ARO)" />
+              <ReadOnlyBox label="Approved By (Competent Authority)" />
+            </div>
+          </Section>
+        )}
+        <div className="sm:col-span-2">
+          <p className="text-xs text-gray-500">
             Upload PDF or image (JPG, PNG, WEBP). Maximum file size: 5MB per document.
           </p>
-        </Section>
+        </div>
       </div>
       <button type="submit" disabled={isSubmitting} className={buttonPrimary}>{isSubmitting ? "Submitting..." : "Submit Application"}</button>
     </form>
@@ -306,23 +600,99 @@ function EditableField({ id, label, value, onChange, placeholder, required, full
   );
 }
 
+function SelectField({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  required,
+  fullWidth,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  required?: boolean;
+  fullWidth?: boolean;
+}) {
+  return (
+    <div className={fullWidth ? "sm:col-span-2" : undefined}>
+      <label htmlFor={id} className={labelBase}>
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={inputBase} required={required}>
+        <option value="">Select {label.toLowerCase()}</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function CheckboxField({
+  id,
+  checked,
+  onChange,
+  label,
+  required,
+  fullWidth,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  required?: boolean;
+  fullWidth?: boolean;
+}) {
+  return (
+    <div className={fullWidth ? "sm:col-span-2" : undefined}>
+      <label htmlFor={id} className="flex items-start gap-3 text-sm text-slate-900">
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          required={required}
+          className="mt-1 h-4 w-4 rounded border-gray-300"
+        />
+        <span>{label}</span>
+      </label>
+    </div>
+  );
+}
+
+function ReadOnlyBox({ label }: { label: string }) {
+  return (
+    <div className="min-h-24 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+      <span className="font-medium text-slate-900">{label}</span>
+    </div>
+  );
+}
+
 function DocumentUploadField({
   id,
   label,
   file,
   onChange,
   accept,
+  required = true,
 }: {
   id: string;
   label: string;
   file: File | null;
   onChange: (file: File | null) => void;
   accept: string;
+  required?: boolean;
 }) {
   return (
     <div>
       <label htmlFor={id} className={labelBase}>
-        {label} <span className="text-red-500">*</span>
+        {label} {required && <span className="text-red-500">*</span>}
       </label>
       <input
         id={id}
@@ -330,7 +700,7 @@ function DocumentUploadField({
         accept={accept}
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
         className={inputBase}
-        required
+        required={required}
       />
       {file && (
         <p className="mt-1 text-xs text-gray-600">
