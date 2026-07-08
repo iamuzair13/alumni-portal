@@ -124,13 +124,7 @@ export function LocationCardChart({
         ))}
       </div>
 
-      {topRegion && topRegion.count > 0 ? (
-        <p className="shrink-0 truncate text-center text-[12px] font-medium text-emerald-600/90 dark:text-emerald-400/90">
-          <span className="font-bold tabular-nums">{topPct}%</span>
-          {" · "}
-          {topRegion.label} leads
-        </p>
-      ) : null}
+      
     </div>
   );
 }

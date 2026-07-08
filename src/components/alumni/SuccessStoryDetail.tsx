@@ -18,6 +18,7 @@ export type SuccessStoryDetailData = {
   criteriaHighlight?: string | null;
   criteriaInspires?: string | null;
   criteriaReplicable?: boolean | null;
+  achievements?: string | null;
   signatureConfirmed?: boolean | null;
   signatureConfirmedAt?: string | null;
 };
@@ -68,6 +69,7 @@ export default function SuccessStoryDetail({
   const hasCriteria =
     Boolean(story.criteriaHighlight?.trim()) ||
     Boolean(story.criteriaInspires?.trim()) ||
+    Boolean(story.achievements?.trim()) ||
     story.criteriaReplicable === true ||
     story.criteriaReplicable === false ||
     story.signatureConfirmed === true;
@@ -105,6 +107,14 @@ export default function SuccessStoryDetail({
         Alumni Success Story
       </p>
       <h1 className="text-2xl font-bold leading-tight text-white sm:text-3xl md:text-4xl lg:text-5xl">{title}</h1>
+      {story.achievements?.trim() && (
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-yellow-300/40 bg-yellow-400/10 px-3 py-1.5 backdrop-blur-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4 fill-yellow-300">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+          <span className="text-sm font-semibold text-yellow-100">{story.achievements.trim()}</span>
+        </div>
+      )}
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/90">
         {story.name && <span className="font-medium">{story.name}</span>}
         {story.program && (
@@ -217,6 +227,12 @@ export default function SuccessStoryDetail({
             </p>
           ) : (
             <dl className="mt-4 space-y-4 text-sm">
+              <div>
+                <dt className="font-medium text-gray-700 dark:text-gray-300">Achievements</dt>
+                <dd className="mt-1 text-gray-900 dark:text-gray-100">
+                  {criteriaValue(story.achievements)}
+                </dd>
+              </div>
               <div>
                 <dt className="font-medium text-gray-700 dark:text-gray-300">
                   What does the story highlight? An innovative approach, exceptional achievement, or inspiring journey.

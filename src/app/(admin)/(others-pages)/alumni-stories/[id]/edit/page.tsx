@@ -59,6 +59,7 @@ export default async function AdminStoryEditPage({ params }: { params: Promise<{
       s.criteria_highlight,
       s.criteria_inspires,
       s.criteria_replicable,
+      s.achievements,
       s.signature_confirmed,
       s.signature_confirmed_at,
       a.sapid,
@@ -95,6 +96,7 @@ export default async function AdminStoryEditPage({ params }: { params: Promise<{
     criteria_highlight: string | null;
     criteria_inspires: string | null;
     criteria_replicable: boolean | null;
+    achievements: string | null;
     signature_confirmed: boolean | null;
     signature_confirmed_at: string | null;
     sapid: string | null;
@@ -134,6 +136,7 @@ export default async function AdminStoryEditPage({ params }: { params: Promise<{
         existingCriteriaHighlight={String(r.criteria_highlight ?? "")}
         existingCriteriaInspires={String(r.criteria_inspires ?? "")}
         existingCriteriaReplicable={r.criteria_replicable}
+        existingAchievements={String(r.achievements ?? "")}
         existingSignatureConfirmed={r.signature_confirmed}
         existingSignatureConfirmedAt={
           r.signature_confirmed_at ? new Date(r.signature_confirmed_at).toISOString() : null

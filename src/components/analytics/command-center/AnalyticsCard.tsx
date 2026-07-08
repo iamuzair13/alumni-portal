@@ -98,33 +98,31 @@ export function AnalyticsCard({
         delay={delay}
         onClick={() => onExpand(id)}
         aria-label={`Open ${title} details`}
-        className={`group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left transition-shadow hover:shadow-lg ${ccCardPremium} ${styles.cardPremium} ${masonrySpan[size]} p-5`}
+        className={`group flex h-full w-full cursor-pointer flex-col overflow-hidden text-left transition-shadow hover:shadow-lg ${ccCardPremium} ${styles.cardPremium} ${masonrySpan[size]} p-6`}
       >
-        <div className="flex shrink-0 items-start justify-between  gap-3">
-          <div className="flex min-w-0 items-center gap-3 ">
+        <div className="flex shrink-0 items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
             <div
-              className={`flex h-9 w-9 shrink-0 items-center  justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 ${styles.iconBg} ${styles.icon}`}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105 ${styles.iconBg} ${styles.icon}`}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-[18px] w-[18px]" />
             </div>
-            <div className="flex min-w-0 justify-between items-center w-[400px]">
-            <span className="truncate text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              {title}
-            </span>
-            <span className="inline-block rounded-lg bg-slate-100 dark:bg-slate-800  px-3 py-1 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white shadow-sm">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-semibold leading-5 text-slate-900 dark:text-white">{title}</h3>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="inline-flex shrink-0 whitespace-nowrap rounded-2xl bg-slate-50 px-3 py-1.5 text-3xl font-bold tracking-tight text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white">
               <ValueDisplay primaryValue={primaryValue} valueClass="" emptyIdle={emptyIdle} />
             </span>
-     
+            <Maximize2 className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:text-slate-500" />
           </div>
-          </div>
-          <Maximize2 className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:text-slate-500" />
         </div>
 
         <div className="mt-3 flex shrink-0 items-baseline gap-2">
-          
           {trend ? (
             <span
-              className={`inline-flex items-center gap-0.5  text-xs font-medium ${
+              className={`inline-flex items-center gap-0.5 text-xs font-medium ${
                 trend.positive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
               }`}
             >
@@ -135,14 +133,14 @@ export function AnalyticsCard({
         </div>
 
         {secondaryLabel ? (
-          <p className="mt-1 line-clamp-2  shrink-0 text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+          <p className="mt-1 shrink-0 text-sm leading-6 text-slate-500 dark:text-slate-400">
             {secondaryLabel}
           </p>
         ) : null}
 
         {chart ? (
           <div
-            className={`pointer-events-none min-w-0 overflow-hidden border-t pt-4 ${styles.chartDivider} ${chartHeights[size]}`}
+            className={`pointer-events-none mt-4 min-w-0 overflow-hidden border-t pt-5 ${styles.chartDivider} ${chartHeights[size]}`}
           >
             {chart}
           </div>

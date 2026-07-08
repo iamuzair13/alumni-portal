@@ -67,13 +67,13 @@ export const ccSectionLabel =
   "text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500";
 
 export const ccPerksSubsection =
-  "rounded-lg border border-violet-200/60 bg-white/50 p-1.5 dark:border-violet-500/15 dark:bg-gray-900/25";
+  "rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70";
 
 export const ccPerksSubsectionHeader =
-  "mb-1.5 border-b border-violet-100/80 pb-1 lg:mb-1 dark:border-violet-500/10";
+  "mb-3 border-b border-slate-100 pb-2 dark:border-slate-800";
 
 export const ccCardPremium =
-  "rounded-2xl font-sans antialiased shadow-[0_2px_16px_rgba(0,0,0,0.04)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-0.5 dark:shadow-[0_2px_24px_rgba(0,0,0,0.2)]";
+  "rounded-3xl font-sans antialiased shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-0.5 dark:shadow-[0_10px_32px_rgba(2,6,23,0.28)]";
 
 export const ccAccent = {
   emerald: {
@@ -99,10 +99,10 @@ export const ccAccent = {
     cardDefault:
       "border-l-[3px] border-l-violet-400/90 bg-gradient-to-br from-violet-50/50 via-white/95 to-white/95 dark:border-l-violet-400/70 dark:from-violet-500/8 dark:via-gray-900/85 dark:to-gray-900/80",
     cardPremium:
-      "border border-violet-200/70 bg-gradient-to-br from-violet-50/40 via-white to-white hover:shadow-[0_8px_30px_rgba(139,92,246,0.1)] dark:border-violet-500/20 dark:from-violet-500/10 dark:via-slate-900/80 dark:to-slate-900/80 dark:hover:shadow-[0_8px_30px_rgba(139,92,246,0.14)]",
+      "border border-slate-200/90 bg-white hover:shadow-[0_12px_32px_rgba(139,92,246,0.08)] dark:border-slate-800 dark:bg-slate-900/90 dark:hover:shadow-[0_12px_32px_rgba(139,92,246,0.12)]",
     iconBg:
-      "bg-gradient-to-br from-violet-100 to-violet-50 dark:from-violet-500/20 dark:to-violet-900/20",
-    chartDivider: "border-violet-100/80 dark:border-violet-500/15",
+      "bg-violet-50 dark:bg-violet-500/12",
+    chartDivider: "border-slate-100 dark:border-slate-800",
   },
   amber: {
     border:

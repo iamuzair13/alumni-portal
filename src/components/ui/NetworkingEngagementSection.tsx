@@ -43,7 +43,7 @@ export default function NetworkingEngagementSection({
     {
       title: "Success Story",
       decription: "Share your story and inspire the next generation of UOL.",
-      action: "Share",
+      action: "Add Story",
       href: "/alumni-success",
       color: "text-yellow-600",
       bg: "bg-yellow-100",
@@ -56,7 +56,7 @@ export default function NetworkingEngagementSection({
     {
       title: "Alumni Talk",
       decription: "Apply to lead an Alumni Talk and help students prepare for their professional journey.",
-      action: "View",
+      action: "Apply",
       href: sapId ? `/alumni-profile/talks?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/talks`,
       color: "text-purple-600",
       bg: "bg-purple-100",

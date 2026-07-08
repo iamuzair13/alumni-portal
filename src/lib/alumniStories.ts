@@ -31,6 +31,7 @@ export const storyCriteriaFieldsSchema = z.object({
   criteriaReplicable: z
     .union([z.boolean(), z.undefined()])
     .refine((v): v is boolean => v === true || v === false, { message: "Please select Yes or No" }),
+  achievements: singleLineString("Achievements"),
   signatureConfirmed: z
     .boolean()
     .refine((v) => v === true, { message: "You must confirm your signature to submit" }),
@@ -53,6 +54,7 @@ export const storyFormSchema = z.object({
   criteriaHighlight: z.string().trim().max(250).optional(),
   criteriaInspires: z.string().trim().max(250).optional(),
   criteriaReplicable: z.boolean().optional(),
+  achievements: z.string().trim().max(250).optional(),
   signatureConfirmed: z.boolean().optional(),
 });
 
@@ -71,6 +73,7 @@ export const storyServerSchema = z.object({
   criteriaHighlight: z.string().trim().max(250).optional(),
   criteriaInspires: z.string().trim().max(250).optional(),
   criteriaReplicable: z.boolean().optional(),
+  achievements: z.string().trim().max(250).optional(),
   signatureConfirmed: z.boolean().optional(),
 });
 
@@ -83,6 +86,7 @@ export const storyAdminEditCriteriaSchema = z.object({
   criteriaReplicable: z
     .union([z.boolean(), z.undefined()])
     .refine((v): v is boolean => v === true || v === false, { message: "Please select Yes or No" }),
+  achievements: singleLineString("Achievements"),
 });
 
 export const adminEditSchema = storyServerSchema.merge(storyAdminEditCriteriaSchema);
@@ -103,11 +107,13 @@ export function parseStoryCriteriaFromBody(body: {
   criteriaHighlight?: unknown;
   criteriaInspires?: unknown;
   criteriaReplicable?: unknown;
+  achievements?: unknown;
   signatureConfirmed?: unknown;
 }): {
   criteriaHighlight?: string;
   criteriaInspires?: string;
   criteriaReplicable?: boolean;
+  achievements?: string;
   signatureConfirmed?: boolean;
 } {
   const criteriaHighlight =
@@ -124,6 +130,10 @@ export function parseStoryCriteriaFromBody(body: {
   } else if (body.criteriaReplicable === false || body.criteriaReplicable === "false") {
     criteriaReplicable = false;
   }
+  const achievements =
+    body.achievements != null && String(body.achievements).trim() !== ""
+      ? String(body.achievements).trim()
+      : undefined;
   const signatureConfirmed =
     body.signatureConfirmed === true ||
     body.signatureConfirmed === "true" ||
@@ -131,7 +141,7 @@ export function parseStoryCriteriaFromBody(body: {
     body.signatureConfirmed === 1 ||
     body.signatureConfirmed === "1";
 
-  return { criteriaHighlight, criteriaInspires, criteriaReplicable, signatureConfirmed };
+  return { criteriaHighlight, criteriaInspires, criteriaReplicable, achievements, signatureConfirmed };
 }
 
 export const STORY_STATUSES = ["pending", "approved", "not-approved"] as const;

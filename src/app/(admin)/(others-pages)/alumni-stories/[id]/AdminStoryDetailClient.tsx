@@ -24,6 +24,7 @@ type DetailItem = {
   criteriaHighlight?: string | null;
   criteriaInspires?: string | null;
   criteriaReplicable?: boolean | null;
+  achievements?: string | null;
   signatureConfirmed?: boolean | null;
   signatureConfirmedAt?: string | null;
 };

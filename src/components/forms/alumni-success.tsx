@@ -36,6 +36,7 @@ type Props = {
   existingCriteriaHighlight?: string;
   existingCriteriaInspires?: string;
   existingCriteriaReplicable?: boolean | null;
+  existingAchievements?: string;
   existingSignatureConfirmed?: boolean | null;
   existingSignatureConfirmedAt?: string | null;
   storyId?: string;
@@ -94,6 +95,7 @@ export default function AlumniSuccessForm({
   existingCriteriaHighlight = "",
   existingCriteriaInspires = "",
   existingCriteriaReplicable = null,
+  existingAchievements = "",
   existingSignatureConfirmed = null,
   existingSignatureConfirmedAt = null,
   storyId,
@@ -148,6 +150,7 @@ export default function AlumniSuccessForm({
       existingCriteriaReplicable === true || existingCriteriaReplicable === false
         ? existingCriteriaReplicable
         : undefined,
+    achievements: existingAchievements || "",
   };
 
   const alumniDefaults: AlumniFormVals = {
@@ -161,6 +164,7 @@ export default function AlumniSuccessForm({
     criteriaHighlight: existingCriteriaHighlight || "",
     criteriaInspires: existingCriteriaInspires || "",
     criteriaReplicable: undefined,
+    achievements: existingAchievements || "",
     signatureConfirmed: false,
   };
   
@@ -190,6 +194,7 @@ export default function AlumniSuccessForm({
     if (existingCriteriaReplicable === true || existingCriteriaReplicable === false) {
       setValue("criteriaReplicable", existingCriteriaReplicable, { shouldValidate: true });
     }
+    if (existingAchievements) setValue("achievements", existingAchievements, { shouldValidate: true });
   }, [
     isAdmin,
     isAdminEdit,
@@ -201,6 +206,7 @@ export default function AlumniSuccessForm({
     existingCriteriaHighlight,
     existingCriteriaInspires,
     existingCriteriaReplicable,
+    existingAchievements,
     setValue,
   ]);
 
@@ -321,11 +327,13 @@ export default function AlumniSuccessForm({
     criteriaHighlight: string;
     criteriaInspires: string;
     criteriaReplicable: boolean | undefined;
+    achievements?: string;
     signatureConfirmed?: boolean;
   }) => {
     formData.append("criteriaHighlight", criteriaVals.criteriaHighlight);
     formData.append("criteriaInspires", criteriaVals.criteriaInspires);
     formData.append("criteriaReplicable", String(criteriaVals.criteriaReplicable));
+    formData.append("achievements", criteriaVals.achievements ?? "");
     if (criteriaVals.signatureConfirmed !== undefined) {
       formData.append("signatureConfirmed", String(criteriaVals.signatureConfirmed));
     }
@@ -335,17 +343,21 @@ export default function AlumniSuccessForm({
     criteriaHighlight: string;
     criteriaInspires: string;
     criteriaReplicable: boolean | undefined;
+    achievements?: string;
     signatureConfirmed?: boolean;
   }) => ({
     criteriaHighlight: criteriaVals.criteriaHighlight,
     criteriaInspires: criteriaVals.criteriaInspires,
     criteriaReplicable: criteriaVals.criteriaReplicable,
+    achievements: criteriaVals.achievements ?? "",
     ...(criteriaVals.signatureConfirmed !== undefined
       ? { signatureConfirmed: criteriaVals.signatureConfirmed }
       : {}),
   });
 
   const onSubmit = async (vals: FormVals) => {
+    console.log("[AlumniSuccessForm] onSubmit vals:", vals);
+    console.log("[AlumniSuccessForm] achievements value:", (vals as AlumniFormVals).achievements);
     const htmlContent = editor?.getHTML() || vals.storyHtml;
     
     if (!hasContent(htmlContent)) {
@@ -383,6 +395,7 @@ export default function AlumniSuccessForm({
       const method = storyId ? "PUT" : "POST";
 
       let res: Response;
+      const alumniVals = vals as AlumniFormVals;
       if (imageFile) {
         const formData = new FormData();
         formData.append("sapId", resolvedSapId);
@@ -395,11 +408,20 @@ export default function AlumniSuccessForm({
         formData.append("storyTitle", vals.storyTitle);
         formData.append("storyHtml", sanitizedHtml);
         if (!isAdmin) {
-          appendCriteriaToFormData(formData, vals as AlumniFormVals);
+          formData.append("criteriaHighlight", alumniVals.criteriaHighlight);
+          formData.append("criteriaInspires", alumniVals.criteriaInspires);
+          formData.append("criteriaReplicable", String(alumniVals.criteriaReplicable));
+          formData.append("achievements", alumniVals.achievements ?? "");
+          formData.append("signatureConfirmed", String(alumniVals.signatureConfirmed));
         } else if (isAdminEdit) {
-          appendCriteriaToFormData(formData, vals as AdminEditFormVals);
+          const adminEditVals = vals as AdminEditFormVals;
+          formData.append("criteriaHighlight", adminEditVals.criteriaHighlight);
+          formData.append("criteriaInspires", adminEditVals.criteriaInspires);
+          formData.append("criteriaReplicable", String(adminEditVals.criteriaReplicable));
+          formData.append("achievements", adminEditVals.achievements ?? "");
         }
         formData.append("storyImage", imageFile);
+        console.log("[AlumniSuccessForm] FormData entries:", Array.from(formData.entries()).map(([k, v]) => [k, v instanceof File ? v.name : v]));
 
         res = await fetch(endpoint, { method, body: formData });
       } else {
@@ -414,12 +436,24 @@ export default function AlumniSuccessForm({
           storyTitle: vals.storyTitle,
           storyHtml: sanitizedHtml,
           ...(!isAdmin
-            ? criteriaPayload(vals as AlumniFormVals)
+            ? {
+                criteriaHighlight: alumniVals.criteriaHighlight,
+                criteriaInspires: alumniVals.criteriaInspires,
+                criteriaReplicable: alumniVals.criteriaReplicable,
+                achievements: alumniVals.achievements ?? "",
+                signatureConfirmed: alumniVals.signatureConfirmed,
+              }
             : isAdminEdit
-              ? criteriaPayload(vals as AdminEditFormVals)
+              ? {
+                  criteriaHighlight: (vals as AdminEditFormVals).criteriaHighlight,
+                  criteriaInspires: (vals as AdminEditFormVals).criteriaInspires,
+                  criteriaReplicable: (vals as AdminEditFormVals).criteriaReplicable,
+                  achievements: (vals as AdminEditFormVals).achievements ?? "",
+                }
               : {}),
         };
 
+        console.log("[AlumniSuccessForm] JSON payload:", payload);
         res = await fetch(endpoint, {
           method,
           headers: { "Content-Type": "application/json" },
@@ -683,6 +717,139 @@ export default function AlumniSuccessForm({
             {errors.contactNumber && <span className={errorText}>{errors.contactNumber.message}</span>}
           </div>
 
+           {(!isAdmin || isAdminEdit) && (
+            <>
+              <div className="md:col-span-2 mt-2 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-base font-semibold text-gray-800 dark:text-gray-100">Criteria for Success Story</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {isAdminEdit
+                    ? "Edit the submission criteria recorded for this story."
+                    : "Please answer the following before submitting your story."}
+                </p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="criteriaHighlight" className={labelBase}>
+                  What does the story highlight? An innovative approach, exceptional achievement, or inspiring journey. Please explain.
+                  <span className="text-rose-600 ml-1">*</span>
+                </label>
+                <input
+                  id="criteriaHighlight"
+                  type="text"
+                  maxLength={250}
+                  {...register("criteriaHighlight")}
+                  className={`${inputBase} ${"criteriaHighlight" in errors && errors.criteriaHighlight ? "border-rose-500 bg-rose-50" : ""}`}
+                  placeholder="One line only"
+                  aria-label="Story highlight explanation"
+                />
+                {"criteriaHighlight" in errors && errors.criteriaHighlight && (
+                  <span className={errorText}>{errors.criteriaHighlight.message}</span>
+                )}
+                <p className="mt-1 text-xs text-gray-500">1 line only</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="criteriaInspires" className={labelBase}>
+                  Does your story inspire, motivate, or encourage others to take action? If yes, how?
+                  <span className="text-rose-600 ml-1">*</span>
+                </label>
+                <input
+                  id="criteriaInspires"
+                  type="text"
+                  maxLength={250}
+                  {...register("criteriaInspires")}
+                  className={`${inputBase} ${"criteriaInspires" in errors && errors.criteriaInspires ? "border-rose-500 bg-rose-50" : ""}`}
+                  placeholder="One line only"
+                  aria-label="Inspiration explanation"
+                />
+                {"criteriaInspires" in errors && errors.criteriaInspires && (
+                  <span className={errorText}>{errors.criteriaInspires.message}</span>
+                )}
+                <p className="mt-1 text-xs text-gray-500">1 line only</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <span className={labelBase}>
+                  Does your story provide valuable lessons, practical knowledge, or a model that others can replicate?
+                  <span className="text-rose-600 ml-1">*</span>
+                </span>
+                <Controller
+                  name="criteriaReplicable"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex items-center gap-6 mt-2">
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="criteriaReplicable"
+                          checked={field.value === true}
+                          onChange={() => field.onChange(true)}
+                          className="h-4 w-4 text-[#007bff] border-gray-300 focus:ring-[#007bff]"
+                        />
+                        Yes
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="criteriaReplicable"
+                          checked={field.value === false}
+                          onChange={() => field.onChange(false)}
+                          className="h-4 w-4 text-[#007bff] border-gray-300 focus:ring-[#007bff]"
+                        />
+                        No
+                      </label>
+                    </div>
+                  )}
+                />
+                {"criteriaReplicable" in errors && errors.criteriaReplicable && (
+                  <span className={errorText}>{errors.criteriaReplicable.message}</span>
+                )}
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="achievements" className={labelBase}>
+                  Achievements
+                  <span className="text-rose-600 ml-1">*</span>
+                </label>
+                <input
+                  id="achievements"
+                  type="text"
+                  maxLength={250}
+                  {...register("achievements")}
+                  className={`${inputBase} ${"achievements" in errors && errors.achievements ? "border-rose-500 bg-rose-50" : ""}`}
+                  placeholder="One line only"
+                  aria-label="Achievements"
+                />
+                {"achievements" in errors && errors.achievements && (
+                  <span className={errorText}>{errors.achievements.message}</span>
+                )}
+                <p className="mt-1 text-xs text-gray-500">1 line only</p>
+              </div>
+
+
+
+              {isAdminEdit && (
+                <div className="md:col-span-2">
+                  <div className="rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Alumni signature attestation</p>
+                    <p className="mt-1 text-sm text-gray-800 dark:text-gray-200">
+                      {existingSignatureConfirmed
+                        ? watchedName?.trim()
+                          ? `${watchedName.trim()} confirmed this story is true and authorized its publication.`
+                          : "The alumni confirmed this story is true and authorized its publication."
+                        : "No signature attestation recorded for this story."}
+                    </p>
+                    {existingSignatureConfirmed && existingSignatureConfirmedAt && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Signed on {new Date(existingSignatureConfirmedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {/* Story Title */}
           <div className="md:col-span-2">
             <label htmlFor="storyTitle" className={labelBase}>
@@ -918,96 +1085,10 @@ export default function AlumniSuccessForm({
             </div>
           </div>
 
-          {(!isAdmin || isAdminEdit) && (
-            <>
-              <div className="md:col-span-2 mt-2 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <h4 className="text-base font-semibold text-gray-800 dark:text-gray-100">Criteria for Success Story</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {isAdminEdit
-                    ? "Edit the submission criteria recorded for this story."
-                    : "Please answer the following before submitting your story."}
-                </p>
-              </div>
+         
+        </div>
 
-              <div className="md:col-span-2">
-                <label htmlFor="criteriaHighlight" className={labelBase}>
-                  What does the story highlight? An innovative approach, exceptional achievement, or inspiring journey. Please explain.
-                  <span className="text-rose-600 ml-1">*</span>
-                </label>
-                <input
-                  id="criteriaHighlight"
-                  type="text"
-                  maxLength={250}
-                  {...register("criteriaHighlight")}
-                  className={`${inputBase} ${"criteriaHighlight" in errors && errors.criteriaHighlight ? "border-rose-500 bg-rose-50" : ""}`}
-                  placeholder="One line only"
-                  aria-label="Story highlight explanation"
-                />
-                {"criteriaHighlight" in errors && errors.criteriaHighlight && (
-                  <span className={errorText}>{errors.criteriaHighlight.message}</span>
-                )}
-                <p className="mt-1 text-xs text-gray-500">1 line only</p>
-              </div>
-
-              <div className="md:col-span-2">
-                <label htmlFor="criteriaInspires" className={labelBase}>
-                  Does your story inspire, motivate, or encourage others to take action? If yes, how?
-                  <span className="text-rose-600 ml-1">*</span>
-                </label>
-                <input
-                  id="criteriaInspires"
-                  type="text"
-                  maxLength={250}
-                  {...register("criteriaInspires")}
-                  className={`${inputBase} ${"criteriaInspires" in errors && errors.criteriaInspires ? "border-rose-500 bg-rose-50" : ""}`}
-                  placeholder="One line only"
-                  aria-label="Inspiration explanation"
-                />
-                {"criteriaInspires" in errors && errors.criteriaInspires && (
-                  <span className={errorText}>{errors.criteriaInspires.message}</span>
-                )}
-                <p className="mt-1 text-xs text-gray-500">1 line only</p>
-              </div>
-
-              <div className="md:col-span-2">
-                <span className={labelBase}>
-                  Does your story provide valuable lessons, practical knowledge, or a model that others can replicate?
-                  <span className="text-rose-600 ml-1">*</span>
-                </span>
-                <Controller
-                  name="criteriaReplicable"
-                  control={control}
-                  render={({ field }) => (
-                    <div className="flex items-center gap-6 mt-2">
-                      <label className="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="criteriaReplicable"
-                          checked={field.value === true}
-                          onChange={() => field.onChange(true)}
-                          className="h-4 w-4 text-[#007bff] border-gray-300 focus:ring-[#007bff]"
-                        />
-                        Yes
-                      </label>
-                      <label className="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="criteriaReplicable"
-                          checked={field.value === false}
-                          onChange={() => field.onChange(false)}
-                          className="h-4 w-4 text-[#007bff] border-gray-300 focus:ring-[#007bff]"
-                        />
-                        No
-                      </label>
-                    </div>
-                  )}
-                />
-                {"criteriaReplicable" in errors && errors.criteriaReplicable && (
-                  <span className={errorText}>{errors.criteriaReplicable.message}</span>
-                )}
-              </div>
-
-              {!isAdmin && (
+                      {!isAdmin && (
                 <div className="md:col-span-2">
                   <div className="flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
                     <input
@@ -1032,29 +1113,6 @@ export default function AlumniSuccessForm({
                   )}
                 </div>
               )}
-
-              {isAdminEdit && (
-                <div className="md:col-span-2">
-                  <div className="rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Alumni signature attestation</p>
-                    <p className="mt-1 text-sm text-gray-800 dark:text-gray-200">
-                      {existingSignatureConfirmed
-                        ? watchedName?.trim()
-                          ? `${watchedName.trim()} confirmed this story is true and authorized its publication.`
-                          : "The alumni confirmed this story is true and authorized its publication."
-                        : "No signature attestation recorded for this story."}
-                    </p>
-                    {existingSignatureConfirmed && existingSignatureConfirmedAt && (
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Signed on {new Date(existingSignatureConfirmedAt).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
 
         {/* Submit Button */}
         <div className="md:col-span-2 flex items-center gap-3 mt-6">

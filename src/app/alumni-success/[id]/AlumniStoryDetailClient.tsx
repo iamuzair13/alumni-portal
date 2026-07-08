@@ -17,6 +17,7 @@ type DetailItem = {
   imageUrl: string;
   status: string;
   rejectionReason?: string | null;
+  achievements?: string | null;
 };
 
 export default function AlumniStoryDetailClient({

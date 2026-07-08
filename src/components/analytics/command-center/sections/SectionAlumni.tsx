@@ -193,7 +193,7 @@ export function SectionAlumni({
           icon={GaugeIcon}
           accent="emerald"
           primaryValue={velocity.trackedTotal}
-          secondaryLabel={`${duringGradPct}% during grad · ${velocity.score}% early`}
+          secondaryLabel={``}
           masonrySize="md"
           chartFill
           delay={staggerDelay(4)}
@@ -206,7 +206,7 @@ export function SectionAlumni({
           icon={MapPin}
           accent="emerald"
           primaryValue={totalLocation}
-          secondaryLabel="Top provinces"
+          secondaryLabel=""
           masonrySize="md"
           chartFill
           delay={staggerDelay(5)}

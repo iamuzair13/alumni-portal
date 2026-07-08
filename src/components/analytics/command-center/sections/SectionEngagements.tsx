@@ -16,8 +16,6 @@ import { MasonryGrid } from "../MasonryGrid";
 
 import { ChaptersCardChart } from "../charts/ChaptersCardChart";
 
-import { FillChart } from "../charts/FillChart";
-
 import { ActivitiesCardChart } from "../charts/ActivitiesCardChart";
 
 import { ScholarshipsCardChart } from "../charts/ScholarshipsCardChart";
@@ -219,7 +217,7 @@ export function SectionEngagements({
 
         <h3 className={`${ccPerksSubsectionHeader} ${ccSectionLabel}`}>Engagements</h3>
 
-        <MasonryGrid columns="narrow" layout="uniform" className="gap-2 lg:gap-1.5">
+        <MasonryGrid columns="narrow" layout="uniform" className="gap-4">
 
           <AnalyticsCard
 
@@ -246,25 +244,12 @@ export function SectionEngagements({
             onExpand={open}
 
             chart={
-
-              <FillChart minHeight={80}>
-
-                {(h) => (
-
-                  <ChaptersCardChart
-
-                    national={chapters.summaryChart.national}
-
-                    international={chapters.summaryChart.international}
-
-                    height={h}
-
-                  />
-
-                )}
-
-              </FillChart>
-
+              <ChaptersCardChart
+                nationalCount={chapters.national}
+                internationalCount={chapters.international}
+                nationalMembers={chapters.nationalMembers}
+                internationalMembers={chapters.internationalMembers}
+              />
             }
 
           />
@@ -340,10 +325,6 @@ export function SectionEngagements({
 
                 other={career.jobs.other}
 
-                quarter={career.jobs.quarter}
-
-                quarterLabel={career.quarterLabel}
-
               />
 
             }
@@ -381,8 +362,6 @@ export function SectionEngagements({
                 events={meetups.events}
 
                 meetups={meetups.meetups}
-
-                quarterLabel={meetups.quarterLabel}
 
               />
 
@@ -434,8 +413,6 @@ export function SectionEngagements({
 
                 quarterTotal={activities.quarterTotal}
 
-                topByYtd={activities.topByYtd}
-
               />
 
             }
@@ -446,7 +423,7 @@ export function SectionEngagements({
 
             id={CARD_IDS.publications}
 
-            title="Publications & Surveys"
+            title="Publications & Newsletters"
 
             icon={Newspaper}
 
@@ -456,7 +433,7 @@ export function SectionEngagements({
 
             primaryValue={publications.stories}
 
-            secondaryLabel={`${publications.newsletters} newsletters`}
+            secondaryLabel={`${publications.newsletters} ${publications.newsletters === 1 ? "newsletter" : "newsletters"}`}
 
             masonrySize="md"
 
@@ -477,8 +454,6 @@ export function SectionEngagements({
                 newslettersYtd={publications.newslettersYtd}
 
                 surveys={publications.surveys}
-
-                quarterLabel={publications.quarterLabel}
 
               />
 

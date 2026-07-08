@@ -60,9 +60,9 @@ export function SectionPerks({
 
   return (
     <>
-      <section aria-label="Perks & Benefits" className={`mt-3 ${ccPerksSubsection}`}>
+      <section aria-label="Perks & Benefits" className={`mt-4 ${ccPerksSubsection}`}>
         <h3 className={`${ccPerksSubsectionHeader} ${ccSectionLabel}`}>Perks</h3>
-        <MasonryGrid columns="narrow" layout="uniform" className="gap-2 lg:gap-1.5">
+        <MasonryGrid columns="narrow" layout="uniform" className="gap-4">
           <AnalyticsCard
             id={CARD_IDS.memberships}
             title="Memberships & Perks"
@@ -70,7 +70,7 @@ export function SectionPerks({
             accent="violet"
             variant="premium"
             primaryValue={perksTotal}
-            secondaryLabel={`${memberships.total} Applications`}
+            secondaryLabel={`${memberships.total.toLocaleString()} applications`}
             masonrySize="md"
             chartFill
             delay={staggerDelay(0, 0.16)}

@@ -16,7 +16,6 @@ import {
   type AlumniStorySubmitRow,
 } from "@/lib/alumniStorySubmit";
 import { sql, retryDbOperation } from "@/lib/dbconnect";
-import { sendSuccessStoryEmail } from "@/lib/email";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { canModify } from "@/lib/alumniProfile";
@@ -37,6 +36,7 @@ type StoryItem = {
   imageUrl: string;
   status: string;
   rejectionReason: string | null;
+  achievements: string | null;
   alumniId?: number;
   email?: string | null;
 };
@@ -50,6 +50,7 @@ type StoryRow = {
   rejection_reason: string | null;
   createdat: string | null;
   storytitle: string | null;
+  achievements: string | null;
   alumniname: string | null;
   degreetitle: string | null;
   academicsession: string | null;
@@ -71,6 +72,7 @@ function mapStoryRow(r: StoryRow, opts?: { includeContact?: boolean }): StoryIte
     imageUrl: String(r.story_image ?? r.image1 ?? ""),
     status: normalizeStoryStatus(r.status),
     rejectionReason: r.rejection_reason ?? null,
+    achievements: r.achievements ?? null,
   };
 
   if (opts?.includeContact) {
@@ -169,6 +171,7 @@ export async function GET(req: Request) {
         s.rejection_reason,
         s.createdat,
         s.storytitle,
+        s.achievements,
         a.alumniname,
         a.degreetitle,
         a.academicsession,
@@ -260,6 +263,7 @@ export async function POST(req: Request) {
         criteriaHighlight: formData.get("criteriaHighlight"),
         criteriaInspires: formData.get("criteriaInspires"),
         criteriaReplicable: formData.get("criteriaReplicable"),
+        achievements: formData.get("achievements"),
         signatureConfirmed: formData.get("signatureConfirmed"),
       });
 
@@ -395,6 +399,8 @@ export async function POST(req: Request) {
       requiresCriteria && "criteriaInspires" in v ? (v.criteriaInspires ?? null) : null;
     const criteriaReplicable: boolean | null =
       requiresCriteria && "criteriaReplicable" in v ? (v.criteriaReplicable ?? null) : null;
+    const achievements: string | null =
+      requiresCriteria && "achievements" in v ? (v.achievements ?? null) : null;
     const signatureConfirmed: boolean | null =
       requiresCriteria && "signatureConfirmed" in v ? (v.signatureConfirmed ?? null) : null;
 
@@ -429,13 +435,13 @@ export async function POST(req: Request) {
           alumniid, alumnistories, story_image, status, createdat, storytitle,
           rejection_reason, reviewed_by, reviewed_at,
           criteria_highlight, criteria_inspires, criteria_replicable,
-          signature_confirmed, signature_confirmed_at
+          achievements, signature_confirmed, signature_confirmed_at
         )
         VALUES (
           ${alumniId}, ${cleanHtml}, ${storyImageFilename}, ${storyStatus}, NOW(), ${v.storyTitle},
           NULL, ${reviewerId}, ${isAdmin && !owner ? sql`NOW()` : null},
           ${criteriaHighlight}, ${criteriaInspires}, ${criteriaReplicable},
-          ${signatureConfirmed}, ${signatureConfirmed === true ? sql`NOW()` : null}
+          ${achievements}, ${signatureConfirmed}, ${signatureConfirmed === true ? sql`NOW()` : null}
         )
         RETURNING id`;
     } catch (dbError) {
@@ -452,31 +458,6 @@ export async function POST(req: Request) {
         },
         { status: 500 }
       );
-    }
-
-    try {
-      const emailRows = await sql/* sql */`
-        SELECT alumniname, personalemail, officialemail, universityemail
-        FROM public.tbl_alumni
-        WHERE alumniid = ${alumniId}
-        LIMIT 1
-      `;
-      const alumni = emailRows[0] as {
-        alumniname: string | null;
-        personalemail: string | null;
-        officialemail: string | null;
-        universityemail: string | null;
-      } | undefined;
-
-      if (alumni) {
-        const alumniEmail = alumni.personalemail || alumni.officialemail || alumni.universityemail;
-        const alumniName = alumni.alumniname || "Alumni";
-        if (alumniEmail && storyStatus === "pending") {
-          sendSuccessStoryEmail(alumniEmail, alumniName).catch(() => {});
-        }
-      }
-    } catch {
-      // Don't fail the request if email fails
     }
 
     return NextResponse.json(

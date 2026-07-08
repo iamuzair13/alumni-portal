@@ -542,6 +542,7 @@ CREATE TABLE public.tblalumnistories (
   status character varying,
   createdat timestamp without time zone,
   storytitle text,
+  achievements character varying,
   id integer NOT NULL DEFAULT nextval('tblalumnistories_id_seq'::regclass),
   CONSTRAINT tblalumnistories_pkey PRIMARY KEY (id),
   CONSTRAINT tblalumnistories_alumniid_fkey FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid)

@@ -90,13 +90,7 @@ export function OccupationCardChart({
         })}
       </div>
 
-      {topBar && topBar.value > 0 ? (
-        <p className="shrink-0 truncate text-center text-[12px] font-medium text-emerald-600/90 dark:text-emerald-400/90">
-          <span className="font-bold tabular-nums">{topPct}%</span>
-          {" · "}
-          {topBar.label} leads
-        </p>
-      ) : null}
+     
     </div>
   );
 }

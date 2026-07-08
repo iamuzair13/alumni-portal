@@ -41,6 +41,7 @@ type StoryDetailRow = {
   criteria_highlight: string | null;
   criteria_inspires: string | null;
   criteria_replicable: boolean | null;
+  achievements: string | null;
   signature_confirmed: boolean | null;
   signature_confirmed_at: string | null;
   alumniname: string | null;
@@ -69,6 +70,7 @@ function mapStoryDetail(r: StoryDetailRow, opts?: { includeContact?: boolean }) 
     criteriaHighlight: r.criteria_highlight ?? null,
     criteriaInspires: r.criteria_inspires ?? null,
     criteriaReplicable: r.criteria_replicable ?? null,
+    achievements: r.achievements ?? null,
     signatureConfirmed: r.signature_confirmed ?? null,
     signatureConfirmedAt: r.signature_confirmed_at
       ? new Date(r.signature_confirmed_at).toISOString()
@@ -112,6 +114,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         s.criteria_highlight,
         s.criteria_inspires,
         s.criteria_replicable,
+        s.achievements,
         s.signature_confirmed,
         s.signature_confirmed_at,
         a.alumniname,
@@ -263,6 +266,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         criteriaHighlight: formData.get("criteriaHighlight"),
         criteriaInspires: formData.get("criteriaInspires"),
         criteriaReplicable: formData.get("criteriaReplicable"),
+        achievements: formData.get("achievements"),
         signatureConfirmed: formData.get("signatureConfirmed"),
       });
 
@@ -374,6 +378,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         : isStaffEditor && "criteriaReplicable" in v
           ? (v.criteriaReplicable ?? null)
           : null;
+    const achievements: string | null =
+      requiresAlumniCriteria && "achievements" in v
+        ? (v.achievements ?? null)
+        : isStaffEditor && "achievements" in v
+          ? (v.achievements ?? null)
+          : null;
     const signatureConfirmed: boolean | null =
       requiresAlumniCriteria && "signatureConfirmed" in v ? (v.signatureConfirmed ?? null) : null;
 
@@ -395,6 +405,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
               criteria_highlight = ${criteriaHighlight},
               criteria_inspires = ${criteriaInspires},
               criteria_replicable = ${criteriaReplicable},
+              achievements = ${achievements},
               signature_confirmed = ${signatureConfirmed},
               signature_confirmed_at = ${signatureConfirmed === true ? sql`NOW()` : null}
           WHERE id = ${storyId}
@@ -407,7 +418,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
               createdat = NOW(),
               criteria_highlight = ${criteriaHighlight},
               criteria_inspires = ${criteriaInspires},
-              criteria_replicable = ${criteriaReplicable}
+              criteria_replicable = ${criteriaReplicable},
+              achievements = ${achievements}
           WHERE id = ${storyId}
           RETURNING id`
       : resetModeration
@@ -423,6 +435,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
               criteria_highlight = ${criteriaHighlight},
               criteria_inspires = ${criteriaInspires},
               criteria_replicable = ${criteriaReplicable},
+              achievements = ${achievements},
               signature_confirmed = ${signatureConfirmed},
               signature_confirmed_at = ${signatureConfirmed === true ? sql`NOW()` : null}
           WHERE id = ${storyId}
@@ -434,7 +447,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
               createdat = NOW(),
               criteria_highlight = ${criteriaHighlight},
               criteria_inspires = ${criteriaInspires},
-              criteria_replicable = ${criteriaReplicable}
+              criteria_replicable = ${criteriaReplicable},
+              achievements = ${achievements}
           WHERE id = ${storyId}
           RETURNING id`;
 
