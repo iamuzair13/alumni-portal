@@ -714,13 +714,16 @@ function estimateMembershipFormHeight(
   facilityType: "gym" | "pool" | "cricket",
   checklistCount: number,
 ): number {
+  // Section A now has 4 rows: Name/Father, SAP/CNIC, Campus/Mobile, Email/DOB
   const rows =
     facilityType === "pool"
-      ? 1 + 2 + 3 + 3 + 2 + 2
+      ? 1 + 4 + 3 + 2 + 2 + 2  // meta + A(4) + B membership(3) + C swimming(2) + D medical+emergency(2) + E contact(2) — approximate
       : facilityType === "cricket"
-        ? 1 + 2 + 4 + 3 + 2 + 2
-        : 1 + 2 + 3 + 3 + 2 + 2;
-  const sections = facilityType === "gym" ? 6 : 7;
+        ? 1 + 4 + 4 + 3 + 2 + 2  // meta + A(4) + B cricket(4) + C playing(3) + D emergency(2) + E checklist(2)
+        : 1 + 4 + 3 + 3 + 2 + 2; // meta + A(4) + B membership(3) + C medical(3) + D emergency(2) + E checklist(2)
+  // Gym: A B C D E = 5 sections; Pool: A B C D E F G = 7 sections; Cricket: A B C D E F = 6 sections
+  const sections =
+    facilityType === "pool" ? 7 : facilityType === "cricket" ? 6 : 5;
   return (
     metrics.headerH +
     metrics.headerGap +
