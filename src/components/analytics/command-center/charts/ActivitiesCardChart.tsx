@@ -1,19 +1,46 @@
 "use client";
 
 import React from "react";
-import { Inbox } from "lucide-react";
-import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
+import { motion } from "motion/react";
 import type { EngagementActivityRow } from "../data/mapPayloadToCards";
 import { SimpleBarList } from "./SimpleBarList";
 
 const ACTIVITY_COLORS = [
-  KPI_COLOR_HEX.violet,
-  KPI_COLOR_HEX.indigo,
-  KPI_COLOR_HEX.sky,
-  KPI_COLOR_HEX.emerald,
-  KPI_COLOR_HEX.amber,
-  KPI_COLOR_HEX.rose,
+  "#6366F1",
+  "#14B8A6",
+  "#F59E0B",
+  "#10B981",
+  "#8B5CF6",
+  "#0EA5E9",
 ] as const;
+
+function FlatSparkline() {
+  const points = Array.from({ length: 12 }, (_, i) => `${i * 20},32`);
+  return (
+    <svg
+      viewBox="0 0 220 40"
+      className="w-full"
+      style={{ height: 32 }}
+      aria-hidden
+    >
+      <polyline
+        points={points.join(" ")}
+        fill="none"
+        stroke="#CBD5E1"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray="4 3"
+      />
+      {points.map((p, i) => {
+        const [x] = p.split(",");
+        return (
+          <circle key={i} cx={Number(x)} cy={32} r={2.5} fill="#E2E8F0" />
+        );
+      })}
+    </svg>
+  );
+}
 
 export function ActivitiesCardChart({
   rows,
@@ -26,12 +53,20 @@ export function ActivitiesCardChart({
 }) {
   if (ytdTotal === 0 && quarterTotal === 0) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-4 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-50 text-violet-500 dark:bg-violet-500/12 dark:text-violet-300">
-          <Inbox className="h-5 w-5" aria-hidden />
-        </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">No activities recorded yet</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex h-full w-full flex-col items-center justify-center gap-2 px-3 text-center"
+      >
+        <FlatSparkline />
+        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+          No activities yet
+        </p>
+        <p className="text-[10px] text-slate-300 dark:text-slate-600">
+          Start an activity to see data here
+        </p>
+      </motion.div>
     );
   }
 

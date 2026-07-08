@@ -38,6 +38,7 @@ export type MembershipDbRow = {
   department_name: string | null;
   program_name: string | null;
   campusname: string | null;
+  email?: string | null;
 };
 
 export type MembershipApplicationPreview = {
@@ -55,6 +56,7 @@ export type MembershipApplicationPreview = {
   faculty: string;
   department: string;
   program: string;
+  email: string;
   sapCode: string;
   cgpa: string;
   passingOutYear: string;
@@ -323,6 +325,7 @@ export function buildMembershipApplicationPreview(
     faculty: missing(row.faculty_name),
     department: missing(row.department_name),
     program: missing(row.program_name),
+    email: String(row.email ?? "").trim() || "Missing",
     sapCode: missing(row.sapid),
     cgpa:
       row.cgpa != null && Number.isFinite(Number(row.cgpa)) ? String(row.cgpa) : "Missing",
@@ -380,6 +383,7 @@ export function buildMembershipFormPDFData(row: MembershipDbRow): MembershipForm
     faculty: preview.faculty,
     department: preview.department,
     program: preview.program,
+    email: preview.email,
     sapCode: preview.sapCode,
     cgpa: preview.cgpa,
     passingOutYear: preview.passingOutYear,

@@ -117,6 +117,7 @@ export interface MembershipFormPDFData {
   faculty: string;
   department: string;
   program: string;
+  email: string;
   sapCode: string;
   cgpa: string;
   passingOutYear: string;
@@ -1098,29 +1099,31 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFullRow("Application Date", data.dateFormatted);
       }
 
-      form.drawSection("a", "Alumni Personal Details");
+      form.drawSection("A", "Alumni Personal Details");
       form.drawFieldPair("Name", data.studentName, "Father's Name", data.fatherName);
-      form.drawFieldPair("Date of Birth", data.dob, "CNIC", data.cnic);
+      form.drawFieldPair("SAP ID", data.sapCode, "CNIC", data.cnic);
+      form.drawFieldPair("Campus", data.campus, "Mobile No", data.emergencyContactNumber);
+      form.drawFieldPair("Email Address", data.email, "DOB", data.dob);
 
-      form.drawSection("b", "Alumni Education Details");
-      form.drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
-      form.drawFieldPair("Department", data.department, "Program", data.program);
-      form.drawFieldPair("SAP ID", data.sapCode, "CGPA", data.cgpa);
-      form.drawFullRow("Passing Out Year", data.passingOutYear);
+
 
       if (data.facilityType === "pool") {
-        form.drawSection("c", "Membership Details");
+        form.drawSection("B", "Membership Details");
         form.drawFieldPair("Membership Type", data.membershipType, "Pool Location", data.poolLocation);
         form.drawFieldPair("Preferred Session", data.preferredTiming, "Valid From", data.membershipStartDate);
         form.drawFullRow("Valid To", data.validTill);
 
-        form.drawSection("d", "Swimming Information");
+        form.drawSection("C", "Swimming Information");
         form.drawFieldPair("Swimming Level", data.swimmingLevel, "Any Medical Condition", data.hasMedicalCondition);
-
-        form.drawSection("e", "Emergency Contact");
+        
+        form.drawSection("D", "Medical & Fitness Information");
+        form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
+        form.drawFullRow("Allergies", data.allergies);
+        
+        form.drawSection("E", "Emergency Contact");
         form.drawFieldPair("Name", data.emergencyContactName, "Phone", data.emergencyContactNumber);
 
-        form.drawSection("f", "Document Checklist");
+        form.drawSection("F", "Document Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
 
         form.drawSection("g", "Declaration");
@@ -1142,20 +1145,20 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawSection("f", "Document Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
       } else {
-        form.drawSection("c", "Membership Details");
+        form.drawSection("B", "Membership Details");
         form.drawFieldPair("Applying For", data.applyingFor, "Discount Type", data.discountType);
         form.drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
         form.drawFullRow("Preferred Timing", data.preferredTiming);
 
-        form.drawSection("d", "Medical & Fitness Information");
+        form.drawSection("C", "Medical & Fitness Information");
         form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
         form.drawFullRow("Allergies", data.allergies);
 
-        form.drawSection("e", "Emergency Contact");
+        form.drawSection("D", "Emergency Contact");
         form.drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
         form.drawFullRow("Contact Number", data.emergencyContactNumber);
 
-        form.drawSection("f", "Documents Checklist");
+        form.drawSection("E", "Documents Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
       }
 

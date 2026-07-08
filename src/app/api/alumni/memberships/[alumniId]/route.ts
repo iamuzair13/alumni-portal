@@ -82,6 +82,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
     const alumniEmail = String(
       row.personalemail || row.universityemail || row.officialemail || "",
     );
+    row.email = alumniEmail || null;
 
     const application = buildMembershipApplicationPreview(row);
     const pdfData = buildMembershipFormPDFData(row);

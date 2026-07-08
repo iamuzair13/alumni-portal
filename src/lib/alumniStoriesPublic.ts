@@ -20,6 +20,7 @@ export const EXTERNAL_SUCCESS_STORY_SELECT = sql`
     s.story_image,
     s.storytitle,
     s.createdat,
+    s.achievements,
     a.alumniname,
     a.degreetitle,
     a.academicsession,
@@ -39,6 +40,7 @@ export type ExternalSuccessStoryRow = {
   story_image: string | null;
   storytitle: string | null;
   createdat: string | null;
+  achievements: string | null;
   alumniname: string | null;
   degreetitle: string | null;
   academicsession: string | null;
@@ -60,6 +62,7 @@ export type ExternalSuccessStoryListItem = {
   publishedAt: string;
   excerpt: string;
   imageUrl: string;
+  achievements: string | null;
 };
 
 export type ExternalSuccessStoryDetail = ExternalSuccessStoryListItem & {
@@ -104,6 +107,7 @@ export function mapExternalSuccessStoryListItem(
     publishedAt: row.createdat ? new Date(row.createdat).toISOString() : new Date().toISOString(),
     excerpt: buildExcerpt(html),
     imageUrl: toAbsoluteEventImageUrl(request, resolveStoryImageRaw(row)),
+    achievements: String(row.achievements ?? "").trim() || null,
   };
 }
 

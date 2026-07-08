@@ -63,7 +63,7 @@
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
     "react-simple-maps": "^3.0.0",
-    "recharts": "^2.12.7",
+    "recharts": "^2.15.4",
     "sanitize-html": "^2.17.0",
     "tailwind-merge": "^2.6.0",
     "zod": "^4.1.12"

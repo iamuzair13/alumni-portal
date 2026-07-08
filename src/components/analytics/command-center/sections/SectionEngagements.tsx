@@ -194,10 +194,7 @@ export function SectionEngagements({
     career.scholarshipsApplied > 0
       ? Math.round((career.scholarshipsApproved / career.scholarshipsApplied) * 100)
       : 0;
-  const scholarshipsSecondaryLabel =
-    career.scholarshipsApplied > 0
-      ? `${approvalPct}% approved · ${career.scholarshipsApplied.toLocaleString()} applied`
-      : "";
+
 
   const jobsSecondaryParts = [
 
@@ -233,9 +230,9 @@ export function SectionEngagements({
 
             primaryValue={chapters.national + chapters.international}
 
-            secondaryLabel={`${chapters.national.toLocaleString()} national · ${chapters.international.toLocaleString()} international`}
+            secondaryLabel=""
 
-            masonrySize="md"
+            masonrySize="sm"
 
             chartFill
 
@@ -268,9 +265,9 @@ export function SectionEngagements({
 
             primaryValue={career.scholarshipsApproved}
 
-            secondaryLabel={scholarshipsSecondaryLabel}
+            secondaryLabel=""
 
-            masonrySize="md"
+            masonrySize="lg"
 
             chartFill
 
@@ -303,7 +300,7 @@ export function SectionEngagements({
 
             primaryValue={career.jobs.total}
 
-            secondaryLabel={jobsSecondaryParts.join(" · ")}
+            secondaryLabel={shortQuarter ? `${shortQuarter}` : ""}
 
             masonrySize="md"
 
@@ -345,7 +342,7 @@ export function SectionEngagements({
 
             primaryValue={meetups.events.total + meetups.meetups.total}
 
-            secondaryLabel={`${meetups.events.quarter} ${meetups.events.quarter === 1 ? "event" : "events"} · ${meetups.meetups.quarter} ${meetups.meetups.quarter === 1 ? "meetup" : "meetups"} (${meetups.quarterLabel})`}
+            secondaryLabel={meetups.quarterLabel ? `${meetups.quarterLabel}` : ""}
 
             masonrySize="md"
 
@@ -383,15 +380,7 @@ export function SectionEngagements({
 
             primaryValue={activityTotal}
 
-            secondaryLabel={
-
-              activityTotal > 0
-
-                ? `${activities.quarterTotal} this quarter · top: ${activities.topByYtd.activity}`
-
-                : `No activities (${activities.quarterLabel})`
-
-            }
+            secondaryLabel={activities.quarterLabel ? `${activities.quarterLabel}` : ""}
 
             masonrySize="md"
 
@@ -433,7 +422,7 @@ export function SectionEngagements({
 
             primaryValue={publications.stories}
 
-            secondaryLabel={`${publications.newsletters} ${publications.newsletters === 1 ? "newsletter" : "newsletters"}`}
+            secondaryLabel={publications.newsletters > 0 ? `${publications.newsletters} newsletter${publications.newsletters !== 1 ? "s" : ""} issued` : ""}
 
             masonrySize="md"
 
