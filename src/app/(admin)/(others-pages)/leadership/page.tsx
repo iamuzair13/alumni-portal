@@ -47,12 +47,22 @@ function inferRoleNameFromPosition(position: string): "president" | "vice_presid
   return "president";
 }
 
-type TabKey = "chapterMembers" | "associationMembers" | "applications";
+function recommendRoleDisplayName(role: string): string {
+  switch (role) {
+    case "president": return "President";
+    case "vice_president": return "Vice President";
+    case "coordinator": return "Coordinator";
+    default: return role;
+  }
+}
+
+type TabKey = "chapterMembers" | "associationMembers" | "applications" | "recommendedFor";
 
 const TABS: { key: TabKey; label: string; shortLabel: string }[] = [
   { key: "applications", label: "Applications", shortLabel: "Applications" },
   { key: "chapterMembers", label: "Chapter Leadership", shortLabel: "Chapter" },
   { key: "associationMembers", label: "Association Leadership", shortLabel: "Association" },
+  { key: "recommendedFor", label: "Recommended For", shortLabel: "Recommended" },
 ];
 
 const LEADERSHIP_TAB_STYLES: Record<
@@ -77,6 +87,11 @@ const LEADERSHIP_TAB_STYLES: Record<
     selected: "bg-violet-50 border-2 border-violet-500 dark:bg-violet-900/20 shadow-sm",
     label: "text-violet-600 dark:text-violet-400",
     count: "text-violet-700 dark:text-violet-300",
+  },
+  recommendedFor: {
+    selected: "bg-purple-50 border-2 border-purple-500 dark:bg-purple-900/20 shadow-sm",
+    label: "text-purple-600 dark:text-purple-400",
+    count: "text-purple-700 dark:text-purple-300",
   },
 };
 
@@ -119,6 +134,23 @@ type LeadershipApplication = {
   /** Sum of admin entered obtained marks (scored criteria); null if none recorded */
   obtainedMarksTotal?: number | null;
   bonusMarks?: number | null;
+};
+
+type RecommendationItem = {
+  id: number;
+  applicationId: number;
+  applicationType: "chapter" | "association";
+  originalRole: string;
+  recommendedRole: string;
+  chapterOrAssociationName: string | null;
+  alumniResponse: "accepted" | "declined" | null;
+  assigned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  alumniName: string | null;
+  sapId: string | null;
+  alumniEmail: string | null;
+  alumniId: number | null;
 };
 
 type ApplicationStatusTab = "all" | "pending" | "assessed" | "approved" | "rejected";
@@ -611,7 +643,7 @@ export default function LeadershipPage() {
 
   useEffect(() => {
     const tab = safeSearchParams.get("tab");
-    if (tab === "chapterMembers" || tab === "associationMembers" || tab === "applications") {
+    if (tab === "chapterMembers" || tab === "associationMembers" || tab === "applications" || tab === "recommendedFor") {
       setSelectedTab(tab);
     }
     const type = safeSearchParams.get("type");
@@ -700,6 +732,32 @@ export default function LeadershipPage() {
   >(null);
 
   const isAdmin = session?.user ? canModify(session.user) : false;
+
+  // ─── Recommend For State ───
+  const recommendModal = useModal();
+  const [recommendApp, setRecommendApp] = useState<LeadershipApplication | null>(null);
+  const [recommendRole, setRecommendRole] = useState<"president" | "vice_president" | "coordinator" | "">(""  );
+  const [recommendStep, setRecommendStep] = useState<"select" | "confirm">("select");
+  const [recommendProcessing, setRecommendProcessing] = useState(false);
+
+  // Recommendations list query
+  const { data: recommendationsData, refetch: refetchRecommendations } = useQuery({
+    queryKey: ["leadership-recommendations"],
+    queryFn: async () => {
+      const res = await fetch("/api/leadership/recommend", { headers: { accept: "application/json" } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string })?.error || "Failed to fetch");
+      return (data as { items: RecommendationItem[] }).items || [];
+    },
+    enabled: (selectedTab === "applications" || selectedTab === "recommendedFor") && isAdmin,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  // Assignment modal state
+  const [assigningRecommendation, setAssigningRecommendation] = useState<RecommendationItem | null>(null);
+  const [assignProcessing, setAssignProcessing] = useState(false);
+  const assignModal = useModal();
 
   const downloadLeadershipPdf = async (
     type: "chapter" | "association",
@@ -1289,6 +1347,78 @@ export default function LeadershipPage() {
     }
   };
 
+  const handleRecommendSubmit = async () => {
+    if (!recommendApp || !recommendRole) return;
+    setRecommendProcessing(true);
+    try {
+      const email = recommendApp.email;
+      const res = await fetch("/api/leadership/recommend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: recommendApp.id,
+          applicationType: recommendApp.type,
+          recommendedRole: recommendRole,
+          originalRole: recommendApp.position,
+          chapterOrAssociationName: recommendApp.categoryName || null,
+          alumniName: recommendApp.name,
+          alumniEmail: email,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string })?.error || "Failed");
+      toast.success("Recommendation sent successfully");
+      recommendModal.closeModal();
+      setRecommendApp(null);
+      setRecommendRole("");
+      setRecommendStep("select");
+      void refetchRecommendations();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send recommendation");
+    } finally {
+      setRecommendProcessing(false);
+    }
+  };
+
+  const handleRecommendationAction = async (recommendationId: number, action: "mark_accepted" | "mark_declined") => {
+    try {
+      const res = await fetch("/api/leadership/recommend", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recommendationId, action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string })?.error || "Failed");
+      toast.success(action === "mark_accepted" ? "Marked as accepted" : "Marked as declined");
+      void refetchRecommendations();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  const handleAssignRole = async () => {
+    if (!assigningRecommendation) return;
+    setAssignProcessing(true);
+    try {
+      const res = await fetch("/api/leadership/recommend", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recommendationId: assigningRecommendation.id, action: "assign" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string })?.error || "Failed");
+      toast.success("Role assigned successfully");
+      assignModal.closeModal();
+      setAssigningRecommendation(null);
+      void refetchRecommendations();
+      await refetchApplications();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to assign role");
+    } finally {
+      setAssignProcessing(false);
+    }
+  };
+
   const handleExport = () => {
     const exportColumnKeys: string[] = [
       "Leadership Type",
@@ -1503,10 +1633,10 @@ export default function LeadershipPage() {
         {/* Tabs Section */}
         <div className="w-full px-4 py-4 ">
           <div className=" mx-auto dark:text-gray-300 dark:bg-gray-900">
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               {TABS.map((tab) => {
                 const isSelected = selectedTab === tab.key;
-                const statCount = tab.key === "chapterMembers" ? chapterMembersCount : tab.key === "associationMembers" ? associationMembersCount : applicationsCount;
+                const statCount = tab.key === "chapterMembers" ? chapterMembersCount : tab.key === "associationMembers" ? associationMembersCount : tab.key === "recommendedFor" ? (recommendationsData?.length ?? 0) : applicationsCount;
                 const tabStyle = LEADERSHIP_TAB_STYLES[tab.key];
 
                 return (
@@ -1556,6 +1686,7 @@ export default function LeadershipPage() {
         </div>
 
         {/* Search and Filters */}
+        {selectedTab !== "recommendedFor" && (
         <div className="w-full min-w-0 px-4 py-3 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-sm backdrop-blur-sm">
   <div className="mx-auto min-w-0 max-w-full">
     <div className="min-w-0 rounded-xl border border-gray-200/60 bg-gray-50/80 p-4 space-y-4 backdrop-blur-sm dark:border-gray-800/60 dark:bg-gray-900/50">
@@ -1794,6 +1925,7 @@ export default function LeadershipPage() {
     </div>
   </div>
 </div>
+        )}
 
         <ExportModal />
 
@@ -2575,6 +2707,10 @@ export default function LeadershipPage() {
                         viewModal.openModal();
                       }}
                       onDownloadApplication={(type, applicationId) => void handleDownloadApplicationFromRow(type, applicationId)}
+                      onRecommend={(app) => {
+                        setRecommendApp(app);
+                        recommendModal.openModal();
+                      }}
                       processingIds={processingIds}
                       sortKey={sortKey}
                       sortDir={sortDir}
@@ -2608,6 +2744,10 @@ export default function LeadershipPage() {
                         viewModal.openModal();
                       }}
                       onDownloadApplication={(type, applicationId) => void handleDownloadApplicationFromRow(type, applicationId)}
+                      onRecommend={(app) => {
+                        setRecommendApp(app);
+                        recommendModal.openModal();
+                      }}
                       processingIds={processingIds}
                       sortKey={sortKey}
                       sortDir={sortDir}
@@ -2620,6 +2760,90 @@ export default function LeadershipPage() {
                         }
                       }}
                     />
+                  )
+                ) : selectedTab === "recommendedFor" ? (
+                  !recommendationsData || recommendationsData.length === 0 ? (
+                    <div className="w-full p-8">
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-6 py-8 text-center text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                        No recommendations yet. Use the &quot;Recommend For&quot; action in the Applications tab to recommend alumni for alternative roles.
+                      </div>
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Alumni</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">SAP ID</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Type</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Chapter / Association</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Original Role</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Recommended Role</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Response</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Date</th>
+                          <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 dark:text-gray-400">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recommendationsData.map((rec) => (
+                          <tr key={rec.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{rec.alumniName || "—"}</td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-400 font-mono text-xs">{rec.sapId || "—"}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${rec.applicationType === "chapter" ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" : "bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"}`}>
+                                {rec.applicationType === "chapter" ? "Chapter" : "Association"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{rec.chapterOrAssociationName || "—"}</td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{rec.originalRole}</td>
+                            <td className="px-4 py-3 font-semibold text-purple-700 dark:text-purple-300">{recommendRoleDisplayName(rec.recommendedRole)}</td>
+                            <td className="px-4 py-3">
+                              {rec.alumniResponse === "accepted" ? (
+                                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">Accepted</span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Pending</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
+                              {new Date(rec.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {!rec.alumniResponse && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleRecommendationAction(rec.id, "mark_accepted")}
+                                      className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 dark:text-green-300 dark:bg-green-900/30 dark:hover:bg-green-900/50 transition-colors"
+                                    >
+                                      Mark Accepted
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleRecommendationAction(rec.id, "mark_declined")}
+                                      className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 dark:text-red-300 dark:bg-red-900/30 dark:hover:bg-red-900/50 transition-colors"
+                                    >
+                                      Mark Declined
+                                    </button>
+                                  </>
+                                )}
+                                {rec.alumniResponse === "accepted" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAssigningRecommendation(rec);
+                                      assignModal.openModal();
+                                    }}
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 shadow-sm transition-colors"
+                                  >
+                                    Assign Role
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   )
                 ) : (
                   <MembersTable
@@ -2662,6 +2886,175 @@ export default function LeadershipPage() {
                 </div>
               )}
             </div>
+
+            {/* ─── Recommend For Modal ─── */}
+            {recommendModal.isOpen && recommendApp && (
+              <Modal
+                isOpen={recommendModal.isOpen}
+                onClose={() => {
+                  if (!recommendProcessing) {
+                    recommendModal.closeModal();
+                    setRecommendApp(null);
+                    setRecommendRole("");
+                    setRecommendStep("select");
+                  }
+                }}
+                showCloseButton={true}
+                className="max-w-md"
+              >
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Recommend For</h3>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Recommend <strong>{recommendApp.name}</strong> for an alternative leadership role
+                  </p>
+
+                  {recommendStep === "select" && (
+                    <div className="mt-5 space-y-3">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Select a leadership role:</p>
+                      {(["president", "vice_president", "coordinator"] as const).map((role) => (
+                        <label
+                          key={role}
+                          className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all ${
+                            recommendRole === role
+                              ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-400"
+                              : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="recommendRole"
+                            value={role}
+                            checked={recommendRole === role}
+                            onChange={() => setRecommendRole(role)}
+                            className="h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                          />
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {recommendRoleDisplayName(role)}
+                          </span>
+                        </label>
+                      ))}
+
+                      <div className="mt-6 flex items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            recommendModal.closeModal();
+                            setRecommendApp(null);
+                            setRecommendRole("");
+                          }}
+                          className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!recommendRole}
+                          onClick={() => setRecommendStep("confirm")}
+                          className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {recommendStep === "confirm" && (
+                    <div className="mt-5">
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-900/10 px-4 py-3">
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          Are you sure you want to recommend <strong>{recommendRoleDisplayName(recommendRole)}</strong> to{" "}
+                          <strong>{recommendApp.name}</strong>?
+                        </p>
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                          An email will be sent to the alumni informing them of this recommendation.
+                        </p>
+                      </div>
+
+                      <div className="mt-6 flex items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          disabled={recommendProcessing}
+                          onClick={() => setRecommendStep("select")}
+                          className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="button"
+                          disabled={recommendProcessing}
+                          onClick={() => void handleRecommendSubmit()}
+                          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          {recommendProcessing && (
+                            <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                          )}
+                          {recommendProcessing ? "Sending…" : "Confirm & Send Email"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Modal>
+            )}
+
+            {/* ─── Assign Role Confirmation Modal ─── */}
+            {assignModal.isOpen && assigningRecommendation && (
+              <Modal
+                isOpen={assignModal.isOpen}
+                onClose={() => {
+                  if (!assignProcessing) {
+                    assignModal.closeModal();
+                    setAssigningRecommendation(null);
+                  }
+                }}
+                showCloseButton={true}
+                className="max-w-md"
+              >
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Assign Leadership Role</h3>
+                  <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      Are you sure you want to assign <strong>{recommendRoleDisplayName(assigningRecommendation.recommendedRole)}</strong> to{" "}
+                      <strong>{assigningRecommendation.alumniName || "this alumni"}</strong>?
+                    </p>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      This will update their original application and mark them as approved for the recommended role.
+                    </p>
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      disabled={assignProcessing}
+                      onClick={() => {
+                        assignModal.closeModal();
+                        setAssigningRecommendation(null);
+                      }}
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={assignProcessing}
+                      onClick={() => void handleAssignRole()}
+                      className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {assignProcessing && (
+                        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      )}
+                      {assignProcessing ? "Assigning…" : "Confirm Assignment"}
+                    </button>
+                  </div>
+                </div>
+              </Modal>
+            )}
 
             {achievementsModal.isOpen && selectedAchievementsApp && (
               <Modal
@@ -3121,6 +3514,7 @@ function ApplicationActionsDropdown({
   onViewApplication,
   onAction,
   onDownloadApplication,
+  onRecommend,
 }: {
   app: LeadershipApplication;
   isOpen: boolean;
@@ -3133,6 +3527,7 @@ function ApplicationActionsDropdown({
   onViewApplication: (app: LeadershipApplication) => void;
   onAction: (action: "assessment" | "approve" | "unapprove" | "delete", id: number, type: "chapter" | "association") => Promise<void>;
   onDownloadApplication: (type: "chapter" | "association", applicationId: number) => void;
+  onRecommend: (app: LeadershipApplication) => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
@@ -3229,6 +3624,21 @@ function ApplicationActionsDropdown({
               >
                 <DownloadIcon className="h-4 w-4 text-blue-600" />
                 Download Application
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onRecommend(app);
+                  onClose();
+                }}
+                className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+              >
+                <svg className="h-4 w-4 text-purple-500 group-hover:text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <span className="group-hover:text-purple-700 dark:group-hover:text-purple-300">Recommend For</span>
               </button>
 
               {canFinalize && (
@@ -3340,6 +3750,7 @@ function ApplicationsTable({
   onViewAdditionalAchievements,
   onViewApplication,
   onDownloadApplication,
+  onRecommend,
   processingIds,
   sortKey,
   sortDir,
@@ -3352,6 +3763,7 @@ function ApplicationsTable({
   onViewAdditionalAchievements: (app: LeadershipApplication) => void;
   onViewApplication: (app: LeadershipApplication) => void;
   onDownloadApplication: (type: "chapter" | "association", applicationId: number) => void;
+  onRecommend: (app: LeadershipApplication) => void;
   processingIds: Set<number>;
   sortKey: SortKey;
   sortDir: "asc" | "desc";
@@ -3574,6 +3986,7 @@ function ApplicationsTable({
                       onViewApplication={onViewApplication}
                       onAction={onAction}
                       onDownloadApplication={onDownloadApplication}
+                      onRecommend={onRecommend}
                     />
                   );
                 })()}

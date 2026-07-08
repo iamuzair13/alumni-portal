@@ -58,6 +58,8 @@ export const EMAIL_ACTION_TYPE = {
   ALUMNI_TALK_MARK_CONDUCTED: "alumni.talk.mark_conducted",
   ALUMNI_TALK_CANCEL: "alumni.talk.cancel",
   ALUMNI_TALK_PROPOSE_SLOT: "alumni.talk.propose_slot",
+
+  LEADERSHIP_RECOMMENDATION: "leadership.recommendation",
 } as const;
 
 export type EmailActionType = (typeof EMAIL_ACTION_TYPE)[keyof typeof EMAIL_ACTION_TYPE];
@@ -515,6 +517,22 @@ export function generateAdminActionEmail(input: {
     const subject = "Alumni Talk Session - Proposed Slot";
     const body = `<p style="margin: 0; color: #333333; font-size: 16px;">A new slot has been proposed for your alumni talk session. Please check the details below and confirm.</p>${extraBodyHtml}`;
     return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor") };
+  }
+
+  if (input.actionType === EMAIL_ACTION_TYPE.LEADERSHIP_RECOMMENDATION) {
+    const subject = "Recommendation for an Alternative Alumni Leadership Position";
+    const body = `
+      <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for your interest in serving in a leadership role within the UOL Alumni Network and for taking the time to submit your application.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After carefully reviewing your application, we have determined that you do not currently meet the eligibility criteria for the leadership position you initially applied for. However, we were impressed by your profile and would like to recommend you for the position of <strong>{RECOMMENDED_ROLE}</strong> for the <strong>{ORG}</strong>.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">If you are interested in being considered for this role, please indicate your response by selecting one of the following options:</p>
+      <ul style="margin: 12px 0 0 18px; color: #333333; font-size: 16px; line-height: 1.8;">
+        <li><strong>Yes</strong> \u2013 I accept the recommendation for the proposed position.</li>
+        <li><strong>No</strong> \u2013 I do not wish to be considered for the proposed position.</li>
+      </ul>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your willingness to contribute to the UOL Alumni community and look forward to your response.</p>
+      ${extraBodyHtml}
+    `;
+    return { subject, html: createEmailTemplate(subject, greeting, body, "Warm regards,<br>UOL Alumni Relations Team") };
   }
 
   const subject = "Alumni Account Update";
