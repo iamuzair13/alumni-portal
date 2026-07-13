@@ -142,7 +142,7 @@ export default function ManagementSectionA({ data, isLoading, periodLabel }: Pro
     { region: "GB", count: fmtCell(pl?.gb) },
     { region: "Balochistan", count: fmtCell(pl?.balochistan) },
     { region: "Overseas", count: fmtCell(pl?.overseas) },
-    { region: "Other", count: fmtCell(pl?.other) },
+    { region: "NULL", count: fmtCell(pl?.other) },
   ];
   const provLabels = provRows.map((r) => r.region);
   const provData = provRows.map((r) => (typeof r.count === "number" ? r.count : 0));

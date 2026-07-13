@@ -246,6 +246,15 @@ export type JobCategoryRow = {
   ytd: number;
 };
 
+export type JobCompanyRow = {
+  company: string;
+  total: number;
+  uol: number;
+  other: number;
+  quarter: number;
+  ytd: number;
+};
+
 export type FacultyScholarshipRow = {
   faculty: string;
   applied: number;
@@ -270,6 +279,7 @@ export type ManagementDashboardSectionC = {
     quarter: number | null;
     ytd: number | null;
     categoryRows: JobCategoryRow[];
+    companyRows: JobCompanyRow[];
   };
   facultyScholarshipRows?: FacultyScholarshipRow[];
   career: {
@@ -336,14 +346,17 @@ export type ManagementDashboardSectionD = {
     financialServices: number | null;
   };
   facultyDiscountRows?: FacultyDiscountRow[];
-  merchants: Array<{ merchant: string; discount: string; reference: string }>;
+  merchants: Array<{
+    id: number;
+    business_name: string;
+    discount_type: string;
+    start_date: string;
+    end_date: string;
+    discount_pct: number;
+    status: "active" | "expired";
+  }>;
 };
 
-/** Phase-1 seed when no merchants table exists (Excel sample + placeholders). */
-export const MANAGEMENT_DASHBOARD_MERCHANT_SEED: Array<{ merchant: string; discount: string; reference: string }> = [
-  { merchant: "Poet Restaurant", discount: "—", reference: "—" },
-  { merchant: "Junmo Restaurant", discount: "15%", reference: "UOL Alumni Architecture 2021 Ibrar Malik" },
-];
 
 /**
  * Metrics that are not filtered by alumni faculty (org-wide event/job lists or global chapter definitions).

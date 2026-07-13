@@ -279,6 +279,7 @@ export function mapCareerBenefits(data: ManagementDashboardPayload | undefined) 
     quarter: num(jobsData?.quarter),
     ytd: num(jobsData?.ytd),
     categoryRows: jobsData?.categoryRows ?? [],
+    companyRows: jobsData?.companyRows ?? [],
   };
   const scholarshipTotals = {
     kinshipApplied: num(sc?.kinship?.applied),
@@ -476,8 +477,10 @@ export function mapDiscountsMerchants(data: ManagementDashboardPayload | undefin
   const health = num(dc?.healthAndWellness);
   const professional = num(dc?.professionalServices);
   const financial = num(dc?.financialServices);
-  const total = num(dc?.totalApplications);
   const merchantList = data?.sectionD?.merchants ?? [];
+  const activeMerchants = merchantList.filter((m) => m.status !== "expired");
+  const merchantCount = merchantList.length;
+  const total = merchantCount;
   const categories = [
     { key: "dining", label: "Dining", value: dining },
     { key: "retail", label: "Retail", value: retail },
@@ -499,7 +502,8 @@ export function mapDiscountsMerchants(data: ManagementDashboardPayload | undefin
     health,
     professional,
     financial,
-    merchantCount: merchantList.length,
+    merchantCount,
+    activeMerchants: activeMerchants.length,
     categories,
     topCategory,
     facultyRows: data?.sectionD?.facultyDiscountRows ?? [],

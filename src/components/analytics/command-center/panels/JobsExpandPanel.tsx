@@ -22,14 +22,14 @@ export function JobsExpandPanel({
   const career = mapCareerBenefits(data);
   const quarterCol = `This Q · ${career.quarterLabel}`;
 
-  const activeCategoryRows = useMemo(
-    () => career.jobs.categoryRows.filter((row) => row.total > 0),
-    [career.jobs.categoryRows]
+  const activeCompanyRows = useMemo(
+    () => career.jobs.companyRows.filter((row) => row.total > 0),
+    [career.jobs.companyRows]
   );
 
-  const jobCategoryRows = useMemo(() => {
-    const body = activeCategoryRows.map((row) => ({
-      category: row.category,
+  const jobCompanyRows = useMemo(() => {
+    const body = activeCompanyRows.map((row) => ({
+      company: row.company,
       total: row.total.toLocaleString(),
       uol: row.uol.toLocaleString(),
       other: row.other.toLocaleString(),
@@ -38,7 +38,7 @@ export function JobsExpandPanel({
       share: pct(row.total, career.jobs.total),
     }));
     if (!body.length) return body;
-    const sum = activeCategoryRows.reduce(
+    const sum = activeCompanyRows.reduce(
       (acc, row) => ({
         total: acc.total + row.total,
         uol: acc.uol + row.uol,
@@ -51,7 +51,7 @@ export function JobsExpandPanel({
     return [
       ...body,
       {
-        category: "Total",
+        company: "Total",
         total: sum.total.toLocaleString(),
         uol: sum.uol.toLocaleString(),
         other: sum.other.toLocaleString(),
@@ -60,20 +60,20 @@ export function JobsExpandPanel({
         share: career.jobs.total > 0 ? "100%" : "—",
       },
     ];
-  }, [activeCategoryRows, career.jobs.total]);
+  }, [activeCompanyRows, career.jobs.total]);
 
-  const categoryChart = useMemo(
+  const companyChart = useMemo(
     () =>
-      [...activeCategoryRows]
+      [...activeCompanyRows]
         .sort((a, b) => b.total - a.total)
         .slice(0, 10)
         .map((row, i) => ({
-          label: row.category,
-          fullName: row.category,
+          label: row.company,
+          fullName: row.company,
           value: row.total,
           color: i === 0 ? KPI_COLOR_HEX.violet : undefined,
         })),
-    [activeCategoryRows]
+    [activeCompanyRows]
   );
 
   const jobKpis = useMemo(
@@ -129,32 +129,34 @@ export function JobsExpandPanel({
       ) : null}
 
       <div className="flex">
-        <section className="w-full rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
+        <section className="flex w-full flex-col rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
           <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
-            Jobs by category
+            Jobs by Company
           </h4>
-          <AnalyticsDataTable
-            isLoading={isLoading}
-            columns={[
-              { key: "category", label: "Category" },
-              { key: "total", label: "Total", align: "right" },
-              { key: "quarter", label: quarterCol, align: "right" },
-              { key: "ytd", label: "YTD", align: "right" },
-              { key: "share", label: "Share", align: "right" },
-            ]}
-            rows={jobCategoryRows}
-          />
+          <div className="max-h-[475px] overflow-y-auto pr-1">
+            <AnalyticsDataTable
+              isLoading={isLoading}
+              columns={[
+                { key: "company", label: "Company" },
+                { key: "total", label: "Total", align: "right" },
+                { key: "quarter", label: quarterCol, align: "right" },
+                { key: "ytd", label: "YTD", align: "right" },
+                { key: "share", label: "Share", align: "right" },
+              ]}
+              rows={jobCompanyRows}
+            />
+          </div>
         </section>
 
         <section className="w-full rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
           <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
-            Top job categories
+            Top job companies
           </h4>
-          {categoryChart.length === 0 ? (
-            <p className="py-12 text-center text-sm text-gray-400">No categories recorded</p>
+          {companyChart.length === 0 ? (
+            <p className="py-12 text-center text-sm text-gray-400">No companies recorded</p>
           ) : (
             <ChapterVerticalBarChart
-              data={categoryChart}
+              data={companyChart}
               accent="violet"
               height={475}
               valueLabel="Jobs"
@@ -168,7 +170,7 @@ export function JobsExpandPanel({
         <a href="/dashboard?tab=jobs" className="text-violet-600 underline dark:text-violet-400">
           Job board
         </a>
-        . Categories with zero postings are omitted. Jobs are organization-wide.
+        . Companies with zero postings are omitted. Jobs are organization-wide.
       </p>
     </div>
   );

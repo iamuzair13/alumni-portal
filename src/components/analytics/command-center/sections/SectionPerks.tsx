@@ -33,16 +33,10 @@ export function SectionPerks({
   const memberships = mapMembershipsPerks(data);
   const discounts = mapDiscountsMerchants(data);
 
-  const discountSummaryParts = discounts.categories
-    .filter((c) => c.value > 0)
-    .map((c) => `${c.value} ${c.label.toLowerCase()}`);
-  if (discounts.merchantCount > 0) {
-    discountSummaryParts.push(`${discounts.merchantCount} merchants`);
-  }
   const discountSummary =
-    discountSummaryParts.length > 0
-      ? discountSummaryParts.join(" · ")
-      : "No discounts or merchants yet";
+    discounts.merchantCount > 0
+      ? `${discounts.activeMerchants} active · ${discounts.merchantCount - discounts.activeMerchants} expired`
+      : "No merchants added yet";
 
   const drawers: Record<string, { title: string; content: React.ReactNode }> = {
     [CARD_IDS.memberships]: {

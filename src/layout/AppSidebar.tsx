@@ -134,6 +134,8 @@ const navItems: NavItem[] = [
 
       { name: "Newsletters", path: "/setup?tab=newsletters" },
 
+      { name: "Merchants", path: "/setup?tab=merchants" },
+
       { name: "Leadership", path: "/setup?tab=leadership" },
 
       { name: "Scholarships", path: "/setup?tab=scholarships" },

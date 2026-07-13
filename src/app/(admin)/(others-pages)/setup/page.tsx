@@ -25,6 +25,7 @@ import { NewsletterTab } from "@/components/alumni/NewsletterTab";
 import RoleDescriptionSection from "@/components/leadership/RoleDescriptionSection";
 import LeadershipCriteriaManager from "@/components/leadership/LeadershipCriteriaManager";
 import ScholarshipDiscountManager from "@/components/scholarship/ScholarshipDiscountManager";
+import MerchantsComponent from "@/components/setup/MerchantsComponent";
 import type { ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
 
 type LeadershipType = "chapter" | "association";
@@ -281,13 +282,14 @@ function SetupPageContent() {
 
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
-  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership" | "scholarships";
+  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership" | "scholarships" | "merchants";
 
   const TABS: Array<{ key: SetupTabKey; label: string }> = [
     { key: "users", label: "Users" },
     { key: "organizations", label: "Organizations" },
     { key: "chapters", label: "Chapters" },
     { key: "newsletters", label: "Newsletters" },
+    { key: "merchants" as const, label: "Merchants" },
     ...(isSuperAdmin
       ? [
           { key: "leadership" as const, label: "Leadership" },
@@ -988,6 +990,12 @@ function SetupPageContent() {
         {isNewslettersTab && (
           <div className="mt-6">
             <NewsletterTab />
+          </div>
+        )}
+
+        {selected === "merchants" && (
+          <div className="mt-6">
+            <MerchantsComponent />
           </div>
         )}
 

@@ -523,12 +523,9 @@ export function generateAdminActionEmail(input: {
     const subject = "Recommendation for an Alternative Alumni Leadership Position";
     const body = `
       <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for your interest in serving in a leadership role within the UOL Alumni Network and for taking the time to submit your application.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After carefully reviewing your application, we have determined that you do not currently meet the eligibility criteria for the leadership position you initially applied for. However, we were impressed by your profile and would like to recommend you for the position of <strong>{RECOMMENDED_ROLE}</strong> for the <strong>{ORG}</strong>.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">If you are interested in being considered for this role, please indicate your response by selecting one of the following options:</p>
-      <ul style="margin: 12px 0 0 18px; color: #333333; font-size: 16px; line-height: 1.8;">
-        <li><strong>Yes</strong> \u2013 I accept the recommendation for the proposed position.</li>
-        <li><strong>No</strong> \u2013 I do not wish to be considered for the proposed position.</li>
-      </ul>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After carefully reviewing your application, we would like to recommend you for the position of <strong>{RECOMMENDED_ROLE}</strong> for the <strong>{ORG}</strong>.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">If you are interested in being considered for this role, Please acknowledge this email.</p>
+      
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your willingness to contribute to the UOL Alumni community and look forward to your response.</p>
       ${extraBodyHtml}
     `;

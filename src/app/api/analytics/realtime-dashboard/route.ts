@@ -4,7 +4,6 @@ import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { buildAssociationTabMembershipMembersSQL } from "@/lib/association-tab-filters";
 import {
-  MANAGEMENT_DASHBOARD_MERCHANT_SEED,
   MANAGEMENT_DASHBOARD_SCOPE_NOTES,
   type ManagementDashboardPayload,
 } from "@/lib/analytics/management-dashboard";
@@ -328,6 +327,27 @@ export async function GET(req: Request) {
       FROM public.tbljobs j
       GROUP BY 1
       ORDER BY total DESC, category ASC
+    `;
+
+    const jobsCompanyRows = await sql/* sql */`
+      SELECT
+        COALESCE(NULLIF(TRIM(j.company), ''), 'Unlisted') AS company,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(j.company,'')) LIKE '%university of lahore%'
+            OR LOWER(COALESCE(j.company,'')) LIKE '%uol%'
+        )::int AS uol,
+        COUNT(*) FILTER (
+          WHERE NOT (
+            LOWER(COALESCE(j.company,'')) LIKE '%university of lahore%'
+            OR LOWER(COALESCE(j.company,'')) LIKE '%uol%'
+          )
+        )::int AS other,
+        COUNT(*) FILTER (WHERE j.created_at >= ${qStart}::timestamptz${qEndJob})::int AS quarter,
+        COUNT(*) FILTER (WHERE j.created_at >= ${yStart}::timestamptz${qEndJob})::int AS ytd
+      FROM public.tbljobs j
+      GROUP BY 1
+      ORDER BY total DESC, company ASC
     `;
 
     const scholarshipsRows = await sql/* sql */`
@@ -2177,6 +2197,26 @@ export async function GET(req: Request) {
       ${scholarshipPeriodCond}
     `;
 
+    const merchantsRaw = await sql/* sql */`
+      SELECT id, business_name, discount_type,
+             TO_CHAR(start_date, 'YYYY-MM-DD') AS start_date,
+             TO_CHAR(end_date,   'YYYY-MM-DD') AS end_date,
+             discount_pct::float AS discount_pct,
+             CASE WHEN end_date < CURRENT_DATE THEN 'expired' ELSE status END AS status
+      FROM public.merchants
+      ORDER BY status ASC, business_name ASC
+    `.catch(() => []);
+
+    const merchantsRows = (merchantsRaw as Record<string, unknown>[]).map((r) => ({
+      id: Number(r.id),
+      business_name: String(r.business_name ?? ""),
+      discount_type: String(r.discount_type ?? ""),
+      start_date: String(r.start_date ?? ""),
+      end_date: String(r.end_date ?? ""),
+      discount_pct: Number(r.discount_pct ?? 0),
+      status: (String(r.status ?? "active") === "expired" ? "expired" : "active") as "active" | "expired",
+    }));
+
     const kpi = (kpiRows[0] ?? {}) as { total_alumni?: number; active_alumni?: number };
     const ah = (alumniHeadlineRows[0] ?? {}) as Record<string, number | undefined>;
     const ev = (eventRows[0] ?? {}) as { total?: number; quarter_count?: number; ytd_count?: number; selected_range_count?: number; period_count?: number };
@@ -2620,6 +2660,24 @@ export async function GET(req: Request) {
               ytd: Number(row.ytd ?? 0),
             };
           }),
+          companyRows: jobsCompanyRows.map((r) => {
+            const row = r as {
+              company: string;
+              total: number;
+              uol: number;
+              other: number;
+              quarter: number;
+              ytd: number;
+            };
+            return {
+              company: row.company,
+              total: Number(row.total ?? 0),
+              uol: Number(row.uol ?? 0),
+              other: Number(row.other ?? 0),
+              quarter: Number(row.quarter ?? 0),
+              ytd: Number(row.ytd ?? 0),
+            };
+          }),
         },
         facultyScholarshipRows: facultyScholarshipRows.map((r) => {
           const row = r as {
@@ -2747,7 +2805,7 @@ export async function GET(req: Request) {
             financial: Number(row.financial ?? 0),
           };
         }),
-        merchants: [...MANAGEMENT_DASHBOARD_MERCHANT_SEED],
+        merchants: merchantsRows,
       },
     };
 

@@ -466,10 +466,10 @@ export function giveBackChart(data: ManagementDashboardPayload | undefined): Cha
 export function merchantPartnershipsChart(data: ManagementDashboardPayload | undefined): ChartGroupMeta {
   const merchants = data?.sectionD?.merchants ?? [];
   const chartSeries: ChartSeriesPoint[] = merchants.map((m, i) => {
-    const pctMatch = m.discount?.match(/(\d+(?:\.\d+)?)/);
-    const value = pctMatch ? parseFloat(pctMatch[1]) : 1;
-    const label = m.merchant.length > 28 ? `${m.merchant.slice(0, 27)}…` : m.merchant;
-    return { label, value, color: colorAt(i), meta: { discount: m.discount, reference: m.reference } };
+    const value = Number(m.discount_pct) || 1;
+    const name = m.business_name ?? "";
+    const label = name.length > 28 ? `${name.slice(0, 27)}…` : name;
+    return { label, value, color: colorAt(i), meta: { discount_pct: m.discount_pct, discount_type: m.discount_type } };
   });
   const top = topPoint(chartSeries);
   return {

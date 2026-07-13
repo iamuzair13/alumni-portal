@@ -32,14 +32,6 @@ function pct(n: number, d: number): string {
   return `${((n / d) * 100).toFixed(1)}%`;
 }
 
-function hasMerchantData(m: { merchant: string; discount: string; reference: string }): boolean {
-  const discount = String(m.discount ?? "").trim();
-  const reference = String(m.reference ?? "").trim();
-  return (
-    Boolean(String(m.merchant ?? "").trim()) &&
-    ((discount.length > 0 && discount !== "—") || (reference.length > 0 && reference !== "—"))
-  );
-}
 
 export function DiscountsMerchantsExpandPanel({
   data,
@@ -176,39 +168,58 @@ export function DiscountsMerchantsExpandPanel({
     [activeFacultyRows]
   );
 
+  function formatDate(iso: string): string {
+    if (!iso) return "—";
+    try {
+      return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return iso;
+    }
+  }
+
   const merchantRows = useMemo(
     () =>
-      discounts.merchants.filter(hasMerchantData).map((m) => ({
-        merchant: m.merchant,
-        discount: m.discount || "—",
-        reference: m.reference || "—",
+      discounts.merchants.map((m) => ({
+        business_name: m.business_name,
+        discount_type: m.discount_type || "—",
+        start_date: formatDate(m.start_date),
+        end_date: formatDate(m.end_date),
+        discount_pct: `${m.discount_pct}%`,
+        status: m.status === "active" ? "Active" : "Expired",
       })),
     [discounts.merchants]
   );
+
+  const activeMerchantCount = discounts.merchants.filter((m) => m.status === "active").length;
+  const expiredMerchantCount = discounts.merchants.filter((m) => m.status === "expired").length;
 
   const kpis = useMemo(
     () =>
       [
         {
-          label: "Total discounts",
-          value: discounts.total,
-          sub: activeCategories.length > 0 ? `Top: ${discounts.topCategory.label}` : "No applications",
+          label: "Total merchants",
+          value: discounts.merchantCount,
+          sub: discounts.merchantCount > 0 ? "Business partners" : "None added yet",
           color: KPI_COLOR_HEX.violet,
         },
-        ...CATEGORY_META.map((meta) => ({
-          label: meta.kpiLabel,
-          value: discounts[meta.key as keyof typeof discounts] as number,
-          sub: pct(discounts[meta.key as keyof typeof discounts] as number, discounts.total),
-          color: meta.fill,
-        })),
         {
-          label: "Partner merchants",
-          value: merchantRows.length,
-          sub: "Listed partners",
+          label: "Active",
+          value: activeMerchantCount,
+          sub: pct(activeMerchantCount, discounts.merchantCount),
           color: KPI_COLOR_HEX.emerald,
         },
+        {
+          label: "Expired",
+          value: expiredMerchantCount,
+          sub: pct(expiredMerchantCount, discounts.merchantCount),
+          color: KPI_COLOR_HEX.rose,
+        },
       ].filter((k) => k.value > 0),
-    [discounts, activeCategories.length, merchantRows.length]
+    [discounts.merchantCount, activeMerchantCount, expiredMerchantCount]
   );
 
   return (
@@ -339,14 +350,17 @@ export function DiscountsMerchantsExpandPanel({
       {merchantRows.length > 0 ? (
         <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
           <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-            Partner merchants
+            Business Partners & Merchants
           </h3>
           <AnalyticsDataTable
             isLoading={isLoading}
             columns={[
-              { key: "merchant", label: "Merchant" },
-              { key: "discount", label: "Discount", align: "right" },
-              { key: "reference", label: "Reference" },
+              { key: "business_name", label: "Business Name" },
+              { key: "discount_type", label: "Discount Type" },
+              { key: "start_date", label: "Start Date", align: "right" },
+              { key: "end_date", label: "End Date", align: "right" },
+              { key: "discount_pct", label: "Discount %", align: "right" },
+              { key: "status", label: "Status", align: "right" },
             ]}
             rows={merchantRows}
           />
