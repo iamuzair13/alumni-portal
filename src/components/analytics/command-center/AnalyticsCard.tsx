@@ -111,7 +111,7 @@ export function AnalyticsCard({
               <h3 className="text-sm font-semibold leading-5 text-slate-900 dark:text-white">{title}</h3>
             </div>
           </div>
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2 ">
             <span className="inline-flex shrink-0 whitespace-nowrap rounded-2xl bg-slate-50 px-3 py-1.5 text-3xl font-bold tracking-tight text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white">
               <ValueDisplay primaryValue={primaryValue} valueClass="" emptyIdle={emptyIdle} />
             </span>

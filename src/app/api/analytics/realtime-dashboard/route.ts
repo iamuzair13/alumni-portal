@@ -1292,6 +1292,36 @@ export async function GET(req: Request) {
       ${alumniPeriodCond}
     `;
 
+    // Exact distinct province values (no "Other" grouping) for the location card.
+    const provinceDistinctRows = await sql/* sql */`
+      SELECT
+        TRIM(COALESCE(a.province, '')) AS region,
+        COUNT(*)::int AS count
+      FROM public.tbl_alumni a
+      WHERE 1=1
+        ${accessFilterCondition}
+        ${facultyFilterCondition}
+        ${alumniPeriodCond}
+        AND TRIM(COALESCE(a.province, '')) <> ''
+      GROUP BY TRIM(COALESCE(a.province, ''))
+      ORDER BY count DESC
+    `;
+
+    const verifiedProvinceDistinctRows = await sql/* sql */`
+      SELECT
+        TRIM(COALESCE(a.province, '')) AS region,
+        COUNT(*)::int AS count
+      FROM public.tbl_alumni a
+      WHERE 1=1
+        ${accessFilterCondition}
+        ${facultyFilterCondition}
+        ${alumniPeriodCond}
+        AND TRIM(COALESCE(a.province, '')) <> ''
+        AND LOWER(COALESCE(a.verify, '')) = 'true'
+      GROUP BY TRIM(COALESCE(a.province, ''))
+      ORDER BY count DESC
+    `;
+
     const uaaFacultyResolvedCond =
       selectedFacultyId && Number.isFinite(selectedFacultyId)
         ? sql` AND COALESCE(uaa.faculty_id, fby.id) = ${selectedFacultyId}`
@@ -2412,6 +2442,14 @@ export async function GET(req: Request) {
           overseas: pr.overseas ?? null,
           other: provinceOther > 0 ? provinceOther : null,
         },
+        provinceLocationRows: (provinceDistinctRows as unknown as Array<{ region: string; count: number | string | bigint }>).map((row) => ({
+          region: row.region,
+          count: Number(row.count || 0),
+        })),
+        verifiedProvinceLocationRows: (verifiedProvinceDistinctRows as unknown as Array<{ region: string; count: number | string | bigint }>).map((row) => ({
+          region: row.region,
+          count: Number(row.count || 0),
+        })),
         verifiedTransitionVelocity: {
           beforeGraduation: tr.verified_before_graduation ?? null,
           immediateAfterGraduation: tr.verified_immediate ?? null,

@@ -48,6 +48,8 @@ export function OccupationCardChart({
           const heightPct = bar.value === 0 ? 0 : Math.max(8, (bar.value / maxBar) * 100);
           const isLeader = topBar?.label === bar.label && bar.value > 0;
           const stagger = i * (CHART.progress.staggerMs / 1000);
+          const percentage = total > 0 ? Math.round((bar.value / total) * 100) : 0;
+          const fitsInside = heightPct >= 22;
 
           return (
             <div
@@ -55,7 +57,7 @@ export function OccupationCardChart({
               className={`flex min-h-0 flex-col items-center gap-0.5 rounded-md px-0.5 pt-1 ${
                 isLeader ? "bg-emerald-50/60 dark:bg-emerald-500/[0.06]" : ""
               }`}
-              title={`${bar.label}: ${bar.value.toLocaleString()}`}
+              title={`${bar.label}: ${bar.value.toLocaleString()} (${percentage}%)`}
             >
               <span className="text-[10px] font-semibold tabular-nums text-slate-700 dark:text-slate-200">
                 {bar.value > 0 ? bar.value.toLocaleString() : "0"}
@@ -63,6 +65,11 @@ export function OccupationCardChart({
 
               <div className="flex w-full min-h-0 flex-1 items-end">
                 <div className="relative h-full w-full overflow-hidden rounded-t-md bg-slate-100/90 dark:bg-slate-800/70">
+                  {!fitsInside && percentage > 0 ? (
+                    <span className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 text-[9px] font-bold text-slate-700 dark:text-slate-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
+                      {percentage}%
+                    </span>
+                  ) : null}
                   <motion.div
                     initial={{ height: reduced ? `${heightPct}%` : 0 }}
                     animate={{ height: `${heightPct}%` }}
@@ -71,11 +78,17 @@ export function OccupationCardChart({
                       duration: reduced ? 0 : CHART.progress.duration,
                       ease: [0.16, 1, 0.3, 1],
                     }}
-                    className="absolute bottom-0 left-0 right-0 rounded-t-md"
+                    className="absolute bottom-0 left-0 right-0 flex items-start justify-center rounded-t-md pt-1"
                     style={{
                       background: `linear-gradient(180deg, ${bar.color}, ${bar.color}bb)`,
                     }}
-                  />
+                  >
+                    {fitsInside && percentage > 0 ? (
+                      <span className="pointer-events-none text-[9px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                        {percentage}%
+                      </span>
+                    ) : null}
+                  </motion.div>
                 </div>
               </div>
 

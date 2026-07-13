@@ -29,6 +29,8 @@ export function VelocityCardChart({
           const heightPct = bar.count === 0 ? 0 : Math.max(10, (bar.count / maxBar) * 100);
           const isLeader = topRow?.label === bar.label && bar.count > 0;
           const stagger = i * (CHART.progress.staggerMs / 1000);
+          const percentage = total > 0 ? Math.round((bar.count / total) * 100) : 0;
+          const fitsInside = heightPct >= 22;
 
           return (
             <div
@@ -38,7 +40,7 @@ export function VelocityCardChart({
                   ? "bg-gradient-to-b from-emerald-50/80 to-transparent dark:from-emerald-500/[0.08] dark:to-transparent"
                   : ""
               }`}
-              title={`${bar.label}: ${bar.count.toLocaleString()}`}
+              title={`${bar.label}: ${bar.count.toLocaleString()} (${percentage}%)`}
             >
               <span
                 className={`mb-0.5 text-[10px] font-semibold tabular-nums leading-none ${
@@ -53,20 +55,33 @@ export function VelocityCardChart({
               <div className="flex w-full min-h-0 flex-1 items-end">
                 <div className="relative h-full w-full overflow-hidden rounded-md bg-slate-100/80 ring-1 ring-inset ring-slate-200/60 dark:bg-slate-800/50 dark:ring-slate-700/50">
                   {bar.count > 0 ? (
-                    <motion.div
-                      initial={{ height: reduced ? `${heightPct}%` : 0 }}
-                      animate={{ height: `${heightPct}%` }}
-                      transition={{
-                        delay: reduced ? 0 : stagger,
-                        duration: reduced ? 0 : CHART.progress.duration,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                      className="absolute bottom-0 left-0 right-0 rounded-md"
-                      style={{
-                        background: `linear-gradient(180deg, ${bar.color}ee, ${bar.color}99)`,
-                        boxShadow: isLeader ? `0 0 12px ${bar.color}40` : undefined,
-                      }}
-                    />
+                    <>
+                      {!fitsInside && percentage > 0 ? (
+                        <span className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 text-[9px] font-bold text-slate-700 dark:text-slate-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
+                          {percentage}%
+                        </span>
+                      ) : null}
+                      <motion.div
+                        initial={{ height: reduced ? `${heightPct}%` : 0 }}
+                        animate={{ height: `${heightPct}%` }}
+                        transition={{
+                          delay: reduced ? 0 : stagger,
+                          duration: reduced ? 0 : CHART.progress.duration,
+                          ease: [0.16, 1, 0.3, 1],
+                        }}
+                        className="absolute bottom-0 left-0 right-0 flex items-start justify-center rounded-md pt-1"
+                        style={{
+                          background: `linear-gradient(180deg, ${bar.color}ee, ${bar.color}99)`,
+                          boxShadow: isLeader ? `0 0 12px ${bar.color}40` : undefined,
+                        }}
+                      >
+                        {fitsInside && percentage > 0 ? (
+                          <span className="pointer-events-none text-[9px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                            {percentage}%
+                          </span>
+                        ) : null}
+                      </motion.div>
+                    </>
                   ) : (
                     <div className="absolute bottom-0 left-1/2 h-0.5 w-1.5 -translate-x-1/2 rounded-full bg-slate-200 dark:bg-slate-700" />
                   )}

@@ -151,11 +151,10 @@ export function mapTransitionVelocity(
   const earlyCount = transitionVelocityEarlyCount(tv);
   const rows = [
     { label: "Before grad", short: "Pre", count: buckets.beforeGraduation, color: KPI_COLOR_HEX.emerald },
-    { label: "After Grad", short: "AG", count: buckets.immediateAfterGraduation, color: KPI_COLOR_HEX.sky },
-    { label: "≤3 mo", short: "3mo", count: buckets.within3Months, color: KPI_COLOR_HEX.violet },
-    { label: "≤6 mo", short: "6mo", count: buckets.within6Months, color: KPI_COLOR_HEX.amber },
-    { label: ">6 mo", short: "6m+", count: buckets.after6Months, color: KPI_COLOR_HEX.orange },
-    { label: "Other", short: "Oth", count: buckets.unknown, color: KPI_COLOR_HEX.slate },
+    { label: "Grad", short: "Grad", count: buckets.immediateAfterGraduation, color: KPI_COLOR_HEX.sky },
+    { label: "≤3 mo", short: "3 Months", count: buckets.within3Months, color: KPI_COLOR_HEX.violet },
+    { label: "≤6 mo", short: "6 Months", count: buckets.within6Months, color: KPI_COLOR_HEX.amber },
+    { label: ">6 mo", short: "6+ Months", count: buckets.after6Months, color: KPI_COLOR_HEX.orange },
   ];
   const timingBars = rows.map(({ label, count, color }) => ({ label, value: count, color }));
 
@@ -172,27 +171,64 @@ export function mapTransitionVelocity(
   };
 }
 
+function titleCaseRegion(key: string): string {
+  if (!key) return "Unknown";
+  // Handle known acronyms and bucket names
+  const special: Record<string, string> = {
+    kpk: "KPK",
+    ajk: "AJK",
+    gb: "GB",
+    other: "Other",
+    others: "Others",
+    overseas: "Overseas",
+  };
+  const lower = key.trim().toLowerCase();
+  if (special[lower]) return special[lower];
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
 export function mapLocation(
   data: ManagementDashboardPayload | undefined,
   options?: VerifiedAlumniMapOptions
 ) {
   const chart = provinceLocationChart(data, options);
+
+  // Prefer exact distinct province rows from the backend so the UI shows real
+  // database values instead of an aggregated "Other" bucket.
+  const exactRows = options?.verifiedOnly
+    ? data?.sectionA?.verifiedProvinceLocationRows ?? data?.sectionA?.provinceLocationRows
+    : data?.sectionA?.provinceLocationRows;
+
+  if (exactRows && exactRows.length > 0) {
+    return {
+      chartSeries: chart.chartSeries,
+      rows: exactRows.map((r) => ({
+        region: titleCaseRegion(r.region),
+        count: num(r.count),
+      })),
+    };
+  }
+
+  // Fallback for older payloads that don't yet include provinceLocationRows.
   const pl = options?.verifiedOnly
     ? data?.sectionA?.verifiedProvinceLocation ?? data?.sectionA?.provinceLocation
     : data?.sectionA?.provinceLocation;
+
+  const rows = pl
+    ? Object.entries(pl)
+        .filter(([, count]) => count != null)
+        .map(([key, count]) => ({
+          region: titleCaseRegion(key),
+          count: num(count),
+        }))
+    : [];
+
   return {
     chartSeries: chart.chartSeries,
-    rows: [
-      { region: "Punjab", count: num(pl?.punjab) },
-      { region: "Islamabad", count: num(pl?.islamabad) },
-      { region: "KPK", count: num(pl?.kpk) },
-      { region: "Sindh", count: num(pl?.sindh) },
-      { region: "AJK", count: num(pl?.ajk) },
-      { region: "GB", count: num(pl?.gb) },
-      { region: "Balochistan", count: num(pl?.balochistan) },
-      { region: "Overseas", count: num(pl?.overseas) },
-      { region: "Other", count: num(pl?.other) },
-    ],
+    rows,
   };
 }
 

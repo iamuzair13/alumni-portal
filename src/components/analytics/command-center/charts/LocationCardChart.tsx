@@ -2,22 +2,25 @@
 
 import React from "react";
 import { motion } from "motion/react";
-import { KPI_COLOR_HEX } from "@/components/analytics/v2/charts/chartColors";
-import { CHART } from "../animation/config";
 import { useReducedMotion } from "../animation/useReducedMotion";
+import { CHART } from "../animation/config";
 import { ChartEmpty } from "./ChartEmpty";
+import { colorAt } from "@/components/analytics/v2/charts/chartColors";
 
-const REGION_META = [
-  { region: "Punjab", short: "Pb", color: KPI_COLOR_HEX.emerald },
-  { region: "Islamabad", short: "Isb", color: "#0d9488" },
-  { region: "KPK", short: "KPK", color: KPI_COLOR_HEX.sky },
-  { region: "Sindh", short: "Sd", color: KPI_COLOR_HEX.indigo },
-  { region: "AJK", short: "AJK", color: KPI_COLOR_HEX.violet },
-  { region: "GB", short: "GB", color: KPI_COLOR_HEX.slate },
-  { region: "Balochistan", short: "Bl", color: KPI_COLOR_HEX.amber },
-  { region: "Overseas", short: "Intl", color: KPI_COLOR_HEX.blue },
-  { region: "Other", short: "Oth", color: "#94a3b8" },
-] as const;
+// Stable colors for the Pakistan provinces / buckets we already know.
+// Any new region returned by the data will fall back to the shared palette.
+const REGION_COLOR_MAP: Record<string, string> = {
+  Punjab: "#10b981",
+  Islamabad: "#14b8a6",
+  KPK: "#0ea5e9",
+  Sindh: "#6366f1",
+  AJK: "#8b5cf6",
+  GB: "#64748b",
+  Balochistan: "#f59e0b",
+  Overseas: "#3b82f6",
+  Other: "#f59e0b",
+  Others: "#f59e0b",
+};
 
 function RegionBarRow({
   bar,
@@ -25,35 +28,31 @@ function RegionBarRow({
   isLeader,
   index,
   reduced,
+  total,
 }: {
-  bar: { label: string; short: string; count: number; color: string };
+  bar: { label: string; count: number; color: string };
   maxBar: number;
   isLeader: boolean;
   index: number;
   reduced: boolean;
+  total: number;
 }) {
   const width = bar.count === 0 ? 0 : Math.max(6, (bar.count / maxBar) * 100);
   const stagger = index * (CHART.progress.staggerMs / 1000);
+  const percentage = total > 0 ? Math.round((bar.count / total) * 100) : 0;
 
   return (
     <div
-      className={`grid h-full min-h-0 grid-cols-[1.5rem_minmax(0,1fr)_2rem] items-center gap-1 rounded-md px-0.5 ${
-        isLeader && bar.count > 0 ? "bg-emerald-50/60 dark:bg-emerald-500/[0.06]" : ""
+      className={`group relative flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors ${
+        isLeader && bar.count > 0
+          ? "bg-emerald-50/80 dark:bg-emerald-500/[0.08]"
+          : "hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
       }`}
-      title={`${bar.label}: ${bar.count.toLocaleString()}`}
+      title={`${bar.label}: ${bar.count.toLocaleString()} (${percentage}%)`}
     >
-      <span
-        className="flex h-5 w-6 shrink-0 items-center justify-center rounded text-[10px] font-bold leading-none"
-        style={{
-          color: bar.color,
-          background: `${bar.color}18`,
-          boxShadow: `inset 0 0 0 1px ${bar.color}30`,
-        }}
-      >
-        {bar.short}
-      </span>
-
-      <div className="relative h-1.5 min-w-0 overflow-hidden rounded-full bg-slate-100/90 dark:bg-slate-800/70">
+      {/* Bar track */}
+      <div className="relative flex-1 min-w-0 h-8 rounded-lg overflow-hidden bg-slate-100/90 dark:bg-slate-800/70">
+        {/* Animated bar fill */}
         <motion.div
           initial={{ width: reduced ? `${width}%` : 0 }}
           animate={{ width: `${width}%` }}
@@ -62,15 +61,48 @@ function RegionBarRow({
             duration: reduced ? 0 : CHART.progress.duration,
             ease: [0.16, 1, 0.3, 1],
           }}
-          className="absolute inset-y-0 left-0 rounded-full"
+          className="absolute inset-y-0 left-0 rounded-lg flex items-center"
           style={{
-            background: `linear-gradient(90deg, ${bar.color}, ${bar.color}aa)`,
+            background: `linear-gradient(135deg, ${bar.color}, ${bar.color}dd)`,
+            boxShadow: `0 2px 8px ${bar.color}40`,
           }}
-        />
+        >
+          {/* Label + count inside the bar */}
+          {width > 25 && (
+            <motion.span
+              initial={{ opacity: reduced ? 1 : 0, x: reduced ? 0 : -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                delay: reduced ? 0 : stagger + 0.2,
+                duration: 0.4,
+                ease: "easeOut",
+              }}
+              className="ml-2.5 text-[11px] font-semibold text-white whitespace-nowrap drop-shadow-sm"
+            >
+              {bar.label} ({bar.count.toLocaleString()})
+            </motion.span>
+          )}
+        </motion.div>
+
+        {/* Label outside bar when bar is too short */}
+        {width <= 25 && bar.count > 0 && (
+          <motion.span
+            initial={{ opacity: reduced ? 1 : 0 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              delay: reduced ? 0 : stagger + 0.3,
+              duration: 0.4,
+            }}
+            className="absolute left-0 top-1/2 -translate-y-1/2 ml-2 text-[11px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap"
+          >
+            {bar.label} ({bar.count.toLocaleString()})
+          </motion.span>
+        )}
       </div>
 
-      <span className="truncate text-right text-[10px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
-        {bar.count.toLocaleString()}
+      {/* Percentage */}
+      <span className="shrink-0 w-10 text-right text-[12px] font-bold tabular-nums text-slate-700 dark:text-slate-300">
+        {percentage}%
       </span>
     </div>
   );
@@ -87,11 +119,12 @@ export function LocationCardChart({
 }) {
   const reduced = useReducedMotion();
 
-  const allBars = REGION_META.map(({ region, short, color }) => ({
-    label: region,
-    short,
-    count: rows.find((r) => r.region === region)?.count ?? 0,
-    color,
+  // Build bars from the actual distinct regions in the data.
+  // Stable colors are used for known regions; anything new falls back to the palette.
+  const allBars = rows.map((r, i) => ({
+    label: r.region,
+    count: r.count,
+    color: REGION_COLOR_MAP[r.region] ?? colorAt(i),
   }));
 
   const topRegion = [...allBars].sort((a, b) => b.count - a.count)[0];
@@ -102,16 +135,10 @@ export function LocationCardChart({
   }
 
   const maxBar = Math.max(...bars.map((b) => b.count), 1);
-  const topPct = total > 0 && topRegion ? Math.round((topRegion.count / total) * 100) : 0;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-1">
-    
-
-      <div
-        className="grid min-h-0 flex-1 gap-px"
-        style={{ gridTemplateRows: `repeat(${bars.length}, minmax(0, 1fr))` }}
-      >
+    <div className="flex h-full min-h-0 w-full flex-col gap-1 py-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-1">
         {bars.map((bar, i) => (
           <RegionBarRow
             key={bar.label}
@@ -120,11 +147,10 @@ export function LocationCardChart({
             isLeader={topRegion?.label === bar.label && bar.count > 0}
             index={i}
             reduced={reduced}
+            total={total}
           />
         ))}
       </div>
-
-      
     </div>
   );
 }

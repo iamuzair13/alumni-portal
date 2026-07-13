@@ -21,19 +21,22 @@ function TierBarRow({
   isLeader,
   index,
   reduced,
+  total,
 }: {
   bar: { label: string; value: number; color: string };
   maxBar: number;
   isLeader: boolean;
   index: number;
   reduced: boolean;
+  total: number;
 }) {
   const width = bar.value === 0 ? 0 : Math.max(6, (bar.value / maxBar) * 100);
   const stagger = index * (CHART.progress.staggerMs / 1000);
+  const pct = total > 0 ? (bar.value / total) * 100 : 0;
 
   return (
     <div
-      className={`grid h-full min-h-0 grid-cols-[1.5rem_minmax(0,1fr)_1.75rem] items-center gap-1 rounded-md px-0.5 ${
+      className={`grid h-full min-h-0 grid-cols-[1.5rem_minmax(0,1fr)_1.75rem_2rem] items-center gap-1 rounded-md px-0.5 ${
         isLeader && bar.value > 0 ? "bg-emerald-50/60 dark:bg-emerald-500/[0.06]" : ""
       }`}
     >
@@ -66,6 +69,9 @@ function TierBarRow({
 
       <span className="truncate text-right text-[10px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
         {bar.value.toLocaleString()}
+      </span>
+      <span className="truncate text-right text-[10px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+        {total > 0 ? `${pct.toFixed(1)}%` : "—"}
       </span>
     </div>
   );
@@ -107,6 +113,7 @@ export function CategoriesCardChart({
             isLeader={topTier?.label === bar.label}
             index={i}
             reduced={reduced}
+            total={total}
           />
         ))}
       </div>

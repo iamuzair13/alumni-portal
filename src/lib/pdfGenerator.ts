@@ -1113,7 +1113,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       if (data.facilityType === "pool") {
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Membership Type", data.membershipType, "Pool Location", data.poolLocation);
-        form.drawFieldPair("Preferred Session", data.preferredTiming, "Valid From", data.membershipStartDate);
+        form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
         form.drawFullRow("Valid To", data.validTill);
 
         form.drawSection("C", "Swimming Information");
@@ -1124,12 +1124,13 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFullRow("Allergies", data.allergies);
         
         form.drawSection("E", "Emergency Contact");
-        form.drawFieldPair("Name", data.emergencyContactName, "Phone", data.emergencyContactNumber);
+        form.drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
+        form.drawFullRow("Contact Number", data.emergencyContactNumber);
 
         form.drawSection("F", "Document Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
 
-        form.drawSection("g", "Declaration");
+        form.drawSection("G", "Declaration");
         form.drawFullRow("Declaration", data.declarationText);
       } else if (data.facilityType === "cricket") {
         form.drawSection("c", "Cricket Membership Details");
@@ -1151,7 +1152,8 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Applying For", data.applyingFor, "Discount Type", data.discountType);
         form.drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
-        form.drawFullRow("Preferred Timing", data.preferredTiming);
+        form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
+        form.drawFullRow("Valid To", data.validTill);
 
         form.drawSection("C", "Medical & Fitness Information");
         form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
@@ -1163,6 +1165,9 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
 
         form.drawSection("E", "Documents Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
+      
+        form.drawSection("G", "Declaration");
+        form.drawFullRow("Declaration", data.declarationText);
       }
 
       form.drawMembershipSignatures("Reviewed By (ARO)", "Approved By (Competent Authority)");

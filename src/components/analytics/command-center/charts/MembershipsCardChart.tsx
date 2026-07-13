@@ -40,66 +40,54 @@ export function MembershipsCardChart({
   const totalApproved = gymApproved + poolApproved + qalanderApproved;
   const totalApplied  = gymApplied  + poolApplied  + qalanderApplied;
 
-  /* ── Empty state: pending applications but nothing approved ── */
-  if (totalApproved === 0) {
-    const pendingRows = rows.filter((r) => r.applied > 0);
+  /* ── Empty state: nothing applied at all ── */
+  if (totalApplied === 0) {
     return (
       <div className="flex h-full w-full flex-col justify-center gap-2">
         <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-          No memberships approved yet
+          No applications received yet
         </p>
-        {pendingRows.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {pendingRows.map((r) => (
-              <span
-                key={r.label}
-                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-              >
-                {r.label}:
-                <span className="font-bold text-slate-800 dark:text-white">{r.applied}</span>
-                <span className="font-normal text-slate-400">pending</span>
-              </span>
-            ))}
-          </div>
-        )}
-        {totalApplied === 0 && (
-          <p className="text-[10px] text-slate-300 dark:text-slate-600">No applications received yet</p>
-        )}
       </div>
     );
   }
 
-  /* ── Data state: progress bars ── */
-  const maxApplied = Math.max(...rows.map((r) => r.applied), 1);
-
+  /* ── Data state: progress bars (approved / applied) ── */
   return (
     <div className="flex h-full w-full flex-col justify-center gap-2.5">
-      {rows
-        .filter((r) => r.applied > 0)
-        .map((row) => {
-          const approvedPct = row.applied > 0 ? (row.approved / row.applied) * 100 : 0;
-          return (
-            <div key={row.label} className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                  {row.label}
-                </span>
-                <span className="text-[11px] font-bold tabular-nums text-slate-900 dark:text-white">
-                  {row.approved}
+      {totalApproved === 0 && (
+        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+          No memberships approved yet
+        </p>
+      )}
+      {rows.map((row) => {
+        const hasApplied = row.applied > 0;
+        const approvedPct = hasApplied ? (row.approved / row.applied) * 100 : 0;
+        return (
+          <div key={row.label} className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                {row.label}
+              </span>
+              
+
+              <span className="text-[11px] font-bold tabular-nums text-slate-900 dark:text-white">
+                {row.approved}
+                {hasApplied && (
                   <span className="font-normal text-slate-400"> / {row.applied}</span>
-                </span>
-              </div>
-              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${approvedPct}%` }}
-                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r ${row.gradient}`}
-                />
-              </div>
+                )}
+              </span>
             </div>
-          );
-        })}
+            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${approvedPct}%` }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r ${row.gradient}`}
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

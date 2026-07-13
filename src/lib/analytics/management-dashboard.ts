@@ -131,10 +131,13 @@ export type ManagementDashboardSectionA = {
     overseas: number | null;
     other: number | null;
   };
+  /** Exact distinct province values from the database (replaces the aggregated "Other" bucket in the UI) */
+  provinceLocationRows: Array<{ region: string; count: number }>;
   /** Verified alumni only — same shape as above fields */
   verifiedTransitionVelocity?: ManagementDashboardSectionA["transitionVelocity"];
   verifiedCurrentOccupation?: ManagementDashboardSectionA["currentOccupation"];
   verifiedProvinceLocation?: ManagementDashboardSectionA["provinceLocation"];
+  verifiedProvinceLocationRows?: ManagementDashboardSectionA["provinceLocationRows"];
 };
 
 export type ManagementDashboardCardsStatus = {

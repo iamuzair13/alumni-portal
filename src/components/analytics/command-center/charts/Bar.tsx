@@ -15,17 +15,92 @@ function formatBarLabel(value: unknown): string {
   return typeof value === "number" && Number.isFinite(value) ? value.toLocaleString() : "";
 }
 
+type PctLabelProps = {
+  x?: number | string;
+  y?: number | string;
+  width?: number | string;
+  height?: number | string;
+  value?: number | string;
+};
+
+function PctLabel({
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  value,
+  isHorizontal,
+}: PctLabelProps & { isHorizontal: boolean }) {
+  const barX = Number(x);
+  const barY = Number(y);
+  const barW = Number(width);
+  const barH = Number(height);
+  const pct = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(barX) || !Number.isFinite(barY) || !Number.isFinite(barW) || !Number.isFinite(barH)) {
+    return null;
+  }
+
+  const label = Number.isFinite(pct) ? `${Math.round(pct)}%` : "";
+
+  // Common text styling for visibility
+  const halo = {
+    stroke: "#ffffff",
+    strokeWidth: 2.5,
+    paintOrder: "stroke",
+  } as const;
+
+  if (isHorizontal) {
+    const fitsInside = barW >= 34;
+    const cx = fitsInside ? barX + barW - 6 : barX + barW + 6;
+    const cy = barY + barH / 2;
+    return (
+      <text
+        x={cx}
+        y={cy}
+        textAnchor={fitsInside ? "end" : "start"}
+        dominantBaseline="middle"
+        fill={fitsInside ? "#ffffff" : "#334155"}
+        fontSize={12}
+        fontWeight={700}
+        style={fitsInside ? { textShadow: "0 1px 2px rgba(0,0,0,0.45)" } : halo}
+      >
+        {label}
+      </text>
+    );
+  }
+
+  const fitsInside = barH >= 18;
+  const cx = barX + barW / 2;
+  const cy = fitsInside ? barY + 14 : barY - 7;
+  return (
+    <text
+      x={cx}
+      y={cy}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fill={fitsInside ? "#ffffff" : "#334155"}
+      fontSize={12}
+      fontWeight={700}
+      style={fitsInside ? { textShadow: "0 1px 2px rgba(0,0,0,0.45)" } : halo}
+    >
+      {label}
+    </text>
+  );
+}
+
 export function BarChartMini({
   data,
   horizontal = true,
   height = 56,
   showLabels = false,
+  showPercentages = false,
   variant = "default",
 }: {
   data: ChartSeriesPoint[];
   horizontal?: boolean;
   height?: number;
   showLabels?: boolean;
+  showPercentages?: boolean;
   variant?: "default" | "premium";
 }) {
   const isPremium = variant === "premium";
@@ -36,9 +111,12 @@ export function BarChartMini({
   const filtered = data.filter((d) => d.value > 0);
   if (!filtered.length) return <ChartEmpty height={height} />;
 
+  const total = filtered.reduce((sum, d) => sum + d.value, 0);
+
   const chartData = filtered.map((d, i) => ({
     label: d.label.length > 10 ? `${d.label.slice(0, 9)}…` : d.label,
     value: d.value,
+    percentage: total > 0 ? Math.round((d.value / total) * 100) : 0,
     fill: d.color ?? colorAt(i),
     index: i,
   }));
@@ -101,6 +179,12 @@ export function BarChartMini({
                   style={labelStyle}
                 />
               ) : null}
+              {showPercentages ? (
+                <LabelList
+                  dataKey="percentage"
+                  content={(props) => <PctLabel {...(props as PctLabelProps)} isHorizontal />}
+                />
+              ) : null}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -142,6 +226,12 @@ export function BarChartMini({
                 position="top"
                 formatter={formatBarLabel}
                 style={labelStyle}
+              />
+            ) : null}
+            {showPercentages ? (
+              <LabelList
+                dataKey="percentage"
+                content={(props) => <PctLabel {...(props as PctLabelProps)} isHorizontal={false} />}
               />
             ) : null}
           </Bar>
