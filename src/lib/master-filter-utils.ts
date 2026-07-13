@@ -700,6 +700,50 @@ export function buildMasterFilterConditions(
     }
   }
 
+  // CNIC/Passport state filter (NULL/EXISTS/DUPLICATE)
+  if (excludeField !== "cnicPassportState") {
+    const cnicPassportState = getFilterValue("cnicPassportState");
+    if (cnicPassportState && (Array.isArray(cnicPassportState) ? cnicPassportState.length > 0 : cnicPassportState)) {
+      const states = Array.isArray(cnicPassportState) ? cnicPassportState : [cnicPassportState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(
+            (
+              cnicpassport IS NULL
+              OR TRIM(COALESCE(cnicpassport, '')) = ''
+              OR LOWER(TRIM(COALESCE(cnicpassport, ''))) = 'null'
+            )
+          )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            cnicpassport IS NOT NULL
+            AND TRIM(COALESCE(cnicpassport, '')) != ''
+            AND LOWER(TRIM(COALESCE(cnicpassport, ''))) != 'null'
+          )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            a.cnicpassport IS NOT NULL
+            AND TRIM(COALESCE(a.cnicpassport, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.cnicpassport, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.cnicpassport, ''))) = LOWER(TRIM(COALESCE(a.cnicpassport, '')))
+                AND TRIM(COALESCE(a2.cnicpassport, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.cnicpassport, ''))) != 'null'
+            )
+          )`;
+        }
+        return sql`1 = 0`;
+      });
+      if (conditions.length > 0) {
+        filterConditions.push(sql`(${combineOrConditions(conditions)})`);
+      }
+    }
+  }
+
   // Combine all filter conditions with AND
   if (filterConditions.length === 0) {
     return sql``;

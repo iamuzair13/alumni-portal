@@ -16,6 +16,8 @@ import { useExcelExport } from "@/lib/excel-export";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { SendEmailButton } from "@/components/email/SendEmailButton";
+import { EmailPreviewModal } from "@/components/email/EmailPreviewModal";
+import { useSendEmail } from "@/app/queries/send-email";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 import LeadershipRoleBadge from "@/components/ui/LeadershipRoleBadge";
 import { getLeadershipApplications } from "@/app/queries/leadership-applications";
@@ -739,6 +741,9 @@ export default function LeadershipPage() {
   const [recommendRole, setRecommendRole] = useState<"president" | "vice_president" | "coordinator" | "">(""  );
   const [recommendStep, setRecommendStep] = useState<"select" | "confirm">("select");
   const [recommendProcessing, setRecommendProcessing] = useState(false);
+  const [recommendEmailPreviewOpen, setRecommendEmailPreviewOpen] = useState(false);
+  const [recommendEmailInitial, setRecommendEmailInitial] = useState<{ subject: string; body: string } | null>(null);
+  const recommendEmailMutation = useSendEmail();
 
   // Recommendations list query
   const { data: recommendationsData, refetch: refetchRecommendations } = useQuery({
@@ -1347,7 +1352,7 @@ export default function LeadershipPage() {
     }
   };
 
-  const handleRecommendSubmit = async () => {
+  const handleRecommendSubmit = async (opts?: { skipEmail?: boolean; previewAfter?: boolean }) => {
     if (!recommendApp || !recommendRole) return;
     setRecommendProcessing(true);
     try {
@@ -1363,18 +1368,37 @@ export default function LeadershipPage() {
           chapterOrAssociationName: recommendApp.categoryName || null,
           alumniName: recommendApp.name,
           alumniEmail: email,
+          skipEmail: opts?.skipEmail ?? false,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data as { error?: string })?.error || "Failed");
-      toast.success("Recommendation sent successfully");
-      recommendModal.closeModal();
-      setRecommendApp(null);
-      setRecommendRole("");
-      setRecommendStep("select");
+      toast.success(data?.message || "Recommendation saved");
       void refetchRecommendations();
+
+      if (opts?.previewAfter) {
+        const tpl = generateAdminActionEmail({
+          actionType: EMAIL_ACTION_TYPE.LEADERSHIP_RECOMMENDATION,
+          alumniName: recommendApp.name || "Alumni",
+        });
+        const orgName =
+          recommendApp.categoryName ||
+          (recommendApp.type === "chapter" ? "your selected chapter" : "the Alumni Association");
+        setRecommendEmailInitial({
+          subject: tpl.subject,
+          body: tpl.html
+            .replaceAll("{RECOMMENDED_ROLE}", recommendRoleDisplayName(recommendRole))
+            .replaceAll("{ORG}", orgName),
+        });
+        setRecommendEmailPreviewOpen(true);
+      } else {
+        recommendModal.closeModal();
+        setRecommendApp(null);
+        setRecommendRole("");
+        setRecommendStep("select");
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to send recommendation");
+      toast.error(e instanceof Error ? e.message : "Failed to save recommendation");
     } finally {
       setRecommendProcessing(false);
     }
@@ -2966,9 +2990,15 @@ export default function LeadershipPage() {
                           <strong>{recommendApp.name}</strong>?
                         </p>
                         <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                          An email will be sent to the alumni informing them of this recommendation.
+                          Confirming will save the recommendation. You can send an email manually via the Preview Email button.
                         </p>
                       </div>
+
+                      {!recommendApp.email && (
+                        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:text-gray-300 dark:bg-gray-900">
+                          No recipient email found for this alumni. You can still confirm the recommendation, but you cannot send an email.
+                        </div>
+                      )}
 
                       <div className="mt-6 flex items-center justify-end gap-3">
                         <button
@@ -2982,8 +3012,16 @@ export default function LeadershipPage() {
                         <button
                           type="button"
                           disabled={recommendProcessing}
-                          onClick={() => void handleRecommendSubmit()}
-                          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                          onClick={() => void handleRecommendSubmit({ skipEmail: true })}
+                          className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          {recommendProcessing ? "Saving…" : "Confirm"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={recommendProcessing || !recommendApp.email}
+                          onClick={() => void handleRecommendSubmit({ skipEmail: true, previewAfter: true })}
+                          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                         >
                           {recommendProcessing && (
                             <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -2991,10 +3029,48 @@ export default function LeadershipPage() {
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
                           )}
-                          {recommendProcessing ? "Sending…" : "Confirm & Send Email"}
+                          Preview Email
                         </button>
                       </div>
                     </div>
+                  )}
+
+                  {/* Recommendation email preview modal (same pattern as underapproval status change) */}
+                  {recommendEmailInitial && (
+                    <EmailPreviewModal
+                      isOpen={recommendEmailPreviewOpen}
+                      onClose={() => {
+                        if (!recommendEmailMutation.isPending) {
+                          setRecommendEmailPreviewOpen(false);
+                          recommendModal.closeModal();
+                          setRecommendApp(null);
+                          setRecommendRole("");
+                          setRecommendStep("select");
+                        }
+                      }}
+                      initial={recommendEmailInitial}
+                      sending={recommendEmailMutation.isPending}
+                      onSend={async (payload) => {
+                        if (!recommendApp) return;
+                        const res = await recommendEmailMutation.mutateAsync({
+                          alumniId: recommendApp.alumniId,
+                          recipientEmail: recommendApp.email,
+                          actionType: EMAIL_ACTION_TYPE.LEADERSHIP_RECOMMENDATION,
+                          subject: payload.subject,
+                          body: payload.body,
+                        });
+                        if (res.ok) {
+                          toast.success("Email sent");
+                          setRecommendEmailPreviewOpen(false);
+                          recommendModal.closeModal();
+                          setRecommendApp(null);
+                          setRecommendRole("");
+                          setRecommendStep("select");
+                        } else {
+                          toast.error(res.errorMessage || "Failed to send email");
+                        }
+                      }}
+                    />
                   )}
                 </div>
               </Modal>

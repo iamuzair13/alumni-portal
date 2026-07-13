@@ -81,6 +81,7 @@ export async function getAlumniList(
   regNoState?: string | string[],
   personalEmailState?: string | string[],
   contactNoState?: string | string[],
+  cnicPassportState?: string | string[],
   category?: string | string[],
   sortBy?: string,
   sortOrder?: "asc" | "desc"
@@ -154,6 +155,7 @@ export async function getAlumniList(
   addFilterParam("regNoState", regNoState);
   addFilterParam("personalEmailState", personalEmailState);
   addFilterParam("contactNoState", contactNoState);
+  addFilterParam("cnicPassportState", cnicPassportState);
   addFilterParam("category", category);
 
   if (sortBy) {
@@ -209,12 +211,13 @@ export function useAlumniListPaginated(
   regNoState?: string | string[],
   personalEmailState?: string | string[],
   contactNoState?: string | string[],
+  cnicPassportState?: string | string[],
   category?: string | string[],
   sortBy?: string,
   sortOrder?: "asc" | "desc"
 ) {
   return useQuery<AlumniListResponse, Error>({
-    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, occupationTransitionTiming, sector, workCity, workCountry, employer, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState, personalEmailState, contactNoState, category, sortBy, sortOrder],
+    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, occupationTransitionTiming, sector, workCity, workCountry, employer, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState, personalEmailState, contactNoState, cnicPassportState, category, sortBy, sortOrder],
     queryFn: ({ signal }) => {
       return getAlumniList(
         signal,
@@ -250,6 +253,7 @@ export function useAlumniListPaginated(
         regNoState,
         personalEmailState,
         contactNoState,
+        cnicPassportState,
         category,
         sortBy,
         sortOrder
@@ -314,6 +318,7 @@ export async function getAlumniCounts(
   regNoState?: string | string[],
   personalEmailState?: string | string[],
   contactNoState?: string | string[],
+  cnicPassportState?: string | string[],
   category?: string | string[]
 ): Promise<AlumniCounts> {
   const url = new URL("/api/alumni/counts", typeof window !== "undefined" ? window.location.origin : "");
@@ -385,6 +390,7 @@ export async function getAlumniCounts(
   addFilterParam("regNoState", regNoState);
   addFilterParam("personalEmailState", personalEmailState);
   addFilterParam("contactNoState", contactNoState);
+  addFilterParam("cnicPassportState", cnicPassportState);
   addFilterParam("category", category);
   
   const res = await fetch(url.toString(), { signal, headers: { "accept": "application/json" } });

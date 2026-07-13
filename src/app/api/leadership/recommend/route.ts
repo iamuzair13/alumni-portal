@@ -144,6 +144,7 @@ export async function POST(req: NextRequest) {
       chapterOrAssociationName,
       alumniName,
       alumniEmail,
+      skipEmail,
     } = body as {
       applicationId?: number;
       applicationType?: "chapter" | "association";
@@ -152,6 +153,7 @@ export async function POST(req: NextRequest) {
       chapterOrAssociationName?: string;
       alumniName?: string;
       alumniEmail?: string;
+      skipEmail?: boolean;
     };
 
     if (!applicationId || !applicationType || !recommendedRole || !originalRole) {
@@ -176,8 +178,8 @@ export async function POST(req: NextRequest) {
         (${applicationId}, ${applicationType}, ${originalRole}, ${recommendedRole}, ${chapterOrAssociationName || null}, ${adminUserId})
     `;
 
-    // Send recommendation email
-    if (alumniEmail && alumniName) {
+    // Send recommendation email unless explicitly skipped
+    if (!skipEmail && alumniEmail && alumniName) {
       const tpl = generateAdminActionEmail({
         actionType: EMAIL_ACTION_TYPE.LEADERSHIP_RECOMMENDATION,
         alumniName,
@@ -206,7 +208,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, message: "Recommendation created and email sent" });
+    const emailSent = !skipEmail && Boolean(alumniEmail && alumniName);
+    return NextResponse.json({
+      success: true,
+      message: emailSent ? "Recommendation created and email sent" : "Recommendation created",
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create recommendation";
     return NextResponse.json({ error: message }, { status: 500 });

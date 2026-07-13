@@ -247,6 +247,7 @@ export const AlumniTabs: React.FC = () => {
   const [selectedRegNoStates, setSelectedRegNoStates] = useState<string[]>([]);
   const [selectedPersonalEmailStates, setSelectedPersonalEmailStates] = useState<string[]>([]);
   const [selectedContactNoStates, setSelectedContactNoStates] = useState<string[]>([]);
+  const [selectedCnicPassportStates, setSelectedCnicPassportStates] = useState<string[]>([]);
   const [selectedPhotoConsents, setSelectedPhotoConsents] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const { isExporting, openExportModal, ExportModal } = useExcelExport();
@@ -530,6 +531,9 @@ export const AlumniTabs: React.FC = () => {
     if (selectedContactNoStates.length > 0) {
       filters.contactNoState = selectedContactNoStates;
     }
+    if (selectedCnicPassportStates.length > 0) {
+      filters.cnicPassportState = selectedCnicPassportStates;
+    }
     if (selectedPhotoConsents.length > 0) {
       filters.photoConsent = selectedPhotoConsents;
     }
@@ -566,6 +570,7 @@ export const AlumniTabs: React.FC = () => {
     selectedRegNoStates,
     selectedPersonalEmailStates,
     selectedContactNoStates,
+    selectedCnicPassportStates,
     selectedCategories,
   ]);
   
@@ -857,6 +862,7 @@ export const AlumniTabs: React.FC = () => {
     setSelectedRegNoStates([]);
     setSelectedPersonalEmailStates([]);
     setSelectedContactNoStates([]);
+    setSelectedCnicPassportStates([]);
     setCurrentPage(1);
   }, []);
 
@@ -892,9 +898,10 @@ export const AlumniTabs: React.FC = () => {
       selectedSapIdStates.length > 0 ||
       selectedRegNoStates.length > 0 ||
       selectedPersonalEmailStates.length > 0 ||
-      selectedContactNoStates.length > 0
+      selectedContactNoStates.length > 0 ||
+      selectedCnicPassportStates.length > 0
     );
-  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedOccupationTransitionTimings, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities,  selectedPhotoConsents, selectedCategories, selectedSapIdStates, selectedRegNoStates, selectedPersonalEmailStates, selectedContactNoStates]);
+  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedOccupationTransitionTimings, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities,  selectedPhotoConsents, selectedCategories, selectedSapIdStates, selectedRegNoStates, selectedPersonalEmailStates, selectedContactNoStates, selectedCnicPassportStates]);
   
   const handleStatusToggle = (status: string) => {
     setAdditionalFilter(prev => 
@@ -1087,6 +1094,14 @@ export const AlumniTabs: React.FC = () => {
     );
   };
 
+  const handleCnicPassportStateToggle = (value: string) => {
+    setSelectedCnicPassportStates(prev =>
+      prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+
   // Occupation Status filter handlers
   const handleOccupationStatusToggle = (status: string) => {
     setSelectedOccupationStatuses(prev => 
@@ -1236,6 +1251,7 @@ export const AlumniTabs: React.FC = () => {
     selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined,
     selectedPersonalEmailStates.length > 0 ? selectedPersonalEmailStates : undefined,
     selectedContactNoStates.length > 0 ? selectedContactNoStates : undefined,
+    selectedCnicPassportStates.length > 0 ? selectedCnicPassportStates : undefined,
     selectedCategories.length > 0 ? selectedCategories : undefined,
     apiSortBy,
     sortDirection
@@ -1300,6 +1316,7 @@ export const AlumniTabs: React.FC = () => {
       selectedRegNoStates,
       selectedPersonalEmailStates,
       selectedContactNoStates,
+      selectedCnicPassportStates,
       selectedCategories
     ],
     queryFn: ({ signal }) => getAlumniCounts(
@@ -1334,6 +1351,7 @@ export const AlumniTabs: React.FC = () => {
       selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined,
       selectedPersonalEmailStates.length > 0 ? selectedPersonalEmailStates : undefined,
       selectedContactNoStates.length > 0 ? selectedContactNoStates : undefined,
+      selectedCnicPassportStates.length > 0 ? selectedCnicPassportStates : undefined,
       selectedCategories.length > 0 ? selectedCategories : undefined
     ),
     staleTime: 0, // Always consider stale - refetch when invalidated to get real-time updates
@@ -1980,6 +1998,11 @@ export const AlumniTabs: React.FC = () => {
       if (selectedContactNoStates.length > 0) {
         selectedContactNoStates.forEach(state => {
           url.searchParams.append("contactNoState", state);
+        });
+      }
+      if (selectedCnicPassportStates.length > 0) {
+        selectedCnicPassportStates.forEach(state => {
+          url.searchParams.append("cnicPassportState", state);
         });
       }
       if (selectedAlumniIds.length > 0) {
@@ -5076,6 +5099,42 @@ export const AlumniTabs: React.FC = () => {
                               type="checkbox"
                               checked={selectedContactNoStates.includes("DUPLICATE")}
                               onChange={() => handleContactNoStateToggle("DUPLICATE")}
+                              className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>Duplicate</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* CNIC/Passport State Filter (NULL/EXISTS/DUPLICATE) */}
+                      <div className="relative">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          CNIC/Passport (Missing/Existing)
+                        </label>
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedCnicPassportStates.includes("NULL")}
+                              onChange={() => handleCnicPassportStateToggle("NULL")}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>NULL</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedCnicPassportStates.includes("EXISTS")}
+                              onChange={() => handleCnicPassportStateToggle("EXISTS")}
+                              className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>EXISTS</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedCnicPassportStates.includes("DUPLICATE")}
+                              onChange={() => handleCnicPassportStateToggle("DUPLICATE")}
                               className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 border-gray-300 dark:border-gray-600"
                             />
                             <span>Duplicate</span>

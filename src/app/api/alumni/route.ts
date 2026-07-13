@@ -273,6 +273,7 @@ export async function GET(req: Request) {
     const regNoStateParams = searchParams.getAll("regNoState");
     const personalEmailStateParams = searchParams.getAll("personalEmailState");
     const contactNoStateParams = searchParams.getAll("contactNoState");
+    const cnicPassportStateParams = searchParams.getAll("cnicPassportState");
     const categoryParams = searchParams.getAll("category");
     
     // Convert to arrays (support multi-select)
@@ -301,6 +302,7 @@ export async function GET(req: Request) {
     const regNoState = regNoStateParams.length > 0 ? regNoStateParams : (searchParams.get("regNoState") || "");
     const personalEmailState = personalEmailStateParams.length > 0 ? personalEmailStateParams : (searchParams.get("personalEmailState") || "");
     const contactNoState = contactNoStateParams.length > 0 ? contactNoStateParams : (searchParams.get("contactNoState") || "");
+    const cnicPassportState = cnicPassportStateParams.length > 0 ? cnicPassportStateParams : (searchParams.get("cnicPassportState") || "");
     const category = categoryParams.length > 0 ? categoryParams : (searchParams.get("category") || "");
     
     const getCountsOnly = searchParams.get("countsOnly") === "true";
@@ -1170,6 +1172,49 @@ export async function GET(req: Request) {
       contactNoStateFilter = sql`AND (${combinedCondition})`;
     }
 
+    // CNIC/Passport state filter (NULL/EXISTS/DUPLICATE)
+    let cnicPassportStateFilter = sql``;
+    const hasCnicPassportStateFilter = cnicPassportState && (Array.isArray(cnicPassportState) ? cnicPassportState.length > 0 : cnicPassportState);
+    if (hasCnicPassportStateFilter) {
+      const states = Array.isArray(cnicPassportState) ? cnicPassportState : [cnicPassportState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(
+            (
+              a.cnicpassport IS NULL
+              OR TRIM(COALESCE(a.cnicpassport, '')) = ''
+              OR LOWER(TRIM(COALESCE(a.cnicpassport, ''))) = 'null'
+            )
+          )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            a.cnicpassport IS NOT NULL
+            AND TRIM(COALESCE(a.cnicpassport, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.cnicpassport, ''))) != 'null'
+          )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            a.cnicpassport IS NOT NULL
+            AND TRIM(COALESCE(a.cnicpassport, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.cnicpassport, ''))) != 'null'
+            AND LOWER(TRIM(COALESCE(a.cnicpassport, ''))) IN (
+              SELECT LOWER(TRIM(COALESCE(cnicpassport, '')))
+              FROM public.tbl_alumni
+              WHERE cnicpassport IS NOT NULL
+                AND TRIM(COALESCE(cnicpassport, '')) != ''
+                AND LOWER(TRIM(COALESCE(cnicpassport, ''))) != 'null'
+              GROUP BY LOWER(TRIM(COALESCE(cnicpassport, '')))
+              HAVING COUNT(*) > 1
+            )
+          )`;
+        }
+        return sql`1 = 0`;
+      });
+      const combinedCondition = combineOrConditions(conditions);
+      cnicPassportStateFilter = sql`AND (${combinedCondition})`;
+    }
+
     // Build category filter (separate from status filter) - moved before getCountsOnly
     let categoryFilter = sql``;
     if (category && (Array.isArray(category) ? category.length > 0 : category)) {
@@ -1467,6 +1512,7 @@ export async function GET(req: Request) {
           ${regNoStateFilter}
           ${personalEmailStateFilter}
           ${contactNoStateFilter}
+          ${cnicPassportStateFilter}
           ${accessFilterCondition}
           AND (
             LOWER(CAST(a.alumniid AS TEXT)) LIKE ${searchTerm}
@@ -1560,6 +1606,7 @@ export async function GET(req: Request) {
           ${regNoStateFilter}
           ${personalEmailStateFilter}
           ${contactNoStateFilter}
+          ${cnicPassportStateFilter}
           ${accessFilterCondition}
       ORDER BY ${sql.unsafe(orderByClause)}
       LIMIT ${limit} OFFSET ${offset}`;
@@ -1683,6 +1730,7 @@ export async function GET(req: Request) {
           ${regNoStateFilter}
           ${personalEmailStateFilter}
           ${contactNoStateFilter}
+          ${cnicPassportStateFilter}
           ${accessFilterCondition}
             AND (
               LOWER(a.sapid) LIKE ${searchTermForCount}
@@ -1730,6 +1778,7 @@ export async function GET(req: Request) {
                 ${regNoStateFilter}
                 ${personalEmailStateFilter}
                 ${contactNoStateFilter}
+                ${cnicPassportStateFilter}
                 ${accessFilterCondition}`;
     
     const countResult = await countQuery;

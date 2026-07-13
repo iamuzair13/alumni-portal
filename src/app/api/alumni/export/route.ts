@@ -54,6 +54,7 @@ export async function GET(req: Request) {
     const regNoStateParams = searchParams.getAll("regNoState");
     const personalEmailStateParams = searchParams.getAll("personalEmailState");
     const contactNoStateParams = searchParams.getAll("contactNoState");
+    const cnicPassportStateParams = searchParams.getAll("cnicPassportState");
     const selectedAlumniIdsParams = searchParams.getAll("selectedAlumniIds");
     const categoryParams = searchParams.getAll("category");
     
@@ -85,6 +86,7 @@ export async function GET(req: Request) {
     const regNoState = regNoStateParams.length > 0 ? regNoStateParams : (searchParams.get("regNoState") || "");
     const personalEmailState = personalEmailStateParams.length > 0 ? personalEmailStateParams : (searchParams.get("personalEmailState") || "");
     const contactNoState = contactNoStateParams.length > 0 ? contactNoStateParams : (searchParams.get("contactNoState") || "");
+    const cnicPassportState = cnicPassportStateParams.length > 0 ? cnicPassportStateParams : (searchParams.get("cnicPassportState") || "");
     const selectedAlumniIds = selectedAlumniIdsParams.length > 0 ? selectedAlumniIdsParams : (searchParams.get("selectedAlumniIds") || "");
     const category = categoryParams.length > 0 ? categoryParams : (searchParams.get("category") || "");
 
@@ -132,6 +134,7 @@ export async function GET(req: Request) {
     const hasRegNoStateFilter = regNoState && (Array.isArray(regNoState) ? regNoState.length > 0 : regNoState);
     const hasPersonalEmailStateFilter = personalEmailState && (Array.isArray(personalEmailState) ? personalEmailState.length > 0 : personalEmailState);
     const hasContactNoStateFilter = contactNoState && (Array.isArray(contactNoState) ? contactNoState.length > 0 : contactNoState);
+    const hasCnicPassportStateFilter = cnicPassportState && (Array.isArray(cnicPassportState) ? cnicPassportState.length > 0 : cnicPassportState);
     const hasSelectedAlumniIdsFilter = selectedAlumniIds && (Array.isArray(selectedAlumniIds) ? selectedAlumniIds.length > 0 : selectedAlumniIds);
     const baseWhere = buildAlumniPresenceBaseWhere(searchParams);
 
@@ -854,6 +857,47 @@ export async function GET(req: Request) {
       contactNoStateFilter = sql`AND (${combinedCondition})`;
     }
 
+    // CNIC/Passport state filter (NULL/EXISTS/DUPLICATE)
+    let cnicPassportStateFilter = sql``;
+    if (hasCnicPassportStateFilter) {
+      const states = Array.isArray(cnicPassportState) ? cnicPassportState : [cnicPassportState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(
+            (
+              a.cnicpassport IS NULL
+              OR TRIM(COALESCE(a.cnicpassport, '')) = ''
+              OR LOWER(TRIM(COALESCE(a.cnicpassport, ''))) = 'null'
+            )
+          )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            a.cnicpassport IS NOT NULL
+            AND TRIM(COALESCE(a.cnicpassport, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.cnicpassport, ''))) != 'null'
+          )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            a.cnicpassport IS NOT NULL
+            AND TRIM(COALESCE(a.cnicpassport, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.cnicpassport, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.cnicpassport, ''))) = LOWER(TRIM(COALESCE(a.cnicpassport, '')))
+                AND TRIM(COALESCE(a2.cnicpassport, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.cnicpassport, ''))) != 'null'
+            )
+          )`;
+        }
+        return sql`1 = 0`;
+      });
+      const combinedCondition = combineOrConditions(conditions);
+      cnicPassportStateFilter = sql`AND (${combinedCondition})`;
+    }
+
     // Fetch ALL fields from tbl_alumni with related data
     const query = sql/* sql */`
       SELECT 
@@ -943,6 +987,7 @@ export async function GET(req: Request) {
         ${regNoStateFilter}
         ${personalEmailStateFilter}
         ${contactNoStateFilter}
+        ${cnicPassportStateFilter}
         ${selectedAlumniIdsFilter}
         ${accessFilterCondition}
         ${searchCondition}

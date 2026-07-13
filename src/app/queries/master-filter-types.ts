@@ -32,6 +32,7 @@ export type MasterFilters = {
   regNoState?: string | string[];
   personalEmailState?: string | string[];
   contactNoState?: string | string[];
+  cnicPassportState?: string | string[];
   category?: string | string[];
 };
 
@@ -80,6 +81,7 @@ export function addFilterParamsToUrl(url: URL, filters?: MasterFilters): void {
   addFilterParam("regNoState", filters.regNoState);
   addFilterParam("personalEmailState", filters.personalEmailState);
   addFilterParam("contactNoState", filters.contactNoState);
+  addFilterParam("cnicPassportState", filters.cnicPassportState);
   addFilterParam("category", filters.category);
 }
 

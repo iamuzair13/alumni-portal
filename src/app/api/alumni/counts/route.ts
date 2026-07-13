@@ -47,6 +47,7 @@ export async function GET(req: Request) {
     const regNoStateParams = searchParams.getAll("regNoState");
     const personalEmailStateParams = searchParams.getAll("personalEmailState");
     const contactNoStateParams = searchParams.getAll("contactNoState");
+    const cnicPassportStateParams = searchParams.getAll("cnicPassportState");
     const categoryParams = searchParams.getAll("category");
     
     const gender = genderParams.length > 0 ? genderParams : (searchParams.get("gender") || "");
@@ -74,6 +75,7 @@ export async function GET(req: Request) {
     const regNoState = regNoStateParams.length > 0 ? regNoStateParams : (searchParams.get("regNoState") || "");
     const personalEmailState = personalEmailStateParams.length > 0 ? personalEmailStateParams : (searchParams.get("personalEmailState") || "");
     const contactNoState = contactNoStateParams.length > 0 ? contactNoStateParams : (searchParams.get("contactNoState") || "");
+    const cnicPassportState = cnicPassportStateParams.length > 0 ? cnicPassportStateParams : (searchParams.get("cnicPassportState") || "");
     const category = categoryParams.length > 0 ? categoryParams : (searchParams.get("category") || "");
     
     const searchTerm = search && search.trim() ? `%${search.trim().toLowerCase()}%` : null;
@@ -894,6 +896,48 @@ export async function GET(req: Request) {
       contactNoStateFilter = sql`AND (${combinedCondition})`;
     }
 
+    // CNIC/Passport state filter (NULL/EXISTS/DUPLICATE)
+    let cnicPassportStateFilter = sql``;
+    const hasCnicPassportStateFilter = cnicPassportState && (Array.isArray(cnicPassportState) ? cnicPassportState.length > 0 : cnicPassportState);
+    if (hasCnicPassportStateFilter) {
+      const states = Array.isArray(cnicPassportState) ? cnicPassportState : [cnicPassportState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(
+            (
+              cnicpassport IS NULL
+              OR TRIM(COALESCE(cnicpassport, '')) = ''
+              OR LOWER(TRIM(COALESCE(cnicpassport, ''))) = 'null'
+            )
+          )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            cnicpassport IS NOT NULL
+            AND TRIM(COALESCE(cnicpassport, '')) != ''
+            AND LOWER(TRIM(COALESCE(cnicpassport, ''))) != 'null'
+          )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            a.cnicpassport IS NOT NULL
+            AND TRIM(COALESCE(a.cnicpassport, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.cnicpassport, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.cnicpassport, ''))) = LOWER(TRIM(COALESCE(a.cnicpassport, '')))
+                AND TRIM(COALESCE(a2.cnicpassport, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.cnicpassport, ''))) != 'null'
+            )
+          )`;
+        }
+        return sql`1 = 0`;
+      });
+      const combinedCondition = combineOrConditions(conditions);
+      cnicPassportStateFilter = sql`AND (${combinedCondition})`;
+    }
+
     // Category filter
     // NOTE: This must support both the "category:a" style values used by the UI
     // and the raw "a" / "a+" / "b" values (for backward compatibility).
@@ -1110,6 +1154,7 @@ export async function GET(req: Request) {
           ${regNoStateFilter}
           ${personalEmailStateFilter}
           ${contactNoStateFilter}
+          ${cnicPassportStateFilter}
           ${accessFilterCondition}
           AND (
             LOWER(COALESCE(a.sapid, '')) LIKE ${searchTerm}
@@ -1198,6 +1243,7 @@ export async function GET(req: Request) {
           ${regNoStateFilter}
           ${personalEmailStateFilter}
           ${contactNoStateFilter}
+          ${cnicPassportStateFilter}
           ${accessFilterCondition}
       `);
     }
