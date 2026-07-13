@@ -2072,12 +2072,14 @@ export async function GET(req: Request) {
     };
 
     let storiesPub = 0;
+    let storiesApproved = 0;
     let storiesQ = 0;
     let storiesY = 0;
     try {
       const storyAgg = await sql/* sql */`
         SELECT
           COUNT(*)::int AS total_pub,
+          COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(s.status, ''))) = 'approved')::int AS approved,
           COUNT(*) FILTER (WHERE s.createdat >= ${qStart}::timestamp${qEndStory})::int AS q,
           COUNT(*) FILTER (WHERE s.createdat >= ${yStart}::timestamp${qEndStory})::int AS y
         FROM public.tblalumnistories s
@@ -2088,8 +2090,9 @@ export async function GET(req: Request) {
           ${accessFilterCondition}
           ${facultyFilterCondition}
       `;
-      const sr = storyAgg[0] as { total_pub?: number; q?: number; y?: number } | undefined;
+      const sr = storyAgg[0] as { total_pub?: number; approved?: number; q?: number; y?: number } | undefined;
       storiesPub = Number(sr?.total_pub ?? 0);
+      storiesApproved = Number(sr?.approved ?? 0);
       storiesQ = Number(sr?.q ?? 0);
       storiesY = Number(sr?.y ?? 0);
       if (applyPeriodFilter) {
@@ -2097,6 +2100,7 @@ export async function GET(req: Request) {
       }
     } catch {
       storiesPub = 0;
+      storiesApproved = 0;
       storiesQ = 0;
       storiesY = 0;
     }
@@ -2105,6 +2109,7 @@ export async function GET(req: Request) {
       SELECT
         COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
         COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(s.status, ''))) = 'approved')::int AS approved,
         COUNT(*) FILTER (WHERE s.createdat >= ${qStart}::timestamp${qEndStory})::int AS quarter,
         COUNT(*) FILTER (WHERE s.createdat >= ${yStart}::timestamp${qEndStory})::int AS ytd
       FROM public.tblalumnistories s
@@ -2618,6 +2623,7 @@ export async function GET(req: Request) {
         },
         publications: {
           successStoriesPublished: storiesPub,
+          successStoriesApproved: storiesApproved,
           successStoriesQuarter: storiesQ,
           successStoriesYtd: storiesY,
           newslettersIssued: nlTotal,
@@ -2625,10 +2631,11 @@ export async function GET(req: Request) {
           newslettersYtd: nlY,
           surveysConducted: null,
           facultyPublicationRows: facultyPublicationRows.map((r) => {
-            const row = r as { faculty: string; total: number; quarter: number; ytd: number };
+            const row = r as { faculty: string; total: number; approved: number; quarter: number; ytd: number };
             return {
               faculty: row.faculty,
               total: Number(row.total ?? 0),
+              approved: Number(row.approved ?? 0),
               quarter: Number(row.quarter ?? 0),
               ytd: Number(row.ytd ?? 0),
             };

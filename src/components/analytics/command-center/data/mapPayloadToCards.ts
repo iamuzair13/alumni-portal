@@ -51,8 +51,8 @@ export function mapAlumniOverview(data: ManagementDashboardPayload | undefined) 
   const chart = alumniOverviewChart(data);
   const headlineBars: ChartSeriesPoint[] = [
     { label: "Total", value: total, color: "#6366f1" },
-    { label: "Verified", value: verified, color: "#10b981" },
-    { label: "Active", value: active, color: "#34d399" },
+    { label: "Verified", value: verified, color: "#10b981", pct: total > 0 ? (verified / total) * 100 : 0, pctLabel: "of total" },
+    { label: "Active", value: active, color: "#34d399", pct: verified > 0 ? (active / verified) * 100 : 0, pctLabel: "of verified" },
   ];
   return {
     primaryValue: total,
@@ -178,8 +178,9 @@ function titleCaseRegion(key: string): string {
     kpk: "KPK",
     ajk: "AJK",
     gb: "GB",
-    other: "Other",
-    others: "Others",
+    other: "Not Assigned",
+    others: "Not Assigned",
+    null: "Not Assigned",
     overseas: "Overseas",
   };
   const lower = key.trim().toLowerCase();
@@ -323,13 +324,7 @@ export function mapCareerBenefits(data: ManagementDashboardPayload | undefined) 
       approved: scholarshipTotals.mastersApproved,
       color: KPI_COLOR_HEX.violet,
     },
-    {
-      type: "IQ programs",
-      short: "IQ",
-      applied: scholarshipTotals.iqApplied,
-      approved: scholarshipTotals.iqApproved,
-      color: KPI_COLOR_HEX.amber,
-    },
+   
   ];
 
   return {
@@ -426,6 +421,7 @@ export function mapPublicationsSurveys(data: ManagementDashboardPayload | undefi
     chartSeriesSecondary: chart.chartSeriesSecondary,
     surveys: num(p?.surveysConducted),
     stories: num(p?.successStoriesPublished),
+    storiesApproved: num(p?.successStoriesApproved),
     storiesQuarter: num(p?.successStoriesQuarter),
     storiesYtd: num(p?.successStoriesYtd),
     newsletters: num(p?.newslettersIssued),

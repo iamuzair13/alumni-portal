@@ -42,6 +42,10 @@ export type ChartSeriesPoint = {
   label: string;
   value: number;
   color?: string;
+  /** Optional caller-supplied percentage (0–100). When present, overrides the auto-computed share of total. */
+  pct?: number;
+  /** Optional suffix rendered after the % label, e.g. "of total" or "of verified". */
+  pctLabel?: string;
   meta?: Record<string, unknown>;
 };
 

@@ -92,7 +92,7 @@ export function provinceLocationChart(
     { title: "GB", value: pl?.gb },
     { title: "Balochistan", value: pl?.balochistan },
     { title: "Overseas", value: pl?.overseas },
-    { title: "Other", value: pl?.other },
+    { title: "Not Assigned", value: pl?.other },
   ];
   const chartSeries: ChartSeriesPoint[] = regions.map((r, i) => ({
     label: r.title,
@@ -298,7 +298,6 @@ export function scholarshipsChart(data: ManagementDashboardPayload | undefined):
   const rows = [
     { label: "Kinship", applied: num(scholarships?.kinship?.applied), approved: num(scholarships?.kinship?.approved) },
     { label: "Masters / PhD", applied: num(scholarships?.mastersPhd?.applied), approved: num(scholarships?.mastersPhd?.approved) },
-    { label: "IQ programs", applied: num(scholarships?.iqPrograms?.applied), approved: num(scholarships?.iqPrograms?.approved) },
   ];
   const totalApproved = rows.reduce((s, r) => s + r.approved, 0);
   return {

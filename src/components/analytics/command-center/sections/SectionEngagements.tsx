@@ -168,7 +168,7 @@ export function SectionEngagements({
 
     [CARD_IDS.publications]: {
 
-      title: "Publications & Surveys",
+      title: "Success Stories & Newsletters",
 
       content: <PublicationsExpandPanel data={data} isLoading={isLoading} />,
 
@@ -302,7 +302,7 @@ export function SectionEngagements({
 
             secondaryLabel={shortQuarter ? `${shortQuarter}` : ""}
 
-            masonrySize="md"
+            masonrySize="lg"
 
             chartFill
 
@@ -412,7 +412,7 @@ export function SectionEngagements({
 
             id={CARD_IDS.publications}
 
-            title="Publications & Newsletters"
+            title="Success Stories & Newsletters"
 
             icon={Newspaper}
 
@@ -420,11 +420,11 @@ export function SectionEngagements({
 
             variant="premium"
 
-            primaryValue={publications.stories}
+            primaryValue={publications.storiesApproved}
 
-            secondaryLabel={publications.newsletters > 0 ? `${publications.newsletters} newsletter${publications.newsletters !== 1 ? "s" : ""} issued` : ""}
+            secondaryLabel=""
 
-            masonrySize="md"
+            masonrySize="lg"
 
             chartFill
 
@@ -436,13 +436,11 @@ export function SectionEngagements({
 
               <PublicationsCardChart
 
-                storiesYtd={publications.storiesYtd}
+                storiesTotal={publications.stories}
 
-                storiesQuarter={publications.storiesQuarter}
+                storiesApproved={publications.storiesApproved}
 
-                newslettersYtd={publications.newslettersYtd}
-
-                surveys={publications.surveys}
+                newsletters={0}
 
               />
 

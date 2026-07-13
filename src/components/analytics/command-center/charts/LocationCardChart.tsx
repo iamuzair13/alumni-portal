@@ -18,8 +18,10 @@ const REGION_COLOR_MAP: Record<string, string> = {
   GB: "#64748b",
   Balochistan: "#f59e0b",
   Overseas: "#3b82f6",
-  Other: "#f59e0b",
-  Others: "#f59e0b",
+  "Not Assigned": "#94a3b8",
+  Other: "#94a3b8",
+  Others: "#94a3b8",
+  NULL: "#94a3b8",
 };
 
 function RegionBarRow({

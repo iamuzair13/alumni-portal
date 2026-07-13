@@ -38,7 +38,6 @@ export default function ManagementSectionC({ data, isLoading }: Props) {
   const scholarshipRows = [
     { scholarship: "Kinship", applied: fmtCell(scholarshipSource.kinship?.applied), processed: fmtCell(scholarshipSource.kinship?.processed) },
     { scholarship: "Masters / PhD", applied: fmtCell(scholarshipSource.mastersPhd?.applied), processed: fmtCell(scholarshipSource.mastersPhd?.processed) },
-    { scholarship: "IQ Programs", applied: fmtCell(scholarshipSource.iqPrograms?.applied), processed: fmtCell(scholarshipSource.iqPrograms?.processed) },
   ];
   const scholLabels = scholarshipRows.map((r) => r.scholarship);
   const scholApplied = scholarshipRows.map((r) => (typeof r.applied === "number" ? r.applied : 0));

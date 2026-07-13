@@ -21,7 +21,6 @@ import { facultyBarChartRow, facultyTooltipLabel } from "../utils/facultyLabels"
 const SCHOLARSHIP_SERIES = [
   { key: "kinship", label: "Kinship", fill: KPI_COLOR_HEX.indigo },
   { key: "masters", label: "Masters / PhD", fill: KPI_COLOR_HEX.violet },
-  { key: "iq", label: "IQ programs", fill: KPI_COLOR_HEX.amber },
 ] as const;
 
 function pct(n: number, d: number): string {
@@ -116,11 +115,7 @@ export function ScholarshipsExpandPanel({
       value: typeTotals.masters,
       color: KPI_COLOR_HEX.violet,
     },
-    {
-      label: "IQ programs",
-      value: typeTotals.iq,
-      color: KPI_COLOR_HEX.amber,
-    },
+    
     {
       label: "Applications",
       value: career.scholarshipsApplied,
@@ -225,7 +220,6 @@ export function ScholarshipsExpandPanel({
             { key: "faculty", label: "Faculty" },
             { key: "kinship", label: "Kinship", align: "right" },
             { key: "masters", label: "Masters / PhD", align: "right" },
-            { key: "iq", label: "IQ", align: "right" },
             { key: "applied", label: "Applied", align: "right" },
             { key: "approved", label: "Approved", align: "right" },
             { key: "share", label: "Share", align: "right" },

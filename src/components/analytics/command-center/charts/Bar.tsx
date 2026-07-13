@@ -21,6 +21,7 @@ type PctLabelProps = {
   width?: number | string;
   height?: number | string;
   value?: number | string;
+  suffix?: string;
 };
 
 function PctLabel({
@@ -29,6 +30,7 @@ function PctLabel({
   width = 0,
   height = 0,
   value,
+  suffix,
   isHorizontal,
 }: PctLabelProps & { isHorizontal: boolean }) {
   const barX = Number(x);
@@ -40,7 +42,7 @@ function PctLabel({
     return null;
   }
 
-  const label = Number.isFinite(pct) ? `${Math.round(pct)}%` : "";
+  const pctText = Number.isFinite(pct) ? `${Math.round(pct)}%` : "";
 
   // Common text styling for visibility
   const halo = {
@@ -53,37 +55,45 @@ function PctLabel({
     const fitsInside = barW >= 34;
     const cx = fitsInside ? barX + barW - 6 : barX + barW + 6;
     const cy = barY + barH / 2;
+    const textColor = fitsInside ? "#ffffff" : "#334155";
     return (
       <text
         x={cx}
         y={cy}
         textAnchor={fitsInside ? "end" : "start"}
         dominantBaseline="middle"
-        fill={fitsInside ? "#ffffff" : "#334155"}
-        fontSize={12}
+        fill={textColor}
+        fontSize={11}
         fontWeight={700}
         style={fitsInside ? { textShadow: "0 1px 2px rgba(0,0,0,0.45)" } : halo}
       >
-        {label}
+        {pctText}
+        {suffix ? (
+          <tspan fontSize={9} fontWeight={500} dx={3} opacity={0.85}>{suffix}</tspan>
+        ) : null}
       </text>
     );
   }
 
-  const fitsInside = barH >= 18;
+  const fitsInside = barH >= 28;
   const cx = barX + barW / 2;
-  const cy = fitsInside ? barY + 14 : barY - 7;
+  const cy = fitsInside ? barY + 12 : barY - 4;
+  const textColor = fitsInside ? "#ffffff" : "#334155";
   return (
     <text
       x={cx}
       y={cy}
       textAnchor="middle"
       dominantBaseline="middle"
-      fill={fitsInside ? "#ffffff" : "#334155"}
-      fontSize={12}
+      fill={textColor}
+      fontSize={11}
       fontWeight={700}
       style={fitsInside ? { textShadow: "0 1px 2px rgba(0,0,0,0.45)" } : halo}
     >
-      {label}
+      {pctText}
+      {suffix ? (
+        <tspan x={cx} dy={13} fontSize={9} fontWeight={500} opacity={0.85} fill={textColor}>{suffix}</tspan>
+      ) : null}
     </text>
   );
 }
@@ -116,7 +126,8 @@ export function BarChartMini({
   const chartData = filtered.map((d, i) => ({
     label: d.label.length > 10 ? `${d.label.slice(0, 9)}…` : d.label,
     value: d.value,
-    percentage: total > 0 ? Math.round((d.value / total) * 100) : 0,
+    percentage: d.pct !== undefined ? Math.round(d.pct) : total > 0 ? Math.round((d.value / total) * 100) : 0,
+    pctSuffix: d.pctLabel ?? "",
     fill: d.color ?? colorAt(i),
     index: i,
   }));
@@ -182,7 +193,11 @@ export function BarChartMini({
               {showPercentages ? (
                 <LabelList
                   dataKey="percentage"
-                  content={(props) => <PctLabel {...(props as PctLabelProps)} isHorizontal />}
+                  content={(props) => {
+                    const p = props as PctLabelProps & { index?: number };
+                    const entry = chartData[p.index ?? 0];
+                    return <PctLabel {...p} suffix={entry?.pctSuffix} isHorizontal />;
+                  }}
                 />
               ) : null}
             </Bar>
@@ -195,7 +210,7 @@ export function BarChartMini({
   return (
     <div className="w-full overflow-hidden text-gray-600 dark:text-gray-300" style={{ height }}>
       <ResponsiveContainer width="100%" height={height} key={`bar-v-${replayKey}`}>
-        <BarChart data={chartData} margin={{ top: showLabels ? 20 : 4, right: 4, bottom: 0, left: 4 }}>
+        <BarChart data={chartData} margin={{ top: showLabels ? 28 : 4, right: 4, bottom: 0, left: 4 }} barCategoryGap="20%" barGap={4} maxBarSize={52}>
           <XAxis
             dataKey="label"
             tick={{ fontSize: 11, fill: "currentColor" }}
@@ -231,7 +246,11 @@ export function BarChartMini({
             {showPercentages ? (
               <LabelList
                 dataKey="percentage"
-                content={(props) => <PctLabel {...(props as PctLabelProps)} isHorizontal={false} />}
+                content={(props) => {
+                  const p = props as PctLabelProps & { index?: number };
+                  const entry = chartData[p.index ?? 0];
+                  return <PctLabel {...p} suffix={entry?.pctSuffix} isHorizontal={false} />;
+                }}
               />
             ) : null}
           </Bar>

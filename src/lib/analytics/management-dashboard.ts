@@ -219,6 +219,7 @@ export type ManagementDashboardSectionB = {
   eventsMeetups?: EventsMeetupsPayload;
   publications: {
     successStoriesPublished: number | null;
+    successStoriesApproved: number | null;
     successStoriesQuarter: number | null;
     successStoriesYtd: number | null;
     newslettersIssued: number | null;
@@ -233,6 +234,7 @@ export type ManagementDashboardSectionB = {
 export type FacultyPublicationRow = {
   faculty: string;
   total: number;
+  approved: number;
   quarter: number;
   ytd: number;
 };

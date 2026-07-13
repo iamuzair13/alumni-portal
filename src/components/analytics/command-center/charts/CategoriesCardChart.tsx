@@ -67,10 +67,10 @@ function TierBarRow({
         />
       </div>
 
-      <span className="truncate text-right text-[10px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
+      <span className="truncate text-right text-[12px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
         {bar.value.toLocaleString()}
       </span>
-      <span className="truncate text-right text-[10px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+      <span className="truncate text-right text-[12px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
         {total > 0 ? `${pct.toFixed(1)}%` : "—"}
       </span>
     </div>

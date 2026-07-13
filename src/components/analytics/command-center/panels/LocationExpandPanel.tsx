@@ -31,7 +31,7 @@ const REGION_KEYS = [
   { key: "gb", label: "GB" },
   { key: "balochistan", label: "Balochistan" },
   { key: "overseas", label: "Overseas" },
-  { key: "other", label: "Other" },
+  { key: "other", label: "Not Assigned" },
 ] as const;
 
 const CHART_REGION_KEYS = ["punjab", "sindh", "islamabad", "kpk", "overseas"] as const;

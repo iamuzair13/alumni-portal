@@ -1,85 +1,142 @@
 "use client";
 
 import React from "react";
-import { TrendingUp } from "lucide-react";
-import { motion } from "motion/react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartEmpty } from "./ChartEmpty";
 
-export function PublicationsCardChart({
-  storiesYtd,
-  storiesQuarter,
-  newslettersYtd,
-  surveys,
-}: {
-  storiesYtd: number;
-  storiesQuarter: number;
-  newslettersYtd: number;
-  surveys: number;
-}) {
-  const total = storiesYtd;
-  const newsletters = newslettersYtd;
-  const other = Math.max(0, total - newsletters);
+const COLORS = {
+  stories: "#6366F1",
+  newsletters: "#14B8A6",
+};
 
-  if (total === 0 && newsletters === 0 && surveys === 0) {
-    return <ChartEmpty height={100} variant="premium" message="No publications yet" />;
+type OutsideLabelProps = {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  outerRadius: number;
+  name: string;
+  approved: number;
+  approvalPct: number;
+};
+
+function OutsideLabel({ cx, cy, midAngle, outerRadius, name, approved, approvalPct }: OutsideLabelProps) {
+  const RADIAN = Math.PI / 180;
+  const sin = Math.sin(-midAngle * RADIAN);
+  const cos = Math.cos(-midAngle * RADIAN);
+  const lineStart = outerRadius + 4;
+  const lineEnd = outerRadius + 18;
+  const textX = cx + (lineEnd + 4) * cos;
+  const textY = cy + (lineEnd + 4) * sin;
+  const anchor = cos >= 0 ? "start" : "end";
+  return (
+    <g>
+      <line x1={cx + lineStart * cos} y1={cy + lineStart * sin} x2={cx + lineEnd * cos} y2={cy + lineEnd * sin} stroke="#94A3B8" strokeWidth={1} />
+      <text x={textX} y={textY - 6} textAnchor={anchor} fill="#334155" fontSize={11} fontWeight={600}>{name}</text>
+      <text x={textX} y={textY + 7} textAnchor={anchor} fill="#6366F1" fontSize={12} fontWeight={700}>
+        {approved} <tspan fill="#94A3B8" fontSize={10} fontWeight={500}></tspan>
+      </text>
+    </g>
+  );
+}
+
+export function PublicationsCardChart({
+  storiesTotal,
+  storiesApproved,
+  newsletters,
+}: {
+  storiesTotal: number;
+  storiesApproved: number;
+  newsletters: number;
+}) {
+  const hasData = storiesTotal > 0 || newsletters > 0;
+
+  if (!hasData) {
+    return <ChartEmpty height={96} variant="premium" message="No publications yet" />;
   }
 
-  const newsletterPct = total > 0 ? (newsletters / total) * 100 : 0;
-  const otherPct = total > 0 ? (other / total) * 100 : 100;
+  const pieData = [
+    {
+      name: "Stories",
+      value: storiesTotal,
+      approved: storiesApproved,
+      approvalPct: storiesTotal > 0 ? Math.round((storiesApproved / storiesTotal) * 100) : 0,
+      color: COLORS.stories,
+    },
+    {
+      name: "Newsletters",
+      value: newsletters,
+      approved: newsletters,
+      approvalPct: 100,
+      color: COLORS.newsletters,
+    },
+  ].filter((d) => d.value > 0);
+
+  const rows = [
+    { label: "Success Stories", approved: storiesApproved, total: storiesTotal, color: COLORS.stories },
+    { label: "Newsletters", approved: newsletters, total: newsletters, color: COLORS.newsletters },
+  ];
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col justify-center gap-3">
-      {/* Trend badges row */}
-      <div className="flex flex-wrap items-center gap-2">
-        {newsletters > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-500/12 dark:text-emerald-400">
-            <TrendingUp className="h-3 w-3" />
-            +{newsletters} newsletter{newsletters !== 1 ? "s" : ""}
-          </span>
-        )}
-        {storiesQuarter > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-600 dark:bg-indigo-500/12 dark:text-indigo-400">
-            {storiesQuarter} this qtr
-          </span>
-        )}
-        {surveys > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:bg-amber-500/12 dark:text-amber-400">
-            {surveys} survey{surveys !== 1 ? "s" : ""}
-          </span>
-        )}
+    <div className="flex h-full min-h-0 w-full flex-col gap-2">
+      <div className="w-full" style={{ height: 88 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart margin={{ top: 6, right: 40, bottom: 6, left: 40 }}>
+            <Pie
+              data={pieData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={24}
+              outerRadius={40}
+              paddingAngle={3}
+              stroke="none"
+              labelLine={false}
+              label={(props) => {
+                const slice = pieData[props.index];
+                return (
+                  <OutsideLabel
+                    cx={props.cx}
+                    cy={props.cy}
+                    midAngle={props.midAngle}
+                    outerRadius={props.outerRadius}
+                    name={props.name}
+                    approved={slice?.approved ?? 0}
+                    approvalPct={slice?.approvalPct ?? 0}
+                  />
+                );
+              }}
+            >
+              {pieData.map((entry, i) => (
+                <Cell key={`${entry.name}-${i}`} fill={entry.color} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E2E8F0" }}
+              formatter={(value: number, name: string, entry: { payload?: { approved?: number; approvalPct?: number } }) => [
+                `${entry?.payload?.approved ?? 0} approved / ${value} total (${entry?.payload?.approvalPct ?? 0}%)`,
+                name,
+              ]}
+            />
+          </PieChart>
+        </ResponsiveContainer>
       </div>
 
-      {/* Stacked progress bar: newsletters vs other */}
-      {total > 0 && (
-        <div className="space-y-1.5">
-          <div className="relative h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${otherPct}%` }}
-              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute inset-y-0 left-0 rounded-l-full"
-              style={{ background: "linear-gradient(90deg, #6366F1, #818CF8)" }}
-            />
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${newsletterPct}%` }}
-              transition={{ delay: 0.1, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute inset-y-0 right-0 rounded-r-full"
-              style={{ background: "linear-gradient(90deg, #2DD4BF, #14B8A6)" }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-[10px] text-slate-400">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500" />
-              {other} stories
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-500" />
-              {newsletters} newsletters
+      <div className="shrink-0 border-t border-slate-100 dark:border-slate-800" />
+
+      <div className="flex min-w-0 w-full flex-col gap-1.5">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center gap-2">
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.total > 0 ? row.color : "#CBD5E1" }} />
+            <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+              {row.label}
+            </p>
+            <span className="shrink-0 text-[11px] font-bold tabular-nums text-slate-900 dark:text-white">
+              {row.approved}/{row.total}
             </span>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

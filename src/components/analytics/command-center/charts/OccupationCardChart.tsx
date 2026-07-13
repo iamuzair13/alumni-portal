@@ -66,7 +66,7 @@ export function OccupationCardChart({
               <div className="flex w-full min-h-0 flex-1 items-end">
                 <div className="relative h-full w-full overflow-hidden rounded-t-md bg-slate-100/90 dark:bg-slate-800/70">
                   {!fitsInside && percentage > 0 ? (
-                    <span className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 text-[9px] font-bold text-slate-700 dark:text-slate-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
+                    <span className="pointer-events-none absolute left-1/2 bottom-4 z-10 -translate-x-1/2 text-[12px] font-bold text-slate-700 dark:text-slate-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
                       {percentage}%
                     </span>
                   ) : null}
@@ -84,7 +84,7 @@ export function OccupationCardChart({
                     }}
                   >
                     {fitsInside && percentage > 0 ? (
-                      <span className="pointer-events-none text-[9px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                      <span className="pointer-events-none text-[12px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
                         {percentage}%
                       </span>
                     ) : null}

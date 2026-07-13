@@ -24,7 +24,7 @@ export function VelocityCardChart({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
-      <div className="grid min-h-0 flex-1 grid-cols-6 gap-0.5">
+      <div className="grid min-h-0 flex-1 grid-cols-5 gap-1">
         {rows.map((bar, i) => {
           const heightPct = bar.count === 0 ? 0 : Math.max(10, (bar.count / maxBar) * 100);
           const isLeader = topRow?.label === bar.label && bar.count > 0;
@@ -57,7 +57,7 @@ export function VelocityCardChart({
                   {bar.count > 0 ? (
                     <>
                       {!fitsInside && percentage > 0 ? (
-                        <span className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 text-[9px] font-bold text-slate-700 dark:text-slate-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
+                        <span className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 text-[12px] font-bold text-slate-700 dark:text-slate-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
                           {percentage}%
                         </span>
                       ) : null}
@@ -76,7 +76,7 @@ export function VelocityCardChart({
                         }}
                       >
                         {fitsInside && percentage > 0 ? (
-                          <span className="pointer-events-none text-[9px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                          <span className="pointer-events-none text-[12px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
                             {percentage}%
                           </span>
                         ) : null}
