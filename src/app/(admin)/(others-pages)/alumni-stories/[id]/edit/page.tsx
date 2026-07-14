@@ -110,6 +110,14 @@ export default async function AdminStoryEditPage({ params }: { params: Promise<{
     universityemail: string | null;
   };
 
+  const criteriaResponseRows = await sql/* sql */`
+    SELECT r.criterion_id, c.label, r.response
+    FROM public.story_criteria_responses r
+    JOIN public.story_criteria c ON c.id = r.criterion_id
+    WHERE r.story_id = ${storyId}
+    ORDER BY c.sort_order ASC, c.id ASC
+  ` as Array<{ criterion_id: number; label: string; response: string }>;
+
   const imageUrl = eventImageUrlFromStored(r.story_image) || "";
 
   return (
@@ -133,10 +141,7 @@ export default async function AdminStoryEditPage({ params }: { params: Promise<{
         existingStory={String(r.alumnistories ?? "")}
         existingTitle={String(r.storytitle ?? "")}
         existingImageUrl={imageUrl}
-        existingCriteriaHighlight={String(r.criteria_highlight ?? "")}
-        existingCriteriaInspires={String(r.criteria_inspires ?? "")}
-        existingCriteriaReplicable={r.criteria_replicable}
-        existingAchievements={String(r.achievements ?? "")}
+        existingCriteriaResponses={criteriaResponseRows}
         existingSignatureConfirmed={r.signature_confirmed}
         existingSignatureConfirmedAt={
           r.signature_confirmed_at ? new Date(r.signature_confirmed_at).toISOString() : null

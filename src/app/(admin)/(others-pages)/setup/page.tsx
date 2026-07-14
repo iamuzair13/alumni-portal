@@ -26,6 +26,7 @@ import RoleDescriptionSection from "@/components/leadership/RoleDescriptionSecti
 import LeadershipCriteriaManager from "@/components/leadership/LeadershipCriteriaManager";
 import ScholarshipDiscountManager from "@/components/scholarship/ScholarshipDiscountManager";
 import MerchantsComponent from "@/components/setup/MerchantsComponent";
+import StoriesCriteriaManager from "@/components/setup/StoriesCriteriaManager";
 import type { ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
 
 type LeadershipType = "chapter" | "association";
@@ -62,6 +63,24 @@ type CriteriaDraft = {
   isTextboxRequired: boolean;
   sortOrder: number;
   criterionScore: number;
+};
+
+type StoryCriterion = {
+  id: number;
+  label: string;
+  description: string | null;
+  is_required: boolean;
+  is_active: boolean;
+  sort_order: number;
+};
+
+type StoryCriteriaDraft = {
+  id?: number;
+  label: string;
+  description: string;
+  isRequired: boolean;
+  isActive: boolean;
+  sortOrder: number;
 };
 
 function roleLabel(role: LeadershipRoleName): string {
@@ -180,6 +199,56 @@ async function deleteLeadershipCriterion(id: number) {
   return data as { success: boolean };
 }
 
+async function fetchStoryCriteria(): Promise<StoryCriterion[]> {
+  const res = await fetch("/api/stories/criteria?admin=1", { headers: { accept: "application/json" } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to fetch story criteria");
+  const items = (data as { items?: StoryCriterion[] }).items ?? [];
+  return Array.isArray(items) ? items : [];
+}
+
+async function createStoryCriterion(input: StoryCriteriaDraft) {
+  const res = await fetch("/api/stories/criteria", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      label: input.label,
+      description: input.description ? input.description : null,
+      isRequired: input.isRequired,
+      isActive: input.isActive,
+      sortOrder: input.sortOrder,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any).error || "Failed to create criterion");
+  return data as { item: StoryCriterion };
+}
+
+async function updateStoryCriterion(id: number, input: StoryCriteriaDraft) {
+  const res = await fetch("/api/stories/criteria", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id,
+      label: input.label,
+      description: input.description ? input.description : null,
+      isRequired: input.isRequired,
+      isActive: input.isActive,
+      sortOrder: input.sortOrder,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any).error || "Failed to update criterion");
+  return data as { item: StoryCriterion };
+}
+
+async function deleteStoryCriterion(id: number) {
+  const res = await fetch(`/api/stories/criteria?id=${encodeURIComponent(String(id))}`, { method: "DELETE" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any).error || "Failed to delete criterion");
+  return data as { success: boolean };
+}
+
 async function fetchLeadershipRole(type: LeadershipType, role: LeadershipRoleName) {
   const res = await fetch(`/api/leadership/roles?type=${encodeURIComponent(type)}&role=${encodeURIComponent(role)}`, {
     headers: { accept: "application/json" },
@@ -282,7 +351,7 @@ function SetupPageContent() {
 
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
-  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership" | "scholarships" | "merchants";
+  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership" | "scholarships" | "merchants" | "stories";
 
   const TABS: Array<{ key: SetupTabKey; label: string }> = [
     { key: "users", label: "Users" },
@@ -294,6 +363,7 @@ function SetupPageContent() {
       ? [
           { key: "leadership" as const, label: "Leadership" },
           { key: "scholarships" as const, label: "Scholarships" },
+          { key: "stories" as const, label: "Stories" },
         ]
       : []),
   ];
@@ -341,6 +411,14 @@ function SetupPageContent() {
 
   const [criteriaEditingId, setCriteriaEditingId] = useState<number | null>(null);
   const [selectedScholarshipCategoryId, setSelectedScholarshipCategoryId] = useState<number | null>(null);
+  const [storyCriteriaDraft, setStoryCriteriaDraft] = useState<StoryCriteriaDraft>({
+    label: "",
+    description: "",
+    isRequired: true,
+    isActive: true,
+    sortOrder: 0,
+  });
+  const [storyCriteriaEditingId, setStoryCriteriaEditingId] = useState<number | null>(null);
 
   async function fetchScholarshipCategoriesAdmin(): Promise<ScholarshipCategoryWithTiers[]> {
     const res = await fetch("/api/scholarship/categories?admin=1&includeTiers=1");
@@ -396,6 +474,23 @@ function SetupPageContent() {
     staleTime: 30 * 1000,
     refetchOnWindowFocus: false,
   });
+
+  const {
+    data: storyCriteriaData,
+    isLoading: storyCriteriaLoading,
+    refetch: refetchStoryCriteria,
+  } = useQuery({
+    queryKey: ["story-criteria-admin"],
+    queryFn: fetchStoryCriteria,
+    enabled: isSuperAdmin && selected === "stories",
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const storyCriteriaItems = React.useMemo(() => {
+    const items = (storyCriteriaData as StoryCriterion[] | undefined) ?? [];
+    return Array.isArray(items) ? items : [];
+  }, [storyCriteriaData]);
 
   useEffect(() => {
     if (selected !== "leadership") return;
@@ -1295,6 +1390,42 @@ function SetupPageContent() {
                   setSelectedCategoryId={setSelectedScholarshipCategoryId}
                   onRefresh={async () => {
                     await refetchScholarshipCategories();
+                  }}
+                  pushToast={pushToast}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selected === "stories" && isSuperAdmin && (
+          <div className="mt-6">
+            <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-5 shadow-sm">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Success Story Criteria</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Configure the one-line questions alumni must answer when submitting a success story.
+                </p>
+              </div>
+              <div className="mt-5">
+                <StoriesCriteriaManager
+                  items={storyCriteriaItems}
+                  loading={storyCriteriaLoading}
+                  draft={storyCriteriaDraft}
+                  setDraft={setStoryCriteriaDraft}
+                  editingId={storyCriteriaEditingId}
+                  setEditingId={setStoryCriteriaEditingId}
+                  onCreate={async (d) => {
+                    await createStoryCriterion(d);
+                    await refetchStoryCriteria();
+                  }}
+                  onUpdate={async (id, d) => {
+                    await updateStoryCriterion(id, d);
+                    await refetchStoryCriteria();
+                  }}
+                  onDelete={async (id) => {
+                    await deleteStoryCriterion(id);
+                    await refetchStoryCriteria();
                   }}
                   pushToast={pushToast}
                 />

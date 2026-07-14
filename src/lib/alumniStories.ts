@@ -17,7 +17,7 @@ export function storyHtmlHasText(html: string): boolean {
   return html.replace(/<[^>]*>/g, "").trim().length > 0;
 }
 
-const singleLineString = (label: string) =>
+export const singleLineString = (label: string) =>
   z
     .string()
     .trim()
@@ -25,19 +25,24 @@ const singleLineString = (label: string) =>
     .max(250, `${label} must be 250 characters or fewer`)
     .refine((s) => !/[\r\n]/.test(s), { message: `${label} must be a single line` });
 
-export const storyCriteriaFieldsSchema = z.object({
-  criteriaHighlight: singleLineString("Story highlight explanation"),
-  criteriaInspires: singleLineString("Inspiration explanation"),
-  criteriaReplicable: z
-    .union([z.boolean(), z.undefined()])
-    .refine((v): v is boolean => v === true || v === false, { message: "Please select Yes or No" }),
-  achievements: singleLineString("Achievements"),
-  signatureConfirmed: z
-    .boolean()
-    .refine((v) => v === true, { message: "You must confirm your signature to submit" }),
-});
+export type StoryCriterion = {
+  id: number;
+  label: string;
+  description: string | null;
+  is_required: boolean;
+  is_active: boolean;
+  sort_order: number;
+};
 
-export type StoryCriteriaFields = z.infer<typeof storyCriteriaFieldsSchema>;
+export type StoryCriteriaResponseInput = {
+  criterion_id: number;
+  response: string;
+};
+
+const criteriaResponseItemSchema = z.object({
+  criterion_id: z.number().int().positive(),
+  response: z.string().trim().max(250),
+});
 
 export const storyFormSchema = z.object({
   sapId: z.string().trim().regex(sapIdNumericRegex, "SAP ID must be 4–20 digits"),
@@ -51,6 +56,7 @@ export const storyFormSchema = z.object({
   storyHtml: z
     .string()
     .refine(storyHtmlHasText, { message: "Story is required" }),
+  criteriaResponses: z.array(criteriaResponseItemSchema).optional(),
   criteriaHighlight: z.string().trim().max(250).optional(),
   criteriaInspires: z.string().trim().max(250).optional(),
   criteriaReplicable: z.boolean().optional(),
@@ -70,6 +76,7 @@ export const storyServerSchema = z.object({
   contactNumber: z.string().trim().max(50).nullish(),
   storyTitle: z.string().trim().min(1).max(200),
   storyHtml: z.string().trim().min(1),
+  criteriaResponses: z.array(criteriaResponseItemSchema).optional(),
   criteriaHighlight: z.string().trim().max(250).optional(),
   criteriaInspires: z.string().trim().max(250).optional(),
   criteriaReplicable: z.boolean().optional(),
@@ -79,28 +86,13 @@ export const storyServerSchema = z.object({
 
 export type ServerStoryPayload = z.infer<typeof storyServerSchema>;
 
-/** Admin edit: criteria editable; alumni signature is not re-required. */
-export const storyAdminEditCriteriaSchema = z.object({
-  criteriaHighlight: singleLineString("Story highlight explanation"),
-  criteriaInspires: singleLineString("Inspiration explanation"),
-  criteriaReplicable: z
-    .union([z.boolean(), z.undefined()])
-    .refine((v): v is boolean => v === true || v === false, { message: "Please select Yes or No" }),
-  achievements: singleLineString("Achievements"),
-});
-
-export const adminEditSchema = storyServerSchema.merge(storyAdminEditCriteriaSchema);
+export const adminEditSchema = storyServerSchema;
 
 export type AdminEditStoryPayload = z.infer<typeof adminEditSchema>;
 
-export const storyAlumniSubmitSchema = storyServerSchema.merge(storyCriteriaFieldsSchema);
+export const storyAlumniSelfSubmitWithoutSapSchema = storyServerSchema.omit({ sapId: true });
 
-/** Alumni self-submit when SAP ID is resolved server-side from session/DB. */
-export const storyAlumniSelfSubmitWithoutSapSchema = storyServerSchema
-  .omit({ sapId: true })
-  .merge(storyCriteriaFieldsSchema);
-
-export type AlumniSubmitStoryPayload = z.infer<typeof storyAlumniSubmitSchema>;
+export type AlumniSubmitStoryPayload = z.infer<typeof storyServerSchema>;
 
 /** Parse criteria fields from JSON or multipart form values. */
 export function parseStoryCriteriaFromBody(body: {
@@ -142,6 +134,23 @@ export function parseStoryCriteriaFromBody(body: {
     body.signatureConfirmed === "1";
 
   return { criteriaHighlight, criteriaInspires, criteriaReplicable, achievements, signatureConfirmed };
+}
+
+export function parseStoryCriteriaResponsesFromBody(body: {
+  criteriaResponses?: unknown;
+}): StoryCriteriaResponseInput[] {
+  const raw = body.criteriaResponses;
+  if (!raw) return [];
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed as StoryCriteriaResponseInput[];
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(raw)) return raw as StoryCriteriaResponseInput[];
+  return [];
 }
 
 export const STORY_STATUSES = ["pending", "approved", "not-approved"] as const;

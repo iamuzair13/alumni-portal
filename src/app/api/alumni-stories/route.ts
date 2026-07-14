@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import {
   storyServerSchema,
-  storyAlumniSubmitSchema,
   storyAlumniSelfSubmitWithoutSapSchema,
   parseStoryCriteriaFromBody,
+  parseStoryCriteriaResponsesFromBody,
+  type StoryCriteriaResponseInput,
   type ServerStoryPayload,
   type AlumniSubmitStoryPayload,
   normalizeStoryStatus,
@@ -266,6 +267,9 @@ export async function POST(req: Request) {
         achievements: formData.get("achievements"),
         signatureConfirmed: formData.get("signatureConfirmed"),
       });
+      const criteriaResponses = parseStoryCriteriaResponsesFromBody({
+        criteriaResponses: formData.get("criteriaResponses"),
+      });
 
       if (imageFile && imageFile.size > 0) {
         const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
@@ -307,12 +311,14 @@ export async function POST(req: Request) {
         storyTitle,
         storyHtml,
         ...criteria,
+        criteriaResponses,
       };
     } else {
       const body = await req.json();
       rawPayload = {
         ...body,
         ...parseStoryCriteriaFromBody(body),
+        criteriaResponses: parseStoryCriteriaResponsesFromBody(body),
       };
     }
 
@@ -381,28 +387,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden: You can only create stories for your own profile" }, { status: 403 });
     }
 
-    const requiresCriteria = !isAdminUser;
-    if (requiresCriteria) {
-      const criteriaSchema = hasValidSapId
-        ? storyAlumniSubmitSchema
-        : storyAlumniSelfSubmitWithoutSapSchema;
-      const criteriaParsed = criteriaSchema.safeParse(rawPayload);
-      if (!criteriaParsed.success) {
-        return NextResponse.json({ message: "Validation failed", issues: criteriaParsed.error.format() }, { status: 422 });
-      }
-      v = criteriaParsed.data;
+    // Load active criteria and validate dynamic responses for non-admin submissions.
+    // Admins can submit stories without answers, but if they include responses we still store them.
+    const activeCriteria = await sql/* sql */`
+      SELECT id, label, is_required
+      FROM public.story_criteria
+      WHERE is_active = true
+      ORDER BY sort_order ASC, id ASC
+    ` as Array<{ id: number; label: string; is_required: boolean }>;
+
+    const responseMap = new Map<number, string>();
+    for (const r of (v.criteriaResponses ?? [])) {
+      responseMap.set(Number(r.criterion_id), String(r.response ?? ""));
     }
 
+    const requiresCriteria = !isAdminUser;
+    const validationErrors: string[] = [];
+    for (const c of activeCriteria) {
+      const value = (responseMap.get(c.id) ?? "").trim();
+      if (c.is_required && requiresCriteria && value === "") {
+        validationErrors.push(`${c.label} is required`);
+      } else if (value.length > 250) {
+        validationErrors.push(`${c.label} must be 250 characters or fewer`);
+      } else if (/[\r\n]/.test(value)) {
+        validationErrors.push(`${c.label} must be a single line`);
+      }
+    }
+    if (validationErrors.length > 0) {
+      return NextResponse.json({ message: "Validation failed", errors: validationErrors }, { status: 422 });
+    }
+
+    const finalCriteriaResponses = activeCriteria.map((c) => ({
+      criterion_id: c.id,
+      response: (responseMap.get(c.id) ?? "").trim(),
+    }));
+
     const criteriaHighlight: string | null =
-      requiresCriteria && "criteriaHighlight" in v ? (v.criteriaHighlight ?? null) : null;
+      "criteriaHighlight" in v && v.criteriaHighlight ? String(v.criteriaHighlight).trim() : null;
     const criteriaInspires: string | null =
-      requiresCriteria && "criteriaInspires" in v ? (v.criteriaInspires ?? null) : null;
+      "criteriaInspires" in v && v.criteriaInspires ? String(v.criteriaInspires).trim() : null;
     const criteriaReplicable: boolean | null =
-      requiresCriteria && "criteriaReplicable" in v ? (v.criteriaReplicable ?? null) : null;
+      "criteriaReplicable" in v ? Boolean(v.criteriaReplicable) : null;
     const achievements: string | null =
-      requiresCriteria && "achievements" in v ? (v.achievements ?? null) : null;
+      "achievements" in v && v.achievements ? String(v.achievements).trim() : null;
     const signatureConfirmed: boolean | null =
-      requiresCriteria && "signatureConfirmed" in v ? (v.signatureConfirmed ?? null) : null;
+      "signatureConfirmed" in v ? Boolean(v.signatureConfirmed) : null;
 
     if (isAdminUser) {
       const accessFilter = await buildAccessFilterSQL(session, "");
@@ -430,7 +459,7 @@ export async function POST(req: Request) {
     const reviewerId = isAdmin && !owner ? (session.user as { userId?: number })?.userId ?? null : null;
 
     try {
-      await sql/* sql */`
+      const inserted = await sql/* sql */`
         INSERT INTO public.tblalumnistories (
           alumniid, alumnistories, story_image, status, createdat, storytitle,
           rejection_reason, reviewed_by, reviewed_at,
@@ -444,6 +473,19 @@ export async function POST(req: Request) {
           ${achievements}, ${signatureConfirmed}, ${signatureConfirmed === true ? sql`NOW()` : null}
         )
         RETURNING id`;
+      const newStoryId = inserted[0]?.id as number | undefined;
+
+      const responsesToStore = finalCriteriaResponses.filter((resp) => resp.response !== "");
+      if (newStoryId && responsesToStore.length > 0) {
+        for (const resp of responsesToStore) {
+          await sql/* sql */`
+            INSERT INTO public.story_criteria_responses (story_id, criterion_id, response, created_at, updated_at)
+            VALUES (${newStoryId}, ${resp.criterion_id}, ${resp.response}, NOW(), NOW())
+            ON CONFLICT (story_id, criterion_id)
+            DO UPDATE SET response = EXCLUDED.response, updated_at = NOW()
+          `;
+        }
+      }
     } catch (dbError) {
       return NextResponse.json(
         {

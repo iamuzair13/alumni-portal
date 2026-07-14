@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { sql, retryDbOperation } from "@/lib/dbconnect";
 import {
   storyServerSchema,
-  storyAlumniSubmitSchema,
   storyAlumniSelfSubmitWithoutSapSchema,
   adminEditSchema,
   parseStoryCriteriaFromBody,
+  parseStoryCriteriaResponsesFromBody,
   normalizeStoryStatus,
   isStoryApproved,
   isStoryOwner,
+  type StoryCriteriaResponseInput,
   type ServerStoryPayload,
   type AlumniSubmitStoryPayload,
   type AdminEditStoryPayload,
@@ -54,7 +55,17 @@ type StoryDetailRow = {
   universityemail: string | null;
 };
 
-function mapStoryDetail(r: StoryDetailRow, opts?: { includeContact?: boolean }) {
+export type StoryCriteriaResponseDetail = {
+  criterion_id: number;
+  label: string;
+  response: string;
+};
+
+function mapStoryDetail(
+  r: StoryDetailRow,
+  responses: StoryCriteriaResponseDetail[],
+  opts?: { includeContact?: boolean }
+) {
   const detail = {
     id: String(r.id ?? ""),
     date: r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString(),
@@ -75,6 +86,7 @@ function mapStoryDetail(r: StoryDetailRow, opts?: { includeContact?: boolean }) 
     signatureConfirmedAt: r.signature_confirmed_at
       ? new Date(r.signature_confirmed_at).toISOString()
       : null,
+    criteriaResponses: responses,
   };
 
   if (opts?.includeContact) {
@@ -161,7 +173,15 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       );
     }
 
-    return NextResponse.json(mapStoryDetail(r, { includeContact: staff }), { status: 200 });
+    const responseRows = (await sql/* sql */`
+      SELECT r.criterion_id, c.label, r.response
+      FROM public.story_criteria_responses r
+      JOIN public.story_criteria c ON c.id = r.criterion_id
+      WHERE r.story_id = ${storyId}
+      ORDER BY c.sort_order ASC, c.id ASC
+    `) as Array<{ criterion_id: number; label: string; response: string }>;
+
+    return NextResponse.json(mapStoryDetail(r, responseRows, { includeContact: staff }), { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch story";
     const isConnectionError =
@@ -269,6 +289,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         achievements: formData.get("achievements"),
         signatureConfirmed: formData.get("signatureConfirmed"),
       });
+      const criteriaResponses = parseStoryCriteriaResponsesFromBody({
+        criteriaResponses: formData.get("criteriaResponses"),
+      });
 
       if (imageFile && imageFile.size > 0) {
         const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
@@ -310,12 +333,14 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         storyTitle,
         storyHtml,
         ...criteria,
+        criteriaResponses,
       };
     } else {
       const body = await req.json();
       rawPayload = {
         ...body,
         ...parseStoryCriteriaFromBody(body),
+        criteriaResponses: parseStoryCriteriaResponsesFromBody(body),
       };
     }
 
@@ -348,44 +373,50 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     let v: ServerStoryPayload | AlumniSubmitStoryPayload | AdminEditStoryPayload | Omit<AlumniSubmitStoryPayload, "sapId"> =
       baseParsed.data as ServerStoryPayload;
 
-    const requiresAlumniCriteria = !isStaffEditor;
-    if (requiresAlumniCriteria) {
-      const criteriaSchema = hasValidSapId
-        ? storyAlumniSubmitSchema
-        : storyAlumniSelfSubmitWithoutSapSchema;
-      const criteriaParsed = criteriaSchema.safeParse(rawPayload);
-      if (!criteriaParsed.success) {
-        return NextResponse.json({ message: "Validation failed", issues: criteriaParsed.error.format() }, { status: 422 });
-      }
-      v = criteriaParsed.data;
+    // Load active criteria and validate dynamic responses for non-admin submissions.
+    const activeCriteria = await sql/* sql */`
+      SELECT id, label, is_required
+      FROM public.story_criteria
+      WHERE is_active = true
+      ORDER BY sort_order ASC, id ASC
+    ` as Array<{ id: number; label: string; is_required: boolean }>;
+
+    const responseMap = new Map<number, string>();
+    for (const r of ((v as ServerStoryPayload).criteriaResponses ?? [])) {
+      responseMap.set(Number(r.criterion_id), String(r.response ?? ""));
     }
 
+    const requiresCriteria = !isStaffEditor;
+    const validationErrors: string[] = [];
+    for (const c of activeCriteria) {
+      const value = (responseMap.get(c.id) ?? "").trim();
+      if (c.is_required && requiresCriteria && value === "") {
+        validationErrors.push(`${c.label} is required`);
+      } else if (value.length > 250) {
+        validationErrors.push(`${c.label} must be 250 characters or fewer`);
+      } else if (/[\r\n]/.test(value)) {
+        validationErrors.push(`${c.label} must be a single line`);
+      }
+    }
+    if (validationErrors.length > 0) {
+      return NextResponse.json({ message: "Validation failed", errors: validationErrors }, { status: 422 });
+    }
+
+    const finalCriteriaResponses = activeCriteria.map((c) => ({
+      criterion_id: c.id,
+      response: (responseMap.get(c.id) ?? "").trim(),
+    }));
+
     const criteriaHighlight: string | null =
-      requiresAlumniCriteria && "criteriaHighlight" in v
-        ? (v.criteriaHighlight ?? null)
-        : isStaffEditor && "criteriaHighlight" in v
-          ? (v.criteriaHighlight ?? null)
-          : null;
+      "criteriaHighlight" in v && v.criteriaHighlight ? String(v.criteriaHighlight).trim() : null;
     const criteriaInspires: string | null =
-      requiresAlumniCriteria && "criteriaInspires" in v
-        ? (v.criteriaInspires ?? null)
-        : isStaffEditor && "criteriaInspires" in v
-          ? (v.criteriaInspires ?? null)
-          : null;
+      "criteriaInspires" in v && v.criteriaInspires ? String(v.criteriaInspires).trim() : null;
     const criteriaReplicable: boolean | null =
-      requiresAlumniCriteria && "criteriaReplicable" in v
-        ? (v.criteriaReplicable ?? null)
-        : isStaffEditor && "criteriaReplicable" in v
-          ? (v.criteriaReplicable ?? null)
-          : null;
+      "criteriaReplicable" in v ? Boolean(v.criteriaReplicable) : null;
     const achievements: string | null =
-      requiresAlumniCriteria && "achievements" in v
-        ? (v.achievements ?? null)
-        : isStaffEditor && "achievements" in v
-          ? (v.achievements ?? null)
-          : null;
+      "achievements" in v && v.achievements ? String(v.achievements).trim() : null;
     const signatureConfirmed: boolean | null =
-      requiresAlumniCriteria && "signatureConfirmed" in v ? (v.signatureConfirmed ?? null) : null;
+      "signatureConfirmed" in v ? Boolean(v.signatureConfirmed) : null;
 
     const cleanHtml = sanitizeStoryHtml(v.storyHtml);
     const resetModeration = !isStaffEditor;
@@ -456,6 +487,18 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 
     if (!result[0]) {
       return NextResponse.json({ error: "Story not found" }, { status: 404 });
+    }
+
+    const responsesToStore = finalCriteriaResponses.filter((resp) => resp.response !== "");
+    if (responsesToStore.length > 0) {
+      for (const resp of responsesToStore) {
+        await sql/* sql */`
+          INSERT INTO public.story_criteria_responses (story_id, criterion_id, response, created_at, updated_at)
+          VALUES (${storyId}, ${resp.criterion_id}, ${resp.response}, NOW(), NOW())
+          ON CONFLICT (story_id, criterion_id)
+          DO UPDATE SET response = EXCLUDED.response, updated_at = NOW()
+        `;
+      }
     }
 
     if (isStaffEditor) {

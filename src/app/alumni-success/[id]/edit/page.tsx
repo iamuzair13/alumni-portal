@@ -90,7 +90,15 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     WHERE s.id = ${storyId}
     LIMIT 1
   `;
-  
+
+  const criteriaResponseRows = await sql/* sql */`
+    SELECT r.criterion_id, c.label, r.response
+    FROM public.story_criteria_responses r
+    JOIN public.story_criteria c ON c.id = r.criterion_id
+    WHERE r.story_id = ${storyId}
+    ORDER BY c.sort_order ASC, c.id ASC
+  ` as Array<{ criterion_id: number; label: string; response: string }>;
+
   if (!storyRows[0]) {
     return (
       <>
@@ -219,19 +227,16 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
               <BackButton />
             </div>
             <AlumniSuccessForm 
-              sapId={sapId} 
-              name={name} 
-              email={emailResolved} 
-              faculty={faculty} 
+              sapId={sapId}
+              name={name}
+              email={emailResolved}
+              faculty={faculty}
               department={department}
               passingYear={passingYear}
               contactNumber={contactNumber}
               existingStory={existingStory}
               existingTitle={existingTitle}
-              existingCriteriaHighlight={String(r?.criteria_highlight ?? "")}
-              existingCriteriaInspires={String(r?.criteria_inspires ?? "")}
-              existingCriteriaReplicable={r?.criteria_replicable ?? null}
-              existingAchievements={String(r?.achievements ?? "")}
+              existingCriteriaResponses={criteriaResponseRows}
               storyId={id}
             />
           </div>

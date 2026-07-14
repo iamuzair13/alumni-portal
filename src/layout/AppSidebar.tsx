@@ -140,6 +140,8 @@ const navItems: NavItem[] = [
 
       { name: "Scholarships", path: "/setup?tab=scholarships" },
 
+      { name: "Stories", path: "/setup?tab=stories" },
+
       { name: "Activity Logs", path: "/activity-logs" },
 
     ],
