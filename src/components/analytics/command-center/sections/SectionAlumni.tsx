@@ -133,7 +133,6 @@ export function SectionAlumni({
                   height={h}
                   horizontal={false}
                   showLabels
-                  showPercentages
                 />
               )}
             </FillChart>
@@ -183,7 +182,6 @@ export function SectionAlumni({
                   height={h}
                   horizontal={false}
                   showLabels
-                  showPercentages
                 />
               )}
             </FillChart>

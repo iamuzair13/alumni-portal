@@ -302,6 +302,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const academicsessionVal = "academicsession" in body ? cleanValue("academicsession", body.academicsession) : undefined;
     const fatherCnicVal = "father_cnic" in body ? cleanValue("father_cnic", body.father_cnic) : undefined;
     const categoryVal = "category" in body ? cleanValue("category", body.category) : undefined;
+    const medalVal = "medal" in body ? cleanValue("medal", body.medal) : undefined;
     // Consent field
     const alumniConsentInfoVal = "alumni_consent_info" in body ? cleanValue("alumni_consent_info", body.alumni_consent_info) : undefined;
     // Chapter fields
@@ -404,6 +405,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       academicsession: academicsessionVal,
       father_cnic: fatherCnicVal,
       category: categoryVal,
+      medal: medalVal,
       alumni_consent_info: alumniConsentInfoVal,
       chapter1_id: chapter1IdVal,
       chapter2_id: chapter2IdVal,
@@ -675,6 +677,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("academicsession", academicsessionVal);
       addUpdate("father_cnic", fatherCnicVal);
       addUpdate("category", categoryVal);
+      addUpdate("medal", medalVal);
       addUpdate("alumni_consent_info", alumniConsentInfoVal);
       addUpdate("faculty", facultyIdVal);
       addUpdate("department", departmentIdVal);

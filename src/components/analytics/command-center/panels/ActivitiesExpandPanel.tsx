@@ -20,7 +20,7 @@ export function ActivitiesExpandPanel({
   isLoading: boolean;
 }) {
   const activities = mapEngagementActivities(data);
-  const quarterCol = `This Q · ${activities.quarterLabel}`;
+  const quarterCol = `L3M · ${activities.quarterLabel}`;
 
   const tableRows = useMemo(() => {
     const body = activities.rows.map((row) => ({
@@ -75,7 +75,7 @@ export function ActivitiesExpandPanel({
       color: KPI_COLOR_HEX.indigo,
     },
     {
-      label: "This quarter",
+      label: "Last 3 Months",
       value: activities.quarterTotal,
       sub: activities.quarterLabel,
       color: KPI_COLOR_HEX.violet,
@@ -87,7 +87,7 @@ export function ActivitiesExpandPanel({
       color: KPI_COLOR_HEX.sky,
     },
     {
-      label: "Top this Q",
+      label: "Top L3M",
       value: activities.topByQuarter.quarter,
       sub: activities.topByQuarter.activity,
       color: KPI_COLOR_HEX.amber,
@@ -133,10 +133,10 @@ export function ActivitiesExpandPanel({
 
         <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
           <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
-            This quarter by activity
+            Last 3 months by activity
           </h3>
           {quarterChart.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-400">No quarterly activity data</p>
+            <p className="py-8 text-center text-sm text-gray-400">No activity data in last 3 months</p>
           ) : (
             <BarMini
               data={quarterChart}

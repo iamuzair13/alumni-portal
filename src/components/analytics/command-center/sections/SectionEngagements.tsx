@@ -214,7 +214,7 @@ export function SectionEngagements({
 
         <h3 className={`${ccPerksSubsectionHeader} ${ccSectionLabel}`}>Engagements</h3>
 
-        <MasonryGrid columns="narrow" layout="uniform" className="gap-4">
+        <MasonryGrid columns="narrow" layout="uniform" className="gap-2">
 
           <AnalyticsCard
 

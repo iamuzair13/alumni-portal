@@ -1107,6 +1107,8 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       form.drawFieldPair("SAP ID", data.sapCode, "CNIC", data.cnic);
       form.drawFieldPair("Campus", data.campus, "Mobile No", data.emergencyContactNumber);
       form.drawFieldPair("Email Address", data.email, "DOB", data.dob);
+      form.drawFieldPair("Degree/Program", data.program, "Passout Year", data.passingOutYear);
+
 
 
 

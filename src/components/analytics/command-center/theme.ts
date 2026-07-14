@@ -67,13 +67,13 @@ export const ccSectionLabel =
   "text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500";
 
 export const ccPerksSubsection =
-  "rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70";
+  "rounded-xl border border-slate-200/80 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70";
 
 export const ccPerksSubsectionHeader =
   "mb-3 border-b border-slate-100 pb-2 dark:border-slate-800";
 
 export const ccCardPremium =
-  "rounded-3xl font-sans antialiased shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-0.5 dark:shadow-[0_10px_32px_rgba(2,6,23,0.28)]";
+  "rounded-xl font-sans antialiased shadow-sm backdrop-blur-sm transition-all duration-200 ease-out hover:shadow-md dark:shadow-[0_4px_16px_rgba(2,6,23,0.18)]";
 
 export const ccAccent = {
   emerald: {

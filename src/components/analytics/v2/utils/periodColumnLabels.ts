@@ -2,10 +2,10 @@ import type { ManagementDashboardPayload } from "@/lib/analytics/management-dash
 
 export function formatQuarterMonthLabel(quarterStart: string): string {
   const start = new Date(`${quarterStart}T12:00:00`);
-  if (Number.isNaN(start.getTime())) return "This Q";
-  const end = new Date(start.getFullYear(), start.getMonth() + 3, 0);
+  if (Number.isNaN(start.getTime())) return "Last 3 Months";
+  const now = new Date();
   const fmt = (d: Date) => d.toLocaleString("en", { month: "short" });
-  return `${fmt(start)}–${fmt(end)} ${start.getFullYear()}`;
+  return `${fmt(start)}–${fmt(now)} ${now.getFullYear()}`;
 }
 
 export function resolveQuarterLabel(data: ManagementDashboardPayload | undefined): string {
@@ -21,7 +21,7 @@ export function getPeriodColumnLabels(data: ManagementDashboardPayload | undefin
   const isAll = !meta?.periodType || meta.periodType === "all";
 
   return {
-    primary: isAll ? "This Quarter" : (meta?.periodColumnPrimary ?? meta?.timeRange ?? "Selected period"),
+    primary: isAll ? "Last 3 Months" : (meta?.periodColumnPrimary ?? meta?.timeRange ?? "Selected period"),
     secondary: isAll ? "YTD" : (meta?.periodColumnSecondary ?? "YTD"),
     periodLabel: meta?.timeRange ?? "All time",
   };

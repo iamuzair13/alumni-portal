@@ -107,6 +107,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   // Use fullDetails for displaying profile summary as it has the raw database values
   // Fallback to data (mapped profile) if fullDetails is not available yet
   const name = String(fullDetails?.alumniname ?? data?.name ?? "").trim();
+  const medal = String(fullDetails?.medal ?? "").trim() || null;
   
   // Normalize avatar path for Next.js Image component
   // Use image2 first (most recent upload), then image1 (for AlumniCardTemplate)
@@ -482,6 +483,24 @@ return (
             <div className="pt-3 sm:pt-4 md:pt-0 sm:ml-4 md:ml-6 flex-grow">
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 md:gap-3 gap-2">
                 <h4 className="text-slate-900 text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold break-words dark:text-gray-100">{name}</h4>
+
+                {medal && medal !== "None" && (
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                      medal === "Gold Medalist"
+                        ? "bg-yellow-50 border-yellow-400 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-500 dark:text-yellow-300"
+                        : medal === "Silver Medalist"
+                        ? "bg-gray-100 border-gray-400 text-gray-700 dark:bg-gray-700/50 dark:border-gray-400 dark:text-gray-200"
+                        : "bg-orange-50 border-orange-400 text-orange-800 dark:bg-orange-900/30 dark:border-orange-500 dark:text-orange-300"
+                    }`}
+                    title={medal}
+                  >
+                    <span>
+                      {medal === "Gold Medalist" ? "🥇" : medal === "Silver Medalist" ? "🥈" : "🥉"}
+                    </span>
+                    {medal}
+                  </span>
+                )}
 
                 <ApprovedLeadershipBadges alumniId={alumniIdForBadges} size="sm" />
                 

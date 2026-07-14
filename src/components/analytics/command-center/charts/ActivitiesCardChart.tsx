@@ -80,7 +80,7 @@ export function ActivitiesCardChart({
   const bars = ranked.map((row, i) => ({
     label: row.activity,
     detail: useYtd
-      ? `${row.quarter.toLocaleString()} this quarter`
+      ? `${row.quarter.toLocaleString()} last 3 months`
       : `${row.ytd.toLocaleString()} year to date`,
     value: useYtd ? row.ytd : row.quarter,
     color: ACTIVITY_COLORS[i % ACTIVITY_COLORS.length],

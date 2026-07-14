@@ -52,7 +52,7 @@ export function MeetupsEventsExpandPanel({
   isLoading: boolean;
 }) {
   const stats = mapMeetupsEvents(data);
-  const quarterCol = `This Q · ${stats.quarterLabel}`;
+  const quarterCol = `L3M · ${stats.quarterLabel}`;
 
   const activeEventsRows = useMemo(
     () => stats.eventsChapterRows.filter((row) => row.total > 0),
@@ -114,25 +114,25 @@ export function MeetupsEventsExpandPanel({
     {
       label: "All events",
       value: stats.events.total,
-      sub: `${stats.events.ytd.toLocaleString()} YTD · ${stats.events.quarter.toLocaleString()} this Q`,
+      sub: `${stats.events.ytd.toLocaleString()} YTD · ${stats.events.quarter.toLocaleString()} L3M`,
       color: KPI_COLOR_HEX.violet,
     },
     {
       label: "Events YTD",
       value: stats.events.ytd,
-      sub: `${stats.events.quarter.toLocaleString()} in ${stats.quarterLabel}`,
+      sub: `${stats.events.quarter.toLocaleString()} in last 3 months`,
       color: KPI_COLOR_HEX.violet,
     },
     {
       label: "All meetups",
       value: stats.meetups.total,
-      sub: `${stats.meetups.ytd.toLocaleString()} YTD · ${stats.meetups.quarter.toLocaleString()} this Q`,
+      sub: `${stats.meetups.ytd.toLocaleString()} YTD · ${stats.meetups.quarter.toLocaleString()} L3M`,
       color: KPI_COLOR_HEX.emerald,
     },
     {
       label: "Meetups YTD",
       value: stats.meetups.ytd,
-      sub: `${stats.meetups.quarter.toLocaleString()} in ${stats.quarterLabel}`,
+      sub: `${stats.meetups.quarter.toLocaleString()} in last 3 months`,
       color: KPI_COLOR_HEX.emerald,
     },
   ];

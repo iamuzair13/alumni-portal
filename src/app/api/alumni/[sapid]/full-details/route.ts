@@ -283,6 +283,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         alumni_consent_info: row.alumni_consent_info ?? null,
         alumni_consent_pic: row.alumni_consent_pic ?? null,
         change_approval: row.change_approval ?? null,
+        pre_sap_registration: row.pre_sap_registration ?? null,
+        medal: row.medal ?? null,
       },
     }, { status: 200 });
   } catch (err) {

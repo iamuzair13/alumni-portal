@@ -36,7 +36,7 @@ function TierBarRow({
 
   return (
     <div
-      className={`grid h-full min-h-0 grid-cols-[1.5rem_minmax(0,1fr)_1.75rem_2rem] items-center gap-1 rounded-md px-0.5 ${
+      className={`grid h-full min-h-0 grid-cols-[1.5rem_minmax(0,1fr)_3.5rem_2.75rem] items-center gap-1 rounded-md px-0.5 ${
         isLeader && bar.value > 0 ? "bg-emerald-50/60 dark:bg-emerald-500/[0.06]" : ""
       }`}
     >
@@ -67,10 +67,10 @@ function TierBarRow({
         />
       </div>
 
-      <span className="truncate text-right text-[12px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
+      <span className="text-right text-[11px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
         {bar.value.toLocaleString()}
       </span>
-      <span className="truncate text-right text-[12px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+      <span className="text-right text-[11px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
         {total > 0 ? `${pct.toFixed(1)}%` : "—"}
       </span>
     </div>

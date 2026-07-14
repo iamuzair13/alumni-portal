@@ -52,7 +52,7 @@ export function DashboardLayout({
     <div className="flex h-full min-h-0 flex-col">
       <section
         aria-label="Alumni Intelligence"
-        className={`min-h-0 flex-1 overflow-y-auto ${ccSection.alumni}`}
+        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${ccSection.alumni}`}
       >
         <SectionAlumni data={data} trends={trends} isLoading={isLoading} />
       </section>
@@ -107,12 +107,12 @@ export function DashboardLayout({
           ))}
         </div>
 
-        {/* Laptop & desktop — equal-height columns, no outer scroll */}
-        <div className="relative z-0 hidden min-h-0 flex-1 gap-2 overflow-hidden lg:grid lg:grid-cols-2 lg:grid-rows-1 xl:grid-cols-12">
-          <div className="flex h-full min-h-0 flex-col lg:col-span-1 xl:col-span-8">{alumniColumn}</div>
+        {/* Laptop & desktop — 8/4 column split, no outer scroll */}
+        <div className="relative z-0 hidden min-h-0 flex-1 gap-2 overflow-hidden lg:grid lg:grid-cols-12 lg:grid-rows-1">
+          <div className="flex h-full min-h-0 min-w-0 flex-col lg:col-span-8">{alumniColumn}</div>
           <section
             aria-label="Engagements"
-            className={`flex h-full min-h-0 flex-col overflow-hidden lg:col-span-1 xl:col-span-4 ${ccSection.perks}`}
+            className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden lg:col-span-4 ${ccSection.perks}`}
           >
             {engagementsPanel}
           </section>

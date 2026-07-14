@@ -234,6 +234,7 @@ type AlumniFullData = {
   alumni_consent_info: boolean | null;
   alumni_consent_pic: boolean | null;
   pre_sap_registration: boolean | null;
+  medal: string | null;
 };
 
 const toBoolPreSap = (value: unknown): boolean => {
@@ -1731,6 +1732,12 @@ function AlumniExpandableDetails({
           )}
           <CompactField label="CGPA" value={data.cgpa} isEditing={isFieldEditing("cgpa")} readOnly={readOnly} register={register} name="cgpa" type="text" onEdit={() => startEditingField("cgpa")} />
           <CompactField label="Major Subject" value={data.majorsubject} isEditing={isFieldEditing("majorsubject")} readOnly={readOnly} register={register} name="majorsubject" onEdit={() => startEditingField("majorsubject")} />
+          <CompactField label="Medal" value={data.medal} isEditing={isFieldEditing("medal")} readOnly={readOnly} register={register} name="medal" type="select" options={[
+            { value: "", label: "None" },
+            { value: "Gold Medalist", label: "Gold Medalist" },
+            { value: "Silver Medalist", label: "Silver Medalist" },
+            { value: "Bronze Medalist", label: "Bronze Medalist" },
+          ]} onEdit={() => startEditingField("medal")} />
 
           {/* Professional Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">

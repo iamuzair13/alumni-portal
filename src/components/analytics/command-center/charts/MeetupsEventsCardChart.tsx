@@ -58,7 +58,7 @@ function VerticalBar({
           color,
         }}
       >
-        {quarter} this qtr
+        {quarter} L3M
       </span>
     </div>
   );

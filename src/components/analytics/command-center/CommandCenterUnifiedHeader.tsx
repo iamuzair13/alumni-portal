@@ -28,8 +28,8 @@ import { ccAccent, ccPresetChip, ccPresetChipActive } from "./theme";
    ────────────────────────────────────────────────────────────── */
 const tokens = {
   // Heights
-  headerHeight: "h-14",
-  controlHeight: "h-9",
+  headerHeight: "h-11 lg:h-12 xl:h-14",
+  controlHeight: "h-8 xl:h-9",
   
   // Backgrounds
   surface: "bg-white dark:bg-gray-950",
@@ -775,7 +775,7 @@ export function CommandCenterUnifiedHeader({
         <div
           className={`
             mx-auto flex ${tokens.headerHeight} max-w-[1600px]
-            items-center justify-between gap-4 px-4 lg:px-6
+            items-center justify-between gap-2 px-3 lg:gap-3 lg:px-4 xl:gap-4 xl:px-6
           `}
         >
           {/* ═══════════════════════════════════════════════════════

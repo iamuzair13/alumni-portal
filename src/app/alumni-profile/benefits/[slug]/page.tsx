@@ -5,6 +5,7 @@ import BackButton from "@/components/ui/BackButton";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
 import { isViewerUser } from "@/lib/alumniProfile";
+import { MerchantPromotionsTable } from "@/components/alumni/MerchantPromotionsTable";
 
 const benefitsData: Record<string, { title: string; description: string; content: string; icon: React.ReactElement }> = {
   "academic-benefits": {
@@ -707,10 +708,14 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
                 </div>
               </div>
 
-              <div
-                className="prose prose-slate max-w-none dark:prose-invert [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:mb-4 [&_h4]:text-lg [&_h4]:font-semibold [&_h4]:mt-6 [&_h4]:mb-3 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:list-inside [&_ul]:mb-4 [&_ul]:space-y-2 dark:[&_table]:text-gray-200 dark:[&_th]:text-gray-200 dark:[&_td]:text-gray-300 dark:[&_thead_tr]:bg-gray-800 dark:[&_thead_tr]:border-gray-700 dark:[&_tbody]:divide-gray-700 dark:[&_tr]:border-gray-700 dark:[&_tr:hover]:bg-gray-800/70 dark:[&_div.bg-white]:bg-gray-900 dark:[&_div.bg-white]:border-gray-700 dark:[&_div.bg-gray-50]:bg-gray-800 dark:[&_div.border-gray-200]:border-gray-700 dark:[&_p.text-gray-700]:text-gray-300 dark:[&_p.text-gray-800]:text-gray-200 dark:[&_p.text-gray-600]:text-gray-400 dark:[&_h3.text-gray-900]:text-gray-100 dark:[&_h4.text-gray-900]:text-gray-100 dark:[&_td.text-gray-700]:text-gray-300 dark:[&_td.text-gray-900]:text-gray-100 dark:[&_th.text-gray-800]:text-gray-200 dark:[&_li]:text-gray-300 dark:[&_span.text-purple-600]:text-purple-300 dark:[&_a]:text-white"
-                dangerouslySetInnerHTML={{ __html: content }}
-              />
+              {slug === "merchant-promotions" ? (
+                <MerchantPromotionsTable />
+              ) : (
+                <div
+                  className="prose prose-slate max-w-none dark:prose-invert [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:mb-4 [&_h4]:text-lg [&_h4]:font-semibold [&_h4]:mt-6 [&_h4]:mb-3 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:list-inside [&_ul]:mb-4 [&_ul]:space-y-2 dark:[&_table]:text-gray-200 dark:[&_th]:text-gray-200 dark:[&_td]:text-gray-300 dark:[&_thead_tr]:bg-gray-800 dark:[&_thead_tr]:border-gray-700 dark:[&_tbody]:divide-gray-700 dark:[&_tr]:border-gray-700 dark:[&_tr:hover]:bg-gray-800/70 dark:[&_div.bg-white]:bg-gray-900 dark:[&_div.bg-white]:border-gray-700 dark:[&_div.bg-gray-50]:bg-gray-800 dark:[&_div.border-gray-200]:border-gray-700 dark:[&_p.text-gray-700]:text-gray-300 dark:[&_p.text-gray-800]:text-gray-200 dark:[&_p.text-gray-600]:text-gray-400 dark:[&_h3.text-gray-900]:text-gray-100 dark:[&_h4.text-gray-900]:text-gray-100 dark:[&_td.text-gray-700]:text-gray-300 dark:[&_td.text-gray-900]:text-gray-100 dark:[&_th.text-gray-800]:text-gray-200 dark:[&_li]:text-gray-300 dark:[&_span.text-purple-600]:text-purple-300 dark:[&_a]:text-white"
+                  dangerouslySetInnerHTML={{ __html: content }}
+                />
+              )}
             </div>
           </div>
         </div>

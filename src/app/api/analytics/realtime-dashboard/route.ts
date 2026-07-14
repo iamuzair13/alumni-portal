@@ -13,8 +13,8 @@ type NumOrNull = number | null;
 
 const quarterStartDate = (): string => {
   const now = new Date();
-  const qStartMonth = Math.floor(now.getMonth() / 3) * 3;
-  return new Date(now.getFullYear(), qStartMonth, 1).toISOString().slice(0, 10);
+  const d = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  return d.toISOString().slice(0, 10);
 };
 
 const yearStartDate = (): string => {
@@ -24,10 +24,11 @@ const yearStartDate = (): string => {
 
 function formatQuarterMonthLabel(quarterStart: string): string {
   const start = new Date(`${quarterStart}T12:00:00`);
-  if (Number.isNaN(start.getTime())) return "This Q";
-  const end = new Date(start.getFullYear(), start.getMonth() + 3, 0);
+  if (Number.isNaN(start.getTime())) return "Last 3 Months";
+  const now = new Date();
   const fmt = (d: Date) => d.toLocaleString("en", { month: "short" });
-  return `${fmt(start)}–${fmt(end)} ${start.getFullYear()}`;
+  const endYear = now.getFullYear();
+  return `${fmt(start)}–${fmt(now)} ${endYear}`;
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -2319,7 +2320,7 @@ export async function GET(req: Request) {
         month,
         periodStart: applyPeriodFilter ? periodStart : undefined,
         periodEnd: applyPeriodFilter ? periodEnd : undefined,
-        periodColumnPrimary: applyPeriodFilter ? periodLabel : "This Quarter",
+        periodColumnPrimary: applyPeriodFilter ? periodLabel : "Last 3 Months",
         periodColumnSecondary: applyPeriodFilter ? (periodType === "month" ? `YTD ${year}` : periodLabel) : "YTD",
         facultyId: facultyIdParam,
       },

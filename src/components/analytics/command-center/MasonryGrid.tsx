@@ -13,7 +13,7 @@ const masonryColumnClasses: Record<MasonryColumns, string> = {
 };
 
 const uniformGridClasses: Record<MasonryColumns, string> = {
-  narrow: "grid grid-cols-1 sm:grid-cols-2",
+  narrow: "grid grid-cols-2",
   default: "grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3",
   wide: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
 };

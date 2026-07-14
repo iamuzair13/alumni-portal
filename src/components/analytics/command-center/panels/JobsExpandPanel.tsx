@@ -20,7 +20,7 @@ export function JobsExpandPanel({
   isLoading: boolean;
 }) {
   const career = mapCareerBenefits(data);
-  const quarterCol = `This Q · ${career.quarterLabel}`;
+  const quarterCol = `L3M · ${career.quarterLabel}`;
 
   const activeCompanyRows = useMemo(
     () => career.jobs.companyRows.filter((row) => row.total > 0),
@@ -98,7 +98,7 @@ export function JobsExpandPanel({
           color: KPI_COLOR_HEX.sky,
         },
         {
-          label: "This quarter",
+          label: "Last 3 Months",
           value: career.jobs.quarter,
           sub: career.quarterLabel,
           color: KPI_COLOR_HEX.amber,
