@@ -1285,6 +1285,33 @@ CREATE INDEX IF NOT EXISTS idx_merchants_status ON public.merchants (status);
 CREATE INDEX IF NOT EXISTS idx_merchants_end_date ON public.merchants (end_date);
 
 
+-- Migration: Create membership settings table for campus facility membership configuration
+CREATE TABLE IF NOT EXISTS public.membership_settings (
+  id            SERIAL PRIMARY KEY,
+  facility_type VARCHAR(20) NOT NULL UNIQUE,
+  discount_basis VARCHAR(50) NOT NULL DEFAULT 'same_as_staff_student',
+  payment_amount INTEGER NOT NULL DEFAULT 0,
+  discount_pct   INTEGER NOT NULL DEFAULT 0,
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by     INTEGER REFERENCES public.users(id) ON DELETE SET NULL,
+  CONSTRAINT chk_membership_settings_facility_type CHECK (
+    facility_type IN ('gym', 'pool', 'cricket')
+  ),
+  CONSTRAINT chk_membership_settings_discount_basis CHECK (
+    discount_basis IN ('same_as_staff_student', 'fifty_percent_outsiders')
+  ),
+  CONSTRAINT chk_membership_settings_payment_amount CHECK (payment_amount >= 0),
+  CONSTRAINT chk_membership_settings_discount_pct CHECK (discount_pct >= 0 AND discount_pct <= 100)
+) TABLESPACE pg_default;
+
+INSERT INTO public.membership_settings (facility_type, discount_basis, payment_amount, discount_pct)
+VALUES
+  ('gym', 'same_as_staff_student', 0, 0),
+  ('pool', 'same_as_staff_student', 0, 0),
+  ('cricket', 'same_as_staff_student', 0, 0)
+ON CONFLICT (facility_type) DO NOTHING;
+
+
 -- Migration: Add medal field to tbl_alumni
 -- Values: 'Gold Medalist', 'Silver Medalist', 'Bronze Medalist', NULL (None)
 

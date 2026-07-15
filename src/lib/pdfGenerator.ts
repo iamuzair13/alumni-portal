@@ -144,6 +144,9 @@ export interface MembershipFormPDFData {
   injuryHistory: string;
   declarationText: string;
   documentsChecklist: Array<{ label: string; status: string }>;
+  paymentAmount?: number | null;
+  discountPercent?: number | null;
+  discountBasis?: string | null;
 }
 
 export interface UpskillApplicationData {
@@ -231,6 +234,18 @@ const clamp = (text: unknown): string => {
   const value = String(text ?? "").replace(/\s+/g, " ").trim();
   return value || "—";
 };
+
+function formatPaymentAmount(value: unknown): string {
+  const n = Number(value ?? "");
+  if (!Number.isFinite(n)) return "—";
+  return `Rs. ${Math.round(n).toLocaleString()}`;
+}
+
+function formatDiscountPercent(value: unknown): string {
+  const n = Number(value ?? "");
+  if (!Number.isFinite(n)) return "—";
+  return `${Math.round(n)}%`;
+}
 
 // ─── Shared application-form layout (single-page, consistent spacing) ────────
 type FormMetrics = {
@@ -715,12 +730,13 @@ function estimateMembershipFormHeight(
   checklistCount: number,
 ): number {
   // Section A now has 4 rows: Name/Father, SAP/CNIC, Campus/Mobile, Email/DOB
+  // Membership details section includes two extra rows for payment amount / discount % and discount basis.
   const rows =
     facilityType === "pool"
-      ? 1 + 4 + 3 + 2 + 2 + 2  // meta + A(4) + B membership(3) + C swimming(2) + D medical+emergency(2) + E contact(2) — approximate
+      ? 1 + 4 + 5 + 2 + 2 + 2  // meta + A(4) + B membership(5) + C swimming(2) + D medical+emergency(2) + E contact(2) — approximate
       : facilityType === "cricket"
-        ? 1 + 4 + 4 + 3 + 2 + 2  // meta + A(4) + B cricket(4) + C playing(3) + D emergency(2) + E checklist(2)
-        : 1 + 4 + 3 + 3 + 2 + 2; // meta + A(4) + B membership(3) + C medical(3) + D emergency(2) + E checklist(2)
+        ? 1 + 4 + 6 + 3 + 2 + 2  // meta + A(4) + B cricket(6) + C playing(3) + D emergency(2) + E checklist(2)
+        : 1 + 4 + 5 + 3 + 2 + 2; // meta + A(4) + B membership(5) + C medical(3) + D emergency(2) + E checklist(2)
   // Gym: A B C D E = 5 sections; Pool: A B C D E F G = 7 sections; Cricket: A B C D E F = 6 sections
   const sections =
     facilityType === "pool" ? 7 : facilityType === "cricket" ? 6 : 5;
@@ -1116,6 +1132,8 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Membership Type", data.membershipType, "Pool Location", data.poolLocation);
         form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
+        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Discount %", formatDiscountPercent(data.discountPercent));
+        form.drawFullRow("Discount Basis", data.discountBasis || "—");
         form.drawFullRow("Valid To", data.validTill);
 
         form.drawSection("C", "Swimming Information");
@@ -1139,6 +1157,8 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFieldPair("Membership Category", data.membershipCategory, "Membership Type", data.membershipType);
         form.drawFieldPair("Playing Category", data.playingCategory, "Playing Role", data.playingRole);
         form.drawFieldPair("Preferred Practice Session", data.preferredTiming, "Valid From", data.membershipStartDate);
+        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Discount %", formatDiscountPercent(data.discountPercent));
+        form.drawFullRow("Discount Basis", data.discountBasis || "—");
         form.drawFullRow("Valid Till", data.validTill);
 
         form.drawSection("d", "Playing Information");
@@ -1155,6 +1175,8 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFieldPair("Applying For", data.applyingFor, "Discount Type", data.discountType);
         form.drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
         form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
+        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Discount %", formatDiscountPercent(data.discountPercent));
+        form.drawFullRow("Discount Basis", data.discountBasis || "—");
         form.drawFullRow("Valid To", data.validTill);
 
         form.drawSection("C", "Medical & Fitness Information");

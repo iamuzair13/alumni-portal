@@ -26,6 +26,7 @@ import RoleDescriptionSection from "@/components/leadership/RoleDescriptionSecti
 import LeadershipCriteriaManager from "@/components/leadership/LeadershipCriteriaManager";
 import ScholarshipDiscountManager from "@/components/scholarship/ScholarshipDiscountManager";
 import MerchantsComponent from "@/components/setup/MerchantsComponent";
+import MembershipSettingsComponent from "@/components/setup/MembershipSettingsComponent";
 import StoriesCriteriaManager from "@/components/setup/StoriesCriteriaManager";
 import type { ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
 
@@ -351,7 +352,7 @@ function SetupPageContent() {
 
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
-  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership" | "scholarships" | "merchants" | "stories";
+  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership" | "scholarships" | "merchants" | "stories" | "memberships";
 
   const TABS: Array<{ key: SetupTabKey; label: string }> = [
     { key: "users", label: "Users" },
@@ -364,6 +365,7 @@ function SetupPageContent() {
           { key: "leadership" as const, label: "Leadership" },
           { key: "scholarships" as const, label: "Scholarships" },
           { key: "stories" as const, label: "Stories" },
+          { key: "memberships" as const, label: "Memberships" },
         ]
       : []),
   ];
@@ -1431,6 +1433,12 @@ function SetupPageContent() {
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {selected === "memberships" && isSuperAdmin && (
+          <div className="mt-6">
+            <MembershipSettingsComponent />
           </div>
         )}
       </ComponentCard>

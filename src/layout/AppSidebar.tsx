@@ -142,6 +142,8 @@ const navItems: NavItem[] = [
 
       { name: "Stories", path: "/setup?tab=stories" },
 
+      { name: "Memberships", path: "/setup?tab=memberships" },
+
       { name: "Activity Logs", path: "/activity-logs" },
 
     ],

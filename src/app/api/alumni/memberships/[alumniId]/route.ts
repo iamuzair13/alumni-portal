@@ -8,6 +8,10 @@ import {
   buildMembershipFormPDFData,
   type MembershipDbRow,
 } from "@/lib/membershipApplicationPreview";
+import {
+  getMembershipSettingsByFacilityType,
+  membershipDiscountBasisLabel,
+} from "@/lib/membershipSettings";
 
 export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniId: string }> }) {
   try {
@@ -86,6 +90,15 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
 
     const application = buildMembershipApplicationPreview(row);
     const pdfData = buildMembershipFormPDFData(row);
+
+    const membershipSettings = await getMembershipSettingsByFacilityType(
+      application.facilityType,
+    );
+    pdfData.paymentAmount = membershipSettings.paymentAmount;
+    pdfData.discountPercent = membershipSettings.discountPct;
+    pdfData.discountBasis = membershipDiscountBasisLabel(
+      membershipSettings.discountBasis,
+    );
 
     if (mode === "pdf" || mode === "form-pdf") {
       const pdfBuffer = await generateMembershipFormPDF(pdfData);
