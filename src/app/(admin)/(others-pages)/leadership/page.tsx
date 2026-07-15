@@ -111,6 +111,7 @@ type LeadershipMember = {
   createdAt: string;
   chapters?: string[];
   selectedByAdmin?: string | null;
+  categoryName?: string | null;
 };
 
 type LeadershipApplication = {
@@ -157,6 +158,7 @@ type RecommendationItem = {
 
 type ApplicationStatusTab = "all" | "pending" | "assessed" | "approved" | "rejected";
 type ApplicationCategoryFilter = "all" | "national" | "international" | "association";
+type MemberCategoryFilter = "all" | "national" | "international" | "association";
 type RoleFilter = "all" | "president" | "vice_president" | "coordinator";
 type SortKey = "createdAt" | "name" | "sapId" | "type" | "position" | "status" | "bonusMarks";
 
@@ -393,11 +395,20 @@ function AssessmentApplicantSummary({
   );
 }
 
-async function fetchMembers(type: string, search?: string, faculty?: string, chapter?: string) {
+async function fetchMembers(
+  type: string,
+  search?: string,
+  faculty?: string,
+  role?: RoleFilter,
+  category?: MemberCategoryFilter,
+  categoryItemId?: number,
+) {
   const params = new URLSearchParams({ type });
   if (search) params.append("search", search);
   if (faculty) params.append("faculty", faculty);
-  if (chapter) params.append("chapter", chapter);
+  if (role && role !== "all") params.append("role", role);
+  if (category && category !== "all") params.append("category", category);
+  if (categoryItemId && categoryItemId > 0) params.append("categoryItemId", String(categoryItemId));
 
   const res = await fetch(`/api/leadership/members?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to fetch members");
@@ -595,8 +606,10 @@ export default function LeadershipPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [facultyFilter, setFacultyFilter] = useState("");
-  const [chapterFilter, setChapterFilter] = useState("");
   const [applicationTypeFilter, setApplicationTypeFilter] = useState<"all" | "chapter" | "association">("all");
+  const [memberRoleFilter, setMemberRoleFilter] = useState<RoleFilter>("all");
+  const [memberCategoryFilter, setMemberCategoryFilter] = useState<MemberCategoryFilter>("all");
+  const [memberCategoryItemId, setMemberCategoryItemId] = useState<number | null>(null);
   const [applicationCategoryFilter, setApplicationCategoryFilter] = useState<ApplicationCategoryFilter>("all");
   const [applicationCategoryItemId, setApplicationCategoryItemId] = useState<number | null>(null);
   const [applicationStatusTab, setApplicationStatusTab] = useState<ApplicationStatusTab>("all");
@@ -644,6 +657,10 @@ export default function LeadershipPage() {
     applicationStatusTab,
     applicationRoleFilter,
     hasAdditionalAchievementsFilter,
+    memberRoleFilter,
+    memberCategoryFilter,
+    memberCategoryItemId,
+    facultyFilter,
   ]);
 
   useEffect(() => {
@@ -967,10 +984,44 @@ export default function LeadershipPage() {
     approveDetailsData,
   ]);
 
+  // Fetch member category options
+  const { data: memberCategoryOptionsData, isLoading: memberCategoryOptionsLoading } = useQuery({
+    queryKey: [
+      "leadership-member-category-options",
+      memberRoleFilter,
+      selectedTab,
+    ],
+    queryFn: () =>
+      fetchCategoryOptions({
+        role: memberRoleFilter,
+        status: "approved",
+      }),
+    enabled: selectedTab === "chapterMembers" || selectedTab === "associationMembers",
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
   // Fetch chapter members
   const { data: chapterMembersData, isLoading: chapterMembersLoading } = useQuery({
-    queryKey: ["leadership-members", "chapter", searchQuery, facultyFilter, chapterFilter],
-    queryFn: () => fetchMembers("chapter", searchQuery || undefined, facultyFilter || undefined, chapterFilter || undefined),
+    queryKey: [
+      "leadership-members",
+      "chapter",
+      searchQuery,
+      facultyFilter,
+      memberRoleFilter,
+      memberCategoryFilter,
+      memberCategoryItemId,
+    ],
+    queryFn: () =>
+      fetchMembers(
+        "chapter",
+        searchQuery || undefined,
+        facultyFilter || undefined,
+        memberRoleFilter,
+        memberCategoryFilter,
+        memberCategoryItemId || undefined,
+      ),
     enabled: true,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -979,8 +1030,24 @@ export default function LeadershipPage() {
 
   // Fetch association members
   const { data: associationMembersData, isLoading: associationMembersLoading } = useQuery({
-    queryKey: ["leadership-members", "association", searchQuery, facultyFilter, chapterFilter],
-    queryFn: () => fetchMembers("association", searchQuery || undefined, facultyFilter || undefined, chapterFilter || undefined),
+    queryKey: [
+      "leadership-members",
+      "association",
+      searchQuery,
+      facultyFilter,
+      memberRoleFilter,
+      memberCategoryFilter,
+      memberCategoryItemId,
+    ],
+    queryFn: () =>
+      fetchMembers(
+        "association",
+        searchQuery || undefined,
+        facultyFilter || undefined,
+        memberRoleFilter,
+        memberCategoryFilter,
+        memberCategoryItemId || undefined,
+      ),
     enabled: true,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -1563,7 +1630,11 @@ export default function LeadershipPage() {
       } else {
         if (searchQuery) url.searchParams.set("search", searchQuery);
         if (facultyFilter) url.searchParams.set("faculty", facultyFilter);
-        if (chapterFilter) url.searchParams.set("chapter", chapterFilter);
+        if (memberRoleFilter && memberRoleFilter !== "all") url.searchParams.set("role", memberRoleFilter);
+        if (memberCategoryFilter && memberCategoryFilter !== "all") url.searchParams.set("category", memberCategoryFilter);
+        if (memberCategoryFilter === "national" && memberCategoryItemId) url.searchParams.set("nationalChapterId", String(memberCategoryItemId));
+        if (memberCategoryFilter === "international" && memberCategoryItemId) url.searchParams.set("internationalChapterId", String(memberCategoryItemId));
+        if (memberCategoryFilter === "association" && memberCategoryItemId) url.searchParams.set("associationId", String(memberCategoryItemId));
       }
 
       const res = await fetch(url.toString(), {
@@ -1679,11 +1750,17 @@ export default function LeadershipPage() {
     setApplicationCategoryItemId(null);
     setApplicationRoleFilter("all");
     setHasAdditionalAchievementsFilter(false);
+    setMemberRoleFilter("all");
+    setMemberCategoryFilter("all");
+    setMemberCategoryItemId(null);
+    setFacultyFilter("");
     setSearchQuery("");
     setDebouncedSearch("");
     setAppPage(1);
     queryClient.invalidateQueries({ queryKey: ["leadership-applications"] });
     queryClient.invalidateQueries({ queryKey: ["leadership-application-counts"] });
+    queryClient.invalidateQueries({ queryKey: ["leadership-members"] });
+    queryClient.invalidateQueries({ queryKey: ["leadership-member-category-options"] });
   };
 
   return (
@@ -1718,13 +1795,15 @@ export default function LeadershipPage() {
                       setSearchQuery("");
                       setDebouncedSearch("");
                       setFacultyFilter("");
-                      setChapterFilter("");
                       setApplicationTypeFilter("all");
                       setApplicationCategoryFilter("all");
                       setApplicationCategoryItemId(null);
                       setApplicationStatusTab("all");
                       setApplicationRoleFilter("all");
                       setHasAdditionalAchievementsFilter(false);
+                      setMemberRoleFilter("all");
+                      setMemberCategoryFilter("all");
+                      setMemberCategoryItemId(null);
                       setAppPage(1);
                     }}
                   >
@@ -1981,6 +2060,102 @@ export default function LeadershipPage() {
     </div>
   </div>
 )}
+
+    {(selectedTab === "chapterMembers" || selectedTab === "associationMembers") && (
+      <div className="space-y-5 pt-4 border-t border-gray-200/50 dark:border-gray-800/50 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <div className="flex flex-wrap items-center gap-3 w-full">
+          {/* Role Filter */}
+          <div className="relative group flex-1 min-w-[160px] max-w-xs">
+            <select
+              value={memberRoleFilter}
+              onChange={(e) => {
+                setMemberRoleFilter(e.target.value as RoleFilter);
+                setAppPage(1);
+              }}
+              className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
+            >
+              <option value="all">All Roles</option>
+              <option value="president">President</option>
+              <option value="vice_president">Vice President</option>
+              <option value="coordinator">Coordinator</option>
+            </select>
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
+          {/* Category Filter */}
+          <div className="relative group flex-1 min-w-[180px] max-w-xs">
+            <select
+              value={memberCategoryFilter}
+              onChange={(e) => {
+                setMemberCategoryFilter(e.target.value as MemberCategoryFilter);
+                setMemberCategoryItemId(null);
+                setAppPage(1);
+              }}
+              className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
+            >
+              <option value="all">All Categories</option>
+              {selectedTab === "chapterMembers" ? (
+                <>
+                  <option value="national">National Chapters</option>
+                  <option value="international">International Chapters</option>
+                </>
+              ) : (
+                <option value="association">Associations</option>
+              )}
+            </select>
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
+          {memberCategoryFilter !== "all" && (
+            <div className="relative group flex-1 min-w-[220px] max-w-sm">
+              <select
+                value={memberCategoryItemId ? String(memberCategoryItemId) : ""}
+                onChange={(e) => {
+                  const next = e.target.value ? Number(e.target.value) : null;
+                  setMemberCategoryItemId(next && Number.isFinite(next) && next > 0 ? next : null);
+                  setAppPage(1);
+                }}
+                className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
+              >
+                <option value="">
+                  {selectedTab === "chapterMembers" && memberCategoryFilter === "national"
+                    ? "Select National Chapter"
+                    : selectedTab === "chapterMembers" && memberCategoryFilter === "international"
+                      ? "Select International Chapter"
+                      : "Select Association"}
+                  {memberCategoryOptionsLoading ? "..." : ""}
+                </option>
+                {(memberCategoryFilter === "national"
+                  ? memberCategoryOptionsData?.nationalChapters || []
+                  : memberCategoryFilter === "international"
+                    ? memberCategoryOptionsData?.internationalChapters || []
+                    : memberCategoryOptionsData?.associations || []
+                ).map((item) => (
+                  <option key={`member-${memberCategoryFilter}-${item.id}`} value={item.id}>
+                    {item.label} ({item.count})
+                  </option>
+                ))}
+              </select>
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition-all duration-200 shadow-sm"
+          >
+            Clear Filters
+          </button>
+        </div>
+      </div>
+    )}
     </div>
   </div>
 </div>
@@ -4203,6 +4378,7 @@ function MembersTable({
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">SAP / Reg No</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Name</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell">Email</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[180px]">Type</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Position</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden xl:table-cell">Selected by Admin</TableCell>
             {isAdmin && (
@@ -4217,6 +4393,7 @@ function MembersTable({
               <TableCell className="px-4 py-4"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4"><div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 hidden lg:table-cell"><div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4"><div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 hidden xl:table-cell"><div className="h-4 w-44 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               {isAdmin && (
@@ -4246,6 +4423,7 @@ function MembersTable({
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">SAP / Reg No</TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Name</TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell">Email</TableCell>
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[180px]">Type</TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Position</TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden xl:table-cell">Selected by Admin</TableCell>
           {isAdmin && (
@@ -4279,6 +4457,11 @@ function MembersTable({
               <TableCell className="px-4 py-3 text-sm hidden lg:table-cell">
                 <a href={member.email ? `mailto:${member.email}` : "#"} className="text-blue-600 hover:underline truncate block">{member.email || "-"}</a>
               </TableCell>
+              <TableCell className="px-4 py-3 text-sm w-[180px]">
+                <div className="truncate min-w-0">
+                  {type === "chapter" ? "Chapter" : "Association"} - {String(member.categoryName || "-")}
+                </div>
+              </TableCell>
               <TableCell className="px-4 py-3 text-sm truncate">{member.position}</TableCell>
               <TableCell className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300 hidden xl:table-cell">
                 <span className="line-clamp-2">
@@ -4310,7 +4493,7 @@ function MembersTable({
             </TableRow>
             {expandedMemberId === member.id && (
               <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
-                <TableCell colSpan={isAdmin ? 7 : 6} className="px-4 py-4">
+                <TableCell colSpan={isAdmin ? 8 : 7} className="px-4 py-4">
                   <div className="w-full overflow-hidden">
                     <AlumniExpandableDetails sapId={member.sapId || member.registrationno || ""} onClose={() => onExpand(null)} />
                   </div>

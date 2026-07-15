@@ -32,6 +32,17 @@ export async function GET(req: Request) {
     const faculty = String(searchParams.get("faculty") || "").trim();
     const chapter = String(searchParams.get("chapter") || "").trim();
 
+    const toPositiveInt = (value: string | null): number => {
+      if (!value) return 0;
+      const n = Number(value);
+      return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0;
+    };
+
+    const nationalChapterId = toPositiveInt(searchParams.get("nationalChapterId"));
+    const internationalChapterId = toPositiveInt(searchParams.get("internationalChapterId"));
+    const associationId = toPositiveInt(searchParams.get("associationId"));
+    const categoryItemId = toPositiveInt(searchParams.get("categoryItemId"));
+
     const statusValues = new Set(["all", "approved", "assessed", "pending", "rejected"]);
     if (!statusValues.has(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
@@ -107,6 +118,16 @@ export async function GET(req: Request) {
             ? sql` AND TRIM(COALESCE(ch.international_chapter, '')) <> ''`
             : sql``;
     const associationCategoryCondition = category === "national" || category === "international" ? sql` AND 1=0` : sql``;
+
+    const chapterCategoryId = nationalChapterId || internationalChapterId || categoryItemId;
+    const chapterCategoryIdCondition = chapterCategoryId
+      ? sql` AND cl.chapter_id = ${chapterCategoryId}`
+      : sql``;
+
+    const effectiveAssociationId = associationId || (category === "association" ? categoryItemId : 0);
+    const associationIdCondition = effectiveAssociationId
+      ? sql` AND ass.association_id = ${effectiveAssociationId}`
+      : sql``;
 
     const allItems: Array<Record<string, unknown>> = [];
 
@@ -203,6 +224,7 @@ export async function GET(req: Request) {
           ${chapterRoleCondition}
           ${chapterAdditionalCondition}
           ${chapterCategoryCondition}
+          ${chapterCategoryIdCondition}
         ORDER BY cl.created_at DESC
       `;
 
@@ -300,6 +322,7 @@ export async function GET(req: Request) {
           ${assocRoleCondition}
           ${assocAdditionalCondition}
           ${associationCategoryCondition}
+          ${associationIdCondition}
         ORDER BY ass.createddatetime DESC NULLS LAST
       `;
 

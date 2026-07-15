@@ -15,8 +15,19 @@ export type Merchant = {
   updated_at: string;
 };
 
+function toISODate(value: unknown): string {
+  if (!value) return "";
+  const d = value instanceof Date ? value : new Date(String(value));
+  if (isNaN(d.getTime())) return "";
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 function mapMerchant(row: Record<string, unknown>): Merchant {
-  const endDate = row.end_date ? new Date(String(row.end_date)) : null;
+  const endDateStr = toISODate(row.end_date);
+  const endDate = endDateStr ? new Date(endDateStr + "T00:00:00") : null;
   const isExpiredByDate = endDate ? endDate < new Date(new Date().toDateString()) : false;
   const rawStatus = String(row.status ?? "active");
   const status: "active" | "expired" =
@@ -26,8 +37,8 @@ function mapMerchant(row: Record<string, unknown>): Merchant {
     id: Number(row.id),
     business_name: String(row.business_name ?? ""),
     discount_type: String(row.discount_type ?? ""),
-    start_date: row.start_date ? String(row.start_date).slice(0, 10) : "",
-    end_date: row.end_date ? String(row.end_date).slice(0, 10) : "",
+    start_date: toISODate(row.start_date),
+    end_date: endDateStr,
     discount_pct: Number(row.discount_pct ?? 0),
     status,
     created_at: String(row.created_at ?? ""),
@@ -170,10 +181,10 @@ export async function PUT(req: NextRequest) {
       : String(cur.discount_type);
     const startDate = body.startDate !== undefined
       ? String(body.startDate).trim()
-      : String(cur.start_date).slice(0, 10);
+      : toISODate(cur.start_date);
     const endDate = body.endDate !== undefined
       ? String(body.endDate).trim()
-      : String(cur.end_date).slice(0, 10);
+      : toISODate(cur.end_date);
     const discountPct = body.discountPct !== undefined
       ? Number(body.discountPct)
       : Number(cur.discount_pct);
