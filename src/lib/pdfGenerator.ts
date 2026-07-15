@@ -1132,7 +1132,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Membership Type", data.membershipType, "Pool Location", data.poolLocation);
         form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
-        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Discount %", formatDiscountPercent(data.discountPercent));
+        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Applied Discount %", formatDiscountPercent(data.discountPercent));
         form.drawFullRow("Discount Basis", data.discountBasis || "—");
         form.drawFullRow("Valid To", data.validTill);
 
@@ -1157,7 +1157,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFieldPair("Membership Category", data.membershipCategory, "Membership Type", data.membershipType);
         form.drawFieldPair("Playing Category", data.playingCategory, "Playing Role", data.playingRole);
         form.drawFieldPair("Preferred Practice Session", data.preferredTiming, "Valid From", data.membershipStartDate);
-        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Discount %", formatDiscountPercent(data.discountPercent));
+        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Applied Discount %", formatDiscountPercent(data.discountPercent));
         form.drawFullRow("Discount Basis", data.discountBasis || "—");
         form.drawFullRow("Valid Till", data.validTill);
 
@@ -1172,11 +1172,10 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
       } else {
         form.drawSection("B", "Membership Details");
-        form.drawFieldPair("Applying For", data.applyingFor, "Discount Type", data.discountType);
+        form.drawFieldPair("Applying For", data.applyingFor, "Applied Discount %", formatDiscountPercent(data.discountPercent));
         form.drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
         form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
-        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Discount %", formatDiscountPercent(data.discountPercent));
-        form.drawFullRow("Discount Basis", data.discountBasis || "—");
+        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount),"Discount Basis", data.discountBasis || "—" );
         form.drawFullRow("Valid To", data.validTill);
 
         form.drawSection("C", "Medical & Fitness Information");
