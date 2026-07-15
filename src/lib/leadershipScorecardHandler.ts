@@ -82,7 +82,21 @@ export async function handleBulkLeadershipScorecardDownload(
   const primaryPayload = payloads[0];
   const totalApplicantCount = payloads.reduce((sum, p) => sum + p.applicants.length, 0);
 
-  await logAdminAction({
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  const slug = primaryPayload.categoryLabel
+    ? primaryPayload.categoryLabel.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()
+    : type;
+  const filename = `leadership-scorecard-${type}-${role}-${slug}-${dateStamp}.pdf`;
+  const response = new NextResponse(new Uint8Array(pdfBuffer), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "no-store",
+    },
+  });
+
+  logAdminAction({
     session,
     req,
     input: {
@@ -111,19 +125,7 @@ export async function handleBulkLeadershipScorecardDownload(
         downloadedAt: new Date().toISOString(),
       },
     },
-  });
+  }).catch((err) => console.error("[leadership/bulk-scorecard] log error:", err));
 
-  const dateStamp = new Date().toISOString().slice(0, 10);
-  const slug = primaryPayload.categoryLabel
-    ? primaryPayload.categoryLabel.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()
-    : type;
-  const filename = `leadership-scorecard-${type}-${role}-${slug}-${dateStamp}.pdf`;
-  return new NextResponse(new Uint8Array(pdfBuffer), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Cache-Control": "no-store",
-    },
-  });
+  return response;
 }

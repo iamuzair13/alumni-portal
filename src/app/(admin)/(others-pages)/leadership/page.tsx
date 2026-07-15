@@ -610,6 +610,7 @@ export default function LeadershipPage() {
   const [scorecardChapterCategory, setScorecardChapterCategory] = useState<"" | "national" | "international">("");
   const [scorecardCategoryItemId, setScorecardCategoryItemId] = useState<number | null>(null);
   const [scorecardGenerating, setScorecardGenerating] = useState(false);
+  const [scorecardPreviewing, setScorecardPreviewing] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [appPage, setAppPage] = useState(1);
@@ -1095,44 +1096,53 @@ export default function LeadershipPage() {
       ? !!scorecardChapterCategory && !!scorecardCategoryItemId
       : !!scorecardCategoryItemId);
 
+  function buildScorecardUrl() {
+    const url = new URL("/api/leadership/bulk-scorecard", window.location.origin);
+    url.searchParams.set("role", scorecardRole);
+    url.searchParams.set("type", scorecardType);
+    if (scorecardType === "chapter") {
+      if (scorecardChapterCategory === "national" && scorecardCategoryItemId) {
+        url.searchParams.set("nationalChapterId", String(scorecardCategoryItemId));
+      } else if (scorecardChapterCategory === "international" && scorecardCategoryItemId) {
+        url.searchParams.set("internationalChapterId", String(scorecardCategoryItemId));
+      }
+    } else if (scorecardCategoryItemId) {
+      url.searchParams.set("associationId", String(scorecardCategoryItemId));
+    }
+    return url;
+  }
+
+  async function fetchScorecardBlob(): Promise<Blob> {
+    const res = await fetch(buildScorecardUrl().toString(), {
+      headers: { accept: "application/pdf" },
+      credentials: "include",
+    });
+    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const err =
+        data && typeof data === "object" && "error" in data
+          ? String((data as { error?: unknown }).error || "")
+          : "";
+      throw new Error(err || "Failed to generate scorecard");
+    }
+    if (!contentType.includes("application/pdf")) {
+      throw new Error("Server did not return a PDF file. Please try again.");
+    }
+    const blob = await res.blob();
+    if (blob.size > 8 * 1024 * 1024) {
+      throw new Error(
+        `Downloaded file is too large (${(blob.size / (1024 * 1024)).toFixed(1)} MB).`
+      );
+    }
+    return blob;
+  }
+
   const handleGenerateBulkScorecard = async () => {
     if (!scorecardFormReady) return;
     setScorecardGenerating(true);
     try {
-      const url = new URL("/api/leadership/bulk-scorecard", window.location.origin);
-      url.searchParams.set("role", scorecardRole);
-      url.searchParams.set("type", scorecardType);
-      if (scorecardType === "chapter") {
-        if (scorecardChapterCategory === "national" && scorecardCategoryItemId) {
-          url.searchParams.set("nationalChapterId", String(scorecardCategoryItemId));
-        } else if (scorecardChapterCategory === "international" && scorecardCategoryItemId) {
-          url.searchParams.set("internationalChapterId", String(scorecardCategoryItemId));
-        }
-      } else if (scorecardCategoryItemId) {
-        url.searchParams.set("associationId", String(scorecardCategoryItemId));
-      }
-      const res = await fetch(url.toString(), {
-        headers: { accept: "application/pdf" },
-        credentials: "include",
-      });
-      const contentType = (res.headers.get("content-type") || "").toLowerCase();
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const err =
-          data && typeof data === "object" && "error" in data
-            ? String((data as { error?: unknown }).error || "")
-            : "";
-        throw new Error(err || "Failed to generate scorecard");
-      }
-      if (!contentType.includes("application/pdf")) {
-        throw new Error("Server did not return a PDF file. Please try again.");
-      }
-      const blob = await res.blob();
-      if (blob.size > 8 * 1024 * 1024) {
-        throw new Error(
-          `Downloaded file is too large (${(blob.size / (1024 * 1024)).toFixed(1)} MB).`
-        );
-      }
+      const blob = await fetchScorecardBlob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
@@ -1148,6 +1158,22 @@ export default function LeadershipPage() {
       toast.error(e instanceof Error ? e.message : "Failed to generate scorecard");
     } finally {
       setScorecardGenerating(false);
+    }
+  };
+
+  const handleViewBulkScorecard = async () => {
+    if (!scorecardFormReady) return;
+    setScorecardPreviewing(true);
+    try {
+      const blob = await fetchScorecardBlob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60_000);
+      toast.success("Scorecard opened in new tab");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to preview scorecard");
+    } finally {
+      setScorecardPreviewing(false);
     }
   };
 
@@ -2133,19 +2159,28 @@ export default function LeadershipPage() {
                 )}
               </div>
 
-              <div className="mt-6 flex items-center justify-end gap-3">
+              <div className="mt-6 flex items-center justify-end gap-3 flex-wrap">
                 <button
                   type="button"
                   onClick={() => setScorecardModalOpen(false)}
-                  disabled={scorecardGenerating}
+                  disabled={scorecardGenerating || scorecardPreviewing}
                   className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
+                  onClick={() => void handleViewBulkScorecard()}
+                  disabled={!scorecardFormReady || scorecardGenerating || scorecardPreviewing}
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40 disabled:opacity-50"
+                >
+                  <EyeIcon className={`h-4 w-4 ${scorecardPreviewing ? "animate-pulse" : ""}`} />
+                  {scorecardPreviewing ? "Opening…" : "View ScoreCard"}
+                </button>
+                <button
+                  type="button"
                   onClick={() => void handleGenerateBulkScorecard()}
-                  disabled={!scorecardFormReady || scorecardGenerating}
+                  disabled={!scorecardFormReady || scorecardGenerating || scorecardPreviewing}
                   className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
                 >
                   <DownloadIcon className={`h-4 w-4 ${scorecardGenerating ? "animate-bounce" : ""}`} />

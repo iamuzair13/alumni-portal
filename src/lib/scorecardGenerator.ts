@@ -26,6 +26,36 @@ const THEME = {
   },
 };
 
+type RoleTheme = {
+  brand: [number, number, number];
+  brandLight: [number, number, number];
+  bannerSubtext: [number, number, number];
+};
+
+function getRoleTheme(role: BulkScorecardPayload["role"]): RoleTheme {
+  switch (role) {
+    case "vice_president":
+      return {
+        brand: [25, 90, 170] as [number, number, number],
+        brandLight: [235, 243, 255] as [number, number, number],
+        bannerSubtext: [200, 220, 255] as [number, number, number],
+      };
+    case "coordinator":
+      return {
+        brand: [153, 102, 0] as [number, number, number],
+        brandLight: [255, 250, 230] as [number, number, number],
+        bannerSubtext: [255, 235, 160] as [number, number, number],
+      };
+    case "president":
+    default:
+      return {
+        brand: [0, 102, 51] as [number, number, number],
+        brandLight: [240, 247, 243] as [number, number, number],
+        bannerSubtext: [220, 240, 230] as [number, number, number],
+      };
+  }
+}
+
 const QUESTIONS_COL_RATIO = 0.38;
 const MIN_APPLICANT_COL_MM = 22;
 const MIN_HEADER_ROW_H = 7;
@@ -35,7 +65,10 @@ const HEADER_FONT = 7.5;
 const SECTION_GAP = 3;
 const BONUS_MARKS_MAX = 25;
 
+let _cachedLogoBase64: string | null = null;
+
 function getLogoBase64(): string {
+  if (_cachedLogoBase64 !== null) return _cachedLogoBase64;
   const candidates = [
     join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-04.png"),
     join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-01.png"),
@@ -45,11 +78,13 @@ function getLogoBase64(): string {
     try {
       const logoBuffer = readFileSync(logoPath);
       if (logoBuffer.length > PDF_LOGO_MAX_BYTES) continue;
-      return `data:image/png;base64,${logoBuffer.toString("base64")}`;
+      _cachedLogoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+      return _cachedLogoBase64;
     } catch {
       // try next
     }
   }
+  _cachedLogoBase64 = "";
   return "";
 }
 
@@ -89,14 +124,20 @@ export function generateBulkLeadershipScorecardPDF(
       const W = pageW - m * 2;
       let y = m;
       let activePayload = payloads[0];
+      const pageRoleMap = new Map<number, BulkScorecardPayload["role"]>();
 
       const pageBottom = () => pageH - m - 12;
       const lineH = (size: number) => size * 0.38;
       let allowVerticalPageBreak = false;
+      const rc = () => getRoleTheme(activePayload.role);
+      const recordPageRole = () => {
+        pageRoleMap.set(doc.getCurrentPageInfo().pageNumber, activePayload.role);
+      };
 
       const startNewContentPage = () => {
         drawPageFooter();
         doc.addPage();
+        recordPageRole();
         y = m;
       };
 
@@ -108,7 +149,7 @@ export function generateBulkLeadershipScorecardPDF(
 
       const drawPageFooter = () => {
         const footerY = pageH - 8;
-        doc.setDrawColor(...THEME.colors.brand);
+        doc.setDrawColor(...rc().brand);
         doc.setLineWidth(0.25);
         doc.line(m, footerY - 3, pageW - m, footerY - 3);
         doc.setFontSize(THEME.font.tiny);
@@ -135,11 +176,11 @@ export function generateBulkLeadershipScorecardPDF(
 
       const drawContinuationHeader = (batchStart: number, batchEnd: number, roleLabel?: string) => {
         const barH = 10;
-        doc.setFillColor(...THEME.colors.brandLight);
-        doc.setDrawColor(...THEME.colors.brand);
+        doc.setFillColor(...rc().brandLight);
+        doc.setDrawColor(...rc().brand);
         doc.setLineWidth(0.3);
         doc.rect(m, y, W, barH, "S");
-        setStyle(THEME.font.small, true, THEME.colors.brand);
+        setStyle(THEME.font.small, true, rc().brand);
         const rolePrefix = roleLabel ? `${roleLabel} — ` : "";
         doc.text(
           `${rolePrefix}Leadership Scorecard — Applicants ${batchStart}–${batchEnd}`,
@@ -152,18 +193,18 @@ export function generateBulkLeadershipScorecardPDF(
       const drawRoleSectionBanner = (roleLabel: string, roleIndex: number) => {
         const barH = 14;
         ensureSpace(barH + 5);
-        doc.setFillColor(...THEME.colors.brand);
-        doc.setDrawColor(...THEME.colors.brand);
+        doc.setFillColor(...rc().brand);
+        doc.setDrawColor(...rc().brand);
         doc.setLineWidth(0.3);
         doc.rect(m, y, W, barH, "F");
 
         setStyle(THEME.font.h2, true, THEME.colors.white);
         doc.text(roleLabel.toUpperCase(), m + 4, y + 6.5);
-        setStyle(THEME.font.small, false, [220, 240, 230] as [number, number, number]);
+        setStyle(THEME.font.small, false, rc().bannerSubtext);
         doc.text("All Applicants", m + 4, y + 11.5);
 
         const badge = `${roleIndex + 1} of ${payloads.length}`;
-        setStyle(THEME.font.small, true, THEME.colors.brand);
+        setStyle(THEME.font.small, true, rc().brand);
         const badgeW = doc.getTextWidth(badge) + 8;
         const badgeX = pageW - m - badgeW - 2;
         doc.setFillColor(...THEME.colors.white);
@@ -175,7 +216,7 @@ export function generateBulkLeadershipScorecardPDF(
 
       const drawBrandedHeader = () => {
         const headerH = 20;
-        doc.setFillColor(...THEME.colors.brand);
+        doc.setFillColor(...rc().brand);
         doc.rect(m, y, W, headerH, "F");
 
         const titleX = m + 4;
@@ -243,12 +284,12 @@ export function generateBulkLeadershipScorecardPDF(
         const barH = opts?.compact ? 5.5 : 6.5;
         y += opts?.compact ? 0 : SECTION_GAP;
         ensureSpace(barH + 2);
-        doc.setFillColor(...THEME.colors.brandLight);
-        doc.setDrawColor(...THEME.colors.brand);
+        doc.setFillColor(...rc().brandLight);
+        doc.setDrawColor(...rc().brand);
         doc.setLineWidth(0.3);
         doc.rect(m, y, 2.5, barH, "F");
         doc.rect(m, y, W, barH, "S");
-        setStyle(THEME.font.small, true, THEME.colors.brand);
+        setStyle(THEME.font.small, true, rc().brand);
         const displayTitle = opts?.roleLabel ? `${title} — ${opts.roleLabel}` : title;
         doc.text(displayTitle.toUpperCase(), m + 5, y + 4.3);
         y += barH + 2;
@@ -305,8 +346,8 @@ export function generateBulkLeadershipScorecardPDF(
         const headerRowH = measureTableHeaderHeight(ctx);
         const textStartY = y + CELL_PAD + lineH(HEADER_FONT);
 
-        doc.setFillColor(...THEME.colors.brand);
-        doc.setDrawColor(...THEME.colors.brand);
+        doc.setFillColor(...rc().brand);
+        doc.setDrawColor(...rc().brand);
         doc.setLineWidth(0.15);
         doc.rect(m, y, totalW, headerRowH, "F");
 
@@ -367,11 +408,11 @@ export function generateBulkLeadershipScorecardPDF(
       const drawTableContinuationLabel = (sectionLabel: string, roleLabel?: string) => {
         const barH = 7;
         ensureSpace(barH + 2);
-        doc.setFillColor(...THEME.colors.brandLight);
-        doc.setDrawColor(...THEME.colors.brand);
+        doc.setFillColor(...rc().brandLight);
+        doc.setDrawColor(...rc().brand);
         doc.setLineWidth(0.2);
         doc.rect(m, y, W, barH, "S");
-        setStyle(THEME.font.tiny, true, THEME.colors.brand);
+        setStyle(THEME.font.tiny, true, rc().brand);
         const prefix = roleLabel ? `${roleLabel} — ` : "";
         doc.text(`${prefix}${sectionLabel} (continued)`, m + 3, y + 4.5);
         y += barH + 2;
@@ -590,6 +631,8 @@ export function generateBulkLeadershipScorecardPDF(
         activePayload = payload;
         if (payloadIdx > 0) {
           startNewContentPage();
+        } else {
+          recordPageRole();
         }
 
         const perPage = maxApplicantsPerPage(pageW, m);
@@ -609,6 +652,10 @@ export function generateBulkLeadershipScorecardPDF(
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
+        const pageRole = pageRoleMap.get(i);
+        if (pageRole) {
+          activePayload = payloads.find((p) => p.role === pageRole) ?? activePayload;
+        }
         drawPageFooter();
       }
 
