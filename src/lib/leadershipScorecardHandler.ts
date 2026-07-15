@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import { fetchBulkLeadershipScorecardPayload } from "@/lib/leadershipScorecardData";
-import { generateBulkLeadershipScorecardPDF } from "@/lib/scorecardGenerator";
+import { generateBulkLeadershipScorecardPDF, generateBulkLeadershipSummaryPDF } from "@/lib/scorecardGenerator";
 
 const VALID_ROLES = new Set(["president", "vice_president", "coordinator", "all_roles"]);
 const VALID_TYPES = new Set(["chapter", "association"]);
@@ -21,6 +21,7 @@ export async function handleBulkLeadershipScorecardDownload(
   role: string,
   type: string
 ): Promise<NextResponse> {
+  const isSummary = req.nextUrl.searchParams.get("summary") === "1";
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -75,9 +76,10 @@ export async function handleBulkLeadershipScorecardDownload(
           }),
         ];
 
-  const pdfBuffer = await generateBulkLeadershipScorecardPDF(
-    role === "all_roles" ? payloads : payloads[0]
-  );
+  const pdfData = role === "all_roles" ? payloads : payloads[0];
+  const pdfBuffer = isSummary
+    ? await generateBulkLeadershipSummaryPDF(pdfData)
+    : await generateBulkLeadershipScorecardPDF(pdfData);
 
   const primaryPayload = payloads[0];
   const totalApplicantCount = payloads.reduce((sum, p) => sum + p.applicants.length, 0);
@@ -86,7 +88,8 @@ export async function handleBulkLeadershipScorecardDownload(
   const slug = primaryPayload.categoryLabel
     ? primaryPayload.categoryLabel.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()
     : type;
-  const filename = `leadership-scorecard-${type}-${role}-${slug}-${dateStamp}.pdf`;
+  const fileKind = isSummary ? "summary" : "scorecard";
+  const filename = `leadership-${fileKind}-${type}-${role}-${slug}-${dateStamp}.pdf`;
   const response = new NextResponse(new Uint8Array(pdfBuffer), {
     status: 200,
     headers: {

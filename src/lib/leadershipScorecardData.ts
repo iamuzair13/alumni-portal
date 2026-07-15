@@ -15,6 +15,7 @@ export type BulkScorecardCriterion = {
 export type BulkScorecardApplicant = {
   applicationId: number;
   name: string;
+  degreeTitle: string | null;
   status: string;
   bonusMarks: number;
   marksByCriterionId: Record<number, number | null>;
@@ -140,6 +141,7 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
         cl.id as application_id,
         cl.status,
         a.alumniname,
+        TRIM(COALESCE(a.degreetitle, '')) AS degreetitle,
         cl.bonus_marks
       FROM public.chapter_leadership cl
       LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
@@ -186,9 +188,11 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
     for (const row of chapterRows as Array<Record<string, unknown>>) {
       const applicationId = Number(row.application_id);
       const bonusRaw = Number(row.bonus_marks);
+      const degreeRaw = String(row.degreetitle ?? "").trim();
       applicants.push({
         applicationId,
         name: String(row.alumniname ?? "Unknown"),
+        degreeTitle: degreeRaw || null,
         status: String(row.status ?? "pending"),
         bonusMarks: Number.isFinite(bonusRaw) && bonusRaw >= 0 ? normalizeObtainedMark(bonusRaw) : 0,
         marksByCriterionId: marksByApplication.get(applicationId) ?? {},
@@ -214,6 +218,7 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
         ass.id as application_id,
         ass.status,
         a.alumniname,
+        TRIM(COALESCE(a.degreetitle, '')) AS degreetitle,
         ass.bonus_marks
       FROM public.tblalumniassociation ass
       LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
@@ -259,9 +264,11 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
     for (const row of associationRows as Array<Record<string, unknown>>) {
       const applicationId = Number(row.application_id);
       const bonusRaw = Number(row.bonus_marks);
+      const degreeRaw = String(row.degreetitle ?? "").trim();
       applicants.push({
         applicationId,
         name: String(row.alumniname ?? "Unknown"),
+        degreeTitle: degreeRaw || null,
         status: String(row.status ?? "pending"),
         bonusMarks: Number.isFinite(bonusRaw) && bonusRaw >= 0 ? normalizeObtainedMark(bonusRaw) : 0,
         marksByCriterionId: marksByApplication.get(applicationId) ?? {},

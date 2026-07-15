@@ -602,6 +602,8 @@ export default function LeadershipPage() {
   const [applicationStatusTab, setApplicationStatusTab] = useState<ApplicationStatusTab>("all");
   const [applicationRoleFilter, setApplicationRoleFilter] = useState<RoleFilter>("all");
   const [hasAdditionalAchievementsFilter, setHasAdditionalAchievementsFilter] = useState(false);
+  const [scorecardModeModalOpen, setScorecardModeModalOpen] = useState(false);
+  const [scorecardMode, setScorecardMode] = useState<"scorecard" | "summary">("scorecard");
   const [scorecardModalOpen, setScorecardModalOpen] = useState(false);
   const [scorecardRole, setScorecardRole] = useState<
     "" | "all_roles" | "president" | "vice_president" | "coordinator"
@@ -1109,6 +1111,7 @@ export default function LeadershipPage() {
     } else if (scorecardCategoryItemId) {
       url.searchParams.set("associationId", String(scorecardCategoryItemId));
     }
+    if (scorecardMode === "summary") url.searchParams.set("summary", "1");
     return url;
   }
 
@@ -1155,7 +1158,7 @@ export default function LeadershipPage() {
       toast.success("Scorecard downloaded");
       setScorecardModalOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to generate scorecard");
+      toast.error(e instanceof Error ? e.message : `Failed to generate ${scorecardMode}`);
     } finally {
       setScorecardGenerating(false);
     }
@@ -1163,15 +1166,27 @@ export default function LeadershipPage() {
 
   const handleViewBulkScorecard = async () => {
     if (!scorecardFormReady) return;
+    const previewWindow = window.open("", "_blank", "noopener,noreferrer");
     setScorecardPreviewing(true);
     try {
       const blob = await fetchScorecardBlob();
       const blobUrl = window.URL.createObjectURL(blob);
-      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      if (previewWindow) {
+        previewWindow.location.href = blobUrl;
+      } else {
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
       setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60_000);
       toast.success("Scorecard opened in new tab");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to preview scorecard");
+      previewWindow?.close();
+      toast.error(e instanceof Error ? e.message : `Failed to preview ${scorecardMode}`);
     } finally {
       setScorecardPreviewing(false);
     }
@@ -1787,13 +1802,7 @@ export default function LeadershipPage() {
           {selectedTab === "applications" && isAdmin && (
             <button
               type="button"
-              onClick={() => {
-                setScorecardRole("");
-                setScorecardType("");
-                setScorecardChapterCategory("");
-                setScorecardCategoryItemId(null);
-                setScorecardModalOpen(true);
-              }}
+              onClick={() => setScorecardModeModalOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50 dark:bg-gray-950 dark:text-emerald-300 dark:hover:bg-emerald-950/30 text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
             >
               <DownloadIcon className="w-4 h-4" />
@@ -1979,6 +1988,56 @@ export default function LeadershipPage() {
 
         <ExportModal />
 
+        {scorecardModeModalOpen && (
+          <Modal
+            isOpen={scorecardModeModalOpen}
+            onClose={() => setScorecardModeModalOpen(false)}
+            showCloseButton
+            className="max-w-sm"
+          >
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Choose PDF Type</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Select what you want to generate.</p>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScorecardMode("scorecard");
+                    setScorecardRole("");
+                    setScorecardType("");
+                    setScorecardChapterCategory("");
+                    setScorecardCategoryItemId(null);
+                    setScorecardModeModalOpen(false);
+                    setScorecardModalOpen(true);
+                  }}
+                  className="flex flex-col items-center gap-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 p-5 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                >
+                  <DownloadIcon className="w-7 h-7" />
+                  <span className="text-sm font-semibold">Get ScoreCard</span>
+                  <span className="text-xs text-center text-emerald-600/70 dark:text-emerald-400/70">Full criteria & marks breakdown</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScorecardMode("summary");
+                    setScorecardRole("");
+                    setScorecardType("");
+                    setScorecardChapterCategory("");
+                    setScorecardCategoryItemId(null);
+                    setScorecardModeModalOpen(false);
+                    setScorecardModalOpen(true);
+                  }}
+                  className="flex flex-col items-center gap-2 rounded-xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/30 p-5 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                >
+                  <EyeIcon className="w-7 h-7" />
+                  <span className="text-sm font-semibold">Get Summary</span>
+                  <span className="text-xs text-center text-blue-600/70 dark:text-blue-400/70">Grand total & % per applicant</span>
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
         {scorecardModalOpen && (
           <Modal
             isOpen={scorecardModalOpen}
@@ -1989,9 +2048,13 @@ export default function LeadershipPage() {
             className="max-w-md"
           >
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Generate ScoreCard</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {scorecardMode === "summary" ? "Generate Summary" : "Generate ScoreCard"}
+              </h3>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Select role, type, and chapter or association to generate a comparison scorecard PDF.
+                {scorecardMode === "summary"
+                  ? "Select role, type, and chapter or association to generate a summary PDF with grand totals and percentages."
+                  : "Select role, type, and chapter or association to generate a comparison scorecard PDF."}
               </p>
 
               <div className="mt-5 space-y-4">
@@ -2175,7 +2238,7 @@ export default function LeadershipPage() {
                   className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40 disabled:opacity-50"
                 >
                   <EyeIcon className={`h-4 w-4 ${scorecardPreviewing ? "animate-pulse" : ""}`} />
-                  {scorecardPreviewing ? "Opening…" : "View ScoreCard"}
+                  {scorecardPreviewing ? "Opening…" : scorecardMode === "summary" ? "View Summary" : "View ScoreCard"}
                 </button>
                 <button
                   type="button"
@@ -2184,7 +2247,7 @@ export default function LeadershipPage() {
                   className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
                 >
                   <DownloadIcon className={`h-4 w-4 ${scorecardGenerating ? "animate-bounce" : ""}`} />
-                  {scorecardGenerating ? "Generating…" : "Generate PDF"}
+                  {scorecardGenerating ? "Generating…" : scorecardMode === "summary" ? "Download Summary" : "Download ScoreCard"}
                 </button>
               </div>
             </div>

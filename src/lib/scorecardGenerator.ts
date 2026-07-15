@@ -110,6 +110,312 @@ function chunkApplicants<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+export function generateBulkLeadershipSummaryPDF(
+  data: BulkScorecardPayload | BulkScorecardPayload[]
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const payloads = Array.isArray(data) ? data : [data];
+      const isMultiRole = payloads.length > 1;
+      const doc = new jsPDF({ compress: true, unit: "mm", orientation: "landscape" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const m = THEME.margin;
+      const W = pageW - m * 2;
+      let y = m;
+      let activePayload = payloads[0];
+      const pageRoleMap = new Map<number, BulkScorecardPayload["role"]>();
+
+      const pageBottom = () => pageH - m - 12;
+      const lineH = (size: number) => size * 0.38;
+      const rc = () => getRoleTheme(activePayload.role);
+      const recordPageRole = () => {
+        pageRoleMap.set(doc.getCurrentPageInfo().pageNumber, activePayload.role);
+      };
+
+      const setStyle = (size: number, bold = false, color: [number, number, number] = THEME.colors.text) => {
+        doc.setFontSize(size);
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setTextColor(color[0], color[1], color[2]);
+      };
+
+      const drawPageFooter = () => {
+        const footerY = pageH - 8;
+        doc.setDrawColor(...rc().brand);
+        doc.setLineWidth(0.25);
+        doc.line(m, footerY - 3, pageW - m, footerY - 3);
+        doc.setFontSize(THEME.font.tiny);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...THEME.colors.muted);
+        const ft = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
+        const fw = doc.getTextWidth(ft);
+        doc.text(ft, (pageW - fw) / 2, footerY);
+        const pageNum = `Page ${doc.getCurrentPageInfo().pageNumber}`;
+        doc.text(pageNum, pageW - m - doc.getTextWidth(pageNum), footerY);
+      };
+
+      const startNewPage = () => {
+        drawPageFooter();
+        doc.addPage();
+        recordPageRole();
+        y = m;
+      };
+
+      const ensureSpace = (need: number) => {
+        if (y + need <= pageBottom()) return;
+        startNewPage();
+      };
+
+      const drawBrandedHeader = () => {
+        const headerH = 20;
+        doc.setFillColor(...rc().brand);
+        doc.rect(m, y, W, headerH, "F");
+
+        const titleX = m + 4;
+        doc.setFontSize(THEME.font.h1);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(255, 255, 255);
+        const headerTitle = isMultiRole
+          ? `Leadership Summary — ${bulkScorecardRoleLabel(activePayload.role)}`
+          : "Leadership Summary";
+        doc.text(headerTitle, titleX, y + 9);
+        doc.setFontSize(THEME.font.small);
+        doc.setFont("helvetica", "normal");
+        doc.text("Office of Alumni Relations — University of Lahore", titleX, y + 15);
+
+        const logo = getLogoBase64();
+        if (logo) {
+          try {
+            doc.addImage(logo, "PNG", pageW - m - 30, y + 4, 28, 12);
+          } catch { /* skip */ }
+        }
+
+        y += headerH + 5;
+
+        const roleLabel = bulkScorecardRoleLabel(activePayload.role);
+        const typeLabel = activePayload.leadershipType === "chapter" ? "Chapter" : "Association";
+        const infoPairs = [
+          { label: "Role", value: roleLabel },
+          { label: "Type", value: typeLabel },
+          ...(activePayload.categoryLabel ? [{ label: "Category", value: activePayload.categoryLabel }] : []),
+          { label: "Generated", value: activePayload.generatedAt },
+          { label: "Applicants", value: String(activePayload.applicants.length) },
+        ];
+
+        const colCount = infoPairs.length;
+        const colW = (W - (colCount - 1) * 2) / colCount;
+        let maxRowH = 10;
+        infoPairs.forEach((p) => {
+          const lines = doc.splitTextToSize(p.value, colW - 4);
+          maxRowH = Math.max(maxRowH, lines.length * lineH(THEME.font.small) + 7);
+        });
+        ensureSpace(maxRowH + 4);
+
+        infoPairs.forEach((p, i) => {
+          const x = m + i * (colW + 2);
+          doc.setFillColor(250, 250, 250);
+          doc.setDrawColor(...THEME.colors.border);
+          doc.setLineWidth(0.1);
+          doc.rect(x, y, colW, maxRowH, "FD");
+          setStyle(THEME.font.tiny, true, THEME.colors.muted);
+          doc.text(p.label.toUpperCase(), x + 2.5, y + 3.5);
+          setStyle(THEME.font.small, false, THEME.colors.text);
+          doc.text(doc.splitTextToSize(p.value, colW - 4), x + 2.5, y + 7);
+        });
+        y += maxRowH + 6;
+      };
+
+      const drawRoleSectionBanner = (roleLabel: string) => {
+        const barH = 14;
+        ensureSpace(barH + 5);
+        doc.setFillColor(...rc().brand);
+        doc.setDrawColor(...rc().brand);
+        doc.setLineWidth(0.3);
+        doc.rect(m, y, W, barH, "F");
+        setStyle(THEME.font.h2, true, THEME.colors.white);
+        doc.text(roleLabel.toUpperCase(), m + 4, y + 6.5);
+        setStyle(THEME.font.small, false, rc().bannerSubtext);
+        doc.text("All Applicants", m + 4, y + 11.5);
+        y += barH + 5;
+      };
+
+      const drawSummaryTable = (payload: BulkScorecardPayload) => {
+        if (payload.applicants.length === 0) {
+          setStyle(TABLE_FONT, false, THEME.colors.muted);
+          doc.text("No applications found for the selected role, type, and chapter or association.", m, y);
+          y += 6;
+          return;
+        }
+
+        const allCriteria = [...payload.criteria.mandatory, ...payload.criteria.optional];
+        const criteriaMax = allCriteria.reduce((sum, c) => {
+          const s = c.criterionScore;
+          return s != null && Number.isFinite(s) && s > 0 ? sum + s : sum;
+        }, 0);
+        const grandMax = criteriaMax + BONUS_MARKS_MAX;
+
+        type SummaryRow = {
+          rank: number;
+          name: string;
+          degreeTitle: string | null;
+          obtained: number | null;
+          bonus: number;
+          grandTotal: number | null;
+          pct: string;
+        };
+
+        const rows: SummaryRow[] = payload.applicants.map((a) => {
+          let obtained: number | null = null;
+          let hasAny = false;
+          for (const c of allCriteria) {
+            const mark = a.marksByCriterionId[c.id];
+            if (mark != null && Number.isFinite(mark)) {
+              obtained = (obtained ?? 0) + mark;
+              hasAny = true;
+            }
+          }
+          if (hasAny && obtained != null) obtained = normalizeObtainedMark(obtained);
+          const bonus = a.bonusMarks ?? 0;
+          const grandTotal = obtained != null ? normalizeObtainedMark(obtained + bonus) : null;
+          const pct =
+            grandTotal != null && grandMax > 0
+              ? `${Math.round((grandTotal / grandMax) * 100)}%`
+              : "—";
+          return { rank: 0, name: a.name || "—", degreeTitle: a.degreeTitle ?? null, obtained, bonus, grandTotal, pct };
+        });
+
+        rows.sort((a, b) => {
+          const ga = a.grandTotal ?? -Infinity;
+          const gb = b.grandTotal ?? -Infinity;
+          return gb - ga;
+        });
+        rows.forEach((r, i) => (r.rank = i + 1));
+
+        const COL_W = {
+          rank: 12,
+          name: 45,
+          program: 40,
+          obtained: 35,
+          bonus: 25,
+          grand: 35,
+          pct: 22,
+        };
+        const totalTableW = Object.values(COL_W).reduce((s, v) => s + v, 0);
+        const tableX = m + (W - totalTableW) / 2;
+        const headerH = 8;
+
+        const drawTableHeaderRow = () => {
+          doc.setFillColor(...rc().brand);
+          doc.setDrawColor(...rc().brand);
+          doc.setLineWidth(0.15);
+          doc.rect(tableX, y, totalTableW, headerH, "F");
+          setStyle(HEADER_FONT, true, THEME.colors.white);
+          const headers = [
+            { label: "#", w: COL_W.rank },
+            { label: "Applicant Name", w: COL_W.name },
+            { label: "Program", w: COL_W.program },
+            { label: `Obtained / ${formatObtainedMarkDisplay(criteriaMax)}`, w: COL_W.obtained },
+            { label: `Bonus / ${formatObtainedMarkDisplay(BONUS_MARKS_MAX)}`, w: COL_W.bonus },
+            { label: `Grand Total / ${formatObtainedMarkDisplay(grandMax)}`, w: COL_W.grand },
+            { label: "Percentage", w: COL_W.pct },
+          ];
+          let cx = tableX;
+          headers.forEach((h) => {
+            doc.text(h.label, cx + CELL_PAD, y + CELL_PAD + lineH(HEADER_FONT));
+            cx += h.w;
+          });
+          y += headerH;
+        };
+
+        const getRowH = (row: SummaryRow) => {
+          setStyle(TABLE_FONT, false, THEME.colors.text);
+          const nameLines = doc.splitTextToSize(row.name, COL_W.name - CELL_PAD * 2).length;
+          const programLines = row.degreeTitle
+            ? doc.splitTextToSize(row.degreeTitle, COL_W.program - CELL_PAD * 2).length
+            : 1;
+          return Math.max(MIN_HEADER_ROW_H - 1, Math.max(nameLines, programLines) * lineH(TABLE_FONT) + CELL_PAD * 2);
+        };
+
+        ensureSpace(headerH + 7);
+        drawTableHeaderRow();
+
+        rows.forEach((row, idx) => {
+          const rowH = getRowH(row);
+          ensureSpace(rowH + 1);
+          if (idx > 0 && y === m) {
+            drawTableHeaderRow();
+          }
+
+          if (idx % 2 === 0) {
+            doc.setFillColor(248, 250, 248);
+            doc.rect(tableX, y, totalTableW, rowH, "F");
+          }
+          doc.setDrawColor(...THEME.colors.border);
+          doc.setLineWidth(0.1);
+          doc.rect(tableX, y, totalTableW, rowH, "S");
+
+          setStyle(TABLE_FONT, false, THEME.colors.text);
+          const cells = [
+            { val: String(row.rank), w: COL_W.rank },
+            { val: row.name, w: COL_W.name },
+            { val: row.degreeTitle ?? "—", w: COL_W.program },
+            {
+              val: row.obtained != null
+                ? formatObtainedMarkDisplay(row.obtained)
+                : "—",
+              w: COL_W.obtained,
+            },
+            { val: formatObtainedMarkDisplay(row.bonus), w: COL_W.bonus },
+            {
+              val: row.grandTotal != null
+                ? formatObtainedMarkDisplay(row.grandTotal)
+                : "—",
+              w: COL_W.grand,
+            },
+            { val: row.pct, w: COL_W.pct },
+          ];
+          let cx = tableX;
+          cells.forEach((cell) => {
+            const lines = doc.splitTextToSize(cell.val, cell.w - CELL_PAD * 2);
+            doc.text(lines, cx + CELL_PAD, y + CELL_PAD + lineH(TABLE_FONT));
+            cx += cell.w;
+          });
+          y += rowH;
+        });
+      };
+
+      payloads.forEach((payload, payloadIdx) => {
+        activePayload = payload;
+        if (payloadIdx > 0) {
+          startNewPage();
+        } else {
+          recordPageRole();
+        }
+
+        if (isMultiRole) {
+          drawRoleSectionBanner(bulkScorecardRoleLabel(payload.role));
+        }
+        drawBrandedHeader();
+        drawSummaryTable(payload);
+      });
+
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        const pageRole = pageRoleMap.get(i);
+        if (pageRole) {
+          activePayload = payloads.find((p) => p.role === pageRole) ?? activePayload;
+        }
+        drawPageFooter();
+      }
+
+      resolve(Buffer.from(doc.output("arraybuffer")));
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
 export function generateBulkLeadershipScorecardPDF(
   data: BulkScorecardPayload | BulkScorecardPayload[]
 ): Promise<Buffer> {
@@ -190,7 +496,7 @@ export function generateBulkLeadershipScorecardPDF(
         y += barH + 4;
       };
 
-      const drawRoleSectionBanner = (roleLabel: string, roleIndex: number) => {
+      const drawRoleSectionBanner = (roleLabel: string) => {
         const barH = 14;
         ensureSpace(barH + 5);
         doc.setFillColor(...rc().brand);
@@ -202,14 +508,6 @@ export function generateBulkLeadershipScorecardPDF(
         doc.text(roleLabel.toUpperCase(), m + 4, y + 6.5);
         setStyle(THEME.font.small, false, rc().bannerSubtext);
         doc.text("All Applicants", m + 4, y + 11.5);
-
-        const badge = `${roleIndex + 1} of ${payloads.length}`;
-        setStyle(THEME.font.small, true, rc().brand);
-        const badgeW = doc.getTextWidth(badge) + 8;
-        const badgeX = pageW - m - badgeW - 2;
-        doc.setFillColor(...THEME.colors.white);
-        doc.roundedRect(badgeX, y + 3.5, badgeW, 7, 1.5, 1.5, "F");
-        doc.text(badge, badgeX + 4, y + 8.5);
 
         y += barH + 5;
       };
@@ -303,19 +601,27 @@ export function generateBulkLeadershipScorecardPDF(
         payload: BulkScorecardPayload;
       };
 
+      const DEGREE_FONT = 6.5;
+
       const measureTableHeaderHeight = (ctx: TableContext): number => {
         setStyle(HEADER_FONT, true, THEME.colors.white);
         const nameColW = ctx.applicantW - CELL_PAD * 2;
         const questionsLabelLines = doc.splitTextToSize("Questions", ctx.questionsW - CELL_PAD * 2);
-        const applicantNameLines = ctx.batch.map((applicant) =>
-          doc.splitTextToSize(applicant.name || "—", nameColW)
-        );
-        const maxNameLines = Math.max(
+        const applicantCellLines = ctx.batch.map((applicant) => {
+          const nameLines = doc.splitTextToSize(applicant.name || "—", nameColW).length;
+          setStyle(DEGREE_FONT, false, THEME.colors.white);
+          const degreeLines = applicant.degreeTitle
+            ? doc.splitTextToSize(applicant.degreeTitle, nameColW).length
+            : 0;
+          setStyle(HEADER_FONT, true, THEME.colors.white);
+          return nameLines + degreeLines;
+        });
+        const maxLines = Math.max(
           questionsLabelLines.length,
-          ...applicantNameLines.map((lines) => lines.length),
+          ...applicantCellLines,
           1
         );
-        return Math.max(MIN_HEADER_ROW_H, maxNameLines * lineH(HEADER_FONT) + CELL_PAD * 2);
+        return Math.max(MIN_HEADER_ROW_H, maxLines * lineH(HEADER_FONT) + CELL_PAD * 2 + (ctx.batch.some(a => a.degreeTitle) ? 1.5 : 0));
       };
 
       const measureTableRowHeight = (
@@ -356,7 +662,15 @@ export function generateBulkLeadershipScorecardPDF(
 
         ctx.batch.forEach((applicant, idx) => {
           const x = m + ctx.questionsW + idx * ctx.applicantW;
-          doc.text(applicantNameLines[idx], x + CELL_PAD, textStartY);
+          setStyle(HEADER_FONT, true, THEME.colors.white);
+          const nameLines = doc.splitTextToSize(applicant.name || "—", nameColW);
+          doc.text(nameLines, x + CELL_PAD, textStartY);
+          if (applicant.degreeTitle) {
+            const degreeY = textStartY + nameLines.length * lineH(HEADER_FONT) + 0.5;
+            setStyle(DEGREE_FONT, false, THEME.colors.white);
+            const degreeLines = doc.splitTextToSize(applicant.degreeTitle, nameColW);
+            doc.text(degreeLines, x + CELL_PAD, degreeY);
+          }
         });
 
         y += headerRowH;
@@ -563,7 +877,7 @@ export function generateBulkLeadershipScorecardPDF(
 
         if (batchIdx === 0) {
           if (isMultiRole) {
-            drawRoleSectionBanner(roleLabel, payloadIdx);
+            drawRoleSectionBanner(roleLabel);
           }
           allowVerticalPageBreak = true;
           drawBrandedHeader();
