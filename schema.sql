@@ -1291,6 +1291,7 @@ CREATE TABLE IF NOT EXISTS public.membership_settings (
   facility_type VARCHAR(20) NOT NULL UNIQUE,
   discount_basis VARCHAR(50) NOT NULL DEFAULT 'same_as_staff_student',
   payment_amount INTEGER NOT NULL DEFAULT 0,
+  original_payment INTEGER NOT NULL DEFAULT 0,
   discount_pct   INTEGER NOT NULL DEFAULT 0,
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_by     INTEGER REFERENCES public.users(id) ON DELETE SET NULL,
@@ -1301,14 +1302,15 @@ CREATE TABLE IF NOT EXISTS public.membership_settings (
     discount_basis IN ('same_as_staff_student', 'fifty_percent_outsiders')
   ),
   CONSTRAINT chk_membership_settings_payment_amount CHECK (payment_amount >= 0),
+  CONSTRAINT chk_membership_settings_original_payment CHECK (original_payment >= 0),
   CONSTRAINT chk_membership_settings_discount_pct CHECK (discount_pct >= 0 AND discount_pct <= 100)
 ) TABLESPACE pg_default;
 
-INSERT INTO public.membership_settings (facility_type, discount_basis, payment_amount, discount_pct)
+INSERT INTO public.membership_settings (facility_type, discount_basis, payment_amount, original_payment, discount_pct)
 VALUES
-  ('gym', 'same_as_staff_student', 0, 0),
-  ('pool', 'same_as_staff_student', 0, 0),
-  ('cricket', 'same_as_staff_student', 0, 0)
+  ('gym', 'same_as_staff_student', 0, 0, 0),
+  ('pool', 'same_as_staff_student', 0, 0, 0),
+  ('cricket', 'same_as_staff_student', 0, 0, 0)
 ON CONFLICT (facility_type) DO NOTHING;
 
 

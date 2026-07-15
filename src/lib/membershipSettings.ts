@@ -12,6 +12,7 @@ export type MembershipSettings = {
   facilityType: MembershipFacilityType;
   discountBasis: MembershipDiscountBasis;
   paymentAmount: number;
+  originalPayment: number;
   discountPct: number;
   updatedAt: string | null;
   updatedBy: number | null;
@@ -25,11 +26,29 @@ function isValidFacilityType(value: unknown): value is MembershipFacilityType {
   return FACILITY_TYPES.includes(value as MembershipFacilityType);
 }
 
+function calculatePaymentAmount(
+  originalPayment: number,
+  discountPct: number,
+  storedPaymentAmount: number,
+): number {
+  const original = Number(originalPayment) || 0;
+  const discount = Number(discountPct) || 0;
+  if (original > 0 && discount >= 0 && discount <= 100) {
+    return Math.round((original * (100 - discount)) / 100);
+  }
+  if (original > 0) {
+    return original;
+  }
+  return Number(storedPaymentAmount) || 0;
+}
+
 function mapRow(row: Record<string, unknown>): MembershipSettings {
   const facilityType = isValidFacilityType(row.facility_type)
     ? row.facility_type
     : "gym";
   const basis = String(row.discount_basis || "same_as_staff_student").trim();
+  const originalPayment = Number(row.original_payment ?? 0);
+  const discountPct = Number(row.discount_pct ?? 0);
   return {
     id: Number(row.id ?? 0),
     facilityType,
@@ -37,8 +56,13 @@ function mapRow(row: Record<string, unknown>): MembershipSettings {
       basis === "fifty_percent_outsiders"
         ? "fifty_percent_outsiders"
         : "same_as_staff_student",
-    paymentAmount: Number(row.payment_amount ?? 0),
-    discountPct: Number(row.discount_pct ?? 0),
+    originalPayment,
+    paymentAmount: calculatePaymentAmount(
+      originalPayment,
+      discountPct,
+      Number(row.payment_amount ?? 0),
+    ),
+    discountPct,
     updatedAt: row.updated_at ? String(row.updated_at) : null,
     updatedBy: row.updated_by ? Number(row.updated_by) : null,
   };
@@ -49,7 +73,7 @@ export async function getMembershipSettingsByFacilityType(
 ): Promise<MembershipSettings> {
   try {
     const rows = await sql/* sql */`
-      SELECT id, facility_type, discount_basis, payment_amount, discount_pct, updated_at, updated_by
+      SELECT id, facility_type, discount_basis, payment_amount, original_payment, discount_pct, updated_at, updated_by
       FROM public.membership_settings
       WHERE facility_type = ${facilityType}
       LIMIT 1
@@ -61,6 +85,7 @@ export async function getMembershipSettingsByFacilityType(
         facilityType,
         discountBasis: "same_as_staff_student",
         paymentAmount: 0,
+        originalPayment: 0,
         discountPct: 0,
         updatedAt: null,
         updatedBy: null,
@@ -73,6 +98,7 @@ export async function getMembershipSettingsByFacilityType(
       facilityType,
       discountBasis: "same_as_staff_student",
       paymentAmount: 0,
+      originalPayment: 0,
       discountPct: 0,
       updatedAt: null,
       updatedBy: null,
@@ -83,7 +109,7 @@ export async function getMembershipSettingsByFacilityType(
 export async function getAllMembershipSettings(): Promise<MembershipSettings[]> {
   try {
     const rows = await sql/* sql */`
-      SELECT id, facility_type, discount_basis, payment_amount, discount_pct, updated_at, updated_by
+      SELECT id, facility_type, discount_basis, payment_amount, original_payment, discount_pct, updated_at, updated_by
       FROM public.membership_settings
       ORDER BY facility_type
     `;
@@ -94,6 +120,7 @@ export async function getAllMembershipSettings(): Promise<MembershipSettings[]> 
         facilityType,
         discountBasis: "same_as_staff_student" as MembershipDiscountBasis,
         paymentAmount: 0,
+        originalPayment: 0,
         discountPct: 0,
         updatedAt: null,
         updatedBy: null,
@@ -106,6 +133,7 @@ export async function getAllMembershipSettings(): Promise<MembershipSettings[]> 
       facilityType,
       discountBasis: "same_as_staff_student" as MembershipDiscountBasis,
       paymentAmount: 0,
+      originalPayment: 0,
       discountPct: 0,
       updatedAt: null,
       updatedBy: null,

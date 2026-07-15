@@ -17,6 +17,7 @@ type MembershipSettingsItem = {
   id: number;
   facilityType: MembershipFacilityType;
   discountBasis: MembershipDiscountBasis;
+  originalPayment: number;
   paymentAmount: number;
   discountPct: number;
   updatedAt: string | null;
@@ -35,6 +36,7 @@ async function fetchMembershipSettings() {
 async function updateMembershipSettings(payload: {
   facilityType: MembershipFacilityType;
   discountBasis: MembershipDiscountBasis;
+  originalPayment: number;
   paymentAmount: number;
   discountPct: number;
 }) {
@@ -61,7 +63,7 @@ export default function MembershipSettingsComponent() {
   const [discountBasis, setDiscountBasis] = useState<MembershipDiscountBasis>(
     "same_as_staff_student",
   );
-  const [paymentAmount, setPaymentAmount] = useState<string>("");
+  const [originalPayment, setOriginalPayment] = useState<string>("");
   const [discountPct, setDiscountPct] = useState<string>("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -76,7 +78,7 @@ export default function MembershipSettingsComponent() {
   useEffect(() => {
     if (!selectedSettings) return;
     setDiscountBasis(selectedSettings.discountBasis);
-    setPaymentAmount(String(selectedSettings.paymentAmount ?? ""));
+    setOriginalPayment(String(selectedSettings.originalPayment || ""));
     setDiscountPct(String(selectedSettings.discountPct ?? ""));
     setValidationError(null);
   }, [selectedSettings]);
@@ -88,32 +90,51 @@ export default function MembershipSettingsComponent() {
     },
   });
 
+  const paymentAmountDisplay = useMemo(() => {
+    const original = Number(originalPayment || 0);
+    const discount = Number(discountPct || 0);
+    if (
+      Number.isFinite(original) &&
+      original > 0 &&
+      Number.isFinite(discount) &&
+      discount >= 0 &&
+      discount <= 100
+    ) {
+      return Math.round((original * (100 - discount)) / 100);
+    }
+    return selectedSettings?.paymentAmount ?? 0;
+  }, [originalPayment, discountPct, selectedSettings?.paymentAmount]);
+
   const hasChanges = useMemo(() => {
     if (!selectedSettings) return false;
     return (
       discountBasis !== selectedSettings.discountBasis ||
-      paymentAmount !== String(selectedSettings.paymentAmount ?? "") ||
-      discountPct !== String(selectedSettings.discountPct ?? "")
+      Number(originalPayment || 0) !== selectedSettings.originalPayment ||
+      Number(discountPct || 0) !== selectedSettings.discountPct ||
+      paymentAmountDisplay !== selectedSettings.paymentAmount
     );
-  }, [selectedSettings, discountBasis, paymentAmount, discountPct]);
+  }, [selectedSettings, discountBasis, originalPayment, discountPct, paymentAmountDisplay]);
 
   const handleSave = () => {
     setValidationError(null);
-    const payment = Number(paymentAmount);
-    const discount = Number(discountPct);
+    const original = Number(originalPayment || 0);
+    const discount = Number(discountPct || 0);
 
-    if (!Number.isFinite(payment) || payment < 0 || !Number.isInteger(payment)) {
-      setValidationError("Payment amount must be a non-negative integer.");
+    if (!Number.isFinite(original) || original <= 0 || !Number.isInteger(original)) {
+      setValidationError("Original payment must be a positive integer.");
       return;
     }
-    if (!Number.isFinite(discount) || discount < 1 || discount > 100 || !Number.isInteger(discount)) {
-      setValidationError("Discount percent must be an integer between 1 and 100.");
+    if (!Number.isFinite(discount) || discount < 0 || discount > 100 || !Number.isInteger(discount)) {
+      setValidationError("Discount percent must be an integer between 0 and 100.");
       return;
     }
+
+    const payment = Math.round((original * (100 - discount)) / 100);
 
     mutation.mutate({
       facilityType: selectedFacilityType,
       discountBasis,
+      originalPayment: original,
       paymentAmount: payment,
       discountPct: discount,
     });
@@ -186,17 +207,17 @@ export default function MembershipSettingsComponent() {
             </div>
 
             <div>
-              <Label>Payment Amount (Rs)</Label>
+              <Label>Original Payment (Rs)</Label>
               <Input
                 type="number"
                 min={0}
                 step={1}
                 placeholder="e.g. 3000"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
+                value={originalPayment}
+                onChange={(e) => setOriginalPayment(e.target.value)}
               />
               <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                Integer amount shown in the PDF membership details.
+                Enter the full membership fee before any discount.
               </p>
             </div>
 
@@ -204,15 +225,30 @@ export default function MembershipSettingsComponent() {
               <Label>Discount %</Label>
               <Input
                 type="number"
-                min={1}
+                min={0}
                 max={100}
                 step={1}
-                placeholder="1 - 100"
+                placeholder="0 - 100"
                 value={discountPct}
                 onChange={(e) => setDiscountPct(e.target.value)}
               />
               <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                Enter a value between 1 and 100.
+                Enter a value between 0 and 100.
+              </p>
+            </div>
+
+            <div>
+              <Label>Payment Amount (Rs)</Label>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                placeholder="Calculated automatically"
+                value={paymentAmountDisplay}
+                disabled={true}
+              />
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                Applied amount shown in the PDF membership details.
               </p>
             </div>
           </div>
@@ -254,6 +290,7 @@ export default function MembershipSettingsComponent() {
                   <tr>
                     <th className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">Membership</th>
                     <th className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">Discount Basis</th>
+                    <th className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">Original Payment (Rs)</th>
                     <th className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">Payment (Rs)</th>
                     <th className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">Discount %</th>
                   </tr>
@@ -261,7 +298,7 @@ export default function MembershipSettingsComponent() {
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {MEMBERSHIP_FACILITY_OPTIONS.map((opt) => {
                     const item = settingsMap.get(opt.value);
-                    const hasPayment = Boolean(item && item.paymentAmount > 0);
+                    const hasPayment = Boolean(item && (item.paymentAmount > 0 || item.originalPayment > 0));
                     return (
                       <tr
                         key={opt.value}
@@ -281,6 +318,9 @@ export default function MembershipSettingsComponent() {
                         </td>
                         <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
                           {item ? membershipDiscountBasisLabel(item.discountBasis) : "—"}
+                        </td>
+                        <td className="px-4 py-2 text-gray-900 dark:text-gray-200">
+                          {item && item.originalPayment > 0 ? item.originalPayment.toLocaleString() : "—"}
                         </td>
                         <td className="px-4 py-2 text-gray-900 dark:text-gray-200">
                           {item && item.paymentAmount > 0 ? item.paymentAmount.toLocaleString() : "—"}

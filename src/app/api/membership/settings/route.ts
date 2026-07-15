@@ -36,6 +36,7 @@ export async function GET() {
           facilityType,
           discountBasis: "same_as_staff_student",
           paymentAmount: 0,
+          originalPayment: 0,
           discountPct: 0,
           updatedAt: null,
           updatedBy: null,
@@ -61,6 +62,7 @@ export async function PUT(req: NextRequest) {
     const body = (await req.json().catch(() => ({}))) as {
       facilityType?: string;
       discountBasis?: string;
+      originalPayment?: number;
       paymentAmount?: number;
       discountPct?: number;
     };
@@ -81,42 +83,46 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const paymentAmount = Number(body.paymentAmount ?? 0);
-    if (!Number.isFinite(paymentAmount) || paymentAmount < 0) {
+    const originalPayment = Number(body.originalPayment ?? 0);
+    if (!Number.isFinite(originalPayment) || originalPayment < 0 || !Number.isInteger(originalPayment)) {
       return NextResponse.json(
-        { error: "Payment amount must be a non-negative integer" },
+        { error: "Original payment must be a non-negative integer" },
         { status: 400 },
       );
     }
 
     const discountPct = Number(body.discountPct ?? 0);
-    if (!Number.isFinite(discountPct) || discountPct < 1 || discountPct > 100) {
+    if (!Number.isFinite(discountPct) || discountPct < 0 || discountPct > 100 || !Number.isInteger(discountPct)) {
       return NextResponse.json(
-        { error: "Discount percent must be between 1 and 100" },
+        { error: "Discount percent must be an integer between 0 and 100" },
         { status: 400 },
       );
     }
+
+    const paymentAmount = Math.round((originalPayment * (100 - discountPct)) / 100);
 
     const userId = (session.user as { id?: number })?.id || null;
 
     await sql/* sql */`
       INSERT INTO public.membership_settings (
-        facility_type, discount_basis, payment_amount, discount_pct, updated_at, updated_by
+        facility_type, discount_basis, original_payment, payment_amount, discount_pct, updated_at, updated_by
       )
       VALUES (
         ${facilityType},
         ${basis as MembershipDiscountBasis},
+        ${originalPayment},
         ${paymentAmount},
         ${discountPct},
         NOW(),
         ${userId}
       )
       ON CONFLICT (facility_type) DO UPDATE SET
-        discount_basis = EXCLUDED.discount_basis,
-        payment_amount = EXCLUDED.payment_amount,
-        discount_pct   = EXCLUDED.discount_pct,
-        updated_at     = EXCLUDED.updated_at,
-        updated_by     = EXCLUDED.updated_by
+        discount_basis   = EXCLUDED.discount_basis,
+        original_payment = EXCLUDED.original_payment,
+        payment_amount   = EXCLUDED.payment_amount,
+        discount_pct     = EXCLUDED.discount_pct,
+        updated_at       = EXCLUDED.updated_at,
+        updated_by       = EXCLUDED.updated_by
     `;
 
     return NextResponse.json({
@@ -124,6 +130,7 @@ export async function PUT(req: NextRequest) {
       message: "Membership settings updated successfully",
       facilityType,
       discountBasis: basis,
+      originalPayment,
       paymentAmount,
       discountPct,
     });
