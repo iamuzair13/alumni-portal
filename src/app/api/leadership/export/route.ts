@@ -195,9 +195,11 @@ export async function GET(req: Request) {
           a.officialemail::text AS officialemail,
           a.universityemail::text AS universityemail,
           a.contactno::text AS contactno,
+          a.cnicpassport::text AS cnicpassport,
           COALESCE(f.faculty_name, a.facultyname)::text AS facultyname,
           a.departmentname::text AS departmentname,
           a.degreetitle::text AS degreetitle,
+          p.program_name::text AS program_name,
           COALESCE(c1.national_chapter, c1.international_chapter)::text AS chapter1_name,
           COALESCE(c2.national_chapter, c2.international_chapter)::text AS chapter2_name,
           COALESCE(c3.national_chapter, c3.international_chapter)::text AS chapter3_name,
@@ -207,6 +209,7 @@ export async function GET(req: Request) {
         FROM public.chapter_leadership cl
         JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
         LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
         LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
@@ -293,9 +296,11 @@ export async function GET(req: Request) {
           a.officialemail::text AS officialemail,
           a.universityemail::text AS universityemail,
           a.contactno::text AS contactno,
+          a.cnicpassport::text AS cnicpassport,
           COALESCE(f.faculty_name, a.facultyname)::text AS facultyname,
           a.departmentname::text AS departmentname,
           a.degreetitle::text AS degreetitle,
+          p.program_name::text AS program_name,
           COALESCE(c1.national_chapter, c1.international_chapter)::text AS chapter1_name,
           COALESCE(c2.national_chapter, c2.international_chapter)::text AS chapter2_name,
           COALESCE(c3.national_chapter, c3.international_chapter)::text AS chapter3_name,
@@ -305,6 +310,7 @@ export async function GET(req: Request) {
         FROM public.tblalumniassociation ass
         JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         LEFT JOIN public.tbl_faculties fac ON fac.id = ass.association_id
         LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
         LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1

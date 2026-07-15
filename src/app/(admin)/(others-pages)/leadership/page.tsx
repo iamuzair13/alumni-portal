@@ -1552,7 +1552,22 @@ export default function LeadershipPage() {
   };
 
   const handleExport = () => {
-    const exportColumnKeys: string[] = [
+    const isMemberTab = selectedTab === "chapterMembers" || selectedTab === "associationMembers";
+
+    const memberColumnKeys: string[] = [
+      "SAP ID",
+      "Registration No",
+      "Personal Email",
+      "Type",
+      "Position",
+      "Phone Number",
+      "Faculty",
+      "Department",
+      "Program",
+      "CNIC",
+    ];
+
+    const applicationColumnKeys: string[] = [
       "Leadership Type",
       "Leadership Status",
       "Position",
@@ -1572,6 +1587,8 @@ export default function LeadershipPage() {
       "Association Title",
       "Created At",
     ];
+
+    const exportColumnKeys = isMemberTab ? memberColumnKeys : applicationColumnKeys;
 
     const columns = exportColumnKeys.map((key) => ({
       key,
@@ -1649,6 +1666,21 @@ export default function LeadershipPage() {
       const allItems = data.items || [];
       if (!allItems || allItems.length === 0) {
         throw new Error("No data found to export with the applied filters.");
+      }
+
+      if (isMemberTab) {
+        return allItems.map((item: Record<string, unknown>) => ({
+          "SAP ID": item.sapid || "",
+          "Registration No": item.registrationno || "",
+          "Personal Email": item.personalemail || "",
+          "Type": item.leadership_type === "chapter" ? `Chapter - ${item.category_name || ""}` : `Association - ${item.category_name || ""}`,
+          "Position": item.position || "",
+          "Phone Number": item.contactno || "",
+          "Faculty": item.facultyname || "",
+          "Department": item.departmentname || "",
+          "Program": item.program_name || item.degreetitle || "",
+          "CNIC": item.cnicpassport || "",
+        }));
       }
 
       return allItems.map((item: Record<string, unknown>) => ({
