@@ -1233,14 +1233,12 @@ export default function LeadershipPage() {
 
   const handleViewBulkScorecard = async () => {
     if (!scorecardFormReady) return;
-    const previewWindow = window.open("", "_blank", "noopener,noreferrer");
     setScorecardPreviewing(true);
     try {
       const blob = await fetchScorecardBlob();
       const blobUrl = window.URL.createObjectURL(blob);
-      if (previewWindow) {
-        previewWindow.location.href = blobUrl;
-      } else {
+      const win = window.open(blobUrl, "_blank", "noopener,noreferrer");
+      if (!win) {
         const a = document.createElement("a");
         a.href = blobUrl;
         a.target = "_blank";
@@ -1252,7 +1250,6 @@ export default function LeadershipPage() {
       setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60_000);
       toast.success("Scorecard opened in new tab");
     } catch (e) {
-      previewWindow?.close();
       toast.error(e instanceof Error ? e.message : `Failed to preview ${scorecardMode}`);
     } finally {
       setScorecardPreviewing(false);
@@ -3105,7 +3102,7 @@ export default function LeadershipPage() {
                           <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">SAP ID</th>
                           <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Type</th>
                           <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Chapter / Association</th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Original Role</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Applied Role</th>
                           <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Recommended Role</th>
                           <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Response</th>
                           <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 dark:text-gray-400">Date</th>

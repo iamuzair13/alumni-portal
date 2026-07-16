@@ -16,6 +16,7 @@ export type BulkScorecardApplicant = {
   applicationId: number;
   name: string;
   degreeTitle: string | null;
+  passoutYear: number | null;
   status: string;
   bonusMarks: number;
   marksByCriterionId: Record<number, number | null>;
@@ -142,6 +143,7 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
         cl.status,
         a.alumniname,
         TRIM(COALESCE(a.degreetitle, '')) AS degreetitle,
+        a.yearofending,
         cl.bonus_marks
       FROM public.chapter_leadership cl
       LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
@@ -193,6 +195,7 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
         applicationId,
         name: String(row.alumniname ?? "Unknown"),
         degreeTitle: degreeRaw || null,
+        passoutYear: row.yearofending != null ? Number(row.yearofending) : null,
         status: String(row.status ?? "pending"),
         bonusMarks: Number.isFinite(bonusRaw) && bonusRaw >= 0 ? normalizeObtainedMark(bonusRaw) : 0,
         marksByCriterionId: marksByApplication.get(applicationId) ?? {},
@@ -219,6 +222,7 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
         ass.status,
         a.alumniname,
         TRIM(COALESCE(a.degreetitle, '')) AS degreetitle,
+        a.yearofending,
         ass.bonus_marks
       FROM public.tblalumniassociation ass
       LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
@@ -269,6 +273,7 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
         applicationId,
         name: String(row.alumniname ?? "Unknown"),
         degreeTitle: degreeRaw || null,
+        passoutYear: row.yearofending != null ? Number(row.yearofending) : null,
         status: String(row.status ?? "pending"),
         bonusMarks: Number.isFinite(bonusRaw) && bonusRaw >= 0 ? normalizeObtainedMark(bonusRaw) : 0,
         marksByCriterionId: marksByApplication.get(applicationId) ?? {},

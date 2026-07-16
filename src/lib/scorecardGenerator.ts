@@ -258,6 +258,7 @@ export function generateBulkLeadershipSummaryPDF(
           rank: number;
           name: string;
           degreeTitle: string | null;
+          passoutYear: number | null;
           obtained: number | null;
           bonus: number;
           grandTotal: number | null;
@@ -281,7 +282,7 @@ export function generateBulkLeadershipSummaryPDF(
             grandTotal != null && grandMax > 0
               ? `${Math.round((grandTotal / grandMax) * 100)}%`
               : "—";
-          return { rank: 0, name: a.name || "—", degreeTitle: a.degreeTitle ?? null, obtained, bonus, grandTotal, pct };
+          return { rank: 0, name: a.name || "—", degreeTitle: a.degreeTitle ?? null, passoutYear: a.passoutYear ?? null, obtained, bonus, grandTotal, pct };
         });
 
         rows.sort((a, b) => {
@@ -329,7 +330,8 @@ export function generateBulkLeadershipSummaryPDF(
 
         const getRowH = (row: SummaryRow) => {
           setStyle(TABLE_FONT, false, THEME.colors.text);
-          const nameLines = doc.splitTextToSize(row.name, COL_W.name - CELL_PAD * 2).length;
+          const nameText = row.passoutYear ? `${row.name}\nPassout: ${row.passoutYear}` : row.name;
+          const nameLines = doc.splitTextToSize(nameText, COL_W.name - CELL_PAD * 2).length;
           const programLines = row.degreeTitle
             ? doc.splitTextToSize(row.degreeTitle, COL_W.program - CELL_PAD * 2).length
             : 1;
@@ -357,7 +359,7 @@ export function generateBulkLeadershipSummaryPDF(
           setStyle(TABLE_FONT, false, THEME.colors.text);
           const cells = [
             { val: String(row.rank), w: COL_W.rank },
-            { val: row.name, w: COL_W.name },
+            { val: row.passoutYear ? `${row.name}\nPassout: ${row.passoutYear}` : row.name, w: COL_W.name },
             { val: row.degreeTitle ?? "—", w: COL_W.program },
             {
               val: row.obtained != null
@@ -613,15 +615,18 @@ export function generateBulkLeadershipScorecardPDF(
           const degreeLines = applicant.degreeTitle
             ? doc.splitTextToSize(applicant.degreeTitle, nameColW).length
             : 0;
+          const passoutLines = applicant.passoutYear
+            ? doc.splitTextToSize(`Passout: ${applicant.passoutYear}`, nameColW).length
+            : 0;
           setStyle(HEADER_FONT, true, THEME.colors.white);
-          return nameLines + degreeLines;
+          return nameLines + degreeLines + passoutLines;
         });
         const maxLines = Math.max(
           questionsLabelLines.length,
           ...applicantCellLines,
           1
         );
-        return Math.max(MIN_HEADER_ROW_H, maxLines * lineH(HEADER_FONT) + CELL_PAD * 2 + (ctx.batch.some(a => a.degreeTitle) ? 1.5 : 0));
+        return Math.max(MIN_HEADER_ROW_H, maxLines * lineH(HEADER_FONT) + CELL_PAD * 2 + (ctx.batch.some(a => a.degreeTitle || a.passoutYear) ? 1.5 : 0));
       };
 
       const measureTableRowHeight = (
@@ -665,11 +670,17 @@ export function generateBulkLeadershipScorecardPDF(
           setStyle(HEADER_FONT, true, THEME.colors.white);
           const nameLines = doc.splitTextToSize(applicant.name || "—", nameColW);
           doc.text(nameLines, x + CELL_PAD, textStartY);
+          let subY = textStartY + nameLines.length * lineH(HEADER_FONT) + 0.5;
           if (applicant.degreeTitle) {
-            const degreeY = textStartY + nameLines.length * lineH(HEADER_FONT) + 0.5;
             setStyle(DEGREE_FONT, false, THEME.colors.white);
             const degreeLines = doc.splitTextToSize(applicant.degreeTitle, nameColW);
-            doc.text(degreeLines, x + CELL_PAD, degreeY);
+            doc.text(degreeLines, x + CELL_PAD, subY);
+            subY += degreeLines.length * lineH(DEGREE_FONT) + 0.5;
+          }
+          if (applicant.passoutYear) {
+            setStyle(DEGREE_FONT, false, THEME.colors.white);
+            const passoutLines = doc.splitTextToSize(`Passout: ${applicant.passoutYear}`, nameColW);
+            doc.text(passoutLines, x + CELL_PAD, subY);
           }
         });
 

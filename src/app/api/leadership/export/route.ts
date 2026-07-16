@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { chapterPostRoleCondition, associationPostRoleCondition } from "@/lib/leadershipRoleSql";
 
 export async function GET(req: Request) {
   try {
@@ -77,18 +78,11 @@ export async function GET(req: Request) {
         )`
       : sql``;
 
-    const normalizeRoleExpr = (columnExpr: any) =>
-      // lower + trim + remove all non-letters, so "Vice President" -> "vicepresident" and "President" -> "president"
-      sql`LOWER(REGEXP_REPLACE(TRIM(COALESCE(${columnExpr}, '')), '[^a-z]+', '', 'g'))`;
-
-    const roleMatchValue =
-      role === "vice_president" ? "vicepresident" : role === "coordinator" ? "coordinator" : role === "president" ? "president" : null;
-
     const chapterRoleCondition =
-      role === "all" || !roleMatchValue ? sql`` : sql` AND ${normalizeRoleExpr(sql`cl.post`)} = ${roleMatchValue}`;
+      role === "all" ? sql`` : chapterPostRoleCondition(role as "president" | "vice_president" | "coordinator");
 
     const assocRoleCondition =
-      role === "all" || !roleMatchValue ? sql`` : sql` AND ${normalizeRoleExpr(sql`ass.q3`)} = ${roleMatchValue}`;
+      role === "all" ? sql`` : associationPostRoleCondition(role as "president" | "vice_president" | "coordinator");
 
     const facultyCondition = faculty ? sql` AND f.faculty_name = ${faculty}` : sql``;
 
@@ -100,7 +94,7 @@ export async function GET(req: Request) {
         )`
       : sql``;
 
-    const associationTitleCondition = chapter ? sql` AND assoc.title ILIKE ${`%${chapter}%`}` : sql``;
+    const associationTitleCondition = chapter ? sql` AND COALESCE(fac.faculty_name, assoc.faculty_name, '') ILIKE ${`%${chapter}%`}` : sql``;
 
     const hasAdditional = hasAdditionalAchievements.toLowerCase() === "1" || hasAdditionalAchievements.toLowerCase() === "true";
     const chapterAdditionalCondition = hasAdditional
@@ -197,7 +191,7 @@ export async function GET(req: Request) {
           a.contactno::text AS contactno,
           a.cnicpassport::text AS cnicpassport,
           COALESCE(f.faculty_name, a.facultyname)::text AS facultyname,
-          a.departmentname::text AS departmentname,
+          COALESCE(d.department_name, a.departmentname)::text AS departmentname,
           a.degreetitle::text AS degreetitle,
           p.program_name::text AS program_name,
           COALESCE(c1.national_chapter, c1.international_chapter)::text AS chapter1_name,
@@ -209,6 +203,7 @@ export async function GET(req: Request) {
         FROM public.chapter_leadership cl
         JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
         LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
         LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
@@ -298,7 +293,7 @@ export async function GET(req: Request) {
           a.contactno::text AS contactno,
           a.cnicpassport::text AS cnicpassport,
           COALESCE(f.faculty_name, a.facultyname)::text AS facultyname,
-          a.departmentname::text AS departmentname,
+          COALESCE(d.department_name, a.departmentname)::text AS departmentname,
           a.degreetitle::text AS degreetitle,
           p.program_name::text AS program_name,
           COALESCE(c1.national_chapter, c1.international_chapter)::text AS chapter1_name,
@@ -310,6 +305,7 @@ export async function GET(req: Request) {
         FROM public.tblalumniassociation ass
         JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
         LEFT JOIN public.tbl_faculties fac ON fac.id = ass.association_id
         LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
