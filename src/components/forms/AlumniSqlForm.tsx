@@ -1201,12 +1201,20 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           const medalFd = new FormData();
           medalFd.set("alumniId", String(alumniId));
           medalFd.set("medalDocument", medalFile);
-          await fetch("/api/alumni/medal-document", {
+          const medalRes = await fetch("/api/alumni/medal-document", {
             method: "POST",
             body: medalFd,
           });
+          if (!medalRes.ok) {
+            const errJson = await medalRes.json().catch(() => null);
+            toast.error(errJson?.error || "Failed to upload medal document. You can retry later from your profile.", {
+              duration: 6000,
+            });
+          }
         } catch {
-          // Non-fatal: registration succeeded, medal doc upload can be retried later
+          toast.error("Failed to upload medal document. You can retry later from your profile.", {
+            duration: 6000,
+          });
         }
       }
 
