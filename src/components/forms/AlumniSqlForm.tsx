@@ -82,6 +82,8 @@ export type TblAlumniForm = {
   category: string | null;
   chapters: number[] | null; // Array of selected chapter IDs (up to 3)
   alumni_consent_info: boolean | null;
+  medal: string | null;
+  medal_document: string | null;
 };
 
 /** Same DB column for "first job / self-employed timing" and "higher ed enrolment timing"; required only for those occupation choices. */
@@ -503,6 +505,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       scholarship: null,
       chapters: null,
       alumni_consent_info: null,
+      medal: null,
+      medal_document: null,
     },
   });
 
@@ -525,6 +529,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const [chapters, setChapters] = useState<Array<{ id: number; name: string; type: "national" | "international" }>>([]);
   const [isLoadingChapters, setIsLoadingChapters] = useState(true);
   const [selectedChapters, setSelectedChapters] = useState<number[]>([]);
+  const [medalFile, setMedalFile] = useState<File | null>(null);
 
   // Database-backed faculties, departments, and programs
   const [dbFaculties, setDbFaculties] = useState<Array<{ id: number; name: string }>>([]);
@@ -1189,6 +1194,22 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       // Success - show toast and close form
       const alumniId = (json as any).alumniid;
       const generatedPassword = (json as any).generatedPassword;
+
+      // Upload medal document if a medal was selected and a file was provided
+      if (alumniId && medalFile && payload.medal) {
+        try {
+          const medalFd = new FormData();
+          medalFd.set("alumniId", String(alumniId));
+          medalFd.set("medalDocument", medalFile);
+          await fetch("/api/alumni/medal-document", {
+            method: "POST",
+            body: medalFd,
+          });
+        } catch {
+          // Non-fatal: registration succeeded, medal doc upload can be retried later
+        }
+      }
+
       let successMessage = `Registration successful! Your Alumni ID is ${alumniId}.`;
       if (generatedPassword) {
         successMessage += ` A password has been generated and sent to your email. Please check your inbox for login credentials.`;
@@ -2075,6 +2096,52 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               />
               {errors.majorsubject && <p className="mt-1 text-xs text-red-600">{errors.majorsubject.message}</p>}
             </div>
+            <div>
+              <label className={labelBase}>Medal (Optional)</label>
+              <select
+                className={inputBase}
+                {...register("medal", {
+                  onChange: (e) => {
+                    if (!e.target.value) {
+                      setMedalFile(null);
+                      setValue("medal_document", null);
+                    }
+                  },
+                })}
+              >
+                <option value="">None</option>
+                <option value="Gold Medalist">Gold Medalist</option>
+                <option value="Silver Medalist">Silver Medalist</option>
+                <option value="Bronze Medalist">Bronze Medalist</option>
+              </select>
+            </div>
+            {watch("medal") && (
+              <div>
+                <label className={labelBase}>Medal Document *</label>
+                <label
+                  htmlFor="medal-document-upload"
+                  className="flex items-center bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 outline-none rounded w-max cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 mr-2 fill-white inline" viewBox="0 0 32 32">
+                    <path d="M23.75 11.044a7.99 7.99 0 0 0-15.5-.009A8 8 0 0 0 9 27h3a1 1 0 0 0 0-2H9a6 6 0 0 1-.035-12 1.038 1.038 0 0 0 1.1-.854 5.991 5.991 0 0 1 11.862 0A1.08 1.08 0 0 0 23 13a6 6 0 0 1 0 12h-3a1 1 0 0 0 0 2h3a8 8 0 0 0 .75-15.956z" />
+                    <path d="M20.293 19.707a1 1 0 0 0 1.414-1.414l-5-5a1 1 0 0 0-1.414 0l-5 5a1 1 0 0 0 1.414 1.414L15 16.414V29a1 1 0 0 0 2 0V16.414z" />
+                  </svg>
+                  Upload
+                  <input
+                    id="medal-document-upload"
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      setMedalFile(f);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                <div className="mt-2 text-xs text-neutral-500">Selected: {medalFile ? medalFile.name : "-"}</div>
+                <p className="mt-1 text-xs text-neutral-500">Upload your medal certificate (PDF, DOC, or DOCX, max 5MB)</p>
+              </div>
+            )}
           </div>
         </div>
       </section>

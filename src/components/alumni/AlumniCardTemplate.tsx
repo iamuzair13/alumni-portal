@@ -13,6 +13,9 @@ const roboto = Roboto({
 // Images from public folder are referenced as URL strings
 const maleFrontTemplate = "/images/cards/UOL-Alumni-Card-Artworks-Revised-Curve-png-04.png";
 const femaleFrontTemplate = "/images/cards/UOL-Alumni-Card-Artworks-Revised-Curve-png-04.png";
+const goldMedalTemplate = "/images/cards/Alumni-card-gold.jpg";
+const silverMedalTemplate = "/images/cards/Alumni-card-silver.jpg";
+const bronzeMedalTemplate = "/images/cards/Alumni-card-bronze.jpg";
 
 type AlumniCardTemplateProps = {
   studentName: string;
@@ -26,6 +29,7 @@ type AlumniCardTemplateProps = {
   validity?: string; // Format: YYYY-MM or MM/YYYY
   photoUrl?: string | null; // Profile/thumbnail image filename or path
   cardImage?: string | null; // Dedicated card image filename or path
+  medal?: string | null; // Medal type: "Gold Medalist", "Silver Medalist", "Bronze Medalist", or null/empty
   /** Appended to resolved image URLs (e.g. Date.now()) so PDF export bypasses browser cache */
   imageSrcCacheBust?: string | number | null;
 };
@@ -42,6 +46,7 @@ export default function AlumniCardTemplate({
   validity,
   photoUrl,
   cardImage,
+  medal,
   imageSrcCacheBust,
 }: AlumniCardTemplateProps) {
   const [imageIndex, setImageIndex] = useState(0);
@@ -53,11 +58,15 @@ export default function AlumniCardTemplate({
   }, [gender]);
 
   const frontTemplate = useMemo(() => {
+    const m = String(medal ?? "").trim().toLowerCase();
+    if (m === "gold medalist") return goldMedalTemplate;
+    if (m === "silver medalist") return silverMedalTemplate;
+    if (m === "bronze medalist") return bronzeMedalTemplate;
     const g = String(gender ?? "").trim().toLowerCase();
     if (g === "female" || g === "f") return femaleFrontTemplate;
     if (g === "male" || g === "m") return maleFrontTemplate;
     return maleFrontTemplate;
-  }, [gender]);
+  }, [gender, medal]);
 
   const normalizeImagePath = (raw: string | null | undefined): string | null => {
     if (!raw) return null;

@@ -22,6 +22,7 @@ type Props = {
     validity?: string;
     photoUrl?: string | null;
     cardImage?: string | null;
+    medal?: string | null;
   };
 };
 

@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PencilIcon, TrashBinIcon } from "@/icons";
+import { resolveStoredUploadUrl } from "@/lib/uploadsImageUrl";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { canModify, isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
@@ -235,6 +236,7 @@ type AlumniFullData = {
   alumni_consent_pic: boolean | null;
   pre_sap_registration: boolean | null;
   medal: string | null;
+  medal_document: string | null;
 };
 
 const toBoolPreSap = (value: unknown): boolean => {
@@ -1738,6 +1740,18 @@ function AlumniExpandableDetails({
             { value: "Silver Medalist", label: "Silver Medalist" },
             { value: "Bronze Medalist", label: "Bronze Medalist" },
           ]} onEdit={() => startEditingField("medal")} />
+          {data.medal_document && (
+            <div className="col-span-full -mt-1 mb-1">
+              <a
+                href={resolveStoredUploadUrl(data.medal_document) || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:text-blue-800 underline dark:text-blue-400"
+              >
+                View Medal Document
+              </a>
+            </div>
+          )}
 
           {/* Professional Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">

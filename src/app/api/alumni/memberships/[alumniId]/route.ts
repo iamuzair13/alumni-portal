@@ -95,6 +95,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       application.facilityType,
     );
     pdfData.paymentAmount = membershipSettings.paymentAmount;
+    pdfData.originalAmount = membershipSettings.originalPayment;
     pdfData.discountPercent = membershipSettings.discountPct;
     pdfData.discountBasis = membershipDiscountBasisLabel(
       membershipSettings.discountBasis,

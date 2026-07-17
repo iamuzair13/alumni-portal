@@ -285,6 +285,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         change_approval: row.change_approval ?? null,
         pre_sap_registration: row.pre_sap_registration ?? null,
         medal: row.medal ?? null,
+        medal_document: row.medal_document ?? null,
       },
     }, { status: 200 });
   } catch (err) {

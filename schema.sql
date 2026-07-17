@@ -1370,3 +1370,9 @@ BEGIN
     VALUES ('Achievements', '', true, true, 4);
   END IF;
 END $$;
+
+-- Migration: Add medal_document column to tbl_alumni for storing medal certificate upload URL
+ALTER TABLE public.tbl_alumni
+  ADD COLUMN IF NOT EXISTS medal_document character varying(500) COLLATE pg_catalog."default" DEFAULT NULL;
+
+COMMENT ON COLUMN public.tbl_alumni.medal_document IS 'URL to uploaded medal certificate document (PDF/DOC/DOCX)';

@@ -16,6 +16,7 @@ type AlumniCardClientProps = {
   validity?: string;
   photoUrl?: string | null; // Profile image from tbl_alumni.image1
   initialCardImage?: string | null; // Initial card image from server (for SSR)
+  medal?: string | null; // Medal type for card template selection
 };
 
 import { resolveAlumniCardValidityRaw, formatCardValidityMonthYear } from "@/lib/cardValidity";
@@ -33,6 +34,7 @@ export default function AlumniCardClient({
   validity,
   photoUrl,
   initialCardImage,
+  medal,
 }: AlumniCardClientProps) {
   // Fetch card data client-side so it can be invalidated when admin downloads
   const { data: cardData, isLoading } = useCardStatus(sapId);
@@ -64,6 +66,7 @@ export default function AlumniCardClient({
       validity={computedValidity}
       photoUrl={photoUrl}
       cardImage={cardImage}
+      medal={medal}
     />
   );
 }

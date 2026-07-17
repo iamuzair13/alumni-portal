@@ -525,7 +525,8 @@ export async function POST(req: Request) {
             is_scholarship = ${clean(body.scholarship)},
             higher_education_institute_country = ${clean((body as { highereducationinstituteCountry?: string | null; workCountry?: string | null }).highereducationinstituteCountry ?? (body as { workCountry?: string | null }).workCountry ?? null)},
             higher_education_institute_city = ${clean((body as { highereducationinstituteCity?: string | null; workCity?: string | null }).highereducationinstituteCity ?? (body as { workCity?: string | null }).workCity ?? null)},
-            alumni_consent_info = ${body.alumni_consent_info ?? false}
+            alumni_consent_info = ${body.alumni_consent_info ?? false},
+            medal = ${clean((body as { medal?: string | null }).medal ?? null)}
           WHERE alumniid = ${existingAlumniId}
           RETURNING alumniid, verify
         `;
@@ -626,7 +627,8 @@ export async function POST(req: Request) {
           is_scholarship,
           higher_education_institute_country,
           higher_education_institute_city,
-          alumni_consent_info
+          alumni_consent_info,
+          medal
         ) VALUES (
           NULL,
           ${plainPassword},
@@ -693,7 +695,8 @@ export async function POST(req: Request) {
           ${clean(body.scholarship)},
           ${clean((body as { highereducationinstituteCountry?: string | null }).highereducationinstituteCountry ?? null)},
           ${clean((body as { highereducationinstituteCity?: string | null }).highereducationinstituteCity ?? null)},
-          ${body.alumni_consent_info ?? false}
+          ${body.alumni_consent_info ?? false},
+          ${clean((body as { medal?: string | null }).medal ?? null)}
         ) RETURNING alumniid;
       `;
       const alumniId = rows[0]?.alumniid;

@@ -47,6 +47,7 @@ type Profile = {
   linkedin: string | null;
   contactno: string | null;
   cnicpassport?: string | null;
+  medal?: string | null;
 };
 
 async function getProfile(searchParams: { sapid?: string }) {
@@ -78,7 +79,8 @@ async function getProfile(searchParams: { sapid?: string }) {
           a.youtube, 
           a.linkedin, 
           a.contactno,
-          a.cnicpassport
+          a.cnicpassport,
+          a.medal
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -112,7 +114,8 @@ async function getProfile(searchParams: { sapid?: string }) {
           a.youtube, 
           a.linkedin, 
           a.contactno,
-          a.cnicpassport
+          a.cnicpassport,
+          a.medal
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -144,7 +147,8 @@ async function getProfile(searchParams: { sapid?: string }) {
           a.youtube, 
           a.linkedin, 
           a.contactno,
-          a.cnicpassport
+          a.cnicpassport,
+          a.medal
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -171,7 +175,8 @@ async function getProfile(searchParams: { sapid?: string }) {
           a.youtube, 
           a.linkedin, 
           a.contactno,
-          a.cnicpassport
+          a.cnicpassport,
+          a.medal
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -838,6 +843,7 @@ let cardImageFile: string | null = null;
                                 validity={validity}
                                 photoUrl={profileImageFilename}
                                 initialCardImage={cardTemplateImageFilename}
+                                medal={p?.medal ?? null}
                               />
                             </div>
                             <AlumniCardExpiryClient

@@ -13,6 +13,7 @@ type AlumniCardTemplateWrapperProps = {
   validity?: string;
   photoUrl?: string | null;
   cardImage?: string | null;
+  medal?: string | null;
   cardStatus?: string | null; // Card status from database: "UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"
 };
 
@@ -25,6 +26,7 @@ export default function AlumniCardTemplateWrapper({
   validity,
   photoUrl,
   cardImage,
+  medal,
   cardStatus,
 }: AlumniCardTemplateWrapperProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -48,6 +50,7 @@ export default function AlumniCardTemplateWrapper({
               validity,
               photoUrl,
               cardImage,
+              medal,
             }}
           />
         </div>
@@ -62,6 +65,7 @@ export default function AlumniCardTemplateWrapper({
           validity={validity}
           photoUrl={photoUrl}
           cardImage={cardImage}
+          medal={medal}
         />
       </div>
     </div>
