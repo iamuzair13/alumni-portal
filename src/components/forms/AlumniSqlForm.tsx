@@ -108,8 +108,8 @@ const occupationTransitionTimingRegisterOptions: RegisterOptions<
 };
 
 const inputBase =
-  "mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-neutral-50 dark:border-neutral-700 dark:bg-gray-800 dark:text-neutral-100 dark:disabled:bg-gray-900";
-const labelBase = "block text-sm font-medium text-neutral-800";
+  "mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-neutral-50 dark:border-neutral-700 dark:bg-gray-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:disabled:bg-gray-900 dark:[color-scheme:dark]";
+const labelBase = "block text-sm font-medium text-neutral-800 dark:text-neutral-200";
 const occupationTransitionTimingOptions = [
   "Before graduation",
   "Immediately after graduation",

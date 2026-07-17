@@ -1176,8 +1176,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFieldPair("Applying For", data.applyingFor, "Applied Discount %", formatDiscountPercent(data.discountPercent));
         form.drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
         form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
-        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Applied Discount %", formatDiscountPercent(data.discountPercent));
-        form.drawFullRow("Original Amount", formatPaymentAmount(data.originalAmount));
+        form.drawFieldPair("Original Amount", formatPaymentAmount(data.originalAmount),"Payment Amount", formatPaymentAmount(data.paymentAmount));
         form.drawFullRow("Valid To", data.validTill);
 
         form.drawSection("C", "Medical & Fitness Information");
