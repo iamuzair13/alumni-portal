@@ -440,6 +440,11 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
                 required
               />
             </Section>
+            <Section title="(D) Medical & Fitness Information">
+              <EditableField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} placeholder="None if not applicable" />
+              <EditableField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} placeholder="None if not applicable" />
+              <EditableField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} placeholder="None if not applicable" fullWidth />
+            </Section>
             <Section title="Emergency Contact">
               <EditableField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={setEmergencyContactName} required />
               <EditableField id="emergencyContactRelationship" label="Relationship" value={emergencyContactRelationship} onChange={setEmergencyContactRelationship} required />
@@ -487,6 +492,11 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
                 fullWidth
               />
               <EditableField id="injuryHistory" label="Any Injury History" value={injuryHistory} onChange={setInjuryHistory} fullWidth />
+            </Section>
+            <Section title="(D) Medical & Fitness Information">
+              <EditableField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} placeholder="None if not applicable" />
+              <EditableField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} placeholder="None if not applicable" />
+              <EditableField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} placeholder="None if not applicable" fullWidth />
             </Section>
             <Section title="Emergency Contact">
               <EditableField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={setEmergencyContactName} required />

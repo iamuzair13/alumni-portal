@@ -285,12 +285,18 @@ export function buildMembershipApplicationPreview(
       ? [
           ["Swimming Level", swimmingLevel],
           ["Any Medical Condition", hasMedicalCondition],
+          ["Medical Conditions", missing(details?.medicalConditions)],
+          ["Physical Disability", missing(details?.physicalDisability)],
+          ["Allergies", missing(details?.allergies)],
         ]
       : facilityType === "cricket"
         ? [
             ["Previous Club (if any)", previousClub],
             ["Highest Playing Level", highestPlayingLevel],
             ["Any Injury History", injuryHistory],
+            ["Medical Conditions", missing(details?.medicalConditions)],
+            ["Physical Disability", missing(details?.physicalDisability)],
+            ["Allergies", missing(details?.allergies)],
           ]
         : [
             ["Medical Conditions", missing(details?.medicalConditions)],

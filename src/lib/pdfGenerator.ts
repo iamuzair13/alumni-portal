@@ -1166,11 +1166,15 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFullRow("Previous Club (if any)", data.previousClub);
         form.drawFieldPair("Highest Playing Level", data.highestPlayingLevel, "Any Injury History", data.injuryHistory);
 
-        form.drawSection("e", "Emergency Contact");
+        form.drawSection("e", "Medical & Fitness Information");
+        form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
+        form.drawFullRow("Allergies", data.allergies);
+
+        form.drawSection("f", "Emergency Contact");
         form.drawFieldPair("Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
         form.drawFullRow("Phone", data.emergencyContactNumber);
 
-        form.drawSection("f", "Document Checklist");
+        form.drawSection("g", "Document Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
       } else {
         form.drawSection("B", "Membership Details");
