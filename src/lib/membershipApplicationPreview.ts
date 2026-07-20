@@ -298,17 +298,11 @@ export function buildMembershipApplicationPreview(
             ["Physical Disability", missing(details?.physicalDisability)],
           ];
 
-  const emergencyRows: MembershipPreviewRow[] =
-    facilityType === "gym"
-      ? [
-          ["Contact Name", missing(details?.emergencyContactName)],
-          ["Relationship", missing(details?.emergencyContactRelationship)],
-          ["Contact Number", missing(details?.emergencyContactNumber)],
-        ]
-      : [
-          ["Name", missing(details?.emergencyContactName)],
-          ["Phone", missing(details?.emergencyContactNumber)],
-        ];
+  const emergencyRows: MembershipPreviewRow[] = [
+    ["Name", missing(details?.emergencyContactName)],
+    ["Relationship", missing(details?.emergencyContactRelationship)],
+    ["Phone", missing(details?.emergencyContactNumber)],
+  ];
 
   return {
     title: config.pageTitle,

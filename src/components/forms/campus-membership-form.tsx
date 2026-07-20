@@ -146,7 +146,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
     if (
       !emergencyContactName.trim() ||
       !emergencyContactNumber.trim() ||
-      (facilityType === "gym" && !emergencyContactRelationship.trim())
+      !emergencyContactRelationship.trim()
     ) {
       toast.error("Please complete all emergency contact fields.");
       return;
@@ -442,6 +442,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
             </Section>
             <Section title="Emergency Contact">
               <EditableField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={setEmergencyContactName} required />
+              <EditableField id="emergencyContactRelationship" label="Relationship" value={emergencyContactRelationship} onChange={setEmergencyContactRelationship} required />
               <EditableField id="emergencyContactNumber" label="Phone" value={emergencyContactNumber} onChange={setEmergencyContactNumber} required type="tel" />
             </Section>
             <Section title="(d) Document Checklist">
@@ -489,6 +490,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
             </Section>
             <Section title="Emergency Contact">
               <EditableField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={setEmergencyContactName} required />
+              <EditableField id="emergencyContactRelationship" label="Relationship" value={emergencyContactRelationship} onChange={setEmergencyContactRelationship} required />
               <EditableField id="emergencyContactNumber" label="Phone" value={emergencyContactNumber} onChange={setEmergencyContactNumber} required type="tel" />
             </Section>
             <Section title="(d) Document Checklist">

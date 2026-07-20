@@ -1167,7 +1167,8 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFieldPair("Highest Playing Level", data.highestPlayingLevel, "Any Injury History", data.injuryHistory);
 
         form.drawSection("e", "Emergency Contact");
-        form.drawFieldPair("Name", data.emergencyContactName, "Phone", data.emergencyContactNumber);
+        form.drawFieldPair("Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
+        form.drawFullRow("Phone", data.emergencyContactNumber);
 
         form.drawSection("f", "Document Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
