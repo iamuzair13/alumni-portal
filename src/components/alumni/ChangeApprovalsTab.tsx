@@ -7,6 +7,7 @@ import Pagination from "@/components/tables/Pagination";
 import Badge from "@/components/ui/badge/Badge";
 import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
+import { viewStoredUploadUrl } from "@/lib/uploadsImageUrl";
 
 type ChangeApprovalListItem = {
   alumniid: number;
@@ -235,13 +236,30 @@ export function ChangeApprovalsTab() {
                       <TableCell className="px-4 py-4 text-gray-600 dark:text-gray-400" colSpan={3}>No changed fields.</TableCell>
                     </TableRow>
                   )}
-                  {changes.map((c) => (
+                  {changes.map((c) => {
+                    const isMedalDocField = c.field === "medal_document";
+                    const medalDocUrl = isMedalDocField ? viewStoredUploadUrl(c.newValue) : null;
+                    return (
                     <TableRow key={c.field} className="bg-yellow-50/40 dark:bg-yellow-900/10">
                       <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white/90">{c.field}</TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{c.oldValue || "-"}</TableCell>
-                      <TableCell className="px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300 font-semibold">{c.newValue || "-"}</TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300 font-semibold">
+                        {c.newValue || "-"}
+                        {isMedalDocField && medalDocUrl && (
+                          <a
+                            href={medalDocUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            View Document
+                          </a>
+                        )}
+                      </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

@@ -120,9 +120,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
 
   useEffect(() => {
     if (!membershipStartDate) {
-      const now = new Date();
-      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      setMembershipStartDate(firstOfMonth.toISOString().slice(0, 10));
+      setMembershipStartDate(new Date().toISOString().slice(0, 10));
     }
   }, [membershipStartDate]);
 
@@ -130,8 +128,8 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
     if (!membershipStartDate) return;
     const d = new Date(membershipStartDate);
     if (Number.isNaN(d.getTime())) return;
-    const lastOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    setValidTill(lastOfMonth.toISOString().slice(0, 10));
+    const next = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    setValidTill(next.toISOString().slice(0, 10));
   }, [membershipStartDate]);
 
   const onSubmit = async (e: React.FormEvent) => {

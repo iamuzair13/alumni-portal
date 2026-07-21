@@ -19,6 +19,9 @@ const roboto = Roboto({
 
 const maleFrontTemplate = "/images/cards/alumni-card-male.jpeg";
 const femaleFrontTemplate = "/images/cards/alumni-card-female.jpeg";
+const goldMedalTemplate = "/images/cards/Alumni-card-gold.jpg";
+const silverMedalTemplate = "/images/cards/Alumni-card-silver.jpg";
+const bronzeMedalTemplate = "/images/cards/Alumni-card-bronze.jpg";
 const backTemplate = "/images/cards/UOL-Alumni-Card-Artworks-Revised-Curve-png-back.png";
 
 type AlumniCardData = {
@@ -36,6 +39,7 @@ type AlumniCardData = {
   photoUrl?: string | null;
   cardImage?: string | null;
   cnicPassport?: string | null;
+  medal?: string | null;
 };
 
 async function fetchCardPrintPayload(sapId: string): Promise<AlumniCardData> {
@@ -100,6 +104,7 @@ async function fetchCardPrintPayload(sapId: string): Promise<AlumniCardData> {
         photoUrl: profileFilename,
         cardImage: resolvedCardImage,
         cnicPassport: alumni.cnicpassport || null,
+        medal: alumni.medal || null,
       };
     }
   }
@@ -119,6 +124,7 @@ async function fetchCardPrintPayload(sapId: string): Promise<AlumniCardData> {
     photoUrl: profileFilename,
     cardImage: null,
     cnicPassport: alumni.cnicpassport || null,
+    medal: alumni.medal || null,
   };
 }
 
@@ -254,6 +260,10 @@ function CardPrintPageContent() {
       });
 
       const frontTpl = (() => {
+        const m = String(merged.medal ?? "").trim().toLowerCase();
+        if (m === "gold medalist") return goldMedalTemplate;
+        if (m === "silver medalist") return silverMedalTemplate;
+        if (m === "bronze medalist") return bronzeMedalTemplate;
         const g = String(merged.gender ?? "").trim().toLowerCase();
         if (g === "female" || g === "f") return femaleFrontTemplate;
         if (g === "male" || g === "m") return maleFrontTemplate;
@@ -433,6 +443,7 @@ function CardPrintPageContent() {
               validity={cardData.validity ?? undefined}
               photoUrl={cardData.photoUrl ?? null}
               cardImage={cardData.cardImage ?? null}
+              medal={cardData.medal ?? null}
               imageSrcCacheBust={pdfImageCacheBust || null}
             />
           </div>
