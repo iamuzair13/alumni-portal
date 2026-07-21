@@ -194,6 +194,78 @@ function MoreDetailsContent() {
     }
   };
 
+  function MedalDocumentUpload({ medalValue }: { medalValue: string }) {
+    const hasMedal = medalValue && medalValue !== "None";
+    if (!hasMedal) return null;
+    const medalDoc = String(data?.medal_document ?? "").trim();
+    return (
+      <div className="mt-3 flex items-center gap-3 flex-wrap">
+        {medalDoc ? (
+          <a
+            href={viewStoredUploadUrl(medalDoc) || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          >
+            <IconEye className="w-4 h-4" />
+            View Document
+          </a>
+        ) : (
+          <span className="text-sm text-slate-500 dark:text-slate-400 italic">No document uploaded</span>
+        )}
+        {!isViewer && data?.alumniid && (
+          <>
+            <button
+              type="button"
+              disabled={isUploadingMedalDoc}
+              onClick={() => medalDocFileRef.current?.click()}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUploadingMedalDoc ? "Uploading..." : medalDoc ? "Replace Document" : "Upload Document"}
+            </button>
+            <input
+              ref={medalDocFileRef}
+              type="file"
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (!data?.alumniid) {
+                  toast.error("Alumni ID not found.");
+                  return;
+                }
+                setIsUploadingMedalDoc(true);
+                try {
+                  const fd = new FormData();
+                  fd.set("alumniId", String(data.alumniid));
+                  fd.set("medalDocument", file);
+                  const res = await fetch("/api/alumni/medal-document", {
+                    method: "POST",
+                    body: fd,
+                  });
+                  if (!res.ok) {
+                    const errJson = await res.json().catch(() => null);
+                    throw new Error(errJson?.error || "Failed to upload medal document");
+                  }
+                  toast.success("Medal document uploaded successfully.");
+                  await refetch();
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Failed to upload medal document");
+                } finally {
+                  setIsUploadingMedalDoc(false);
+                  if (medalDocFileRef.current) {
+                    medalDocFileRef.current.value = "";
+                  }
+                }
+              }}
+            />
+          </>
+        )}
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (data && !isLoading && !isInitialized) {
       setPendingChanges({});
@@ -747,6 +819,26 @@ function MoreDetailsContent() {
                           );
                         }
 
+                        if (field.key === "medal") {
+                          const medalValue = String(pendingDisplayMap.medal ?? data.medal ?? "").trim();
+                          return (
+                            <div key={field.key}>
+                              <EditableField
+                                label={field.label}
+                                value={field.value}
+                                pendingValue={pendingDisplayMap[field.key]}
+                                fieldKey={field.key}
+                                type={field.type}
+                                options={field.options}
+                                disabled={!editable}
+                                batchMode={true}
+                                onValueChange={handleFieldValueChange}
+                              />
+                              <MedalDocumentUpload medalValue={medalValue} />
+                            </div>
+                          );
+                        }
+
                         return (
                           <EditableField
                             key={field.key}
@@ -766,88 +858,6 @@ function MoreDetailsContent() {
                   </div>
                 </section>
               ))}
-
-              {/* Medal Document Upload */}
-              {(() => {
-                const medalValue = String(pendingDisplayMap.medal ?? data.medal ?? "").trim();
-                const hasMedal = medalValue && medalValue !== "None";
-                if (!hasMedal) return null;
-                const medalDoc = String(data.medal_document ?? "").trim();
-                return (
-                  <section className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
-                      <IconGraduationCap className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Medal Document</h3>
-                    </div>
-                    <div className="p-6">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        {medalDoc ? (
-                          <a
-                            href={viewStoredUploadUrl(medalDoc) || "#"}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-                          >
-                            <IconEye className="w-4 h-4" />
-                            View Document
-                          </a>
-                        ) : (
-                          <span className="text-sm text-slate-500 dark:text-slate-400 italic">No document uploaded</span>
-                        )}
-                        {!isViewer && data.alumniid && (
-                          <>
-                            <button
-                              type="button"
-                              disabled={isUploadingMedalDoc}
-                              onClick={() => medalDocFileRef.current?.click()}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isUploadingMedalDoc ? "Uploading..." : medalDoc ? "Replace Document" : "Upload Document"}
-                            </button>
-                            <input
-                              ref={medalDocFileRef}
-                              type="file"
-                              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                if (!data.alumniid) {
-                                  toast.error("Alumni ID not found.");
-                                  return;
-                                }
-                                setIsUploadingMedalDoc(true);
-                                try {
-                                  const fd = new FormData();
-                                  fd.set("alumniId", String(data.alumniid));
-                                  fd.set("medalDocument", file);
-                                  const res = await fetch("/api/alumni/medal-document", {
-                                    method: "POST",
-                                    body: fd,
-                                  });
-                                  if (!res.ok) {
-                                    const errJson = await res.json().catch(() => null);
-                                    throw new Error(errJson?.error || "Failed to upload medal document");
-                                  }
-                                  toast.success("Medal document uploaded successfully.");
-                                  await refetch();
-                                } catch (err) {
-                                  toast.error(err instanceof Error ? err.message : "Failed to upload medal document");
-                                } finally {
-                                  setIsUploadingMedalDoc(false);
-                                  if (medalDocFileRef.current) {
-                                    medalDocFileRef.current.value = "";
-                                  }
-                                }
-                              }}
-                            />
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </section>
-                );
-              })()}
 
               {/* Password Change Section */}
               {isAlumniUser && (
