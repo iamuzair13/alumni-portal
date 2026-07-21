@@ -1134,7 +1134,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Membership Type", data.membershipType, "Pool Location", data.poolLocation);
         form.drawFieldPair("Preferred Timing", data.preferredTiming, "Applied Discount %", formatDiscountPercent(data.discountPercent));
-        form.drawFieldPair("Original Amount", formatPaymentAmount(data.originalAmount),"Payment Amount(inclusive of 1 timne registration fee", formatPaymentAmount(data.paymentAmount));
+        form.drawFieldPair("Original Amount", formatPaymentAmount(data.originalAmount),"Payment Amount(inclusive of 1 time registration fee", formatPaymentAmount(data.paymentAmount));
         form.drawFieldPair("Valid From", data.membershipStartDate,"Valid To", data.validTill);
 
         form.drawSection("C", "Swimming Information");
@@ -1156,6 +1156,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
 
         form.drawSection("G", "Declaration");
         form.drawFullRow("Declaration", data.declarationText);
+        form.drawFullRow("Note : ", "Any change in the membership fee after this month will be communicated by the pool manager")
       } else if (data.facilityType === "cricket") {
         form.drawSection("c", "Cricket Membership Details");
         form.drawFieldPair("Membership Category", data.membershipCategory, "Membership Type", data.membershipType);
@@ -1182,6 +1183,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
 
         form.drawSection("g", "Document Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
+        form.drawFullRow("Note : ", "Any change in the membership fee after this month will be communicated by the Club manager")
       } else {
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Applying For", data.applyingFor, "Applied Discount %", formatDiscountPercent(data.discountPercent));
@@ -1206,6 +1208,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       
         form.drawSection("G", "Declaration");
         form.drawFullRow("Declaration", data.declarationText);
+        form.drawFullRow("Note : ", "Any change in the membership fee after this month will be communicated by the gym manager")
       }
 
       form.drawMembershipSignatures("Reviewed By (ARO)", "Approved By (Competent Authority)");
