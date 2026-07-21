@@ -77,6 +77,21 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       }))
       .filter((c) => c.oldValue !== c.newValue);
 
+    // If medal is among the changed fields, fetch the current medal_document from tbl_alumni
+    // so the admin can view the uploaded document before approving the medal change.
+    if (changes.some((c) => c.field === "medal")) {
+      const docRows = await sql/* sql */`
+        SELECT medal_document
+        FROM public.tbl_alumni
+        WHERE alumniid = ${Number(row.alumni_id)}
+        LIMIT 1
+      `;
+      const medalDoc = normalizeValue((docRows[0] as Record<string, unknown> | undefined)?.medal_document);
+      if (medalDoc) {
+        changes.push({ field: "medal_document", oldValue: "", newValue: medalDoc });
+      }
+    }
+
     return NextResponse.json(
       {
         request: {
