@@ -19,7 +19,7 @@ export const DISCOUNT_BASIS_OPTIONS: {
 }[] = [
   {
     value: "same_as_staff_student",
-    label: "Same % discount as offered to UOL Staff or Students",
+    label: "Same % discount as offered to UOL Staff",
   },
   {
     value: "fifty_percent_outsiders",

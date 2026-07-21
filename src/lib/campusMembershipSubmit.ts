@@ -160,6 +160,7 @@ export async function handleCampusMembershipPost(
     medicalConditions: str(form, "medicalConditions"),
     allergies: str(form, "allergies"),
     physicalDisability: str(form, "physicalDisability"),
+    physicalDisabilityDetails: str(form, "physicalDisabilityDetails"),
     emergencyContactName: str(form, "emergencyContactName"),
     emergencyContactRelationship: str(form, "emergencyContactRelationship"),
     emergencyContactNumber: str(form, "emergencyContactNumber"),

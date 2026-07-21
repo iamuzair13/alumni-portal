@@ -129,6 +129,7 @@ export interface MembershipFormPDFData {
   medicalConditions: string;
   allergies: string;
   physicalDisability: string;
+  physicalDisabilityDetails: string;
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactNumber: string;
@@ -1124,7 +1125,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       form.drawFieldPair("SAP ID", data.sapCode, "CNIC", data.cnic);
       form.drawFieldPair("Campus", data.campus, "Mobile No", data.emergencyContactNumber);
       form.drawFieldPair("Email Address", data.email, "DOB", data.dob);
-      form.drawFieldPair("Degree/Program", data.program, "Passout Year", data.passingOutYear);
+      form.drawFieldPair("Degree/Program", data.program, "Passing out Year", data.passingOutYear);
 
 
 
@@ -1132,17 +1133,19 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       if (data.facilityType === "pool") {
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Membership Type", data.membershipType, "Pool Location", data.poolLocation);
-        form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
-        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Applied Discount %", formatDiscountPercent(data.discountPercent));
-        form.drawFullRow("Original Amount", formatPaymentAmount(data.originalAmount));
-        form.drawFullRow("Valid To", data.validTill);
+        form.drawFieldPair("Preferred Timing", data.preferredTiming, "Applied Discount %", formatDiscountPercent(data.discountPercent));
+        form.drawFieldPair("Original Amount", formatPaymentAmount(data.originalAmount),"Payment Amount(inclusive of 1 timne registration fee", formatPaymentAmount(data.paymentAmount));
+        form.drawFieldPair("Valid From", data.membershipStartDate,"Valid To", data.validTill);
 
         form.drawSection("C", "Swimming Information");
-        form.drawFieldPair("Swimming Level", data.swimmingLevel, "Any Medical Condition", data.hasMedicalCondition);
+        form.drawFullRow("Swimming Level", data.swimmingLevel);
         
         form.drawSection("D", "Medical & Fitness Information");
         form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
         form.drawFullRow("Allergies", data.allergies);
+        if (data.physicalDisability === "Yes" && data.physicalDisabilityDetails) {
+          form.drawFullRow("Physical Disability Details", data.physicalDisabilityDetails);
+        }
         
         form.drawSection("E", "Emergency Contact");
         form.drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
@@ -1169,6 +1172,9 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawSection("e", "Medical & Fitness Information");
         form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
         form.drawFullRow("Allergies", data.allergies);
+        if (data.physicalDisability === "Yes" && data.physicalDisabilityDetails) {
+          form.drawFullRow("Physical Disability Details", data.physicalDisabilityDetails);
+        }
 
         form.drawSection("f", "Emergency Contact");
         form.drawFieldPair("Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
@@ -1187,6 +1193,9 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawSection("C", "Medical & Fitness Information");
         form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
         form.drawFullRow("Allergies", data.allergies);
+        if (data.physicalDisability === "Yes" && data.physicalDisabilityDetails) {
+          form.drawFullRow("Physical Disability Details", data.physicalDisabilityDetails);
+        }
 
         form.drawSection("D", "Emergency Contact");
         form.drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);

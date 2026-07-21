@@ -16,7 +16,7 @@ import {
   SWIMMING_LEVEL_OPTIONS,
   type CampusFacilityType,
 } from "@/lib/campusMembership";
-import MembershipDatePicker from "@/components/forms/membership-date-picker";
+
 
 type Props = {
   facilityType: CampusFacilityType;
@@ -93,6 +93,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
   const [medicalConditions, setMedicalConditions] = useState("");
   const [allergies, setAllergies] = useState("");
   const [physicalDisability, setPhysicalDisability] = useState("");
+  const [physicalDisabilityDetails, setPhysicalDisabilityDetails] = useState("");
   const [emergencyContactName, setEmergencyContactName] = useState("");
   const [emergencyContactRelationship, setEmergencyContactRelationship] = useState("");
   const [emergencyContactNumber, setEmergencyContactNumber] = useState("");
@@ -119,18 +120,19 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
 
   useEffect(() => {
     if (!membershipStartDate) {
-      setMembershipStartDate(new Date().toISOString().slice(0, 10));
+      const now = new Date();
+      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      setMembershipStartDate(firstOfMonth.toISOString().slice(0, 10));
     }
   }, [membershipStartDate]);
 
   useEffect(() => {
-    if (!membershipStartDate || facilityType === "gym") return;
+    if (!membershipStartDate) return;
     const d = new Date(membershipStartDate);
     if (Number.isNaN(d.getTime())) return;
-    const next = new Date(d);
-    next.setFullYear(next.getFullYear() + 1);
-    setValidTill(next.toISOString().slice(0, 10));
-  }, [membershipStartDate, facilityType]);
+    const lastOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    setValidTill(lastOfMonth.toISOString().slice(0, 10));
+  }, [membershipStartDate]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,6 +193,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
       fd.set("medicalConditions", medicalConditions.trim());
       fd.set("allergies", allergies.trim());
       fd.set("physicalDisability", physicalDisability.trim());
+      fd.set("physicalDisabilityDetails", physicalDisabilityDetails.trim());
       fd.set("emergencyContactName", emergencyContactName.trim());
       fd.set("emergencyContactRelationship", emergencyContactRelationship.trim());
       fd.set("emergencyContactNumber", emergencyContactNumber.trim());
@@ -334,23 +337,8 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
                 options={PREFERRED_TIMING_OPTIONS}
                 required
               />
-              <MembershipDatePicker
-                id="membershipStartDate"
-                label="Valid From"
-                value={membershipStartDate}
-                onChange={setMembershipStartDate}
-                required
-                inputClassName={`${inputBase} pr-10 cursor-pointer`}
-                labelClassName={labelBase}
-              />
-              <EditableField
-                id="validTill"
-                label="Valid Till"
-                value={validTill}
-                onChange={setValidTill}
-                required
-                type="date"
-              />
+              <Field label="Valid From" value={membershipStartDate} readOnly />
+              <Field label="Valid Till" value={validTill} readOnly />
             </>
           ) : facilityType === "pool" ? (
             <>
@@ -371,23 +359,8 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
                 options={PREFERRED_TIMING_OPTIONS}
                 required
               />
-              <MembershipDatePicker
-                id="membershipStartDate"
-                label="Valid From"
-                value={membershipStartDate}
-                onChange={setMembershipStartDate}
-                required
-                inputClassName={`${inputBase} pr-10 cursor-pointer`}
-                labelClassName={labelBase}
-              />
-              <EditableField
-                id="validTill"
-                label="Valid To"
-                value={validTill}
-                onChange={setValidTill}
-                required
-                type="date"
-              />
+              <Field label="Valid From" value={membershipStartDate} readOnly />
+              <Field label="Valid To" value={validTill} readOnly />
             </>
           ) : (
             <>
@@ -399,15 +372,8 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
                 options={MEMBERSHIP_TYPE_OPTIONS}
                 required
               />
-              <MembershipDatePicker
-                id="membershipStartDate"
-                label="Membership Start Date"
-                value={membershipStartDate}
-                onChange={setMembershipStartDate}
-                required
-                inputClassName={`${inputBase} pr-10 cursor-pointer`}
-                labelClassName={labelBase}
-              />
+              <Field label="Membership Start Date" value={membershipStartDate} readOnly />
+              <Field label="Membership End Date" value={validTill} readOnly />
               <SelectField
                 id="preferredTiming"
                 label="Preferred Timing"
@@ -441,9 +407,12 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
               />
             </Section>
             <Section title="(D) Medical & Fitness Information">
-              <EditableField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} placeholder="None if not applicable" />
-              <EditableField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} placeholder="None if not applicable" />
-              <EditableField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} placeholder="None if not applicable" fullWidth />
+              <SelectField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} options={MEDICAL_CONDITION_OPTIONS} required />
+              <SelectField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} options={MEDICAL_CONDITION_OPTIONS} required />
+              {physicalDisability === "Yes" && (
+                <EditableField id="physicalDisabilityDetails" label="Physical Disability Details" value={physicalDisabilityDetails} onChange={setPhysicalDisabilityDetails} placeholder="Please explain your physical disability" fullWidth />
+              )}
+              <SelectField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} options={MEDICAL_CONDITION_OPTIONS} required fullWidth />
             </Section>
             <Section title="Emergency Contact">
               <EditableField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={setEmergencyContactName} required />
@@ -494,9 +463,12 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
               <EditableField id="injuryHistory" label="Any Injury History" value={injuryHistory} onChange={setInjuryHistory} fullWidth />
             </Section>
             <Section title="(D) Medical & Fitness Information">
-              <EditableField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} placeholder="None if not applicable" />
-              <EditableField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} placeholder="None if not applicable" />
-              <EditableField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} placeholder="None if not applicable" fullWidth />
+              <SelectField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} options={MEDICAL_CONDITION_OPTIONS} required />
+              <SelectField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} options={MEDICAL_CONDITION_OPTIONS} required />
+              {physicalDisability === "Yes" && (
+                <EditableField id="physicalDisabilityDetails" label="Physical Disability Details" value={physicalDisabilityDetails} onChange={setPhysicalDisabilityDetails} placeholder="Please explain your physical disability" fullWidth />
+              )}
+              <SelectField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} options={MEDICAL_CONDITION_OPTIONS} required fullWidth />
             </Section>
             <Section title="Emergency Contact">
               <EditableField id="emergencyContactName" label="Name" value={emergencyContactName} onChange={setEmergencyContactName} required />
@@ -538,9 +510,12 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
         ) : (
           <>
             <Section title="(d) Medical & Fitness Information">
-              <EditableField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} placeholder="None if not applicable" />
-              <EditableField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} placeholder="None if not applicable" />
-              <EditableField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} placeholder="None if not applicable" fullWidth />
+              <SelectField id="medicalConditions" label="Medical Conditions" value={medicalConditions} onChange={setMedicalConditions} options={MEDICAL_CONDITION_OPTIONS} required />
+              <SelectField id="allergies" label="Allergies" value={allergies} onChange={setAllergies} options={MEDICAL_CONDITION_OPTIONS} required />
+              <SelectField id="physicalDisability" label="Physical Disability" value={physicalDisability} onChange={setPhysicalDisability} options={MEDICAL_CONDITION_OPTIONS} required />
+              {physicalDisability === "Yes" && (
+                <EditableField id="physicalDisabilityDetails" label="Physical Disability Details" value={physicalDisabilityDetails} onChange={setPhysicalDisabilityDetails} placeholder="Please explain your physical disability" fullWidth />
+              )}
             </Section>
             <Section title="(e) Emergency Contact">
               <EditableField id="emergencyContactName" label="Contact Name" value={emergencyContactName} onChange={setEmergencyContactName} required />

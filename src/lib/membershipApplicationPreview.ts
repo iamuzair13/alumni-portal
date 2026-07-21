@@ -68,6 +68,7 @@ export type MembershipApplicationPreview = {
   medicalConditions: string;
   allergies: string;
   physicalDisability: string;
+  physicalDisabilityDetails: string;
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactNumber: string;
@@ -280,6 +281,11 @@ export function buildMembershipApplicationPreview(
             ["Preferred Timing", details?.preferredTiming || row.preferred_timing || "Missing"],
           ];
 
+  const physicalDisabilityDetailsRow: MembershipPreviewRow[] =
+    details?.physicalDisability === "Yes" && details?.physicalDisabilityDetails
+      ? [["Physical Disability Details", details.physicalDisabilityDetails]]
+      : [];
+
   const extraRows: MembershipPreviewRow[] =
     facilityType === "pool"
       ? [
@@ -287,6 +293,7 @@ export function buildMembershipApplicationPreview(
           ["Any Medical Condition", hasMedicalCondition],
           ["Medical Conditions", missing(details?.medicalConditions)],
           ["Physical Disability", missing(details?.physicalDisability)],
+          ...physicalDisabilityDetailsRow,
           ["Allergies", missing(details?.allergies)],
         ]
       : facilityType === "cricket"
@@ -296,12 +303,14 @@ export function buildMembershipApplicationPreview(
             ["Any Injury History", injuryHistory],
             ["Medical Conditions", missing(details?.medicalConditions)],
             ["Physical Disability", missing(details?.physicalDisability)],
+            ...physicalDisabilityDetailsRow,
             ["Allergies", missing(details?.allergies)],
           ]
         : [
             ["Medical Conditions", missing(details?.medicalConditions)],
             ["Allergies", missing(details?.allergies)],
             ["Physical Disability", missing(details?.physicalDisability)],
+            ...physicalDisabilityDetailsRow,
           ];
 
   const emergencyRows: MembershipPreviewRow[] = [
@@ -341,6 +350,7 @@ export function buildMembershipApplicationPreview(
     medicalConditions: missing(details?.medicalConditions),
     allergies: missing(details?.allergies),
     physicalDisability: missing(details?.physicalDisability),
+    physicalDisabilityDetails: missing(details?.physicalDisabilityDetails),
     emergencyContactName: missing(details?.emergencyContactName),
     emergencyContactRelationship: missing(details?.emergencyContactRelationship),
     emergencyContactNumber: missing(details?.emergencyContactNumber),
@@ -395,6 +405,7 @@ export function buildMembershipFormPDFData(row: MembershipDbRow): MembershipForm
     medicalConditions: preview.medicalConditions,
     allergies: preview.allergies,
     physicalDisability: preview.physicalDisability,
+    physicalDisabilityDetails: preview.physicalDisabilityDetails,
     emergencyContactName: preview.emergencyContactName,
     emergencyContactRelationship: preview.emergencyContactRelationship,
     emergencyContactNumber: preview.emergencyContactNumber,

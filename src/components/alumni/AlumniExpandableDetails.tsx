@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PencilIcon, TrashBinIcon } from "@/icons";
-import { resolveStoredUploadUrl } from "@/lib/uploadsImageUrl";
+import { viewStoredUploadUrl } from "@/lib/uploadsImageUrl";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { canModify, isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
@@ -631,6 +631,8 @@ function AlumniExpandableDetails({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAutoAssigningCategory, setIsAutoAssigningCategory] = useState(false);
+  const [isUploadingMedalDoc, setIsUploadingMedalDoc] = useState(false);
+  const medalDocFileRef = useRef<HTMLInputElement>(null);
 
   const safePasswordValue = useMemo(() => {
     const raw = data?.password;
@@ -1741,21 +1743,74 @@ function AlumniExpandableDetails({
             { value: "Bronze Medalist", label: "Bronze Medalist" },
           ]} onEdit={() => startEditingField("medal")} />
           {data.medal && data.medal !== "None" && (
-            <div className="col-span-full -mt-1 mb-1 flex items-center gap-2">
+            <div className="col-span-full -mt-1 mb-1 flex items-center gap-2 flex-wrap">
               {data.medal_document ? (
                 <a
-                  href={resolveStoredUploadUrl(data.medal_document) || "#"}
+                  href={viewStoredUploadUrl(data.medal_document) || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors dark:bg-blue-700 dark:hover:bg-blue-600"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" clipRule="evenodd" />
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                   </svg>
                   View Document
                 </a>
               ) : (
                 <span className="text-xs text-gray-500 dark:text-gray-400 italic">No document uploaded</span>
+              )}
+              {!readOnly && data.alumniid && (
+                <>
+                  <button
+                    type="button"
+                    disabled={isUploadingMedalDoc}
+                    onClick={() => medalDocFileRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors dark:bg-emerald-700 dark:hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                    {isUploadingMedalDoc ? "Uploading..." : data.medal_document ? "Replace Document" : "Upload Document"}
+                  </button>
+                  <input
+                    ref={medalDocFileRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!data.alumniid) {
+                        toast.error("Alumni ID not found.");
+                        return;
+                      }
+                      setIsUploadingMedalDoc(true);
+                      try {
+                        const fd = new FormData();
+                        fd.set("alumniId", String(data.alumniid));
+                        fd.set("medalDocument", file);
+                        const res = await fetch("/api/alumni/medal-document", {
+                          method: "POST",
+                          body: fd,
+                        });
+                        if (!res.ok) {
+                          const errJson = await res.json().catch(() => null);
+                          throw new Error(errJson?.error || "Failed to upload medal document");
+                        }
+                        toast.success("Medal document uploaded successfully.");
+                        queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", currentSapId] });
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Failed to upload medal document");
+                      } finally {
+                        setIsUploadingMedalDoc(false);
+                        if (medalDocFileRef.current) {
+                          medalDocFileRef.current.value = "";
+                        }
+                      }
+                    }}
+                  />
+                </>
               )}
             </div>
           )}

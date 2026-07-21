@@ -21,6 +21,7 @@ export type CampusMembershipSubmitBody = {
   medicalConditions?: string;
   allergies?: string;
   physicalDisability?: string;
+  physicalDisabilityDetails?: string;
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactNumber: string;
@@ -80,6 +81,7 @@ export function buildApplicationDetails(
     medicalConditions: (body.medicalConditions || "").trim(),
     allergies: (body.allergies || "").trim(),
     physicalDisability: (body.physicalDisability || "").trim(),
+    physicalDisabilityDetails: (body.physicalDisabilityDetails || "").trim(),
     emergencyContactName: body.emergencyContactName.trim(),
     emergencyContactRelationship: body.emergencyContactRelationship.trim(),
     emergencyContactNumber: body.emergencyContactNumber.trim(),
