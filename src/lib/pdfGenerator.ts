@@ -129,6 +129,7 @@ export interface MembershipFormPDFData {
   medicalConditions: string;
   allergies: string;
   physicalDisability: string;
+  physicalDisabilityDetails: string;
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactNumber: string;

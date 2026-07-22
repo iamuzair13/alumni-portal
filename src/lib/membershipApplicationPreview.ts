@@ -350,7 +350,8 @@ export function buildMembershipApplicationPreview(
     medicalConditions: missing(details?.medicalConditions),
     allergies: missing(details?.allergies),
     physicalDisability: missing(details?.physicalDisability),
-    physicalDisabilityDetails: missing(details?.physicalDisabilityDetails),
+    physicalDisabilityDetails:
+      details?.physicalDisability === "Yes" ? missing(details?.physicalDisabilityDetails) : "",
     emergencyContactName: missing(details?.emergencyContactName),
     emergencyContactRelationship: missing(details?.emergencyContactRelationship),
     emergencyContactNumber: missing(details?.emergencyContactNumber),
