@@ -129,7 +129,6 @@ export interface MembershipFormPDFData {
   medicalConditions: string;
   allergies: string;
   physicalDisability: string;
-  physicalDisabilityDetails: string;
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactNumber: string;
@@ -638,25 +637,18 @@ function createApplicationFormRenderer(
     y += metrics.sigH + 2;
   };
 
-  const drawMembershipSignatures = (
-    leftLabel: string,
-    middleLabel: string,
-    rightLabel: string
-  ) => {
+  const drawMembershipSignatures = (leftLabel: string, rightLabel: string) => {
     y = Math.max(y + 2, contentBottom - metrics.sigH - 2);
-    const gap = 4;
-    const boxW = (W - 2 * gap) / 3;
+    const sigCol = W / 2;
     doc.setDrawColor(...THEME.colors.border);
     doc.setLineWidth(0.2);
-    doc.rect(m, y, boxW, metrics.sigH);
-    doc.rect(m + boxW + gap, y, boxW, metrics.sigH);
-    doc.rect(m + 2 * (boxW + gap), y, boxW, metrics.sigH);
+    doc.rect(m, y, sigCol - 2, metrics.sigH);
+    doc.rect(m + sigCol + 2, y, sigCol - 2, metrics.sigH);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(metrics.fontSmall);
     doc.setTextColor(...THEME.colors.muted);
     doc.text(leftLabel, m + 2, y + 4.5);
-    doc.text(middleLabel, m + boxW + gap + 2, y + 4.5);
-    doc.text(rightLabel, m + 2 * (boxW + gap) + 2, y + 4.5);
+    doc.text(rightLabel, m + sigCol + 4, y + 4.5);
     y += metrics.sigH;
   };
 
@@ -1132,7 +1124,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       form.drawFieldPair("SAP ID", data.sapCode, "CNIC", data.cnic);
       form.drawFieldPair("Campus", data.campus, "Mobile No", data.emergencyContactNumber);
       form.drawFieldPair("Email Address", data.email, "DOB", data.dob);
-      form.drawFieldPair("Degree/Program", data.program, "Passing out Year", data.passingOutYear);
+      form.drawFieldPair("Degree/Program", data.program, "Passout Year", data.passingOutYear);
 
 
 
@@ -1140,19 +1132,17 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       if (data.facilityType === "pool") {
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Membership Type", data.membershipType, "Pool Location", data.poolLocation);
-        form.drawFieldPair("Preferred Timing", data.preferredTiming, "Applied Discount %", formatDiscountPercent(data.discountPercent));
-        form.drawFieldPair("Original Amount", formatPaymentAmount(data.originalAmount),"Payment Amount(inclusive of 1 time registration fee", formatPaymentAmount(data.paymentAmount));
-        form.drawFieldPair("Valid From", data.membershipStartDate,"Valid To", data.validTill);
+        form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
+        form.drawFieldPair("Payment Amount Due", formatPaymentAmount(data.paymentAmount), "Applied Discount %", formatDiscountPercent(data.discountPercent));
+        form.drawFullRow("Original Amount", formatPaymentAmount(data.originalAmount));
+        form.drawFullRow("Valid To", data.validTill);
 
         form.drawSection("C", "Swimming Information");
-        form.drawFullRow("Swimming Level", data.swimmingLevel);
+        form.drawFieldPair("Swimming Level", data.swimmingLevel, "Any Medical Condition", data.hasMedicalCondition);
         
         form.drawSection("D", "Medical & Fitness Information");
         form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
         form.drawFullRow("Allergies", data.allergies);
-        if (data.physicalDisability === "Yes" && data.physicalDisabilityDetails) {
-          form.drawFullRow("Physical Disability Details", data.physicalDisabilityDetails);
-        }
         
         form.drawSection("E", "Emergency Contact");
         form.drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
@@ -1163,13 +1153,12 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
 
         form.drawSection("G", "Declaration");
         form.drawFullRow("Declaration", data.declarationText);
-        form.drawFullRow("Note : ", "Any change in the membership fee after this month will be communicated by the pool manager")
       } else if (data.facilityType === "cricket") {
         form.drawSection("c", "Cricket Membership Details");
         form.drawFieldPair("Membership Category", data.membershipCategory, "Membership Type", data.membershipType);
         form.drawFieldPair("Playing Category", data.playingCategory, "Playing Role", data.playingRole);
         form.drawFieldPair("Preferred Practice Session", data.preferredTiming, "Valid From", data.membershipStartDate);
-        form.drawFieldPair("Payment Amount", formatPaymentAmount(data.paymentAmount), "Applied Discount %", formatDiscountPercent(data.discountPercent));
+        form.drawFieldPair("Payment Amount Due", formatPaymentAmount(data.paymentAmount), "Applied Discount %", formatDiscountPercent(data.discountPercent));
         form.drawFullRow("Original Amount", formatPaymentAmount(data.originalAmount));
         form.drawFullRow("Valid Till", data.validTill);
 
@@ -1177,34 +1166,21 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFullRow("Previous Club (if any)", data.previousClub);
         form.drawFieldPair("Highest Playing Level", data.highestPlayingLevel, "Any Injury History", data.injuryHistory);
 
-        form.drawSection("e", "Medical & Fitness Information");
-        form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
-        form.drawFullRow("Allergies", data.allergies);
-        if (data.physicalDisability === "Yes" && data.physicalDisabilityDetails) {
-          form.drawFullRow("Physical Disability Details", data.physicalDisabilityDetails);
-        }
+        form.drawSection("e", "Emergency Contact");
+        form.drawFieldPair("Name", data.emergencyContactName, "Phone", data.emergencyContactNumber);
 
-        form.drawSection("f", "Emergency Contact");
-        form.drawFieldPair("Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
-        form.drawFullRow("Phone", data.emergencyContactNumber);
-
-        form.drawSection("g", "Document Checklist");
+        form.drawSection("f", "Document Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
-        form.drawFullRow("Note : ", "Any change in the membership fee after this month will be communicated by the Club manager")
       } else {
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Applying For", data.applyingFor, "Applied Discount %", formatDiscountPercent(data.discountPercent));
-        form.drawFieldPair("Membership Type", data.membershipType, "Membership Start Date", data.membershipStartDate);
-        form.drawFieldPair("Preferred Timing", data.preferredTiming, "Valid From", data.membershipStartDate);
-        form.drawFieldPair("Original Amount", formatPaymentAmount(data.originalAmount),"Payment Amount", formatPaymentAmount(data.paymentAmount));
-        form.drawFullRow("Valid To", data.validTill);
+        form.drawFieldPair("Membership Type", data.membershipType,"Preferred Timing", data.preferredTiming);
+        form.drawFieldPair("Valid From", data.membershipStartDate, "Valid To", data.validTill);
+        form.drawFieldPair("Original Amount", formatPaymentAmount(data.originalAmount),"Payment Amount Due", formatPaymentAmount(data.paymentAmount));
 
         form.drawSection("C", "Medical & Fitness Information");
         form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);
         form.drawFullRow("Allergies", data.allergies);
-        if (data.physicalDisability === "Yes" && data.physicalDisabilityDetails) {
-          form.drawFullRow("Physical Disability Details", data.physicalDisabilityDetails);
-        }
 
         form.drawSection("D", "Emergency Contact");
         form.drawFieldPair("Contact Name", data.emergencyContactName, "Relationship", data.emergencyContactRelationship);
@@ -1215,10 +1191,9 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       
         form.drawSection("G", "Declaration");
         form.drawFullRow("Declaration", data.declarationText);
-        form.drawFullRow("Note : ", "Any change in the membership fee after this month will be communicated by the gym manager")
       }
 
-      form.drawMembershipSignatures("Reviewed By (ARO)", "1. Approved By (ARO)", "2. Approved By (Facility Incharge)");
+      form.drawMembershipSignatures("Reviewed By (ARO)", "Approved By (Competent Authority)");
       form.drawFooter();
       form.ensureSinglePage();
 
