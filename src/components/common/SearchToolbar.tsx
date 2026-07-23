@@ -80,6 +80,25 @@ export default function SearchToolbar({
             {title}
           </h3>
           <div className="flex items-center gap-1.5">
+            {/* Filters Toggle — outlined label button */}
+            {children && (
+              <button
+                type="button"
+                onClick={() => setShowFilters((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-semibold transition-all ${showFilters ? "border-blue-500 text-blue-600 bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:bg-blue-950/30" : "border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:border-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/30"}`}
+                aria-label="Toggle filters"
+                title="Toggle filters"
+              >
+                {showFilters ? <ChevronUpIcon className="h-3.5 w-3.5" /> : <ChevronDownIcon className="h-3.5 w-3.5" />}
+                <span>Filters</span>
+                {filtersActive && (
+                  <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-bold text-white bg-blue-500 rounded-full">
+                    !
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Reset Sort — outlined label button */}
             {showResetSort && onResetSort && (
               <button
@@ -183,39 +202,19 @@ export default function SearchToolbar({
           />
         </div>
 
-        {/* Row 3: Filters Toggle + Collapsible Panel */}
+        {/* Collapsible Filters Panel */}
         {children && (
-          <>
-            <button
-              type="button"
-              onClick={() => setShowFilters((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors w-fit"
-            >
-              {showFilters ? (
-                <ChevronUpIcon className="h-3.5 w-3.5 transition-transform duration-300" />
-              ) : (
-                <ChevronDownIcon className="h-3.5 w-3.5 transition-transform duration-300" />
-              )}
-              <span>Filters</span>
-              {filtersActive && (
-                <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-bold text-white bg-blue-500 rounded-full">
-                  !
-                </span>
-              )}
-            </button>
-
-            <div
-              className={`transition-all duration-300 ease-in-out ${showFilters ? "overflow-visible" : "overflow-hidden"}`}
-              style={{
-                maxHeight: showFilters ? "5000px" : "0px",
-                opacity: showFilters ? 1 : 0,
-              }}
-            >
-              <div className="pt-1">
-                {children}
-              </div>
+          <div
+            className={`transition-all duration-300 ease-in-out ${showFilters ? "overflow-visible" : "overflow-hidden"}`}
+            style={{
+              maxHeight: showFilters ? "5000px" : "0px",
+              opacity: showFilters ? 1 : 0,
+            }}
+          >
+            <div className="pt-1">
+              {children}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
