@@ -1154,6 +1154,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
 
         form.drawSection("G", "Declaration");
         form.drawFullRow("Declaration", data.declarationText);
+        form.drawFullRow("Note : ", "Any revision in the membership fee after this month will be communicated by the pool manager.")
       } else if (data.facilityType === "cricket") {
         form.drawSection("c", "Cricket Membership Details");
         form.drawFieldPair("Membership Category", data.membershipCategory, "Membership Type", data.membershipType);
@@ -1172,6 +1173,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
 
         form.drawSection("f", "Document Checklist");
         form.drawChecklistTable(data.documentsChecklist.map((item) => ({ label: item.label, value: item.status })));
+        form.drawFullRow("Note : ", "Any revision in the membership fee after this month will be communicated by the Qalandar Club manager.")
       } else {
         form.drawSection("B", "Membership Details");
         form.drawFieldPair("Applying For", data.applyingFor, "Applied Discount %", formatDiscountPercent(data.discountPercent));
@@ -1192,6 +1194,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       
         form.drawSection("G", "Declaration");
         form.drawFullRow("Declaration", data.declarationText);
+        form.drawFullRow("Note : ", "Any revision in the membership fee after this month will be communicated by the gym manager.")
       }
 
       form.drawMembershipSignatures("Reviewed By (ARO)", "Approved By (Competent Authority)");
