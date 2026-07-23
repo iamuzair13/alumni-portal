@@ -1039,6 +1039,12 @@ export async function GET(req: Request) {
             statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`);
           } else if (s === "category:d") {
             statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'd' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%')`);
+          } else if (s === "medal:gold") {
+            statusConditions.push(sql`LOWER(TRIM(COALESCE(medal, ''))) = 'gold medalist'`);
+          } else if (s === "medal:silver") {
+            statusConditions.push(sql`LOWER(TRIM(COALESCE(medal, ''))) = 'silver medalist'`);
+          } else if (s === "medal:bronze") {
+            statusConditions.push(sql`LOWER(TRIM(COALESCE(medal, ''))) = 'bronze medalist'`);
           }
         });
         
@@ -1068,6 +1074,12 @@ export async function GET(req: Request) {
           verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`;
         } else if (status === "category:d") {
           verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'd' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%')`;
+        } else if (status === "medal:gold") {
+          verifyFilter = sql`AND LOWER(TRIM(COALESCE(medal, ''))) = 'gold medalist'`;
+        } else if (status === "medal:silver") {
+          verifyFilter = sql`AND LOWER(TRIM(COALESCE(medal, ''))) = 'silver medalist'`;
+        } else if (status === "medal:bronze") {
+          verifyFilter = sql`AND LOWER(TRIM(COALESCE(medal, ''))) = 'bronze medalist'`;
         }
       }
     }
@@ -1118,7 +1130,17 @@ export async function GET(req: Request) {
           COUNT(DISTINCT a.alumniid) FILTER (
             WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'd'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
-          ) as category_d
+          ) as category_d,
+          -- Medal counts
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.medal, ''))) = 'gold medalist'
+          ) as medal_gold,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.medal, ''))) = 'silver medalist'
+          ) as medal_silver,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.medal, ''))) = 'bronze medalist'
+          ) as medal_bronze
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -1208,7 +1230,17 @@ export async function GET(req: Request) {
           COUNT(DISTINCT a.alumniid) FILTER (
             WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'd'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
-          ) as category_d
+          ) as category_d,
+          -- Medal counts
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.medal, ''))) = 'gold medalist'
+          ) as medal_gold,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.medal, ''))) = 'silver medalist'
+          ) as medal_silver,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.medal, ''))) = 'bronze medalist'
+          ) as medal_bronze
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -1329,6 +1361,9 @@ export async function GET(req: Request) {
       category_b?: number | string | bigint;
       category_c?: number | string | bigint;
       category_d?: number | string | bigint;
+      medal_gold?: number | string | bigint;
+      medal_silver?: number | string | bigint;
+      medal_bronze?: number | string | bigint;
     } | undefined;
 
     if (!row) {
@@ -1340,6 +1375,7 @@ export async function GET(req: Request) {
         active: 0,
         inactive: 0,
         category: { aPlus: 0, a: 0, b: 0, c: 0, d: 0, distinguished: 0 },
+        medal: { gold: 0, silver: 0, bronze: 0 },
       }, { status: 200 });
     }
 
@@ -1358,6 +1394,11 @@ export async function GET(req: Request) {
         c: Number(row.category_c || 0),
         d: Number(row.category_d || 0),
         distinguished: distinguishedCount,
+      },
+      medal: {
+        gold: Number(row.medal_gold || 0),
+        silver: Number(row.medal_silver || 0),
+        bronze: Number(row.medal_bronze || 0),
       },
     };
 

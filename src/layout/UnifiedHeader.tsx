@@ -15,6 +15,8 @@ import ComponentCard from "@/components/common/ComponentCard";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useSidebar } from "@/context/SidebarContext";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { TabBar } from "@/components/design-system/TabBar";
+import { BarChart3 } from "lucide-react";
 
 import { AlumniTabs } from "@/components/alumni/Alumni-tabs";
 import { AlumniCards } from "@/components/alumni/Alumini-cards";
@@ -79,9 +81,6 @@ const MENU_TABS: TabConfig[] = [
   { key: "Leadership", label: "Leadership", urlTab: "leadership", showCounter: true },
   { key: "Jobs", label: "Jobs", urlTab: "jobs", showCounter: false },
 ];
-
-const BRAND_COLOR = "#183D32";
-const BRAND_COLOR_DARK = "#142e26";
 
 /* ═══════════════════════════════════════════════════════════════
    URL MAPPINGS
@@ -214,193 +213,6 @@ async function fetchTabCounts(): Promise<Partial<Record<MenuKey, PairCounts>>> {
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════════════ */
 
-/** Same easing count-up as alumni dashboard cards / alumni cards tabs */
-function useAnimatedCounter(target: number, duration = 600) {
-  const [count, setCount] = useState(0);
-  const prevRef = useRef(0);
-
-  useEffect(() => {
-    const start = prevRef.current;
-    const diff = target - start;
-    if (diff === 0) return;
-
-    let startTime: number | null = null;
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(start + diff * easeOut));
-      if (progress < 1) requestAnimationFrame(animate);
-      else prevRef.current = target;
-    };
-
-    requestAnimationFrame(animate);
-  }, [target, duration]);
-
-  return count;
-}
-
-/** Animated counter badge (count-up + tabular nums, aligned with alumni cards TabCounter) */
-const CounterBadge: FC<{
-  value: number;
-  variant: "primary" | "secondary";
-  isSelected: boolean;
-}> = ({ value, variant, isSelected }) => {
-  const animated = useAnimatedCounter(Number.isFinite(value) ? value : 0);
-
-  const baseClasses =
-    "inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums transition-colors duration-300";
-
-  const variantClasses =
-    variant === "primary"
-      ? isSelected
-        ? "bg-white/20 text-white"
-        : "bg-[#183D32] text-white"
-      : isSelected
-        ? "bg-white/10 text-white/80 border border-white/20"
-        : "bg-[#183D32]/10 text-[#183D32] border border-[#183D32]/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30";
-
-  return (
-    <motion.span
-      layout
-      initial={{ scale: 0.92, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 500, damping: 32 }}
-      className={`${baseClasses} ${variantClasses}`}
-    >
-      {animated.toLocaleString()}
-    </motion.span>
-  );
-};
-
-/** Skeleton loader for counters (matches alumni-cards-style pulse chips) */
-const CounterSkeleton: FC = () => (
-  <span className="inline-flex shrink-0 items-center gap-1.5">
-    <span className="inline-flex h-5 w-8 items-center justify-center rounded-md bg-gray-200 dark:bg-gray-600">
-      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse dark:bg-gray-400" />
-    </span>
-    <span className="text-[10px] text-gray-400 dark:text-gray-500">/</span>
-    <span className="inline-flex h-5 w-8 items-center justify-center rounded-md bg-gray-200 dark:bg-gray-600">
-      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse dark:bg-gray-400" />
-    </span>
-  </span>
-);
-
-/** Individual tab button with rich interactions */
-const TabButton: FC<{
-  tab: TabConfig;
-  isSelected: boolean;
-  index: number;
-  totalTabs: number;
-  counts?: PairCounts;
-  showLoader: boolean;
-  onSelect: (tab: MenuKey) => void;
-}> = ({ tab, isSelected, index, totalTabs, counts, showLoader, onSelect }) => {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "ArrowRight") {
-        e.preventDefault();
-        const nextIdx = (index + 1) % totalTabs;
-        onSelect(MENU_TABS[nextIdx].key);
-        // Focus next button after state update
-        setTimeout(() => {
-          const buttons = document.querySelectorAll('[role="tab"]');
-          (buttons[nextIdx] as HTMLElement)?.focus();
-        }, 0);
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        const prevIdx = (index - 1 + totalTabs) % totalTabs;
-        onSelect(MENU_TABS[prevIdx].key);
-        setTimeout(() => {
-          const buttons = document.querySelectorAll('[role="tab"]');
-          (buttons[prevIdx] as HTMLElement)?.focus();
-        }, 0);
-      } else if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        onSelect(tab.key);
-      }
-    },
-    [index, totalTabs, tab.key, onSelect]
-  );
-
-  return (
-    <motion.button
-      ref={buttonRef}
-      layout
-      role="tab"
-      aria-selected={isSelected}
-      tabIndex={isSelected ? 0 : -1}
-      onClick={() => onSelect(tab.key)}
-      onKeyDown={handleKeyDown}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      className={`
-        group relative inline-flex h-10 shrink-0 items-center justify-between gap-2 rounded-xl border px-3 text-sm font-semibold
-        sm:px-3.5
-        shadow-sm transition-all duration-300 ease-out
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
-        ${
-          isSelected
-            ? "border-transparent bg-[#183D32] text-white shadow-lg shadow-[#183D32]/25 dark:bg-[#1a4d3e] dark:shadow-emerald-900/40 focus-visible:ring-[#183D32]/30"
-            : "border-gray-200/80 bg-white/80 text-gray-700 backdrop-blur-sm hover:border-[#183D32]/30 hover:bg-white hover:text-[#183D32] hover:shadow-md dark:border-gray-700/60 dark:bg-gray-800/60 dark:text-gray-300 dark:hover:border-emerald-500/40 dark:hover:bg-gray-800 dark:hover:text-emerald-300 focus-visible:ring-[#183D32]/20"
-        }
-      `}
-    >
-      {/* Active indicator dot */}
-      {isSelected && (
-        <motion.span
-          layoutId="activeTabIndicator"
-          className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-gray-900"
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        />
-      )}
-
-      <span className="relative z-10 whitespace-nowrap text-left leading-none">
-        {tab.label}
-      </span>
-
-      {/* Counter badges */}
-      {tab.showCounter && (
-        <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
-          {showLoader ? (
-            <CounterSkeleton />
-          ) : counts ? (
-            <>
-              <CounterBadge value={counts.all} variant="primary" isSelected={isSelected} />
-              <span
-                className={
-                  isSelected
-                    ? "text-[10px] text-white/40"
-                    : "text-[10px] text-gray-400 dark:text-gray-500"
-                }
-              >
-                /
-              </span>
-              <CounterBadge value={counts.secondary} variant="secondary" isSelected={isSelected} />
-            </>
-          ) : null}
-        </span>
-      )}
-
-      {/* Hover glow effect for selected */}
-      {isSelected && (
-        <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-      )}
-
-      {/* Selected underline (anchored to the actual tab button) */}
-      {isSelected && (
-        <motion.span
-          layoutId="tabUnderline"
-          className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-white/70 dark:bg-emerald-300/70"
-          transition={{ type: "spring", stiffness: 500, damping: 40 }}
-        />
-      )}
-    </motion.button>
-  );
-};
-
 /** Content area with smooth transitions */
 const TabContent: FC<{ selected: MenuKey }> = ({ selected }) => {
   const contentMap: Record<MenuKey, ReactNode> = {
@@ -483,8 +295,6 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
   // Tab counts query
   const {
     data: tabCountsData,
-    isLoading: tabCountsLoading,
-    isFetching: tabCountsFetching,
   } = useQuery({
     queryKey: ["dashboard-tab-counts"],
     queryFn: fetchTabCounts,
@@ -541,13 +351,13 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
             {showTabsContent ? (
               <div className="flex items-center justify-between gap-3">
                 <div className="hidden min-w-0 items-center gap-3 sm:flex">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#183D32]/10 dark:bg-emerald-500/15">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-500/10 dark:bg-accent-500/15">
                     <svg
                       width="16"
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
-                      className="text-[#183D32] dark:text-emerald-400"
+                      className="text-accent-600 dark:text-accent-300"
                     >
                       <path
                         d="M12 2L2 7L12 12L22 7L12 2Z"
@@ -583,7 +393,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
                 <button
                   type="button"
                   onClick={() => handleTabChange("AadAlumni")}
-                  className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#183D32] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#1a4d3e] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/30 active:scale-[0.98] dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                  className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white shadow-theme-sm transition-all hover:bg-accent-600 hover:shadow-theme-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/30 active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M12 5v14M5 12h14" strokeLinecap="round" />
@@ -594,27 +404,20 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
               </div>
             ) : null}
 
-            <nav className="min-w-0 w-full" role="tablist" aria-label="Alumni sections">
-              <div className="flex flex-wrap items-center gap-2">
-                {MENU_TABS.map((tab, idx) => {
-                  const isSelected = selected === tab.key;
-                  const counts = tab.showCounter ? tabCounts[tab.key] : undefined;
-                  const showLoader = (tabCountsLoading || tabCountsFetching) && tab.showCounter && !counts;
-
-                  return (
-                    <TabButton
-                      key={tab.key}
-                      tab={tab}
-                      isSelected={isSelected}
-                      index={idx}
-                      totalTabs={MENU_TABS.length}
-                      counts={counts}
-                      showLoader={showLoader}
-                      onSelect={handleTabChange}
-                    />
-                  );
-                })}
-              </div>
+            <nav className="min-w-0 w-full">
+              <TabBar
+                items={MENU_TABS.map((tab) => ({
+                  key: tab.key,
+                  label: tab.label,
+                  count: tab.showCounter
+                    ? tabCounts[tab.key]
+                      ? tabCounts[tab.key]!.all
+                      : undefined
+                    : undefined,
+                }))}
+                selected={selected}
+                onSelect={(key) => handleTabChange(key as MenuKey)}
+              />
             </nav>
           </div>
         </div>
@@ -746,7 +549,7 @@ const UnifiedHeaderTopbar: FC = () => {
             </Link>
           ) : (
             <button
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-[#183D32] shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-emerald-300 dark:hover:bg-gray-700 dark:focus-visible:ring-emerald-400/30 lg:h-10 lg:w-10"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700 dark:focus-visible:ring-accent-400/30 lg:h-10 lg:w-10"
               onClick={handleToggle}
               aria-label={isMobileOpen ? "Close sidebar" : "Open sidebar"}
             >
@@ -793,7 +596,7 @@ const UnifiedHeaderTopbar: FC = () => {
         {/* Super Admin Actions */}
 
         {isAnalyticsRoute ? (
-          <h1 className="min-w-0 truncate px-2 text-center text-base font-bold tracking-tight text-[#183D32] dark:text-emerald-300 sm:text-lg lg:text-xl">
+          <h1 className="min-w-0 truncate px-2 text-center text-base font-bold tracking-tight text-accent-700 dark:text-accent-300 sm:text-lg lg:text-xl">
             Portal Analytics
           </h1>
         ) : null}
@@ -803,55 +606,21 @@ const UnifiedHeaderTopbar: FC = () => {
           className={`flex items-center gap-2 ${isAnalyticsRoute ? "justify-self-end justify-end" : ""}`}
         >
           {isSuperAdmin && !isAnalyticsRoute ? (
-            <div className="flex shrink-0 flex-col gap-1 sm:flex-row sm:items-center">
-              <Link
-                target="_blank"
-                href="/admin/analytics"
-                className="group relative inline-flex items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white px-6 py-2 text-sm font-semibold text-gray-900 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.02)] backdrop-blur-sm transition-all duration-300 ease-out hover:border-brand-300 hover:bg-brand-50/80 hover:text-brand-700 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.03)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.98] dark:border-gray-700/60 dark:bg-gray-900/50 dark:text-white/90 dark:hover:border-brand-500/40 dark:hover:bg-brand-950/30 dark:hover:text-brand-200 dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
-              >
-                <span className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-brand-500/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-brand-400/[0.05]" />
-
-                <span
-                  className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/[0.08] text-brand-600 ring-1 ring-brand-500/10 transition-all duration-300 group-hover:scale-105 group-hover:bg-brand-500/[0.12] group-hover:ring-brand-500/20 dark:bg-brand-400/[0.08] dark:text-brand-400 dark:ring-brand-400/10 dark:group-hover:bg-brand-400/[0.15] dark:group-hover:ring-brand-400/20"
-                  aria-hidden
-                >
-                  <svg
-                    className="h-[1.125rem] w-[1.125rem] transition-transform duration-300 group-hover:scale-110"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.75}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-                    />
-                  </svg>
-                </span>
-
-                <span className="relative text-left leading-tight">
-                  <span className="block tracking-tight">View Analytics</span>
-                </span>
-
-                <svg
-                  className="relative ml-1 h-4 w-4 text-gray-400 transition-all duration-300 group-hover:translate-x-1 group-hover:text-brand-600 dark:text-gray-500 dark:group-hover:text-brand-300"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  aria-hidden
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
+            <Link
+              target="_blank"
+              href="/admin/analytics"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-theme-xs transition-all hover:bg-gray-50 hover:text-accent-700 hover:shadow-theme-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-accent-300"
+              aria-label="View Analytics"
+              title="View Analytics"
+            >
+              <BarChart3 className="h-4 w-4" strokeWidth={1.75} />
+            </Link>
           ) : null}
 
           {/* Mobile menu toggle */}
           <button
             onClick={toggleApplicationMenu}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-[#183D32] shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-emerald-300 dark:hover:bg-gray-700 dark:focus-visible:ring-emerald-400/30 lg:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700 dark:focus-visible:ring-accent-400/30 lg:hidden"
             aria-label="Open menu"
             aria-expanded={isApplicationMenuOpen}
           >
@@ -880,7 +649,7 @@ const UnifiedHeaderTopbar: FC = () => {
             {status === "unauthenticated" && (
               <Link
                 href="/signin"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#183D32] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#1a4d3e] hover:shadow-md active:scale-[0.98] dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                className="inline-flex items-center gap-2 rounded-xl bg-accent-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-accent-600 hover:shadow-md active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500"
               >
                 Sign in
               </Link>
@@ -916,13 +685,13 @@ const UnifiedHeaderTopbar: FC = () => {
           >
             {/* Panel header */}
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-[#183D32] dark:text-emerald-300">
+              <span className="text-sm font-bold text-accent-700 dark:text-accent-300">
                 Menu
               </span>
               <button
                 type="button"
                 onClick={toggleApplicationMenu}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-[#183D32] shadow-sm transition-all hover:bg-gray-50 hover:shadow-md active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-emerald-300 dark:hover:bg-gray-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700"
                 aria-label="Close menu"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -942,7 +711,7 @@ const UnifiedHeaderTopbar: FC = () => {
               <input
                 type="text"
                 placeholder="Search..."
-                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-[#183D32]/40 focus:ring-2 focus:ring-[#183D32]/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:border-emerald-500/40"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-accent-500/40 focus:ring-2 focus:ring-accent-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:border-accent-400/40"
               />
             </div>
 
@@ -966,7 +735,7 @@ const UnifiedHeaderTopbar: FC = () => {
               {status === "unauthenticated" && (
                 <Link
                   href="/signin"
-                  className="flex w-full items-center justify-center rounded-xl bg-[#183D32] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#1a4d3e] active:scale-[0.98] dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                  className="flex w-full items-center justify-center rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-accent-600 active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500"
                 >
                   Sign in
                 </Link>

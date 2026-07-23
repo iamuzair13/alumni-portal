@@ -12,9 +12,12 @@ export type DashboardTabKey =
   | "b"
   | "c"
   | "d"
-  | "distinguished";
+  | "distinguished"
+  | "goldMedalist"
+  | "silverMedalist"
+  | "bronzeMedalist";
 
-export type StatSemanticColor = "blue" | "emerald" | "amber" | "indigo" | "rose";
+export type StatSemanticColor = "brand" | "blue" | "emerald" | "amber" | "indigo" | "rose";
 
 export type PrimaryMetricConfig = {
   key: DashboardTabKey;
@@ -36,7 +39,7 @@ export const PRIMARY_METRICS: PrimaryMetricConfig[] = [
     key: "total",
     label: "Total Alumni",
     icon: Users,
-    color: "blue",
+    color: "brand",
     sparklineKey: "total",
     badge: { label: "All records", variant: "status" },
   },
@@ -81,54 +84,61 @@ export const CATEGORY_SEGMENTS: CategorySegmentConfig[] = [
   { key: "d", label: "D", tooltip: "Pass-out less than 2 years ago." },
 ];
 
+export const MEDAL_SEGMENTS: CategorySegmentConfig[] = [
+  { key: "goldMedalist", label: "Gold", tooltip: "Gold Medalist" },
+  { key: "silverMedalist", label: "Silver", tooltip: "Silver Medalist" },
+  { key: "bronzeMedalist", label: "Bronze", tooltip: "Bronze Medalist" },
+];
+
 export const STAT_COLOR_THEMES: Record<
   StatSemanticColor,
   {
-    cardBg: string;
-    cardBgSelected: string;
+    border: string;
+    iconChip: string;
     icon: string;
-    ring: string;
     spark: string;
     badge: string;
   }
 > = {
+  brand: {
+    border: "border-l-accent-500",
+    iconChip: "bg-accent-500/10 dark:bg-accent-500/15",
+    icon: "text-accent-600 dark:text-accent-300",
+    spark: "#183D32",
+    badge: "bg-accent-100/80 text-accent-700 dark:bg-accent-900/40 dark:text-accent-300",
+  },
   blue: {
-    cardBg: "bg-blue-50/80 dark:bg-blue-950/30",
-    cardBgSelected: "bg-blue-50 dark:bg-blue-950/40",
+    border: "border-l-blue-500",
+    iconChip: "bg-blue-500/10 dark:bg-blue-500/15",
     icon: "text-blue-600 dark:text-blue-400",
-    ring: "ring-blue-500/40",
     spark: "#3b82f6",
     badge: "bg-blue-100/80 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
   },
   emerald: {
-    cardBg: "bg-emerald-50/80 dark:bg-emerald-950/30",
-    cardBgSelected: "bg-emerald-50 dark:bg-emerald-950/40",
+    border: "border-l-emerald-500",
+    iconChip: "bg-emerald-500/10 dark:bg-emerald-500/15",
     icon: "text-emerald-600 dark:text-emerald-400",
-    ring: "ring-emerald-500/40",
     spark: "#10b981",
     badge: "bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
   },
   amber: {
-    cardBg: "bg-amber-50/80 dark:bg-amber-950/30",
-    cardBgSelected: "bg-amber-50 dark:bg-amber-950/40",
+    border: "border-l-amber-500",
+    iconChip: "bg-amber-500/10 dark:bg-amber-500/15",
     icon: "text-amber-600 dark:text-amber-400",
-    ring: "ring-amber-500/40",
     spark: "#f59e0b",
     badge: "bg-amber-100/80 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
   },
   indigo: {
-    cardBg: "bg-indigo-50/80 dark:bg-indigo-950/30",
-    cardBgSelected: "bg-indigo-50 dark:bg-indigo-950/40",
+    border: "border-l-indigo-500",
+    iconChip: "bg-indigo-500/10 dark:bg-indigo-500/15",
     icon: "text-indigo-600 dark:text-indigo-400",
-    ring: "ring-indigo-500/40",
     spark: "#6366f1",
     badge: "bg-indigo-100/80 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
   },
   rose: {
-    cardBg: "bg-rose-50/80 dark:bg-rose-950/30",
-    cardBgSelected: "bg-rose-50 dark:bg-rose-950/40",
+    border: "border-l-rose-500",
+    iconChip: "bg-rose-500/10 dark:bg-rose-500/15",
     icon: "text-rose-600 dark:text-rose-400",
-    ring: "ring-rose-500/40",
     spark: "#f43f5e",
     badge: "bg-rose-100/80 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
   },
@@ -151,6 +161,9 @@ export const CATEGORY_SEGMENT_COLORS: Record<
   underApproval: { active: "", text: "" },
   active: { active: "", text: "" },
   distinguished: { active: "", text: "" },
+  goldMedalist: { active: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-300", text: "text-yellow-600 dark:text-yellow-400" },
+  silverMedalist: { active: "bg-gray-400/15 text-gray-700 dark:text-gray-300", text: "text-gray-500 dark:text-gray-400" },
+  bronzeMedalist: { active: "bg-orange-500/15 text-orange-700 dark:text-orange-300", text: "text-orange-600 dark:text-orange-400" },
 };
 
 export function buildSparklineSeries(

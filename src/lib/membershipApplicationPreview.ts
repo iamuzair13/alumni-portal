@@ -365,10 +365,7 @@ export function buildMembershipApplicationPreview(
     previousClub,
     highestPlayingLevel,
     injuryHistory,
-    declarationText:
-      facilityType === "pool"
-        ? "I agree to follow all pool safety rules and understand that management reserves the right to suspend membership for violation of regulations."
-        : "",
+    declarationText: CAMPUS_FACILITY_CONFIG[facilityType].declarationText,
     membershipSectionTitle,
     extraSectionTitle,
     membershipRows,

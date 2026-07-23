@@ -283,6 +283,11 @@ export type AlumniCounts = {
     d: number;
     distinguished: number;
   };
+  medal: {
+    gold: number;
+    silver: number;
+    bronze: number;
+  };
 };
 
 export async function getAlumniCounts(

@@ -68,9 +68,9 @@ export async function handleCampusMembershipPost(
     if (!str(form, "hasMedicalCondition")) {
       return NextResponse.json({ error: "Medical condition selection is required" }, { status: 400 });
     }
-    if (!bool(form, "declarationAccepted")) {
-      return NextResponse.json({ error: "You must agree to the pool declaration" }, { status: 400 });
-    }
+  }
+  if (!bool(form, "declarationAccepted")) {
+    return NextResponse.json({ error: "You must agree to the declaration" }, { status: 400 });
   }
   if (facilityType === "cricket") {
     if (!str(form, "membershipCategory")) {

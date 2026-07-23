@@ -128,6 +128,12 @@ export async function GET(req: Request) {
       verifyFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`;
     } else if (status === "category:d") {
       verifyFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`;
+    } else if (status === "medal:gold") {
+      verifyFilter = sql`AND LOWER(TRIM(COALESCE(a.medal, ''))) = 'gold medalist'`;
+    } else if (status === "medal:silver") {
+      verifyFilter = sql`AND LOWER(TRIM(COALESCE(a.medal, ''))) = 'silver medalist'`;
+    } else if (status === "medal:bronze") {
+      verifyFilter = sql`AND LOWER(TRIM(COALESCE(a.medal, ''))) = 'bronze medalist'`;
     }
 
     const hasSapIdStateFilter = sapIdState && (Array.isArray(sapIdState) ? sapIdState.length > 0 : sapIdState);

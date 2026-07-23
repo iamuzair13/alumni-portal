@@ -69,6 +69,7 @@ export type CampusFacilityConfig = {
   formDescription: string;
   submitApiPath: string;
   emailKind: "gym" | "pool" | "cricket";
+  declarationText: string;
 };
 
 export const CAMPUS_FACILITY_CONFIG: Record<CampusFacilityType, CampusFacilityConfig> = {
@@ -82,6 +83,8 @@ export const CAMPUS_FACILITY_CONFIG: Record<CampusFacilityType, CampusFacilityCo
       "Apply for UOL Gym membership. Alumni are eligible for special facility discounts.",
     submitApiPath: "/api/alumni/gym-membership",
     emailKind: "gym",
+    declarationText:
+      "I agree to follow all gym safety rules and understand that management reserves the right to suspend membership for violation of regulations.",
   },
   pool: {
     facilityType: "pool",
@@ -93,6 +96,8 @@ export const CAMPUS_FACILITY_CONFIG: Record<CampusFacilityType, CampusFacilityCo
       "Apply for UOL Swimming Pool membership. Alumni are eligible for special facility discounts.",
     submitApiPath: "/api/alumni/swimming-pool-membership",
     emailKind: "pool",
+    declarationText:
+      "I agree to follow all pool safety rules and understand that management reserves the right to suspend membership for violation of regulations.",
   },
   cricket: {
     facilityType: "cricket",
@@ -104,6 +109,8 @@ export const CAMPUS_FACILITY_CONFIG: Record<CampusFacilityType, CampusFacilityCo
       "Apply for UOL Qalandars Cricket Club membership. Alumni are eligible for special facility discounts.",
     submitApiPath: "/api/alumni/cricket-membership",
     emailKind: "cricket",
+    declarationText:
+      "I agree to follow all cricket club rules and understand that management reserves the right to suspend membership for violation of regulations.",
   },
 };
 

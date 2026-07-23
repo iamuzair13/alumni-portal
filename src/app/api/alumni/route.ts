@@ -1382,6 +1382,12 @@ export async function GET(req: Request) {
             statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`);
           } else if (s === "category:d") {
             statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'd' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%')`);
+          } else if (s === "medal:gold") {
+            statusConditions.push(sql`LOWER(TRIM(COALESCE(medal, ''))) = 'gold medalist'`);
+          } else if (s === "medal:silver") {
+            statusConditions.push(sql`LOWER(TRIM(COALESCE(medal, ''))) = 'silver medalist'`);
+          } else if (s === "medal:bronze") {
+            statusConditions.push(sql`LOWER(TRIM(COALESCE(medal, ''))) = 'bronze medalist'`);
           }
         });
         
@@ -1421,6 +1427,15 @@ export async function GET(req: Request) {
 
         } else if (status === "category:d") {
           verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'd' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%')`;
+
+        } else if (status === "medal:gold") {
+          verifyFilter = sql`AND LOWER(TRIM(COALESCE(medal, ''))) = 'gold medalist'`;
+
+        } else if (status === "medal:silver") {
+          verifyFilter = sql`AND LOWER(TRIM(COALESCE(medal, ''))) = 'silver medalist'`;
+
+        } else if (status === "medal:bronze") {
+          verifyFilter = sql`AND LOWER(TRIM(COALESCE(medal, ''))) = 'bronze medalist'`;
 
         }
       }

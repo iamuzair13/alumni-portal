@@ -107,7 +107,7 @@ export function StatCard({
         hover:-translate-y-0.5 hover:shadow-lg
         focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:ring-offset-2
         dark:focus-visible:ring-offset-gray-900
-        ${isSelected ? `ring-2 ${theme.ring} ${theme.cardBgSelected}` : `${theme.cardBg}`}
+        ${isSelected ? `ring-2 ring-accent-500/20 ${theme.iconChip}` : ``}
       `}
     >
       <Icon

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ComponentCard from "@/components/common/ComponentCard";
+import SearchToolbar from "@/components/common/SearchToolbar";
 import Badge from "../ui/badge/Badge";
 import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon, MailIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
@@ -279,7 +280,7 @@ export const AlumniTabs: React.FC = () => {
         return undefined;
     }
   }, [sortField]);
-  
+
   // State for expanded filter sections
   const [expandedFilters, setExpandedFilters] = useState<{
     faculty: boolean;
@@ -336,7 +337,7 @@ export const AlumniTabs: React.FC = () => {
     photoConsent: false,
     category: false,
   });
-  
+
   // Countries are now fetched from database via useHomeCountries() and useWorkCountries()
   
   // Pakistan provinces
@@ -434,6 +435,12 @@ export const AlumniTabs: React.FC = () => {
           return "category:d";
         case "distinguished":
           return "distinguished";
+        case "goldMedalist":
+          return "medal:gold";
+        case "silverMedalist":
+          return "medal:silver";
+        case "bronzeMedalist":
+          return "medal:bronze";
         default:
           return tab; // "verified", "underApproval", "active" map directly
       }
@@ -1598,6 +1605,7 @@ export const AlumniTabs: React.FC = () => {
     // Always use server counts if available (real-time data)
     if (countsData) {
       const category = countsData.category || { aPlus: 0, a: 0, b: 0, c: 0, d: 0, distinguished: 0 };
+      const medal = countsData.medal || { gold: 0, silver: 0, bronze: 0 };
       const n = (v: unknown) => {
         const x = Number(v);
         return Number.isFinite(x) ? x : 0;
@@ -1617,6 +1625,11 @@ export const AlumniTabs: React.FC = () => {
           d: n(category.d),
           distinguished: n(category.distinguished),
         },
+        medal: {
+          gold: n(medal.gold),
+          silver: n(medal.silver),
+          bronze: n(medal.bronze),
+        },
       };
     }
     // Fallback: use total from paginated response while counts are loading
@@ -1628,6 +1641,7 @@ export const AlumniTabs: React.FC = () => {
       active: 0,
       inactive: 0,
       category: { aPlus: 0, a: 0, b: 0, c: 0, d: 0, distinguished: 0 },
+      medal: { gold: 0, silver: 0, bronze: 0 },
     };
   }, [countsData, totalRecords]);
 
@@ -2824,40 +2838,29 @@ export const AlumniTabs: React.FC = () => {
         ) : (
         <>
         {/* Search and Filters Section */}
-        <div className="rounded-2xl ">
-          <div className="flex flex-col bg-[#183D32]/10 gap-4 dark:bg-gray-800 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
-            {/* Search Row */}
-            <div className="flex-1 w-full">
-              <label htmlFor="alumni-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
-                Search Alumni
-              </label>
-              <div className="relative">
-                <svg 
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  id="alumni-search"
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search by SR.No, name, SAP ID, registration no, email, faculty, department, or program..."
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
-                />
-                </div>
-            </div>
-            
-            {/* Filters Row - Checkbox-based multi-select with dropdown styling */}
-            <div className="flex flex-wrap gap-3 items-start sm:items-end">
+        <SearchToolbar
+          title="Search Alumni"
+          searchValue={query}
+          searchOnChange={setQuery}
+          searchPlaceholder="Search by SR.No, name, SAP ID, registration no, email, faculty, department, or program..."
+          searchId="alumni-search"
+          filtersActive={hasActiveFilters}
+          onClearFilters={handleClearFilters}
+          onResetSort={handleResetSort}
+          showResetSort={!!sortField}
+          onExport={handleExportToExcel}
+          exportDisabled={isLoading || isExporting}
+          isExporting={isExporting}
+          isFetching={isFetching && !isLoading}
+        >
+          <ExportModal />
+          {/* Filters Row - Checkbox-based multi-select with dropdown styling */}
+            <div className="flex flex-wrap gap-2.5 items-start sm:items-end pt-2">
               {/* Faculty Filter */}
               <div className="flex-1 sm:min-w-[180px]">
                 <label
                   htmlFor="faculty-filter"
-                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2"
+                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2"
                 >
                   <span>Faculty</span>
                 </label>
@@ -2866,7 +2869,7 @@ export const AlumniTabs: React.FC = () => {
                     type="button"
                     id="faculty-filter"
                     onClick={() => setExpandedFilters(prev => ({ ...prev, faculty: !prev.faculty }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
                       {(() => {
@@ -2877,7 +2880,7 @@ export const AlumniTabs: React.FC = () => {
                       })()}
                     </span>
                     <svg 
-                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.faculty ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.faculty ? 'rotate-180' : ''}`}
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
@@ -2941,7 +2944,7 @@ export const AlumniTabs: React.FC = () => {
               <div className="flex-1 sm:min-w-[180px]">
                 <label
                   htmlFor="department-filter"
-                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2"
+                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2"
                 >
                   <span>Department</span>
                 </label>
@@ -2950,7 +2953,7 @@ export const AlumniTabs: React.FC = () => {
                     type="button"
                     id="department-filter"
                     onClick={() => setExpandedFilters(prev => ({ ...prev, department: !prev.department }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
                       {(() => {
@@ -2961,7 +2964,7 @@ export const AlumniTabs: React.FC = () => {
                       })()}
                     </span>
                     <svg 
-                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.department ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.department ? 'rotate-180' : ''}`}
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -3025,7 +3028,7 @@ export const AlumniTabs: React.FC = () => {
               <div className="flex-1 sm:min-w-[180px]">
                 <label
                   htmlFor="program-filter"
-                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2"
+                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2"
                 >
                   <span>Program</span>
                 </label>
@@ -3034,7 +3037,7 @@ export const AlumniTabs: React.FC = () => {
                     type="button"
                     id="program-filter"
                     onClick={() => setExpandedFilters(prev => ({ ...prev, program: !prev.program }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
                       {(() => {
@@ -3045,7 +3048,7 @@ export const AlumniTabs: React.FC = () => {
                       })()}
                     </span>
                     <svg 
-                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.program ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.program ? 'rotate-180' : ''}`}
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -3109,7 +3112,7 @@ export const AlumniTabs: React.FC = () => {
               <div className="flex-1  sm:min-w-[160px]">
                 <label
                   htmlFor="status-filter"
-                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider"
+                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider"
                 >
                   Status
                 </label>
@@ -3118,7 +3121,7 @@ export const AlumniTabs: React.FC = () => {
                     type="button"
                     id="status-filter"
                     onClick={() => setExpandedFilters(prev => ({ ...prev, status: !prev.status }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
                       {additionalFilter.length === 0 
@@ -3128,7 +3131,7 @@ export const AlumniTabs: React.FC = () => {
                         : `${additionalFilter.length} Selected`}
                     </span>
                     <svg 
-                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.status ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.status ? 'rotate-180' : ''}`}
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -3195,13 +3198,13 @@ export const AlumniTabs: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setExpandedFilters(prev => ({ ...prev, masterFilters: !prev.masterFilters }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 flex items-center justify-between"
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 flex items-center justify-between"
                 >
                   <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                     Master Filters
                   </span>
                   <svg 
-                    className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.masterFilters ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.masterFilters ? 'rotate-180' : ''}`}
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
@@ -3211,19 +3214,19 @@ export const AlumniTabs: React.FC = () => {
                 </button>
                 
                 {expandedFilters.masterFilters && (
-                  <div className="mt-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="mt-3 p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                       {/* Gender Filter */}
                       <div className="relative" ref={genderFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Gender</span>
                         </label>
                         {isLoadingGenders ? (
-                          <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
+                          <div className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
                             Loading...
                           </div>
                         ) : gendersError ? (
-                          <div className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+                          <div className="w-full px-3 py-1.5 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
                             Error loading genders
                           </div>
                         ) : (
@@ -3231,7 +3234,7 @@ export const AlumniTabs: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setExpandedFilters(prev => ({ ...prev, gender: !prev.gender }))}
-                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {selectedGenders.length === 0
@@ -3241,7 +3244,7 @@ export const AlumniTabs: React.FC = () => {
                                   : `${selectedGenders.length} genders selected`}
                               </span>
                               <svg
-                                className={`w-4 h-4 transition-transform ${expandedFilters.gender ? "rotate-180" : ""}`}
+                                className={`w-3.5 h-3.5 transition-transform ${expandedFilters.gender ? "rotate-180" : ""}`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -3301,21 +3304,21 @@ export const AlumniTabs: React.FC = () => {
                           </>
                         )}
                         {selectedGenders.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedGenders.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedGenders.length} selected</p>
                         )}
                       </div>
                       
                       {/* Marital Status Filter */}
                       <div className="relative" ref={maritalStatusFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Marital Status</span>
                         </label>
                         {isLoadingMaritalStatuses ? (
-                          <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
+                          <div className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
                             Loading...
                           </div>
                         ) : maritalStatusesError ? (
-                          <div className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+                          <div className="w-full px-3 py-1.5 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
                             Error loading marital statuses
                           </div>
                         ) : (
@@ -3323,7 +3326,7 @@ export const AlumniTabs: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setExpandedFilters(prev => ({ ...prev, maritalStatus: !prev.maritalStatus }))}
-                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {selectedMaritalStatuses.length === 0
@@ -3333,7 +3336,7 @@ export const AlumniTabs: React.FC = () => {
                                   : `${selectedMaritalStatuses.length} statuses selected`}
                               </span>
                               <svg
-                                className={`w-4 h-4 transition-transform ${expandedFilters.maritalStatus ? "rotate-180" : ""}`}
+                                className={`w-3.5 h-3.5 transition-transform ${expandedFilters.maritalStatus ? "rotate-180" : ""}`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -3393,19 +3396,19 @@ export const AlumniTabs: React.FC = () => {
                           </>
                         )}
                         {selectedMaritalStatuses.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedMaritalStatuses.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedMaritalStatuses.length} selected</p>
                         )}
                       </div>
                       
                       {/* Home Country Filter */}
                       <div className="relative" ref={homeCountryFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Home Country</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, homeCountry: !prev.homeCountry }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedHomeCountries.length === 0
@@ -3415,7 +3418,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedHomeCountries.length} countries selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.homeCountry ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.homeCountry ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -3467,19 +3470,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedHomeCountries.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedHomeCountries.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedHomeCountries.length} selected</p>
                         )}
                       </div>
 
                       {/* Province Filter */}
                       <div className="relative" ref={provinceFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Home Province (Pakistan)</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, province: !prev.province }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedProvinces.length === 0
@@ -3489,7 +3492,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedProvinces.length} provinces selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.province ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.province ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -3547,19 +3550,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedProvinces.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedProvinces.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedProvinces.length} selected</p>
                         )}
                       </div>
                       
                       {/* Home City Filter */}
                       <div className="relative" ref={homeCityFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Home City</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, homeCity: !prev.homeCity }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedHomeCities.length === 0
@@ -3569,7 +3572,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedHomeCities.length} cities selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.homeCity ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.homeCity ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -3627,7 +3630,7 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedHomeCities.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedHomeCities.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedHomeCities.length} selected</p>
                         )}
                       </div>
                       
@@ -3635,13 +3638,13 @@ export const AlumniTabs: React.FC = () => {
                       
                       {/* Campus Filter */}
                       <div className="relative" ref={campusFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Campus</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, campus: !prev.campus }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedCampuses.length === 0
@@ -3651,7 +3654,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedCampuses.length} campuses selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.campus ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.campus ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -3713,19 +3716,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedCampuses.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedCampuses.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedCampuses.length} selected</p>
                         )}
                       </div>
                       
                       {/* Admission Year Filter */}
                       <div className="relative" ref={admissionYearFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Admission Year</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, admissionYear: !prev.admissionYear }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedAdmissionYears.length === 0
@@ -3735,7 +3738,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedAdmissionYears.length} years selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.admissionYear ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.admissionYear ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -3787,19 +3790,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedAdmissionYears.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedAdmissionYears.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedAdmissionYears.length} selected</p>
                         )}
                       </div>
                       
                       {/* Passing Year Filter */}
                       <div className="relative" ref={passingYearFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Passing Year</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, passingYear: !prev.passingYear }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedPassingYears.length === 0
@@ -3809,7 +3812,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedPassingYears.length} years selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.passingYear ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.passingYear ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -3861,21 +3864,21 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedPassingYears.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedPassingYears.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedPassingYears.length} selected</p>
                         )}
                       </div>
                       
                       {/* Occupation Status Filter */}
                       <div className="relative" ref={occupationStatusFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Occupation Status</span>
                         </label>
                         {isLoadingOccupationStatuses ? (
-                          <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
+                          <div className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
                             Loading...
                           </div>
                         ) : occupationStatusesError ? (
-                          <div className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+                          <div className="w-full px-3 py-1.5 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
                             Error loading occupation statuses
                           </div>
                         ) : (
@@ -3883,7 +3886,7 @@ export const AlumniTabs: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setExpandedFilters(prev => ({ ...prev, occupationStatus: !prev.occupationStatus }))}
-                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {selectedOccupationStatuses.length === 0
@@ -3893,7 +3896,7 @@ export const AlumniTabs: React.FC = () => {
                                   : `${selectedOccupationStatuses.length} statuses selected`}
                               </span>
                               <svg
-                                className={`w-4 h-4 transition-transform ${expandedFilters.occupationStatus ? "rotate-180" : ""}`}
+                                className={`w-3.5 h-3.5 transition-transform ${expandedFilters.occupationStatus ? "rotate-180" : ""}`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -3953,21 +3956,21 @@ export const AlumniTabs: React.FC = () => {
                           </>
                         )}
                         {selectedOccupationStatuses.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedOccupationStatuses.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedOccupationStatuses.length} selected</p>
                         )}
                       </div>
 
                       {/* Post-graduation transition (occupation_transition_timing) */}
                       <div className="relative" ref={occupationTransitionTimingFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Post-graduation transition</span>
                         </label>
                         {isLoadingOccupationTransitionTimings ? (
-                          <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
+                          <div className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
                             Loading...
                           </div>
                         ) : occupationTransitionTimingsError ? (
-                          <div className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+                          <div className="w-full px-3 py-1.5 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
                             Error loading transition options
                           </div>
                         ) : (
@@ -3975,7 +3978,7 @@ export const AlumniTabs: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setExpandedFilters((prev) => ({ ...prev, occupationTransitionTiming: !prev.occupationTransitionTiming }))}
-                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {selectedOccupationTransitionTimings.length === 0
@@ -3985,7 +3988,7 @@ export const AlumniTabs: React.FC = () => {
                                   : `${selectedOccupationTransitionTimings.length} selected`}
                               </span>
                               <svg
-                                className={`w-4 h-4 transition-transform ${expandedFilters.occupationTransitionTiming ? "rotate-180" : ""}`}
+                                className={`w-3.5 h-3.5 transition-transform ${expandedFilters.occupationTransitionTiming ? "rotate-180" : ""}`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -4050,19 +4053,19 @@ export const AlumniTabs: React.FC = () => {
                           </>
                         )}
                         {selectedOccupationTransitionTimings.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedOccupationTransitionTimings.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedOccupationTransitionTimings.length} selected</p>
                         )}
                       </div>
                       
                       {/* Sector Filter */}
                       <div className="relative" ref={sectorFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Sector</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, sector: !prev.sector }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedSectors.length === 0
@@ -4072,7 +4075,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedSectors.length} sectors selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.sector ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.sector ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4135,7 +4138,7 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedSectors.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedSectors.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedSectors.length} selected</p>
                         )}
                       </div>
                       
@@ -4143,13 +4146,13 @@ export const AlumniTabs: React.FC = () => {
                       
                       {/* Work Country Filter */}
                       <div className="relative" ref={workCountryFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Work Country</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, workCountry: !prev.workCountry }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedWorkCountries.length === 0
@@ -4159,7 +4162,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedWorkCountries.length} countries selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.workCountry ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.workCountry ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4211,19 +4214,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedWorkCountries.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedWorkCountries.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedWorkCountries.length} selected</p>
                         )}
                       </div>
 
                       {/* Employer Filter */}
                       <div className="relative" ref={employerFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Employer</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, employer: !prev.employer }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedEmployers.length === 0
@@ -4233,7 +4236,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedEmployers.length} employers selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.employer ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.employer ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4285,19 +4288,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedEmployers.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedEmployers.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedEmployers.length} selected</p>
                         )}
                       </div>
 
                       {/* Work City Filter */}
                       <div className="relative" ref={workCityFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Work City</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, workCity: !prev.workCity }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedWorkCities.length === 0
@@ -4307,7 +4310,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedWorkCities.length} cities selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.workCity ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.workCity ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4370,19 +4373,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedWorkCities.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedWorkCities.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedWorkCities.length} selected</p>
                         )}
                       </div>
                       
                       {/* Institution Name Filter */}
                       <div className="relative" ref={institutionNameFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Institution Name</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, institutionName: !prev.institutionName }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedInstitutionNames.length === 0
@@ -4392,7 +4395,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedInstitutionNames.length} institutions selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.institutionName ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.institutionName ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4455,19 +4458,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedInstitutionNames.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedInstitutionNames.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedInstitutionNames.length} selected</p>
                         )}
                       </div>
                       
                       {/* Program Enrolled Filter */}
                       <div className="relative" ref={programEnrolledFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Program Enrolled</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, programEnrolled: !prev.programEnrolled }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedProgramsEnrolled.length === 0
@@ -4477,7 +4480,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedProgramsEnrolled.length} programs selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.programEnrolled ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.programEnrolled ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4540,19 +4543,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedProgramsEnrolled.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedProgramsEnrolled.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedProgramsEnrolled.length} selected</p>
                         )}
                       </div>
                       
                       {/* Funding Source Filter */}
                       <div className="relative" ref={fundingSourceFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Funding Source</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, fundingSource: !prev.fundingSource }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedFundingSources.length === 0
@@ -4562,7 +4565,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedFundingSources.length} sources selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.fundingSource ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.fundingSource ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4625,19 +4628,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedFundingSources.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedFundingSources.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedFundingSources.length} selected</p>
                         )}
                       </div>
                       
                       {/* Institution Country Filter */}
                       <div className="relative" ref={institutionCountryFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Institution Country</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, institutionCountry: !prev.institutionCountry }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedInstitutionCountries.length === 0
@@ -4647,7 +4650,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedInstitutionCountries.length} countries selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.institutionCountry ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.institutionCountry ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4710,19 +4713,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedInstitutionCountries.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedInstitutionCountries.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedInstitutionCountries.length} selected</p>
                         )}
                       </div>
                       
                       {/* Institution City Filter */}
                       <div className="relative" ref={institutionCityFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Institution City</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, institutionCity: !prev.institutionCity }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedInstitutionCities.length === 0
@@ -4732,7 +4735,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedInstitutionCities.length} cities selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.institutionCity ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.institutionCity ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4795,19 +4798,19 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedInstitutionCities.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedInstitutionCities.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedInstitutionCities.length} selected</p>
                         )}
                       </div>
                       
                       {/* Photo Consent Filter */}
                       <div className="relative" ref={photoConsentFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Photo Consent</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, photoConsent: !prev.photoConsent }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedPhotoConsents.length === 0
@@ -4817,7 +4820,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedPhotoConsents.length} selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.photoConsent ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.photoConsent ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4875,19 +4878,19 @@ export const AlumniTabs: React.FC = () => {
                   </div>
                         )}
                         {selectedPhotoConsents.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedPhotoConsents.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedPhotoConsents.length} selected</p>
                         )}
                       </div>
 
                       {/* Category Filter */}
                       <div className="relative" ref={categoryFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                           <span>Category</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpandedFilters(prev => ({ ...prev, category: !prev.category }))}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedCategories.length === 0
@@ -4900,7 +4903,7 @@ export const AlumniTabs: React.FC = () => {
                               : `${selectedCategories.length} categories selected`}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform ${expandedFilters.category ? "rotate-180" : ""}`}
+                            className={`w-3.5 h-3.5 transition-transform ${expandedFilters.category ? "rotate-180" : ""}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -4958,16 +4961,16 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         )}
                         {selectedCategories.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">{selectedCategories.length} selected</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{selectedCategories.length} selected</p>
                         )}
                       </div>
 
                       {/* SAP ID State Filter (NULL/EXISTS) */}
                       <div className="relative">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
                           SAP ID (Missing/Existing)
                         </label>
-                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -5000,10 +5003,10 @@ export const AlumniTabs: React.FC = () => {
 
                       {/* Registration No State Filter (NULL/EXISTS) */}
                       <div className="relative">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
                           Registration No (Missing/Existing)
                         </label>
-                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -5036,10 +5039,10 @@ export const AlumniTabs: React.FC = () => {
 
                       {/* Personal Email State Filter (NULL/EXISTS) */}
                       <div className="relative">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
                           Personal Email (Missing/Existing)
                         </label>
-                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -5072,10 +5075,10 @@ export const AlumniTabs: React.FC = () => {
 
                       {/* Contact No State Filter (NULL/EXISTS) */}
                       <div className="relative">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
                           Contact No (Missing/Existing)
                         </label>
-                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -5108,10 +5111,10 @@ export const AlumniTabs: React.FC = () => {
 
                       {/* CNIC/Passport State Filter (NULL/EXISTS/DUPLICATE) */}
                       <div className="relative">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
                           CNIC/Passport (Missing/Existing)
                         </label>
-                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -5146,70 +5149,7 @@ export const AlumniTabs: React.FC = () => {
                 )}
               </div>
             </div>
-            
-            {/* Actions Row */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end pt-2 border-t border-gray-200 dark:border-gray-700">
-            <ExportModal />
-            {sortField && (
-              <button
-                type="button"
-                onClick={handleResetSort}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors"
-                title="Reset sorting"
-              >
-                <CloseLineIcon className="w-4 h-4" />
-                Reset Sort
-              </button>
-            )}
-              {/* Clear Filters Button */}
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                disabled={!hasActiveFilters}
-                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-600 text-white text-xs sm:text-sm font-semibold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
-                aria-label="Clear all filters"
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <span className="hidden sm:inline">Clear Filters</span>
-                <span className="sm:hidden">Clear</span>
-              </button>
-              {/* Export Button */}
-              <button
-                type="button"
-                onClick={handleExportToExcel}
-                disabled={isLoading || isExporting}
-                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-green-600 text-white text-xs sm:text-sm font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
-                aria-label="Export to Excel"
-              >
-                {isExporting ? (
-                  <>
-                    <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span className="hidden sm:inline">Exporting...</span>
-                    <span className="sm:hidden">...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span className="hidden sm:inline">Export Excel</span>
-                    <span className="sm:hidden">Export</span>
-                  </>
-                )}
-              </button>
-              {/* Background refetch indicator */}
-              {isFetching && !isLoading && (
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-gray-600/80 shadow-sm">
-                  <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="hidden sm:inline">Updating...</span>
-                  <span className="sm:hidden">...</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        </SearchToolbar>
 
         {/* Table Section */}
         <div className="pb-8 mt-4">
@@ -5555,7 +5495,7 @@ export const AlumniTabs: React.FC = () => {
                                   aria-label={expandedRowId === (alum.alumniid ?? null) ? "Collapse details" : "Expand details"}
                                   title={expandedRowId === (alum.alumniid ?? null) ? "Collapse details" : "Expand details"}
                                 >
-                                  <PlusIcon className={`w-4 h-4 transition-transform ${expandedRowId === (alum.alumniid ?? null) ? "rotate-45" : ""}`} />
+                                  <PlusIcon className={`w-3.5 h-3.5 transition-transform ${expandedRowId === (alum.alumniid ?? null) ? "rotate-45" : ""}`} />
                                 </button>
                               )}
                               <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">{alum.name || "-"}</span>

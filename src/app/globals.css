@@ -51,6 +51,20 @@
   --color-brand-900: #262e89;
   --color-brand-950: #161950;
 
+  /* Brand accent: UOL deep green */
+  --color-accent-25: #f2f8f6;
+  --color-accent-50: #e6f3ef;
+  --color-accent-100: #cce7df;
+  --color-accent-200: #99cfbf;
+  --color-accent-300: #66b79f;
+  --color-accent-400: #339f7f;
+  --color-accent-500: #183d32;
+  --color-accent-600: #14372d;
+  --color-accent-700: #103024;
+  --color-accent-800: #0c281c;
+  --color-accent-900: #082013;
+  --color-accent-950: #041309;
+
   --color-blue-light-25: #f5fbff;
   --color-blue-light-50: #f0f9ff;
   --color-blue-light-100: #e0f2fe;

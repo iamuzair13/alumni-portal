@@ -160,10 +160,10 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
         toast.error("Please complete all swimming information fields.");
         return;
       }
-      if (!declarationAccepted) {
-        toast.error("Please accept the pool declaration before submitting.");
-        return;
-      }
+    }
+    if (!declarationAccepted) {
+      toast.error("Please accept the declaration before submitting.");
+      return;
     }
     if (facilityType === "cricket") {
       if (!membershipCategory || !playingCategory || !playingRole || !highestPlayingLevel) {
@@ -504,6 +504,17 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
                 required={false}
               />
             </Section>
+            <Section title="(e) Declaration">
+              <CheckboxField
+                id="declarationAccepted"
+                checked={declarationAccepted}
+                onChange={setDeclarationAccepted}
+                label={config.declarationText}
+                required
+                fullWidth
+              />
+              <Field label="E-Signature" value={missing(data.alumniname)} readOnly fullWidth />
+            </Section>
           </>
         ) : (
           <>
@@ -535,6 +546,17 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
                 onChange={setCnicFile}
                 accept={fileAccept}
               />
+            </Section>
+            <Section title="(g) Declaration">
+              <CheckboxField
+                id="declarationAccepted"
+                checked={declarationAccepted}
+                onChange={setDeclarationAccepted}
+                label={config.declarationText}
+                required
+                fullWidth
+              />
+              <Field label="E-Signature" value={missing(data.alumniname)} readOnly fullWidth />
             </Section>
           </>
         )}
