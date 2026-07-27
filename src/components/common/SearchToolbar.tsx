@@ -109,7 +109,7 @@ export default function SearchToolbar({
                 title="Reset sort"
               >
                 <CloseLineIcon className="h-3.5 w-3.5" />
-                <span>Reset Sort</span>
+                <span>Reset Sort  </span>
               </button>
             )}
 

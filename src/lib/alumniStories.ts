@@ -40,7 +40,7 @@ export type StoryCriteriaResponseInput = {
 };
 
 const criteriaResponseItemSchema = z.object({
-  criterion_id: z.number().int().positive(),
+  criterion_id: z.coerce.number().int().positive(),
   response: z.string().trim().max(250),
 });
 
