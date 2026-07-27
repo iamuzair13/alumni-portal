@@ -638,18 +638,29 @@ function createApplicationFormRenderer(
     y += metrics.sigH + 2;
   };
 
-  const drawMembershipSignatures = (leftLabel: string, rightLabel: string) => {
+  const drawMembershipSignatures = (
+    leftLabel: string,
+    centerLabel: string,
+    rightLabel?: string,
+  ) => {
     y = Math.max(y + 2, contentBottom - metrics.sigH - 2);
-    const sigCol = W / 2;
+    const columns = rightLabel ? 3 : 2;
+    const sigCol = W / columns;
     doc.setDrawColor(...THEME.colors.border);
     doc.setLineWidth(0.2);
     doc.rect(m, y, sigCol - 2, metrics.sigH);
     doc.rect(m + sigCol + 2, y, sigCol - 2, metrics.sigH);
+    if (rightLabel) {
+      doc.rect(m + sigCol * 2 + 4, y, sigCol - 2, metrics.sigH);
+    }
     doc.setFont("helvetica", "bold");
     doc.setFontSize(metrics.fontSmall);
     doc.setTextColor(...THEME.colors.muted);
     doc.text(leftLabel, m + 2, y + 4.5);
-    doc.text(rightLabel, m + sigCol + 4, y + 4.5);
+    doc.text(centerLabel, m + sigCol + 4, y + 4.5);
+    if (rightLabel) {
+      doc.text(rightLabel, m + sigCol * 2 + 6, y + 4.5);
+    }
     y += metrics.sigH;
   };
 
@@ -1197,7 +1208,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFullRow("Note : ", "Any revision in the membership fee after this month will be communicated by the gym manager.")
       }
 
-      form.drawMembershipSignatures("Reviewed By (ARO)", "Approved By (Competent Authority)");
+      form.drawMembershipSignatures("Reviewed By (ARO)", "1. Approved By (ARO)", "2. Approved By (Facility Manager )");
       form.drawFooter();
       form.ensureSinglePage();
 
