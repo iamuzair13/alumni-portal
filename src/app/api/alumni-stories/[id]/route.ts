@@ -389,7 +389,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     const requiresCriteria = !isStaffEditor;
     const validationErrors: string[] = [];
     for (const c of activeCriteria) {
-      const value = (responseMap.get(c.id) ?? "").trim();
+      const value = (responseMap.get(Number(c.id)) ?? "").trim();
       if (c.is_required && requiresCriteria && value === "") {
         validationErrors.push(`${c.label} is required`);
       } else if (value.length > 250) {
@@ -403,8 +403,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     const finalCriteriaResponses = activeCriteria.map((c) => ({
-      criterion_id: c.id,
-      response: (responseMap.get(c.id) ?? "").trim(),
+      criterion_id: Number(c.id),
+      response: (responseMap.get(Number(c.id)) ?? "").trim(),
     }));
 
     const criteriaHighlight: string | null =
