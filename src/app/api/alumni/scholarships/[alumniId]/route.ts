@@ -11,8 +11,12 @@ import {
   requestedPercent,
   isScholarshipFeeDiscountFlow,
   isScholarshipKinshipCategory,
+  isMergedScholarshipSlug,
+  getMergedFeeComponentSlugs,
   parseMastersDetails,
   parseUploadedDocuments,
+  resolveFeeBreakdownDisplay,
+  resolveHighAchieverPercent,
 } from "@/lib/scholarshipLetter";
 import { resolveStoredUploadUrl } from "@/lib/uploadsImageUrl";
 import {
@@ -101,6 +105,49 @@ async function loadDiscountTiersForPdf(
 ): Promise<{ tiers: ScholarshipDiscountTierPdfRow[]; cgpaTiers: ScholarshipCgpaDiscountTier[] }> {
   const slug = String(discountType || "").trim();
   if (!slug) return { tiers: [], cgpaTiers: [] };
+
+  // For merged scholarship slugs, load tiers from both component categories
+  if (isMergedScholarshipSlug(slug)) {
+    const componentSlugs = getMergedFeeComponentSlugs(slug);
+    if (!componentSlugs) return { tiers: [], cgpaTiers: [] };
+
+    const allTiers: ScholarshipCgpaDiscountTier[] = [];
+    const allPdfTiers: ScholarshipDiscountTierPdfRow[] = [];
+
+    for (const componentSlug of [componentSlugs.admissionSlug, componentSlugs.tuitionSlug]) {
+      const catRows = await sql/* sql */`
+        SELECT id, label FROM public.scholarship_discount_categories
+        WHERE LOWER(slug) = LOWER(${componentSlug})
+        LIMIT 1
+      `;
+      const catRow = catRows[0] as { id: unknown; label?: unknown } | undefined;
+      if (!catRow) continue;
+      const catId = Number(catRow.id);
+      if (!Number.isFinite(catId)) continue;
+
+      const catLabel = String(catRow.label || "").trim() || discountCategoryLabel(componentSlug, applyFor);
+      const tierRows = await sql/* sql */`
+        SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+        FROM public.scholarship_cgpa_discount_tiers
+        WHERE category_id = ${catId}
+        ORDER BY sort_order ASC, id ASC
+      `;
+      const cgpaTiers = (tierRows as Record<string, unknown>[]).map(
+        (row): ScholarshipCgpaDiscountTier => ({
+          id: Number(row.id),
+          category_id: catId,
+          cgpa_min: Number(row.cgpa_min),
+          cgpa_max: Number(row.cgpa_max),
+          discount_percent: Number(row.discount_percent),
+          sort_order: Number(row.sort_order) || 0,
+        }),
+      );
+      allTiers.push(...cgpaTiers);
+      allPdfTiers.push(...mapTiersForPdf(cgpaTiers, catLabel));
+    }
+
+    return { tiers: allPdfTiers, cgpaTiers: allTiers };
+  }
 
   const categoryRows = await sql/* sql */`
     SELECT id, label FROM public.scholarship_discount_categories
@@ -192,7 +239,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         a.campusname,
         a.personalemail,
         a.universityemail,
-        a.officialemail
+        a.officialemail,
+        a.medal
       FROM public.alumni_scholarships asch
       JOIN public.tbl_alumni a ON a.alumniid = asch.id
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -237,6 +285,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       personalemail: string | null;
       universityemail: string | null;
       officialemail: string | null;
+      medal: string | null;
     };
 
     const alumniName = String(app.alumniname || "");
@@ -446,6 +495,17 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         app.applied_discount_percent,
       ),
       appliedDiscountPercent: app.applied_discount_percent,
+      admissionFeePercent: masters?.admissionFeePercent ?? null,
+      tuitionFeePercent: masters?.tuitionFeePercent ?? null,
+      highAchieverPercent: masters?.highAchieverPercent ?? null,
+      medal: app.medal ?? null,
+      feeBreakdown: resolveFeeBreakdownDisplay({
+        discountType: app.discount_type,
+        admissionFeePercent: masters?.admissionFeePercent ?? null,
+        tuitionFeePercent: masters?.tuitionFeePercent ?? null,
+        highAchieverPercent: masters?.highAchieverPercent ?? null,
+        legacyAppliedPercent: parseDiscountPercentValue(app.applied_discount_percent),
+      }),
       documentsAttached: documentsLines,
       uploadedDocuments,
       sapCode: String(app.sapid || "").trim() || "Data is missing",
@@ -492,6 +552,11 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         cgpaLastDegree: applicationLetter.cgpaLastDegree,
         requestedDiscount: applicationLetter.requestedDiscount,
         appliedDiscountPercent: applicableDiscountPercent,
+        admissionFeePercent: applicationLetter.admissionFeePercent,
+        tuitionFeePercent: applicationLetter.tuitionFeePercent,
+        highAchieverPercent: applicationLetter.highAchieverPercent,
+        medal: applicationLetter.medal,
+        feeBreakdown: applicationLetter.feeBreakdown,
         discountTiers,
         documentsAttached: applicationLetter.documentsAttached,
         sapCode: applicationLetter.sapCode,

@@ -6,6 +6,8 @@ import {
   isScholarshipFeeDiscountFlow,
   isScholarshipKinshipCategory,
   scholarshipFeeDiscountPercentForPdf,
+  isMergedScholarshipSlug,
+  type ScholarshipFeeBreakdown,
 } from "@/lib/scholarshipLetter";
 import {
   type ScholarshipDiscountTierPdfRow,
@@ -74,6 +76,11 @@ export interface ScholarshipLetterPDFData {
   cgpaLastDegree: string;
   requestedDiscount: string;
   appliedDiscountPercent?: number | null;
+  admissionFeePercent?: number | null;
+  tuitionFeePercent?: number | null;
+  highAchieverPercent?: number | null;
+  medal?: string | null;
+  feeBreakdown?: ScholarshipFeeBreakdown | null;
   discountTiers?: ScholarshipDiscountTierPdfRow[];
   documentsAttached: string[];
   sapCode: string;
@@ -904,6 +911,57 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         form.drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
         form.drawFieldPair("Passing Out Year", data.passingOutYear, "Discount Category", data.scholarshipType);
         form.drawFieldPair("Applicable Discount", data.requestedDiscount, "Applying For", data.applyingFor);
+        if (data.highAchieverPercent != null && data.highAchieverPercent > 0) {
+          form.drawFullRow(
+            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `${data.highAchieverPercent}%`,
+          );
+        }
+      } else if (isMergedScholarshipSlug(data.discountType)) {
+        form.drawFieldPair(
+          "Scholarship Type",
+          data.scholarshipType,
+          "Applying For",
+          data.applyingFor,
+        );
+        const fb = data.feeBreakdown;
+        if (fb) {
+          form.drawFieldPair(
+            "Admission Fee Discount",
+            fb.admissionFeeDisplay,
+            "Tuition Fee Discount",
+            fb.tuitionFeeDisplay,
+          );
+          if (fb.highAchieverDiscount != null && fb.highAchieverDiscount > 0) {
+            form.drawFullRow(
+              `High Achiever Discount (${data.medal || "Medalist"})`,
+              fb.highAchieverDisplay,
+            );
+          }
+          form.drawFullRow("Total Discount", fb.totalDisplay);
+        } else {
+          form.drawFieldPair(
+            "Admission Fee Discount",
+            data.admissionFeePercent != null ? `${data.admissionFeePercent}%` : "—",
+            "Tuition Fee Discount",
+            data.tuitionFeePercent != null ? `${data.tuitionFeePercent}%` : "—",
+          );
+          if (data.highAchieverPercent != null && data.highAchieverPercent > 0) {
+            form.drawFullRow(
+              `High Achiever Discount (${data.medal || "Medalist"})`,
+              `${data.highAchieverPercent}%`,
+            );
+          }
+          const baseTotal =
+            data.admissionFeePercent != null && data.tuitionFeePercent != null
+              ? data.admissionFeePercent + data.tuitionFeePercent
+              : data.admissionFeePercent ?? data.tuitionFeePercent ?? null;
+          const total = baseTotal != null && data.highAchieverPercent != null
+            ? baseTotal + data.highAchieverPercent
+            : baseTotal ?? data.highAchieverPercent ?? null;
+          form.drawFullRow("Total Discount", total != null ? `${total}%` : "—");
+        }
+        form.drawFullRow("Admission Reference No", data.admissionApplicationRef);
       } else {
         form.drawFieldPair(
           "Discount Category",
@@ -911,6 +969,12 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           "Applicable Discount (Table 1.1)",
           data.requestedDiscount,
         );
+        if (data.highAchieverPercent != null && data.highAchieverPercent > 0) {
+          form.drawFullRow(
+            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `${data.highAchieverPercent}%`,
+          );
+        }
         form.drawFullRow("Admission Reference No", data.admissionApplicationRef);
       }
 

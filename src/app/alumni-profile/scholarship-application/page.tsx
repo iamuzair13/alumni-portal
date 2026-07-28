@@ -9,9 +9,15 @@ import { Toaster, toast } from "react-hot-toast";
 import PageBanner from "@/components/ui/PageBanner";
 import {
   SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY,
+  SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS,
   isScholarshipFeeDiscountFlow,
   isScholarshipKinshipCategory,
   scholarshipApplyingForFromCategory,
+  isMergedScholarshipSlug,
+  getMergedFeeComponentSlugs,
+  isHighAchieverMedalist,
+  resolveHighAchieverPercent,
+  HIGH_ACHIEVER_DISCOUNT_PERCENT,
 } from "@/lib/scholarshipLetter";
 import {
   findCategoryBySlug,
@@ -19,6 +25,7 @@ import {
   parseCgpa,
   resolveCategoryFlowType,
   resolveDiscountPercent,
+  resolveMergedFeeDiscount,
   type ScholarshipCategoryWithTiers,
 } from "@/lib/scholarshipDiscount";
 import Link from "next/link";
@@ -118,10 +125,24 @@ function ScholarshipApplicationContent() {
 
   const selectedCategory = findCategoryBySlug(formData.discountType, scholarshipCategories);
   const profileCgpa = parseCgpa((data as { cgpa?: number | null })?.cgpa);
-  const applicableDiscountPercent =
-    profileCgpa != null && selectedCategory?.tiers?.length
-      ? resolveDiscountPercent(profileCgpa, selectedCategory.tiers)
+  const alumniMedal = (data as { medal?: string | null })?.medal ?? null;
+  const highAchieverPercent = resolveHighAchieverPercent(alumniMedal);
+  const isHighAchiever = isHighAchieverMedalist(alumniMedal);
+  const mergedFeeComponents = getMergedFeeComponentSlugs(formData.discountType);
+  const mergedFeeResult =
+    profileCgpa != null && isMergedScholarshipSlug(formData.discountType)
+      ? resolveMergedFeeDiscount(formData.discountType, profileCgpa, scholarshipCategories, mergedFeeComponents)
       : null;
+  const baseDiscountPercent =
+    mergedFeeResult != null
+      ? mergedFeeResult.totalPercent
+      : profileCgpa != null && selectedCategory?.tiers?.length
+        ? resolveDiscountPercent(profileCgpa, selectedCategory.tiers)
+        : null;
+  const applicableDiscountPercent =
+    baseDiscountPercent != null && highAchieverPercent != null
+      ? baseDiscountPercent + highAchieverPercent
+      : baseDiscountPercent ?? highAchieverPercent ?? null;
 
   const categoryFlow = resolveCategoryFlowType(formData.discountType, scholarshipCategories, {
     isFee: isScholarshipFeeDiscountFlow,
@@ -138,7 +159,9 @@ function ScholarshipApplicationContent() {
   const canSubmitScholarship =
     profileCgpa != null &&
     !!formData.discountType &&
-    applicableDiscountPercent != null &&
+    (mergedFeeResult != null
+      ? mergedFeeResult.admissionFeePercent != null || mergedFeeResult.tuitionFeePercent != null
+      : applicableDiscountPercent != null) &&
     !categoriesLoading;
 
   // Masters/PhD Discount specific state
@@ -549,6 +572,11 @@ function ScholarshipApplicationContent() {
               fd.set("applyingFor", effectiveApplyingFor);
               fd.set("degreeTitle", degreeTitleToSend);
               fd.set("appliedDiscountPercent", String(applicableDiscountPercent));
+              if (mergedFeeResult != null) {
+                fd.set("admissionFeePercent", String(mergedFeeResult.admissionFeePercent ?? ""));
+                fd.set("tuitionFeePercent", String(mergedFeeResult.tuitionFeePercent ?? ""));
+              }
+              fd.set("highAchieverPercent", String(highAchieverPercent ?? ""));
 
               fd.set("admissionFacultyId", String(admissionFacultyId));
               fd.set("admissionDepartmentId", String(admissionDepartmentId));
@@ -584,6 +612,11 @@ function ScholarshipApplicationContent() {
               fd.set("applyingFor", effectiveApplyingFor);
               fd.set("degreeTitle", degreeTitleToSend);
               fd.set("appliedDiscountPercent", String(applicableDiscountPercent));
+              if (mergedFeeResult != null) {
+                fd.set("admissionFeePercent", String(mergedFeeResult.admissionFeePercent ?? ""));
+                fd.set("tuitionFeePercent", String(mergedFeeResult.tuitionFeePercent ?? ""));
+              }
+              fd.set("highAchieverPercent", String(highAchieverPercent ?? ""));
               fd.set("kinshipName", formData.kinshipName);
               fd.set("kinshipFatherName", formData.kinshipFatherName);
               fd.set("kinshipCampus", formData.kinshipCampus);
@@ -620,6 +653,9 @@ function ScholarshipApplicationContent() {
                 applyingFor: effectiveApplyingFor,
                 degreeTitle: degreeTitleToSend,
                 appliedDiscountPercent: applicableDiscountPercent,
+                admissionFeePercent: mergedFeeResult?.admissionFeePercent ?? null,
+                tuitionFeePercent: mergedFeeResult?.tuitionFeePercent ?? null,
+                highAchieverPercent: highAchieverPercent ?? null,
                 kinshipName: formData.kinshipName || null,
                 kinshipFatherName: formData.kinshipFatherName || null,
                 kinshipCnic: formData.kinshipCnic || null,
@@ -882,8 +918,8 @@ function ScholarshipApplicationContent() {
                     <option value="">
                       {categoriesLoading ? "Loading categories..." : "Select discount category"}
                     </option>
-                    {scholarshipCategories.map((option) => (
-                      <option key={option.slug} value={option.slug}>
+                    {SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
@@ -892,25 +928,92 @@ function ScholarshipApplicationContent() {
 
                 {formData.discountType && profileCgpa != null && (
                   <div className="sm:col-span-2 rounded-lg border border-blue-100 bg-blue-50/80 p-4">
-                    <div className="flex flex-wrap gap-6 text-sm">
-                      <div>
-                        <span className="text-gray-600">Your CGPA</span>
-                        <p className="font-semibold text-gray-900">{profileCgpa.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Applicable discount</span>
-                        <p className="font-semibold text-green-700">
-                          {applicableDiscountPercent != null
-                            ? formatDiscountPercentDisplay(applicableDiscountPercent)
-                            : "No tier matches your CGPA"}
-                        </p>
-                      </div>
-                    </div>
-                    {applicableDiscountPercent == null && (
-                      <p className="mt-2 text-xs text-amber-800">
-                        Your CGPA does not fall within any configured range for this category. Choose another
-                        category or contact the alumni office.
-                      </p>
+                    {mergedFeeResult != null ? (
+                      <>
+                        <div className="flex flex-wrap gap-6 text-sm">
+                          <div>
+                            <span className="text-gray-600">Your CGPA</span>
+                            <p className="font-semibold text-gray-900">{profileCgpa.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Admission Fee Discount</span>
+                            <p className="font-semibold text-green-700">
+                              {mergedFeeResult.admissionFeePercent != null
+                                ? formatDiscountPercentDisplay(mergedFeeResult.admissionFeePercent)
+                                : "No tier matches your CGPA"}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Tuition Fee Discount</span>
+                            <p className="font-semibold text-green-700">
+                              {mergedFeeResult.tuitionFeePercent != null
+                                ? formatDiscountPercentDisplay(mergedFeeResult.tuitionFeePercent)
+                                : "No tier matches your CGPA"}
+                            </p>
+                          </div>
+                          {isHighAchiever && (
+                            <div>
+                              <span className="text-gray-600">High Achiever Discount ({alumniMedal})</span>
+                              <p className="font-semibold text-green-700">
+                                {formatDiscountPercentDisplay(highAchieverPercent!)}
+                              </p>
+                            </div>
+                          )}
+                          {applicableDiscountPercent != null && (
+                            <div>
+                              <span className="text-gray-600">Total Scholarship Amount</span>
+                              <p className="font-semibold text-green-700">
+                                {formatDiscountPercentDisplay(applicableDiscountPercent)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {mergedFeeResult.admissionFeePercent == null && mergedFeeResult.tuitionFeePercent == null && (
+                          <p className="mt-2 text-xs text-amber-800">
+                            Your CGPA does not fall within any configured range for this category. Choose another
+                            category or contact the alumni office.
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap gap-6 text-sm">
+                          <div>
+                            <span className="text-gray-600">Your CGPA</span>
+                            <p className="font-semibold text-gray-900">{profileCgpa.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Applicable discount</span>
+                            <p className="font-semibold text-green-700">
+                              {baseDiscountPercent != null
+                                ? formatDiscountPercentDisplay(baseDiscountPercent)
+                                : "No tier matches your CGPA"}
+                            </p>
+                          </div>
+                          {isHighAchiever && (
+                            <div>
+                              <span className="text-gray-600">High Achiever Discount ({alumniMedal})</span>
+                              <p className="font-semibold text-green-700">
+                                {formatDiscountPercentDisplay(highAchieverPercent!)}
+                              </p>
+                            </div>
+                          )}
+                          {applicableDiscountPercent != null && (
+                            <div>
+                              <span className="text-gray-600">Total Scholarship Amount</span>
+                              <p className="font-semibold text-green-700">
+                                {formatDiscountPercentDisplay(applicableDiscountPercent)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {baseDiscountPercent == null && !isHighAchiever && (
+                          <p className="mt-2 text-xs text-amber-800">
+                            Your CGPA does not fall within any configured range for this category. Choose another
+                            category or contact the alumni office.
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

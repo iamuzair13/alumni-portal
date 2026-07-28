@@ -209,3 +209,39 @@ export function resolveCategoryFlowType(
   if (legacy.isFee(d)) return "fee_discount";
   return null;
 }
+
+/** Result of resolving both admission and tuition fee discounts for a merged scholarship slug. */
+export type MergedFeeDiscountResult = {
+  admissionFeePercent: number | null;
+  tuitionFeePercent: number | null;
+  totalPercent: number | null;
+};
+
+/**
+ * For a merged scholarship slug (e.g. "phd-scholarship"), resolves both the admission-fee
+ * and tuition-fee discount percents by looking up the component category slugs in the
+ * provided categories list and resolving each against the applicant's CGPA.
+ */
+export function resolveMergedFeeDiscount(
+  discountType: string | null | undefined,
+  cgpa: number,
+  categories: ScholarshipCategoryWithTiers[],
+  componentSlugs: { admissionSlug: string; tuitionSlug: string } | null,
+): MergedFeeDiscountResult {
+  if (!componentSlugs) {
+    return { admissionFeePercent: null, tuitionFeePercent: null, totalPercent: null };
+  }
+
+  const admissionCat = findCategoryBySlug(componentSlugs.admissionSlug, categories);
+  const tuitionCat = findCategoryBySlug(componentSlugs.tuitionSlug, categories);
+
+  const admissionFeePercent = admissionCat ? resolveDiscountPercent(cgpa, admissionCat.tiers) : null;
+  const tuitionFeePercent = tuitionCat ? resolveDiscountPercent(cgpa, tuitionCat.tiers) : null;
+
+  const totalPercent =
+    admissionFeePercent != null && tuitionFeePercent != null
+      ? admissionFeePercent + tuitionFeePercent
+      : admissionFeePercent ?? tuitionFeePercent ?? null;
+
+  return { admissionFeePercent, tuitionFeePercent, totalPercent };
+}

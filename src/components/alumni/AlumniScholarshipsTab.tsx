@@ -33,6 +33,7 @@ type ScholarshipItem = {
   kinshipCnic: string | null;
   applyFor: string | null;
   scholarshipDegreeTitle: string | null;
+  discountType: string | null;
   status: string;
   rejectionReason: string | null;
 };
@@ -60,6 +61,19 @@ type ScholarshipApplicationLetter = {
   previousDegree: string;
   cgpaLastDegree: string;
   requestedDiscount: string;
+  admissionFeePercent?: number | null;
+  tuitionFeePercent?: number | null;
+  highAchieverPercent?: number | null;
+  medal?: string | null;
+  feeBreakdown?: {
+    admissionFeeDiscount: number | null;
+    tuitionFeeDiscount: number | null;
+    highAchieverDiscount: number | null;
+    admissionFeeDisplay: string;
+    tuitionFeeDisplay: string;
+    highAchieverDisplay: string;
+    totalDisplay: string;
+  } | null;
   documentsAttached: string[];
   uploadedDocuments?: Array<{ label: string; filename: string; url: string; adminVerified?: "YES" | "NO" | null }>;
   sapCode: string;
@@ -1195,7 +1209,21 @@ export const AlumniScholarshipsTab: React.FC = () => {
                             <tbody className="divide-y divide-slate-200 dark:divide-gray-700 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 ">
                               {[
                                 ["Discount Category", applicationPreview.application.scholarshipType],
-                                ["Applicable Discount", applicationPreview.application.requestedDiscount || "-"],
+                                ...(applicationPreview.application.feeBreakdown
+                                  ? [
+                                      ["Admission Fee Discount", applicationPreview.application.feeBreakdown.admissionFeeDisplay],
+                                      ["Tuition Fee Discount", applicationPreview.application.feeBreakdown.tuitionFeeDisplay],
+                                      ...(applicationPreview.application.feeBreakdown.highAchieverDiscount != null && applicationPreview.application.feeBreakdown.highAchieverDiscount > 0
+                                        ? [[`High Achiever Discount (${applicationPreview.application.medal || "Medalist"})`, applicationPreview.application.feeBreakdown.highAchieverDisplay] as [string, string]]
+                                        : []),
+                                      ["Total Discount", applicationPreview.application.feeBreakdown.totalDisplay],
+                                    ] as [string, string][]
+                                  : [
+                                      ["Applicable Discount", applicationPreview.application.requestedDiscount || "-"],
+                                      ...(applicationPreview.application.highAchieverPercent != null && applicationPreview.application.highAchieverPercent > 0
+                                        ? [[`High Achiever Discount (${applicationPreview.application.medal || "Medalist"})`, `${applicationPreview.application.highAchieverPercent}%`] as [string, string]]
+                                        : []),
+                                    ] as [string, string][]),
                                 ["Program", applicationPreview.application.requestedProgramDegree || "-"],
                                 ["Department", applicationPreview.application.department || "-"],
                                 ["Faculty", applicationPreview.application.faculty || "-"],

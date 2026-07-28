@@ -18,6 +18,10 @@ import {
   isScholarshipFeeDiscountFlow,
   isScholarshipKinshipCategory,
   normalizeGradePercent,
+  isMergedScholarshipSlug,
+  getMergedFeeComponentSlugs,
+  isHighAchieverMedalist,
+  resolveHighAchieverPercent,
 } from "@/lib/scholarshipLetter";
 import {
   parseCgpa,
@@ -42,6 +46,9 @@ type Payload = {
   fatherCnic?: string | null;
   gradePercent?: string | null;
   appliedDiscountPercent?: number | string | null;
+  admissionFeePercent?: number | string | null;
+  tuitionFeePercent?: number | string | null;
+  highAchieverPercent?: number | string | null;
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -136,6 +143,12 @@ export async function POST(
     let admissionApplicationRef: string | null = null;
     let gradePercent: string | null = null;
     let clientAppliedPercent: number | null = null;
+    let clientAdmissionFeePercent: number | null = null;
+    let clientTuitionFeePercent: number | null = null;
+    let clientHighAchieverPercent: number | null = null;
+    let serverAdmissionFeePercent: number | null = null;
+    let serverTuitionFeePercent: number | null = null;
+    let serverHighAchieverPercent: number | null = null;
 
     if (isMultipart) {
       const formData = await req.formData();
@@ -147,6 +160,21 @@ export async function POST(
       if (rawPct != null && String(rawPct).trim() !== "") {
         const n = Number(rawPct);
         if (Number.isFinite(n)) clientAppliedPercent = n;
+      }
+      const rawAdmPct = formData.get("admissionFeePercent");
+      if (rawAdmPct != null && String(rawAdmPct).trim() !== "") {
+        const n = Number(rawAdmPct);
+        if (Number.isFinite(n)) clientAdmissionFeePercent = n;
+      }
+      const rawTuiPct = formData.get("tuitionFeePercent");
+      if (rawTuiPct != null && String(rawTuiPct).trim() !== "") {
+        const n = Number(rawTuiPct);
+        if (Number.isFinite(n)) clientTuitionFeePercent = n;
+      }
+      const rawHaPct = formData.get("highAchieverPercent");
+      if (rawHaPct != null && String(rawHaPct).trim() !== "") {
+        const n = Number(rawHaPct);
+        if (Number.isFinite(n)) clientHighAchieverPercent = n;
       }
 
       if (isScholarshipFeeDiscountFlow(discountType)) {
@@ -283,6 +311,18 @@ export async function POST(
         const n = Number(payload.appliedDiscountPercent);
         if (Number.isFinite(n)) clientAppliedPercent = n;
       }
+      if (payload.admissionFeePercent != null && payload.admissionFeePercent !== "") {
+        const n = Number(payload.admissionFeePercent);
+        if (Number.isFinite(n)) clientAdmissionFeePercent = n;
+      }
+      if (payload.tuitionFeePercent != null && payload.tuitionFeePercent !== "") {
+        const n = Number(payload.tuitionFeePercent);
+        if (Number.isFinite(n)) clientTuitionFeePercent = n;
+      }
+      if (payload.highAchieverPercent != null && payload.highAchieverPercent !== "") {
+        const n = Number(payload.highAchieverPercent);
+        if (Number.isFinite(n)) clientHighAchieverPercent = n;
+      }
     }
 
     if (!discountType || !applyingFor || !degreeTitle) {
@@ -299,7 +339,8 @@ export async function POST(
         officialemail,
         universityemail,
         alumniemail,
-        cgpa
+        cgpa,
+        medal
       FROM public.tbl_alumni
       WHERE TRIM(COALESCE(sapid, '')) = ${normalizedSapid}
          OR TRIM(COALESCE(registrationno, '')) = ${normalizedSapid}
@@ -317,6 +358,8 @@ export async function POST(
           officialemail: string | null;
           universityemail: string | null;
           alumniemail: string | null;
+          cgpa: number | null;
+          medal: string | null;
         }
       | undefined;
 
@@ -363,24 +406,53 @@ export async function POST(
       );
     }
 
-    const categoryRows = await sql/* sql */`
-      SELECT id, slug, flow_type, is_active
-      FROM public.scholarship_discount_categories
-      WHERE slug = ${discountType}
-        AND is_active = true
-      LIMIT 1
-    `;
-    const category = categoryRows?.[0] as
-      | { id: number; slug: string; flow_type: string; is_active: boolean }
-      | undefined;
-    if (!category?.id) {
-      return NextResponse.json({ error: "Invalid or inactive discount category" }, { status: 400 });
+    let categoryId: number | null = null;
+    let categoryFlowType: string | null = null;
+
+    if (isMergedScholarshipSlug(discountType)) {
+      // For merged slugs, validate that at least one component category exists
+      const componentSlugs = getMergedFeeComponentSlugs(discountType);
+      if (componentSlugs) {
+        const admCatRows = await sql/* sql */`
+          SELECT id, slug, flow_type, is_active
+          FROM public.scholarship_discount_categories
+          WHERE slug = ${componentSlugs.admissionSlug}
+            AND is_active = true
+          LIMIT 1
+        `;
+        const admCat = admCatRows?.[0] as
+          | { id: number; slug: string; flow_type: string; is_active: boolean }
+          | undefined;
+        if (admCat?.id) {
+          categoryId = admCat.id;
+          categoryFlowType = admCat.flow_type;
+        }
+      }
+      if (!categoryId) {
+        return NextResponse.json({ error: "Invalid or inactive discount category" }, { status: 400 });
+      }
+    } else {
+      const categoryRows = await sql/* sql */`
+        SELECT id, slug, flow_type, is_active
+        FROM public.scholarship_discount_categories
+        WHERE slug = ${discountType}
+          AND is_active = true
+        LIMIT 1
+      `;
+      const category = categoryRows?.[0] as
+        | { id: number; slug: string; flow_type: string; is_active: boolean }
+        | undefined;
+      if (!category?.id) {
+        return NextResponse.json({ error: "Invalid or inactive discount category" }, { status: 400 });
+      }
+      categoryId = category.id;
+      categoryFlowType = category.flow_type;
     }
 
     const tierRows = await sql/* sql */`
       SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
       FROM public.scholarship_cgpa_discount_tiers
-      WHERE category_id = ${category.id}
+      WHERE category_id = ${categoryId}
       ORDER BY sort_order ASC, id ASC
     `;
     const tiers = (tierRows as Record<string, unknown>[]).map(
@@ -394,7 +466,83 @@ export async function POST(
       }),
     );
 
-    const appliedDiscountPercent = resolveDiscountPercent(alumniCgpa, tiers);
+    // Resolve high achiever discount from alumni medal
+    serverHighAchieverPercent = resolveHighAchieverPercent(alumni.medal);
+
+    let appliedDiscountPercent = resolveDiscountPercent(alumniCgpa, tiers);
+
+    // For merged scholarship slugs, resolve both admission and tuition component categories
+    if (isMergedScholarshipSlug(discountType)) {
+      const componentSlugs = getMergedFeeComponentSlugs(discountType);
+      if (componentSlugs) {
+        const admCatRows = await sql/* sql */`
+          SELECT id FROM public.scholarship_discount_categories
+          WHERE slug = ${componentSlugs.admissionSlug} AND is_active = true
+          LIMIT 1
+        `;
+        const admCat = admCatRows?.[0] as { id: number } | undefined;
+        if (admCat?.id) {
+          const admTierRows = await sql/* sql */`
+            SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+            FROM public.scholarship_cgpa_discount_tiers
+            WHERE category_id = ${admCat.id}
+            ORDER BY sort_order ASC, id ASC
+          `;
+          const admTiers = (admTierRows as Record<string, unknown>[]).map(
+            (r): ScholarshipCgpaDiscountTier => ({
+              id: Number(r.id),
+              category_id: Number(r.category_id),
+              cgpa_min: Number(r.cgpa_min),
+              cgpa_max: Number(r.cgpa_max),
+              discount_percent: Number(r.discount_percent),
+              sort_order: Number(r.sort_order) || 0,
+            }),
+          );
+          serverAdmissionFeePercent = resolveDiscountPercent(alumniCgpa, admTiers);
+        }
+
+        const tuiCatRows = await sql/* sql */`
+          SELECT id FROM public.scholarship_discount_categories
+          WHERE slug = ${componentSlugs.tuitionSlug} AND is_active = true
+          LIMIT 1
+        `;
+        const tuiCat = tuiCatRows?.[0] as { id: number } | undefined;
+        if (tuiCat?.id) {
+          const tuiTierRows = await sql/* sql */`
+            SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+            FROM public.scholarship_cgpa_discount_tiers
+            WHERE category_id = ${tuiCat.id}
+            ORDER BY sort_order ASC, id ASC
+          `;
+          const tuiTiers = (tuiTierRows as Record<string, unknown>[]).map(
+            (r): ScholarshipCgpaDiscountTier => ({
+              id: Number(r.id),
+              category_id: Number(r.category_id),
+              cgpa_min: Number(r.cgpa_min),
+              cgpa_max: Number(r.cgpa_max),
+              discount_percent: Number(r.discount_percent),
+              sort_order: Number(r.sort_order) || 0,
+            }),
+          );
+          serverTuitionFeePercent = resolveDiscountPercent(alumniCgpa, tuiTiers);
+        }
+
+        // Use total of both components as the base applied discount percent
+        if (serverAdmissionFeePercent != null && serverTuitionFeePercent != null) {
+          appliedDiscountPercent = serverAdmissionFeePercent + serverTuitionFeePercent;
+        } else if (serverAdmissionFeePercent != null) {
+          appliedDiscountPercent = serverAdmissionFeePercent;
+        } else if (serverTuitionFeePercent != null) {
+          appliedDiscountPercent = serverTuitionFeePercent;
+        }
+      }
+    }
+
+    // Add high achiever discount to the total
+    if (serverHighAchieverPercent != null) {
+      appliedDiscountPercent = (appliedDiscountPercent ?? 0) + serverHighAchieverPercent;
+    }
+
     if (appliedDiscountPercent == null) {
       return NextResponse.json(
         { error: "No discount tier applies to your CGPA for this category." },
@@ -407,6 +555,50 @@ export async function POST(
       Math.abs(clientAppliedPercent - appliedDiscountPercent) > 0.001
     ) {
       return NextResponse.json({ error: "Discount percent mismatch. Please refresh and try again." }, { status: 400 });
+    }
+
+    // Validate merged fee component percents if provided by client
+    if (isMergedScholarshipSlug(discountType)) {
+      if (
+        clientAdmissionFeePercent != null &&
+        serverAdmissionFeePercent != null &&
+        Math.abs(clientAdmissionFeePercent - serverAdmissionFeePercent) > 0.001
+      ) {
+        return NextResponse.json({ error: "Admission fee percent mismatch. Please refresh and try again." }, { status: 400 });
+      }
+      if (
+        clientTuitionFeePercent != null &&
+        serverTuitionFeePercent != null &&
+        Math.abs(clientTuitionFeePercent - serverTuitionFeePercent) > 0.001
+      ) {
+        return NextResponse.json({ error: "Tuition fee percent mismatch. Please refresh and try again." }, { status: 400 });
+      }
+      // Store fee breakdown in masters_details
+      if (mastersDetails) {
+        mastersDetails.admissionFeePercent = serverAdmissionFeePercent;
+        mastersDetails.tuitionFeePercent = serverTuitionFeePercent;
+      }
+    }
+
+    // Store high achiever discount in masters_details (for both fee and kinship flows)
+    if (mastersDetails) {
+      mastersDetails.highAchieverPercent = serverHighAchieverPercent;
+      mastersDetails.medal = alumni.medal;
+    } else if (kinshipDetails) {
+      kinshipDetails.highAchieverPercent = serverHighAchieverPercent;
+      kinshipDetails.medal = alumni.medal;
+    } else {
+      // Create mastersDetails if none exists (e.g. kinship flow without mastersDetails)
+      mastersDetails = { highAchieverPercent: serverHighAchieverPercent, medal: alumni.medal };
+    }
+
+    // Validate high achiever percent if provided by client
+    if (
+      clientHighAchieverPercent != null &&
+      serverHighAchieverPercent != null &&
+      Math.abs(clientHighAchieverPercent - serverHighAchieverPercent) > 0.001
+    ) {
+      return NextResponse.json({ error: "High achiever percent mismatch. Please refresh and try again." }, { status: 400 });
     }
 
     const fullKinshipName = payload.kinshipName ? String(payload.kinshipName).trim() : "";

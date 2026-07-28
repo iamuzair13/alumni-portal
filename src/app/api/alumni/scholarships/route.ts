@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { isMergedScholarshipSlug, toMergedScholarshipSlug } from "@/lib/scholarshipLetter";
 
 type RawRow = {
   alumniid: number;
@@ -121,10 +122,11 @@ export async function GET(request: NextRequest) {
 
     const rows = rawRows as unknown as RawRow[];
 
-    const items = rows.map((r) => ({
-      // Show % along with Masters/PhD selection in table list
+    const items = rows.map((r) => {
+      const d = String(r.discount_type || "").trim().toLowerCase();
+      return {
       applyFor:
-        String(r.discount_type || "").trim().toLowerCase() === "masters-phd"
+        d === "masters-phd"
           ? (() => {
               const base = String(r.apply_for || "").trim();
               if (!base) return null;
@@ -132,7 +134,9 @@ export async function GET(request: NextRequest) {
                 ? `${base} (25% discount)`
                 : `${base} (50% discount)`;
             })()
-          : r.apply_for ?? null,
+          : isMergedScholarshipSlug(d) || toMergedScholarshipSlug(d)
+            ? String(r.apply_for || "").trim() || null
+            : r.apply_for ?? null,
       alumniId: r.alumniid,
       sapid: r.sapid ?? "",
       registrationNo: r.registrationno ?? null,
@@ -150,7 +154,8 @@ export async function GET(request: NextRequest) {
       discountType: r.discount_type ?? null,
       status: (r.status ?? "pending").toLowerCase(),
       rejectionReason: r.reason ?? null,
-    }));
+    };
+    });
 
     // Compute status counts (pending, approved, not-approved) across all filtered records
     const countsRows = await sql/* sql */`

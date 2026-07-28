@@ -2,12 +2,40 @@
 
 /** Must stay aligned with the scholarship application form (`Discount Category` select). */
 export const SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS = [
-  { value: "admission-fee-masters-75", label: "Admission Fee Masters Upto 75%" },
-  { value: "admission-fee-phd-75", label: "Admission Fee PhD Upto 75%" },
-  { value: "kinship-15", label: "Kinship Tution Discount Upto 15%" },
-  { value: "tuition-fee-masters-25", label: "Tuition Fee Masters Upto 50%" },
-  { value: "tuition-fee-phd-25", label: "Tuition Fee PhD Upto 25%" },
+  { value: "phd-scholarship", label: "PhD Scholarship" },
+  { value: "masters-scholarship", label: "Master's (MPhil/MS) Scholarship" },
+  { value: "kinship-15", label: "Kinship Scholarship" },
 ] as const;
+
+/** Maps merged scholarship slugs to their underlying admission-fee and tuition-fee component slugs (used for tier resolution). */
+export const SCHOLARSHIP_MERGED_FEE_COMPONENTS: Record<
+  string,
+  { admissionSlug: string; tuitionSlug: string }
+> = {
+  "phd-scholarship": { admissionSlug: "admission-fee-phd-75", tuitionSlug: "tuition-fee-phd-25" },
+  "masters-scholarship": { admissionSlug: "admission-fee-masters-75", tuitionSlug: "tuition-fee-masters-25" },
+};
+
+/** Maps legacy separate slugs to their merged equivalent for backward-compatible display. */
+export const SCHOLARSHIP_LEGACY_TO_MERGED: Record<string, string> = {
+  "admission-fee-phd-75": "phd-scholarship",
+  "tuition-fee-phd-25": "phd-scholarship",
+  "admission-fee-masters-75": "masters-scholarship",
+  "tuition-fee-masters-25": "masters-scholarship",
+};
+
+/** Returns true if the slug is one of the merged PhD/Masters scholarship types. */
+export function isMergedScholarshipSlug(discountType: string | null | undefined): boolean {
+  const d = String(discountType || "").trim().toLowerCase();
+  return d === "phd-scholarship" || d === "masters-scholarship";
+}
+
+/** Converts a legacy separate slug to its merged equivalent, or returns the slug if already merged. */
+export function toMergedScholarshipSlug(discountType: string | null | undefined): string | null {
+  const d = String(discountType || "").trim().toLowerCase();
+  if (isMergedScholarshipSlug(d)) return d;
+  return SCHOLARSHIP_LEGACY_TO_MERGED[d] ?? null;
+}
 
 const LEGACY_DISCOUNT_CATEGORY_LABELS: Record<string, string> = {
   "masters-collaboration":
@@ -16,6 +44,8 @@ const LEGACY_DISCOUNT_CATEGORY_LABELS: Record<string, string> = {
 
 /** Stored `discount_type` values that use the multipart admission / document flow (same as legacy `masters-phd`). */
 export const SCHOLARSHIP_FEE_DISCOUNT_FLOW_VALUES = [
+  "phd-scholarship",
+  "masters-scholarship",
   "admission-fee-masters-75",
   "admission-fee-phd-75",
   "tuition-fee-masters-25",
@@ -35,6 +65,14 @@ export function isScholarshipKinshipCategory(
 ): boolean {
   const d = String(discountType || "").trim().toLowerCase();
   return d === "kinship-15" || d === "kinship";
+}
+
+/** Returns the component slugs (admission + tuition) for a merged scholarship slug, or null if not merged. */
+export function getMergedFeeComponentSlugs(
+  discountType: string | null | undefined,
+): { admissionSlug: string; tuitionSlug: string } | null {
+  const d = String(discountType || "").trim().toLowerCase();
+  return SCHOLARSHIP_MERGED_FEE_COMPONENTS[d] ?? null;
 }
 
 /**
@@ -60,7 +98,7 @@ export function formatAlumniScholarshipApplicationPdfId(params: {
   if (isScholarshipKinshipCategory(d)) {
     return `AS-K-${year}-${seq}`;
   }
-  if (isScholarshipFeeDiscountFlow(d)) {
+  if (isScholarshipFeeDiscountFlow(d) || isMergedScholarshipSlug(d)) {
     return `AS-S-${year}-${seq}`;
   }
   return null;
@@ -74,8 +112,8 @@ export function scholarshipApplyingForFromCategory(
   discountType: string | null | undefined,
 ): string | null {
   const d = String(discountType || "").trim().toLowerCase();
-  if (d === "admission-fee-masters-75" || d === "tuition-fee-masters-25") return "Masters";
-  if (d === "admission-fee-phd-75" || d === "tuition-fee-phd-25") return "PhD";
+  if (d === "masters-scholarship" || d === "admission-fee-masters-75" || d === "tuition-fee-masters-25") return "Masters";
+  if (d === "phd-scholarship" || d === "admission-fee-phd-75" || d === "tuition-fee-phd-25") return "PhD";
   return null;
 }
 
@@ -103,11 +141,105 @@ export function scholarshipFeeDiscountPercentForPdf(
   return null;
 }
 
+/** Fee breakdown for merged scholarship types (admission + tuition + high achiever). */
+export type ScholarshipFeeBreakdown = {
+  admissionFeeDiscount: number | null;
+  tuitionFeeDiscount: number | null;
+  highAchieverDiscount: number | null;
+  admissionFeeDisplay: string;
+  tuitionFeeDisplay: string;
+  highAchieverDisplay: string;
+  totalDisplay: string;
+};
+
+/** High Achiever Discount percent for medalists. */
+export const HIGH_ACHIEVER_DISCOUNT_PERCENT = 5;
+
+/** Returns true if the alumni medal string indicates a Gold/Silver/Bronze medalist. */
+export function isHighAchieverMedalist(medal: string | null | undefined): boolean {
+  const m = String(medal || "").trim().toLowerCase();
+  return m === "gold medalist" || m === "silver medalist" || m === "bronze medalist";
+}
+
+/** Returns the high achiever discount percent (5) if medalist, else null. */
+export function resolveHighAchieverPercent(medal: string | null | undefined): number | null {
+  return isHighAchieverMedalist(medal) ? HIGH_ACHIEVER_DISCOUNT_PERCENT : null;
+}
+
+/** Returns fee breakdown display strings for a merged or legacy fee-discount slug. */
+export function resolveFeeBreakdownDisplay(params: {
+  discountType: string | null | undefined;
+  admissionFeePercent?: number | null;
+  tuitionFeePercent?: number | null;
+  highAchieverPercent?: number | null;
+  legacyAppliedPercent?: number | null;
+}): ScholarshipFeeBreakdown {
+  const { discountType, admissionFeePercent, tuitionFeePercent, highAchieverPercent, legacyAppliedPercent } = params;
+  const d = String(discountType || "").trim().toLowerCase();
+
+  const fmt = (n: number | null | undefined): string => {
+    if (n == null || !Number.isFinite(n)) return "—";
+    return Number.isInteger(n) ? `${n}%` : `${n}%`;
+  };
+
+  const ha = highAchieverPercent ?? null;
+
+  if (isMergedScholarshipSlug(d)) {
+    const adm = admissionFeePercent ?? null;
+    const tui = tuitionFeePercent ?? null;
+    const baseTotal = adm != null && tui != null ? adm + tui : adm ?? tui ?? null;
+    const total = baseTotal != null && ha != null ? baseTotal + ha : baseTotal ?? ha ?? null;
+    return {
+      admissionFeeDiscount: adm,
+      tuitionFeeDiscount: tui,
+      highAchieverDiscount: ha,
+      admissionFeeDisplay: fmt(adm),
+      tuitionFeeDisplay: fmt(tui),
+      highAchieverDisplay: fmt(ha),
+      totalDisplay: fmt(total),
+    };
+  }
+
+  // Legacy separate slugs — map to the correct component
+  const merged = toMergedScholarshipSlug(d);
+  if (merged) {
+    const isAdmission = d.startsWith("admission-fee-");
+    const adm = isAdmission ? (legacyAppliedPercent ?? null) : null;
+    const tui = !isAdmission ? (legacyAppliedPercent ?? null) : null;
+    const baseTotal = adm ?? tui ?? null;
+    const total = baseTotal != null && ha != null ? baseTotal + ha : baseTotal ?? ha ?? null;
+    return {
+      admissionFeeDiscount: adm,
+      tuitionFeeDiscount: tui,
+      highAchieverDiscount: ha,
+      admissionFeeDisplay: fmt(adm),
+      tuitionFeeDisplay: fmt(tui),
+      highAchieverDisplay: fmt(ha),
+      totalDisplay: fmt(total),
+    };
+  }
+
+  // Non-fee-discount types (kinship, masters-phd, etc.)
+  const pct = legacyAppliedPercent ?? null;
+  const total = pct != null && ha != null ? pct + ha : pct ?? ha ?? null;
+  return {
+    admissionFeeDiscount: null,
+    tuitionFeeDiscount: null,
+    highAchieverDiscount: ha,
+    admissionFeeDisplay: "—",
+    tuitionFeeDisplay: "—",
+    highAchieverDisplay: fmt(ha),
+    totalDisplay: fmt(total),
+  };
+}
+
 /** Nested options per category — must stay aligned with the form’s “Applying for” where used. */
 export const SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY: Record<
   string,
   readonly { value: string; label: string }[]
 > = {
+  "phd-scholarship": [{ value: "PhD", label: "PhD" }],
+  "masters-scholarship": [{ value: "Masters", label: "Masters" }],
   "kinship-15": [
     { value: "BS", label: "BS (Bachelor's)" },
     { value: "Masters", label: "Masters" },
@@ -147,13 +279,20 @@ export function discountCategoryLabel(
   const found = SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS.find((o) => o.value === d);
   if (found) return found.label;
 
+  // Legacy separate slugs — show merged label
+  const merged = toMergedScholarshipSlug(d);
+  if (merged) {
+    const mergedFound = SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS.find((o) => o.value === merged);
+    if (mergedFound) return mergedFound.label;
+  }
+
   if (d === "masters-phd") {
-    if (apply.includes("phd")) return "Tuition Fee PhD 25%";
-    if (apply.includes("master")) return "Tuition Fee Masters 25%";
-    return "Tuition Fee Masters 25%";
+    if (apply.includes("phd")) return "PhD Scholarship";
+    if (apply.includes("master")) return "Master's (MPhil/MS) Scholarship";
+    return "Master's (MPhil/MS) Scholarship";
   }
   if (d === "kinship") {
-    return "Kinship Tution Discount 15%";
+    return "Kinship Scholarship";
   }
 
   const legacy = LEGACY_DISCOUNT_CATEGORY_LABELS[d];
@@ -193,6 +332,7 @@ export function requestedPercent(
   const d = String(discountType || "").trim().toLowerCase();
   const a = String(applyingFor || "").trim().toLowerCase();
 
+  if (d === "phd-scholarship" || d === "masters-scholarship") return "Per CGPA tier";
   if (d === "admission-fee-masters-75" || d === "admission-fee-phd-75") return "75%";
   if (d === "tuition-fee-masters-25" || d === "tuition-fee-phd-25") return "25%";
   if (d === "kinship-15") return "15%";
@@ -213,6 +353,10 @@ export type MastersDetailsParsed = {
   admissionCampus?: string;
   admissionSession?: string;
   declarationAccepted?: boolean;
+  admissionFeePercent?: number | null;
+  tuitionFeePercent?: number | null;
+  highAchieverPercent?: number | null;
+  medal?: string | null;
 };
 
 export function parseMastersDetails(raw: unknown): MastersDetailsParsed | null {
