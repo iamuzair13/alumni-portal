@@ -64,6 +64,7 @@ type ScholarshipApplicationLetter = {
   admissionFeePercent?: number | null;
   tuitionFeePercent?: number | null;
   highAchieverPercent?: number | null;
+  applyAdmissionFeeDiscount?: boolean | null;
   medal?: string | null;
   feeBreakdown?: {
     admissionFeeDiscount: number | null;
@@ -1211,12 +1212,14 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ["Discount Category", applicationPreview.application.scholarshipType],
                                 ...(applicationPreview.application.feeBreakdown
                                   ? [
-                                      ["Admission Fee Discount", applicationPreview.application.feeBreakdown.admissionFeeDisplay],
+                                      ...(applicationPreview.application.applyAdmissionFeeDiscount === true && applicationPreview.application.feeBreakdown.admissionFeeDiscount != null && applicationPreview.application.feeBreakdown.admissionFeeDiscount > 0
+                                        ? [["Admission Fee Discount (Standalone)", applicationPreview.application.feeBreakdown.admissionFeeDisplay] as [string, string]]
+                                        : []),
                                       ["Tuition Fee Discount", applicationPreview.application.feeBreakdown.tuitionFeeDisplay],
                                       ...(applicationPreview.application.feeBreakdown.highAchieverDiscount != null && applicationPreview.application.feeBreakdown.highAchieverDiscount > 0
                                         ? [[`High Achiever Discount (${applicationPreview.application.medal || "Medalist"})`, applicationPreview.application.feeBreakdown.highAchieverDisplay] as [string, string]]
                                         : []),
-                                      ["Total Discount", applicationPreview.application.feeBreakdown.totalDisplay],
+                                      ["Total Tuition Fee Discount", applicationPreview.application.feeBreakdown.totalDisplay],
                                     ] as [string, string][]
                                   : [
                                       ["Applicable Discount", applicationPreview.application.requestedDiscount || "-"],

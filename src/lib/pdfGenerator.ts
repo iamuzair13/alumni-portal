@@ -11,8 +11,6 @@ import {
 } from "@/lib/scholarshipLetter";
 import {
   type ScholarshipDiscountTierPdfRow,
-  parseDiscountPercentValue,
-  tiersMatchPercent,
 } from "@/lib/scholarshipDiscount";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -79,6 +77,7 @@ export interface ScholarshipLetterPDFData {
   admissionFeePercent?: number | null;
   tuitionFeePercent?: number | null;
   highAchieverPercent?: number | null;
+  applyAdmissionFeeDiscount?: boolean | null;
   medal?: string | null;
   feeBreakdown?: ScholarshipFeeBreakdown | null;
   discountTiers?: ScholarshipDiscountTierPdfRow[];
@@ -564,65 +563,196 @@ function createApplicationFormRenderer(
     });
   };
 
+  // ── Fixed discount-tier tables (per reference design) ──────────────────────
+  type DiscountTableRow = { cgpa: string; admissionFee: string; tuitionOrKinship: string };
+  type DiscountTableDef = { title: string; thirdColHeader: string; rows: DiscountTableRow[] };
+
+  const DISCOUNT_TABLES: Record<string, DiscountTableDef> = {
+    masters: {
+      title: "Masters",
+      thirdColHeader: "Tuition Fee Discount",
+      rows: [
+        { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "15%" },
+        { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "25%" },
+        { cgpa: "3.51 – 3.75", admissionFee: "50%", tuitionOrKinship: "35%" },
+        { cgpa: "3.76 – 4.00", admissionFee: "75%", tuitionOrKinship: "50%" },
+      ],
+    },
+    phd: {
+      title: "PhD",
+      thirdColHeader: "Tuition Fee Discount",
+      rows: [
+        { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "10%" },
+        { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "15%" },
+        { cgpa: "3.51 – 3.75", admissionFee: "50%", tuitionOrKinship: "20%" },
+        { cgpa: "3.76 – 4.00", admissionFee: "75%", tuitionOrKinship: "25%" },
+      ],
+    },
+    "kinship-masters": {
+      title: "Kinship Masters",
+      thirdColHeader: "Kinship Discount\n(Tuition Fee)",
+      rows: [
+        { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "10%" },
+        { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "11.50%" },
+        { cgpa: "3.51 – 3.75", admissionFee: "50%", tuitionOrKinship: "13%" },
+        { cgpa: "3.76 – 4.00", admissionFee: "75%", tuitionOrKinship: "15%" },
+      ],
+    },
+    "kinship-phd": {
+      title: "Kinship PhD",
+      thirdColHeader: "Kinship Discount",
+      rows: [
+        { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "10%" },
+        { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "11.50%" },
+        { cgpa: "3.51 – 3.75", admissionFee: "50%", tuitionOrKinship: "13%" },
+        { cgpa: "3.76 – 4.00", admissionFee: "75%", tuitionOrKinship: "15%" },
+      ],
+    },
+  };
+
+  const CGPA_RANGES: Array<[number, number]> = [
+    [3.00, 3.25],
+    [3.26, 3.50],
+    [3.51, 3.75],
+    [3.76, 4.00],
+  ];
+
+  /**
+   * Pick one of the 4 fixed discount tables based on discount type and applying-for level.
+   */
+  const resolveDiscountTableKey = (
+    discountType: string | null | undefined,
+    applyingFor: string | null | undefined,
+  ): string | null => {
+    const d = String(discountType || "").trim().toLowerCase();
+    const a = String(applyingFor || "").trim().toLowerCase();
+    const isKinship = d === "kinship-15" || d === "kinship";
+    const isMasters =
+      d === "masters-scholarship" ||
+      d === "admission-fee-masters-75" ||
+      d === "tuition-fee-masters-25" ||
+      a.includes("master");
+    const isPhd =
+      d === "phd-scholarship" ||
+      d === "admission-fee-phd-75" ||
+      d === "tuition-fee-phd-25" ||
+      a.includes("phd");
+
+    if (isKinship && isPhd) return "kinship-phd";
+    if (isKinship && isMasters) return "kinship-masters";
+    if (isKinship) return "kinship-masters"; // default kinship to masters
+    if (isPhd) return "phd";
+    if (isMasters) return "masters";
+    // Legacy masters-phd: infer from applyingFor
+    if (d === "masters-phd") {
+      if (a.includes("phd")) return "phd";
+      return "masters";
+    }
+    return "masters"; // fallback
+  };
+
   const drawDiscountTierTable = (
-    tiers: ScholarshipDiscountTierPdfRow[],
-    appliedPct: number | null,
+    discountType: string | null | undefined,
+    applyingFor: string | null | undefined,
+    applicantCgpa: string | null | undefined,
     bottomLimit: number,
   ) => {
+    const tableKey = resolveDiscountTableKey(discountType, applyingFor);
+    const tableDef = DISCOUNT_TABLES[tableKey ?? "masters"];
     const rowH = metrics.tableRowH;
-    const checkW = 6;
-    const srW = 7;
-    const discountW = W * 0.5;
-    const criteriaW = W - checkW - srW - discountW;
-    const discountX = m + checkW + srW;
-    const criteriaX = discountX + discountW;
-    const isApplicableTier = (pct: number) => appliedPct != null && tiersMatchPercent(pct, appliedPct);
+    const cgpaNum = Number(String(applicantCgpa ?? "").replace(/[^0-9.]/g, ""));
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(metrics.fontTiny);
-    doc.setTextColor(...THEME.colors.text);
-    doc.text("Table 1.1 — Applicable Discount Criteria", m, y + 2.5);
-    y += 3.5;
-
-    doc.setFillColor(...THEME.colors.brandLight);
-    doc.rect(m, y, W, rowH, "F");
-    doc.setDrawColor(...THEME.colors.border);
-    doc.setLineWidth(0.1);
-    doc.rect(m, y, W, rowH, "S");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(metrics.fontTiny);
-    doc.setTextColor(...THEME.colors.text);
-    doc.text("SR", m + checkW + 0.5, y + rowH * 0.72);
-    doc.text("DISCOUNT", discountX + 1, y + rowH * 0.72);
-    doc.text("CRITERIA", criteriaX + 1, y + rowH * 0.72);
-    y += rowH;
-
-    if (tiers.length === 0) {
-      drawHRule(y + rowH, true);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(metrics.fontTiny);
-      doc.setTextColor(...THEME.colors.muted);
-      doc.text("No discount tiers configured.", m + 2, y + rowH * 0.72);
-      y += rowH;
-      return;
+    // Determine which row index matches the applicant's CGPA
+    let appliedRowIdx = -1;
+    if (Number.isFinite(cgpaNum) && cgpaNum >= 3.0) {
+      for (let i = 0; i < CGPA_RANGES.length; i++) {
+        if (cgpaNum >= CGPA_RANGES[i][0] && cgpaNum <= CGPA_RANGES[i][1]) {
+          appliedRowIdx = i;
+          break;
+        }
+      }
     }
 
-    tiers.forEach((tier, i) => {
+    // Column widths: CGPA | Admission Fee Discount | Tuition/Kinship Discount | Applied (✅)
+    const cgpaColW = W * 0.18;
+    const admColW = W * 0.30;
+    const tuiColW = W * 0.35;
+    const appliedColW = W - cgpaColW - admColW - tuiColW;
+    const admX = m + cgpaColW;
+    const tuiX = admX + admColW;
+    const appliedX = tuiX + tuiColW;
+
+    // ── Table title (underlined, italic) ──
+    doc.setFont("helvetica", "bolditalic");
+    doc.setFontSize(metrics.fontTiny);
+    doc.setTextColor(...THEME.colors.text);
+    doc.text(tableDef.title, m, y + 2.5);
+    y += 4;
+
+    // ── Header row ──
+    // Use a taller header if the third column header is multi-line
+    const thirdColLines = tableDef.thirdColHeader.split("\n");
+    const headerH = thirdColLines.length > 1 ? rowH * 1.6 : rowH;
+
+    doc.setFillColor(...THEME.colors.brandLight);
+    doc.rect(m, y, W, headerH, "F");
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(0.15);
+    doc.rect(m, y, W, headerH, "S");
+    // Vertical rules in header
+    drawVRule(admX, y, y + headerH);
+    drawVRule(tuiX, y, y + headerH);
+    drawVRule(appliedX, y, y + headerH);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontTiny);
+    doc.setTextColor(...THEME.colors.text);
+    doc.text("CGPA", m + cgpaColW / 2, y + headerH * 0.58, { align: "center" });
+    doc.text("Admission Fee Discount", admX + admColW / 2, y + headerH * 0.58, { align: "center" });
+    if (thirdColLines.length > 1) {
+      const lineH = headerH / (thirdColLines.length + 0.6);
+      thirdColLines.forEach((line, li) => {
+        doc.text(line, tuiX + tuiColW / 2, y + lineH * (li + 1), { align: "center" });
+      });
+    } else {
+      doc.text(tableDef.thirdColHeader, tuiX + tuiColW / 2, y + headerH * 0.58, { align: "center" });
+    }
+    doc.text("Applied", appliedX + appliedColW / 2, y + headerH * 0.58, { align: "center" });
+    y += headerH;
+
+    // ── Data rows ──
+    tableDef.rows.forEach((row, i) => {
       if (y + rowH > bottomLimit) return;
+      const isApplied = i === appliedRowIdx;
+
+      // Alternating row background
       if (i % 2 === 1) {
         doc.setFillColor(250, 250, 250);
         doc.rect(m, y, W, rowH, "F");
       }
-      drawHRule(y + rowH, true);
 
-      drawCheckbox(m + 1, y + (rowH - Math.max(2.4, rowH * 0.5)) / 2, isApplicableTier(tier.discountPercent));
+      // Cell borders
+      doc.setDrawColor(...THEME.colors.border);
+      doc.setLineWidth(0.1);
+      doc.rect(m, y, W, rowH, "S");
+      drawVRule(admX, y, y + rowH);
+      drawVRule(tuiX, y, y + rowH);
+      drawVRule(appliedX, y, y + rowH);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(metrics.fontTiny);
       doc.setTextColor(...THEME.colors.text);
-      doc.text(String(i + 1), m + checkW + 0.5, y + rowH * 0.72);
-      doc.text(truncateToWidth(clamp(tier.title), discountW - 2), discountX + 1, y + rowH * 0.72);
-      doc.text(truncateToWidth(clamp(tier.criteria), criteriaW - 2), criteriaX + 1, y + rowH * 0.72);
+      doc.text(row.cgpa, m + cgpaColW / 2, y + rowH * 0.72, { align: "center" });
+      doc.text(row.admissionFee, admX + admColW / 2, y + rowH * 0.72, { align: "center" });
+      doc.text(row.tuitionOrKinship, tuiX + tuiColW / 2, y + rowH * 0.72, { align: "center" });
+
+      // Applied indicator: checkbox (checked for the matching row)
+      drawCheckbox(
+        appliedX + (appliedColW - Math.max(2.4, rowH * 0.5)) / 2,
+        y + (rowH - Math.max(2.4, rowH * 0.5)) / 2,
+        isApplied,
+      );
+
       y += rowH;
     });
   };
@@ -721,8 +851,7 @@ function estimateScholarshipFormHeight(
   data: ScholarshipLetterPDFData,
   metrics: FormMetrics,
 ): number {
-  const tierCount = data.discountTiers?.length ?? 0;
-  const tierRows = tierCount === 0 ? 1 : tierCount;
+  const tierRows = 4; // fixed 4-row discount table (per reference design)
   let rows = 1; // meta
   rows += 2; // section A
   rows += data.isKinship ? 3 : 2;
@@ -926,40 +1055,33 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         );
         const fb = data.feeBreakdown;
         if (fb) {
-          form.drawFieldPair(
-            "Admission Fee Discount",
-            fb.admissionFeeDisplay,
-            "Tuition Fee Discount",
-            fb.tuitionFeeDisplay,
-          );
+          // Show admission fee only if the applicant selected it (standalone)
+          if (data.applyAdmissionFeeDiscount === true && fb.admissionFeeDiscount != null && fb.admissionFeeDiscount > 0) {
+            form.drawFullRow("Admission Fee Discount (Standalone)", fb.admissionFeeDisplay);
+          }
+          form.drawFullRow("Tuition Fee Discount", fb.tuitionFeeDisplay);
           if (fb.highAchieverDiscount != null && fb.highAchieverDiscount > 0) {
             form.drawFullRow(
               `High Achiever Discount (${data.medal || "Medalist"})`,
               fb.highAchieverDisplay,
             );
           }
-          form.drawFullRow("Total Discount", fb.totalDisplay);
+          form.drawFullRow("Total Tuition Fee Discount", fb.totalDisplay);
         } else {
-          form.drawFieldPair(
-            "Admission Fee Discount",
-            data.admissionFeePercent != null ? `${data.admissionFeePercent}%` : "—",
-            "Tuition Fee Discount",
-            data.tuitionFeePercent != null ? `${data.tuitionFeePercent}%` : "—",
-          );
+          if (data.applyAdmissionFeeDiscount === true && data.admissionFeePercent != null && data.admissionFeePercent > 0) {
+            form.drawFullRow("Admission Fee Discount (Standalone)", `${data.admissionFeePercent}%`);
+          }
+          form.drawFullRow("Tuition Fee Discount", data.tuitionFeePercent != null ? `${data.tuitionFeePercent}%` : "—");
           if (data.highAchieverPercent != null && data.highAchieverPercent > 0) {
             form.drawFullRow(
               `High Achiever Discount (${data.medal || "Medalist"})`,
               `${data.highAchieverPercent}%`,
             );
           }
-          const baseTotal =
-            data.admissionFeePercent != null && data.tuitionFeePercent != null
-              ? data.admissionFeePercent + data.tuitionFeePercent
-              : data.admissionFeePercent ?? data.tuitionFeePercent ?? null;
-          const total = baseTotal != null && data.highAchieverPercent != null
-            ? baseTotal + data.highAchieverPercent
-            : baseTotal ?? data.highAchieverPercent ?? null;
-          form.drawFullRow("Total Discount", total != null ? `${total}%` : "—");
+          const total = data.tuitionFeePercent != null && data.highAchieverPercent != null
+            ? data.tuitionFeePercent + data.highAchieverPercent
+            : data.tuitionFeePercent ?? data.highAchieverPercent ?? null;
+          form.drawFullRow("Total Tuition Fee Discount", total != null ? `${total}%` : "—");
         }
         form.drawFullRow("Admission Reference No", data.admissionApplicationRef);
       } else {
@@ -978,11 +1100,8 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         form.drawFullRow("Admission Reference No", data.admissionApplicationRef);
       }
 
-      const appliedPct =
-        parseDiscountPercentValue(data.appliedDiscountPercent) ??
-        parseDiscountPercentValue(data.requestedDiscount);
       const tierBottomLimit = form.contentBottom - 90;
-      form.drawDiscountTierTable(data.discountTiers ?? [], appliedPct, tierBottomLimit);
+      form.drawDiscountTierTable(data.discountType, data.applyingFor, data.cgpaLastDegree, tierBottomLimit);
 
       form.drawSection(
         "c",

@@ -49,6 +49,7 @@ type Payload = {
   admissionFeePercent?: number | string | null;
   tuitionFeePercent?: number | string | null;
   highAchieverPercent?: number | string | null;
+  applyAdmissionFeeDiscount?: boolean | string | null;
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -146,6 +147,7 @@ export async function POST(
     let clientAdmissionFeePercent: number | null = null;
     let clientTuitionFeePercent: number | null = null;
     let clientHighAchieverPercent: number | null = null;
+    let clientApplyAdmissionFeeDiscount = false;
     let serverAdmissionFeePercent: number | null = null;
     let serverTuitionFeePercent: number | null = null;
     let serverHighAchieverPercent: number | null = null;
@@ -175,6 +177,10 @@ export async function POST(
       if (rawHaPct != null && String(rawHaPct).trim() !== "") {
         const n = Number(rawHaPct);
         if (Number.isFinite(n)) clientHighAchieverPercent = n;
+      }
+      const rawApplyAdm = formData.get("applyAdmissionFeeDiscount");
+      if (rawApplyAdm != null && String(rawApplyAdm).trim().toLowerCase() === "true") {
+        clientApplyAdmissionFeeDiscount = true;
       }
 
       if (isScholarshipFeeDiscountFlow(discountType)) {
@@ -322,6 +328,9 @@ export async function POST(
       if (payload.highAchieverPercent != null && payload.highAchieverPercent !== "") {
         const n = Number(payload.highAchieverPercent);
         if (Number.isFinite(n)) clientHighAchieverPercent = n;
+      }
+      if (payload.applyAdmissionFeeDiscount === true || payload.applyAdmissionFeeDiscount === "true") {
+        clientApplyAdmissionFeeDiscount = true;
       }
     }
 
@@ -527,12 +536,8 @@ export async function POST(
           serverTuitionFeePercent = resolveDiscountPercent(alumniCgpa, tuiTiers);
         }
 
-        // Use total of both components as the base applied discount percent
-        if (serverAdmissionFeePercent != null && serverTuitionFeePercent != null) {
-          appliedDiscountPercent = serverAdmissionFeePercent + serverTuitionFeePercent;
-        } else if (serverAdmissionFeePercent != null) {
-          appliedDiscountPercent = serverAdmissionFeePercent;
-        } else if (serverTuitionFeePercent != null) {
+        // Use tuition fee as the base applied discount percent (admission fee is standalone)
+        if (serverTuitionFeePercent != null) {
           appliedDiscountPercent = serverTuitionFeePercent;
         }
       }
@@ -575,8 +580,9 @@ export async function POST(
       }
       // Store fee breakdown in masters_details
       if (mastersDetails) {
-        mastersDetails.admissionFeePercent = serverAdmissionFeePercent;
+        mastersDetails.admissionFeePercent = clientApplyAdmissionFeeDiscount ? serverAdmissionFeePercent : null;
         mastersDetails.tuitionFeePercent = serverTuitionFeePercent;
+        mastersDetails.applyAdmissionFeeDiscount = clientApplyAdmissionFeeDiscount;
       }
     }
 

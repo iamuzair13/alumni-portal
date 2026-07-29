@@ -155,10 +155,10 @@ export type ScholarshipFeeBreakdown = {
 /** High Achiever Discount percent for medalists. */
 export const HIGH_ACHIEVER_DISCOUNT_PERCENT = 5;
 
-/** Returns true if the alumni medal string indicates a Gold/Silver/Bronze medalist. */
+/** Returns true if the alumni medal string indicates a Gold Medalist. */
 export function isHighAchieverMedalist(medal: string | null | undefined): boolean {
   const m = String(medal || "").trim().toLowerCase();
-  return m === "gold medalist" || m === "silver medalist" || m === "bronze medalist";
+  return m === "gold medalist";
 }
 
 /** Returns the high achiever discount percent (5) if medalist, else null. */
@@ -172,9 +172,10 @@ export function resolveFeeBreakdownDisplay(params: {
   admissionFeePercent?: number | null;
   tuitionFeePercent?: number | null;
   highAchieverPercent?: number | null;
+  applyAdmissionFeeDiscount?: boolean | null;
   legacyAppliedPercent?: number | null;
 }): ScholarshipFeeBreakdown {
-  const { discountType, admissionFeePercent, tuitionFeePercent, highAchieverPercent, legacyAppliedPercent } = params;
+  const { discountType, admissionFeePercent, tuitionFeePercent, highAchieverPercent, applyAdmissionFeeDiscount, legacyAppliedPercent } = params;
   const d = String(discountType || "").trim().toLowerCase();
 
   const fmt = (n: number | null | undefined): string => {
@@ -183,12 +184,13 @@ export function resolveFeeBreakdownDisplay(params: {
   };
 
   const ha = highAchieverPercent ?? null;
+  const applyAdm = applyAdmissionFeeDiscount === true;
 
   if (isMergedScholarshipSlug(d)) {
-    const adm = admissionFeePercent ?? null;
+    const adm = applyAdm ? (admissionFeePercent ?? null) : null;
     const tui = tuitionFeePercent ?? null;
-    const baseTotal = adm != null && tui != null ? adm + tui : adm ?? tui ?? null;
-    const total = baseTotal != null && ha != null ? baseTotal + ha : baseTotal ?? ha ?? null;
+    // Total = tuition + high achiever only (admission fee is standalone)
+    const total = tui != null && ha != null ? tui + ha : tui ?? ha ?? null;
     return {
       admissionFeeDiscount: adm,
       tuitionFeeDiscount: tui,
@@ -204,10 +206,9 @@ export function resolveFeeBreakdownDisplay(params: {
   const merged = toMergedScholarshipSlug(d);
   if (merged) {
     const isAdmission = d.startsWith("admission-fee-");
-    const adm = isAdmission ? (legacyAppliedPercent ?? null) : null;
+    const adm = applyAdm && isAdmission ? (legacyAppliedPercent ?? null) : null;
     const tui = !isAdmission ? (legacyAppliedPercent ?? null) : null;
-    const baseTotal = adm ?? tui ?? null;
-    const total = baseTotal != null && ha != null ? baseTotal + ha : baseTotal ?? ha ?? null;
+    const total = tui != null && ha != null ? tui + ha : tui ?? ha ?? null;
     return {
       admissionFeeDiscount: adm,
       tuitionFeeDiscount: tui,
@@ -357,6 +358,7 @@ export type MastersDetailsParsed = {
   tuitionFeePercent?: number | null;
   highAchieverPercent?: number | null;
   medal?: string | null;
+  applyAdmissionFeeDiscount?: boolean | null;
 };
 
 export function parseMastersDetails(raw: unknown): MastersDetailsParsed | null {
