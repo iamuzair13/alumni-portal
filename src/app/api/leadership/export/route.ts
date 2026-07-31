@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") || "all"; // "chapter", "association", "all"
     const category = searchParams.get("category") || "all"; // "all", "national", "international", "association"
-    const status = searchParams.get("status") || "all"; // "all", "approved", "assessed", "pending", "rejected"
+    const status = searchParams.get("status") || "all"; // "all", "approved", "assessed", "pending", "rejected", "invalid"
     const categoryValues = new Set(["all", "national", "international", "association"]);
     if (!categoryValues.has(category)) {
       return NextResponse.json({ error: "Invalid category" }, { status: 400 });
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     const associationId = toPositiveInt(searchParams.get("associationId"));
     const categoryItemId = toPositiveInt(searchParams.get("categoryItemId"));
 
-    const statusValues = new Set(["all", "approved", "assessed", "pending", "rejected"]);
+    const statusValues = new Set(["all", "approved", "assessed", "pending", "rejected", "invalid"]);
     if (!statusValues.has(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }

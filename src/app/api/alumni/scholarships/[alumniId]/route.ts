@@ -699,7 +699,7 @@ export async function PATCH(
     }
 
     // Validate status
-    const validStatuses = ["pending", "approved", "not-approved"];
+    const validStatuses = ["pending", "approved", "not-approved", "invalid"];
     if (!status || !validStatuses.includes(status)) {
       return NextResponse.json(
         { error: `Status must be one of: ${validStatuses.join(", ")}` },
@@ -771,6 +771,12 @@ export async function PATCH(
       await sql/* sql */`
         UPDATE public.alumni_scholarships
         SET status = ${status}, reason = ${rejectionReasonText}
+        WHERE id = ${alumniIdNum}
+      `;
+    } else if (status === "invalid") {
+      await sql/* sql */`
+        UPDATE public.alumni_scholarships
+        SET status = ${status}, reason = NULL
         WHERE id = ${alumniIdNum}
       `;
     } else {

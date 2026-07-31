@@ -30,7 +30,7 @@ export type LeadershipApplicationTrace = {
 export type LeadershipApplicationsQueryInput = {
   type?: "all" | "chapter" | "association";
   category?: "all" | "national" | "international" | "association";
-  status?: "all" | "pending" | "assessed" | "approved" | "rejected";
+  status?: "all" | "pending" | "assessed" | "approved" | "rejected" | "invalid";
   role?: "all" | "president" | "vice_president" | "coordinator";
   search?: string;
   hasAdditionalAchievements?: boolean;

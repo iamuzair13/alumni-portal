@@ -60,6 +60,7 @@ export const EMAIL_ACTION_TYPE = {
   ALUMNI_TALK_PROPOSE_SLOT: "alumni.talk.propose_slot",
 
   LEADERSHIP_RECOMMENDATION: "leadership.recommendation",
+  LEADERSHIP_ACKNOWLEDGEMENT: "leadership.acknowledgement",
 } as const;
 
 export type EmailActionType = (typeof EMAIL_ACTION_TYPE)[keyof typeof EMAIL_ACTION_TYPE];
@@ -530,6 +531,32 @@ export function generateAdminActionEmail(input: {
       ${extraBodyHtml}
     `;
     return { subject, html: createEmailTemplate(subject, greeting, body, "Warm regards,<br>UOL Alumni Relations Team") };
+  }
+
+  if (input.actionType === EMAIL_ACTION_TYPE.LEADERSHIP_ACKNOWLEDGEMENT) {
+    const subject = "Acknowledgement Email for Selection of the Leadership Position";
+    const body = `
+      <p style="margin: 0; color: #333333; font-size: 16px;">
+        Greetings from the UOL Alumni Community!
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        We are pleased to inform you that, following the review of your application, you have been selected for the position of <strong>{POSITION_TITLE}</strong> for the <strong>{ORG}</strong>.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        We kindly request you to confirm your consent and willingness to embrace this role. Your confirmation will enable us to formally approve your application and proceed with the next steps.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        We are excited to welcome you to this new journey and look forward to working together to strengthen our alumni community, foster meaningful connections, and create greater opportunities for our alumni.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        Please confirm your acceptance of this role by selecting Yes. If you do not wish to accept the position, please select No.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        We look forward to having you as an integral part of our alumni leadership community.
+      </p>
+      ${extraBodyHtml}
+    `;
+    return { subject, html: createEmailTemplate(subject, greeting, body, "Warm regards,<br>UOL Alumni Community") };
   }
 
   const subject = "Alumni Account Update";

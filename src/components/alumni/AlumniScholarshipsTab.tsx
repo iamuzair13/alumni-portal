@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
@@ -48,6 +49,7 @@ type ScholarshipResponse = {
     pending: number;
     approved: number;
     notApproved: number;
+    invalid: number;
   };
 };
 
@@ -130,13 +132,14 @@ async function getAlumniScholarships(
 type SortKey = "sapid" | "name" | "faculty" | "department" | "program" | "createdAt" | "applyFor";
 type SortDir = "asc" | "desc";
 
-type StatusTabKey = "all" | "pending" | "approved" | "notApproved";
+type StatusTabKey = "all" | "pending" | "approved" | "notApproved" | "invalid";
 
 const STATUS_TABS: { key: StatusTabKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "pending", label: "Pending" },
   { key: "approved", label: "Approved" },
   { key: "notApproved", label: "Not Approved" },
+  { key: "invalid", label: "Invalid" },
 ];
 
 export const AlumniScholarshipsTab: React.FC = () => {
@@ -147,9 +150,10 @@ export const AlumniScholarshipsTab: React.FC = () => {
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+  const [openActionMenuId, setOpenActionMenuId] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<StatusTabKey>("all");
   const [pendingAction, setPendingAction] = useState<{
-    type: "approve" | "unapprove" | "delete";
+    type: "approve" | "unapprove" | "delete" | "invalid";
     alumniId: number;
     name: string;
     reason?: string;
@@ -190,6 +194,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
           ? undefined
           : selectedStatus === "notApproved"
           ? "not-approved"
+          : selectedStatus === "invalid"
+          ? "invalid"
           : selectedStatus
       ),
     staleTime: 2 * 60 * 1000,
@@ -208,8 +214,9 @@ export const AlumniScholarshipsTab: React.FC = () => {
     const pending = data?.counts?.pending ?? 0;
     const approved = data?.counts?.approved ?? 0;
     const notApproved = data?.counts?.notApproved ?? 0;
-    const all = pending + approved + notApproved;
-    return { all, pending, approved, notApproved };
+    const invalid = data?.counts?.invalid ?? 0;
+    const all = pending + approved + notApproved + invalid;
+    return { all, pending, approved, notApproved, invalid };
   }, [data]);
 
   const sortedItems = useMemo(() => {
@@ -390,6 +397,29 @@ export const AlumniScholarshipsTab: React.FC = () => {
     }
   }, [startMut, stopMut, queryClient]);
 
+  const handleInvalid = useCallback(async (alumniId: number): Promise<void> => {
+    startMut(alumniId);
+    try {
+      const res = await fetch(`/api/alumni/scholarships/${alumniId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "invalid" }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `Failed to mark invalid: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to mark invalid: ${res.status}`);
+      }
+      toast.success("Scholarship application marked as invalid.");
+      queryClient.invalidateQueries({ queryKey: ["alumni-scholarships"] });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to update scholarship application.");
+      throw e;
+    } finally {
+      stopMut(alumniId);
+    }
+  }, [startMut, stopMut, queryClient]);
+
   const handleDelete = useCallback(async (alumniId: number): Promise<void> => {
     startMut(alumniId);
     try {
@@ -420,6 +450,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
         await handleApprove(alumniId);
       } else if (type === "delete") {
         await handleDelete(alumniId);
+      } else if (type === "invalid") {
+        await handleInvalid(alumniId);
       } else {
         await handleUnapprove(alumniId, rejectionReason.trim() || undefined);
       }
@@ -430,7 +462,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
       // Error already handled in handleApprove/handleUnapprove/handleDelete
 
     }
-  }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove, handleDelete]);
+  }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove, handleDelete, handleInvalid]);
 
   const handleConfirmClick = useCallback(async () => {
     if (!pendingAction) return;
@@ -582,6 +614,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 ? statusCounts.pending
                 : tab.key === "approved"
                 ? statusCounts.approved
+                : tab.key === "invalid"
+                ? statusCounts.invalid
                 : statusCounts.notApproved;
             const isSelected = selectedStatus === tab.key;
             return (
@@ -857,6 +891,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                                 : item.status === "not-approved"
                                 ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                                : item.status === "invalid"
+                                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                                 : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                             }`}
                           >
@@ -864,6 +900,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                               ? "Approved"
                               : item.status === "not-approved"
                               ? "Not Approved"
+                              : item.status === "invalid"
+                              ? "Invalid"
                               : "Pending"}
                           </span>
                           {item.status === "not-approved" && item.rejectionReason && (
@@ -876,61 +914,32 @@ export const AlumniScholarshipsTab: React.FC = () => {
                       </TableCell>
                       <TableCell className="sticky right-0 z-10 min-w-[180px] bg-gray-100 px-2 py-4 text-sm text-slate-700 dark:bg-gray-900 dark:text-gray-300">
                         {isAdmin && (
-                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => handleViewApplication(item.alumniId)}
-                              disabled={mutatingIds.has(item.alumniId)}
-                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-300 bg-white/0 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                              aria-label="View Application"
-                              title="View Application"
-                            >
-                              <EyeIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </button>
-                            {item.status !== "approved" && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPendingAction({ type: "approve", alumniId: item.alumniId, name: item.name });
-                                  confirmModal.openModal();
-                                }}
-                                disabled={mutatingIds.has(item.alumniId)}
-                                className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                aria-label="Approve"
-                                title="Approve"
-                              >
-                                <CheckLineIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                              </button>
-                            )}
-                            {item.status !== "not-approved" && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRejectionReason("");
-                                  setPendingAction({ type: "unapprove", alumniId: item.alumniId, name: item.name });
-                                  confirmModal.openModal();
-                                }}
-                                disabled={mutatingIds.has(item.alumniId)}
-                                className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-rose-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                aria-label="Not Approve"
-                                title="Not Approve"
-                              >
-                                <CloseLineIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <ScholarshipActionsDropdown
+                              item={item}
+                              isOpen={openActionMenuId === item.alumniId}
+                              onToggle={() => setOpenActionMenuId(openActionMenuId === item.alumniId ? null : item.alumniId)}
+                              onClose={() => setOpenActionMenuId(null)}
+                              isMutating={mutatingIds.has(item.alumniId)}
+                              onViewApplication={() => handleViewApplication(item.alumniId)}
+                              onApprove={() => {
+                                setPendingAction({ type: "approve", alumniId: item.alumniId, name: item.name });
+                                confirmModal.openModal();
+                              }}
+                              onUnapprove={() => {
+                                setRejectionReason("");
+                                setPendingAction({ type: "unapprove", alumniId: item.alumniId, name: item.name });
+                                confirmModal.openModal();
+                              }}
+                              onInvalid={() => {
+                                setPendingAction({ type: "invalid", alumniId: item.alumniId, name: item.name });
+                                confirmModal.openModal();
+                              }}
+                              onDelete={() => {
                                 setPendingAction({ type: "delete", alumniId: item.alumniId, name: item.name });
                                 confirmModal.openModal();
                               }}
-                              disabled={mutatingIds.has(item.alumniId)}
-                              className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                              aria-label="Delete"
-                              title="Delete"
-                            >
-                              <TrashBinIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </button>
+                            />
                           </div>
                         )}
                       </TableCell>
@@ -1013,11 +1022,15 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 <CheckLineIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400 dark:text-emerald-400" />
               ) : pendingAction.type === "delete" ? (
                 <TrashBinIcon className="h-6 w-6 text-red-600 dark:text-red-400 dark:text-red-400" />
+              ) : pendingAction.type === "invalid" ? (
+                <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
               ) : (
                 <CloseLineIcon className="h-6 w-6 text-rose-600 dark:text-rose-400 dark:text-rose-400" />
               )}
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">
-                {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : "Not Approve Application"}
+                {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : pendingAction.type === "invalid" ? "Mark Application as Invalid" : "Not Approve Application"}
               </h3>
             </div>
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
@@ -1025,6 +1038,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 <>Are you sure you want to approve the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong>?</>
               ) : pendingAction.type === "delete" ? (
                 <>Are you sure you want to delete the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong>? This action cannot be undone.</>
+              ) : pendingAction.type === "invalid" ? (
+                <>Are you sure you want to mark the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong> as invalid?</>
               ) : (
                 <>Are you sure you want to mark the scholarship application as not approved for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong>?</>
               )}
@@ -1049,7 +1064,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
               </div>
             )}
 
-            {pendingAction.type !== "delete" && (
+            {pendingAction.type !== "delete" && pendingAction.type !== "invalid" && (
               <div className="mb-6">
                 {(() => {
                   const it = itemByAlumniId.get(pendingAction.alumniId);
@@ -1111,6 +1126,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                     ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
                     : pendingAction.type === "delete"
                     ? "bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                    : pendingAction.type === "invalid"
+                    ? "bg-red-600 hover:bg-red-700 focus:ring-red-500"
                     : "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
                 }`}
               >
@@ -1120,7 +1137,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                     Processing...
                   </span>
                 ) : (
-                  pendingAction.type === "approve" ? "Approve" : pendingAction.type === "delete" ? "Delete" : "Not Approve"
+                  pendingAction.type === "approve" ? "Approve" : pendingAction.type === "delete" ? "Delete" : pendingAction.type === "invalid" ? "Mark Invalid" : "Not Approve"
                 )}
               </button>
             </div>
@@ -1535,4 +1552,209 @@ export const AlumniScholarshipsTab: React.FC = () => {
   );
 };
 
+const SCHOLARSHIP_ACTIONS_MENU_WIDTH = 256;
+const SCHOLARSHIP_ACTIONS_MENU_MAX_HEIGHT = 360;
 
+function ScholarshipActionsDropdown({
+  item,
+  isOpen,
+  onToggle,
+  onClose,
+  isMutating,
+  onViewApplication,
+  onApprove,
+  onUnapprove,
+  onInvalid,
+  onDelete,
+}: {
+  item: ScholarshipItem;
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  isMutating: boolean;
+  onViewApplication: () => void;
+  onApprove: () => void;
+  onUnapprove: () => void;
+  onInvalid: () => void;
+  onDelete: () => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const gap = 8;
+    const top = rect.bottom + gap;
+    let left = rect.right - SCHOLARSHIP_ACTIONS_MENU_WIDTH;
+    if (left < 8) left = 8;
+    if (left + SCHOLARSHIP_ACTIONS_MENU_WIDTH > window.innerWidth - 8) {
+      left = window.innerWidth - SCHOLARSHIP_ACTIONS_MENU_WIDTH - 8;
+    }
+    const spaceBelow = window.innerHeight - top - 8;
+    const maxHeight = Math.max(160, Math.min(SCHOLARSHIP_ACTIONS_MENU_MAX_HEIGHT, spaceBelow));
+    setMenuPosition({ top, left, maxHeight });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updateMenuPosition();
+    const handleReposition = () => updateMenuPosition();
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+    };
+  }, [isOpen, updateMenuPosition]);
+
+  const status = item.status;
+
+  const menu =
+    isOpen && menuPosition && typeof document !== "undefined"
+      ? createPortal(
+          <>
+            <div className="fixed inset-0 z-[9998]" aria-hidden="true" onClick={onClose} />
+            <div
+              role="menu"
+              className="fixed z-[9999] w-64 origin-top-right overflow-y-auto rounded-xl border border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900 shadow-2xl shadow-black/10 dark:shadow-black/30 ring-1 ring-black/5 dark:ring-white/5 py-1.5"
+              style={{
+                top: menuPosition.top,
+                left: menuPosition.left,
+                maxHeight: menuPosition.maxHeight,
+              }}
+            >
+              <div className="px-3 pt-2 pb-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Application</p>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onViewApplication();
+                  onClose();
+                }}
+                className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+              >
+                <EyeIcon className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                View Application
+              </button>
+
+              <div className="my-1.5 mx-3 border-t border-gray-100 dark:border-gray-800" />
+              <div className="px-3 py-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Decision</p>
+              </div>
+
+              {status !== "approved" && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onApprove();
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                >
+                  <CheckLineIcon className="h-4 w-4 shrink-0 text-emerald-500/80 group-hover:text-emerald-600 dark:group-hover:text-emerald-400" />
+                  <span className="group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Approve</span>
+                </button>
+              )}
+              {status !== "not-approved" && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onUnapprove();
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                >
+                  <CloseLineIcon className="h-4 w-4 shrink-0 text-amber-500/80 group-hover:text-amber-600 dark:group-hover:text-amber-400" />
+                  <span className="group-hover:text-amber-700 dark:group-hover:text-amber-300">Not Approve</span>
+                </button>
+              )}
+              {status !== "invalid" && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onInvalid();
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <svg className="h-4 w-4 text-red-400 group-hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                  <span className="group-hover:text-red-600 dark:group-hover:text-red-400">Invalid</span>
+                </button>
+              )}
+
+              <div className="my-1.5 mx-3 border-t border-gray-100 dark:border-gray-800" />
+              <div className="px-3 py-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Danger</p>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onDelete();
+                  onClose();
+                }}
+                className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <TrashBinIcon className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
+          </>,
+          document.body
+        )
+      : null;
+
+  return (
+    <div className="relative ml-auto shrink-0">
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={isMutating}
+        onClick={() => {
+          if (!isOpen) updateMenuPosition();
+          onToggle();
+        }}
+        className={`dropdown-toggle inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[140px] ${
+          isMutating
+            ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-400 cursor-not-allowed"
+            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow-md"
+        }`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+      >
+        {isMutating ? (
+          <>
+            <svg className="h-4 w-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <span>Processing…</span>
+          </>
+        ) : (
+          <>
+            <span>Actions</span>
+            <svg
+              className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </>
+        )}
+      </button>
+      {menu}
+    </div>
+  );
+}

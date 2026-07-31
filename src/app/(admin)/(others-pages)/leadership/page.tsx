@@ -156,7 +156,7 @@ type RecommendationItem = {
   alumniId: number | null;
 };
 
-type ApplicationStatusTab = "all" | "pending" | "assessed" | "approved" | "rejected";
+type ApplicationStatusTab = "all" | "pending" | "assessed" | "approved" | "rejected" | "invalid";
 type ApplicationCategoryFilter = "all" | "national" | "international" | "association";
 type MemberCategoryFilter = "all" | "national" | "international" | "association";
 type RoleFilter = "all" | "president" | "vice_president" | "coordinator";
@@ -168,6 +168,7 @@ type ApplicationCounts = {
   assessed: number;
   approved: number;
   rejected: number;
+  invalid: number;
 };
 
 type CategoryOptionItem = {
@@ -535,7 +536,7 @@ async function fetchApplicationCounts(input: {
   const res = await fetch(`/api/leadership/application-counts?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to fetch application counts");
   const data = await res.json();
-  return (data.counts || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0 }) as ApplicationCounts;
+  return (data.counts || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0, invalid: 0 }) as ApplicationCounts;
 }
 
 async function fetchCategoryOptions(input: {
@@ -673,7 +674,7 @@ export default function LeadershipPage() {
       setApplicationTypeFilter(type);
     }
     const status = safeSearchParams.get("status");
-    if (status === "all" || status === "pending" || status === "assessed" || status === "approved" || status === "rejected") {
+    if (status === "all" || status === "pending" || status === "assessed" || status === "approved" || status === "rejected" || status === "invalid") {
       setApplicationStatusTab(status);
     }
     const category = safeSearchParams.get("category");
@@ -740,7 +741,7 @@ export default function LeadershipPage() {
   const [selectedViewApp, setSelectedViewApp] = useState<{ type: "chapter" | "association"; applicationId: number } | null>(null);
   const [pendingAction, setPendingAction] = useState<
     | {
-        action: "assessment" | "approve" | "unapprove" | "delete";
+        action: "assessment" | "approve" | "unapprove" | "delete" | "invalid";
         applicationId: number;
         type: "chapter" | "association";
         position?: string;
@@ -764,6 +765,14 @@ export default function LeadershipPage() {
   const [recommendEmailPreviewOpen, setRecommendEmailPreviewOpen] = useState(false);
   const [recommendEmailInitial, setRecommendEmailInitial] = useState<{ subject: string; body: string } | null>(null);
   const recommendEmailMutation = useSendEmail();
+
+  // ─── Send Acknowledgement State ───
+  const acknowledgementModal = useModal();
+  const [acknowledgementApp, setAcknowledgementApp] = useState<LeadershipApplication | null>(null);
+  const [acknowledgementProcessing, setAcknowledgementProcessing] = useState(false);
+  const [acknowledgementEmailPreviewOpen, setAcknowledgementEmailPreviewOpen] = useState(false);
+  const [acknowledgementEmailInitial, setAcknowledgementEmailInitial] = useState<{ subject: string; body: string } | null>(null);
+  const acknowledgementEmailMutation = useSendEmail();
 
   // Recommendations list query
   const { data: recommendationsData, refetch: refetchRecommendations } = useQuery({
@@ -1284,7 +1293,7 @@ export default function LeadershipPage() {
   };
 
   const handleAction = async (
-    action: "assessment" | "approve" | "unapprove" | "delete",
+    action: "assessment" | "approve" | "unapprove" | "delete" | "invalid",
     applicationId: number,
     type: "chapter" | "association"
   ) => {
@@ -1430,9 +1439,11 @@ export default function LeadershipPage() {
             ? "approved"
             : action === "unapprove"
               ? "marked as not approved"
-              : action === "delete"
-                ? "deleted"
-                : `${action}d`;
+              : action === "invalid"
+                ? "marked as invalid"
+                : action === "delete"
+                  ? "deleted"
+                  : `${action}d`;
       toast.success(`Application ${successText} successfully`);
 
       queryClient.invalidateQueries({ queryKey: ["leadership-applications"], exact: false });
@@ -1507,6 +1518,58 @@ export default function LeadershipPage() {
     } finally {
       setRecommendProcessing(false);
     }
+  };
+
+  const handleSendAcknowledgement = async () => {
+    if (!acknowledgementApp) return;
+    setAcknowledgementProcessing(true);
+    try {
+      const res = await fetch("/api/leadership/send-acknowledgement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: acknowledgementApp.id,
+          type: acknowledgementApp.type,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string })?.error || "Failed to send acknowledgement");
+
+      if (data.alreadySent) {
+        toast.error(data.message || "Acknowledgement email was already sent to this applicant.");
+      } else if (data.ok) {
+        toast.success("Acknowledgement email sent successfully");
+      } else {
+        toast.error(data.errorMessage || "Failed to send acknowledgement email");
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["leadership-applications"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["leadership-application-details"], exact: false });
+      acknowledgementModal.closeModal();
+      setAcknowledgementApp(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send acknowledgement");
+    } finally {
+      setAcknowledgementProcessing(false);
+    }
+  };
+
+  const handlePreviewAcknowledgementEmail = () => {
+    if (!acknowledgementApp) return;
+    const tpl = generateAdminActionEmail({
+      actionType: EMAIL_ACTION_TYPE.LEADERSHIP_ACKNOWLEDGEMENT,
+      alumniName: acknowledgementApp.name || "Alumni",
+    });
+    const orgName =
+      acknowledgementApp.categoryName ||
+      (acknowledgementApp.type === "chapter" ? "your selected chapter" : "the Alumni Association");
+    setAcknowledgementEmailInitial({
+      subject: tpl.subject,
+      body: tpl.html
+        .replaceAll("{POSITION_TITLE}", acknowledgementApp.position || "the leadership position")
+        .replaceAll("{ORG}", orgName),
+    });
+    setAcknowledgementEmailPreviewOpen(true);
   };
 
   const handleRecommendationAction = async (recommendationId: number, action: "mark_accepted" | "mark_declined") => {
@@ -1938,7 +2001,7 @@ export default function LeadershipPage() {
       {/* Status Dropdown */}
       <div className="relative group min-w-[220px] max-w-xs">
         {(() => {
-          const counts = applicationCountsData || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0 };
+          const counts = applicationCountsData || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0, invalid: 0 };
           return (
         <select
           value={applicationStatusTab}
@@ -1953,6 +2016,7 @@ export default function LeadershipPage() {
           <option value="assessed">{`Assessed (${counts.assessed})`}</option>
           <option value="approved">{`Approved (${counts.approved})`}</option>
           <option value="rejected">{`Not Approved (${counts.rejected})`}</option>
+          <option value="invalid">{`Invalid (${counts.invalid})`}</option>
         </select>
           );
         })()}
@@ -2480,7 +2544,9 @@ export default function LeadershipPage() {
                     ? "Approve Leadership Application"
                     : pendingAction.action === "unapprove"
                       ? "Unapprove Leadership Application"
-                      : "Delete Leadership Member"}
+                      : pendingAction.action === "invalid"
+                        ? "Mark Application as Invalid"
+                        : "Delete Leadership Member"}
               </h3>
 
               {pendingAction.action === "assessment" && (
@@ -2496,6 +2562,18 @@ export default function LeadershipPage() {
                   <>Are you sure you want to delete this record? This action cannot be undone.</>
                 ) : pendingAction.action === "assessment" ? (
                   <>Review the criteria below, assign marks, then confirm to save this assessment.</>
+                ) : pendingAction.action === "invalid" ? (
+                  <>
+                    Are you sure you want to mark the{" "}
+                    <strong>{pendingAction.type === "chapter" ? "chapter" : "association"}</strong> leadership application
+                    {pendingAction.name ? (
+                      <>
+                        {" "}for <strong>{pendingAction.name}</strong> as invalid?
+                      </>
+                    ) : (
+                      " as invalid?"
+                    )}
+                  </>
                 ) : (
                   <>
                     Are you sure you want to{" "}
@@ -2965,7 +3043,7 @@ export default function LeadershipPage() {
           >
             <div className="p-6">
               <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Confirm {pendingAction.action === "assessment" ? "Assessment" : pendingAction.action === "approve" ? "Approval" : pendingAction.action === "unapprove" ? "Unapproval" : "Deletion"}
+                Confirm {pendingAction.action === "assessment" ? "Assessment" : pendingAction.action === "approve" ? "Approval" : pendingAction.action === "unapprove" ? "Unapproval" : pendingAction.action === "invalid" ? "Invalid Status" : "Deletion"}
               </div>
               {pendingAction.action === "assessment" && (
                 <AssessmentApplicantSummary
@@ -3037,6 +3115,10 @@ export default function LeadershipPage() {
                         setRecommendApp(app);
                         recommendModal.openModal();
                       }}
+                      onSendAcknowledgement={(app) => {
+                        setAcknowledgementApp(app);
+                        acknowledgementModal.openModal();
+                      }}
                       processingIds={processingIds}
                       sortKey={sortKey}
                       sortDir={sortDir}
@@ -3073,6 +3155,10 @@ export default function LeadershipPage() {
                       onRecommend={(app) => {
                         setRecommendApp(app);
                         recommendModal.openModal();
+                      }}
+                      onSendAcknowledgement={(app) => {
+                        setAcknowledgementApp(app);
+                        acknowledgementModal.openModal();
                       }}
                       processingIds={processingIds}
                       sortKey={sortKey}
@@ -3430,6 +3516,111 @@ export default function LeadershipPage() {
                       {assignProcessing ? "Assigning…" : "Confirm Assignment"}
                     </button>
                   </div>
+                </div>
+              </Modal>
+            )}
+
+            {/* ─── Send Acknowledgement Confirmation Modal ─── */}
+            {acknowledgementModal.isOpen && acknowledgementApp && (
+              <Modal
+                isOpen={acknowledgementModal.isOpen}
+                onClose={() => {
+                  if (!acknowledgementProcessing) {
+                    acknowledgementModal.closeModal();
+                    setAcknowledgementApp(null);
+                  }
+                }}
+                showCloseButton={true}
+                className="max-w-md"
+              >
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Send Acknowledgement</h3>
+                  <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      Are you sure you want to send an acknowledgement email to{" "}
+                      <strong>{acknowledgementApp.name || "this applicant"}</strong>?
+                    </p>
+                    <div className="mt-3 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                      <p><span className="font-semibold">Position:</span> {acknowledgementApp.position || "-"}</p>
+                      <p><span className="font-semibold">Type:</span> {acknowledgementApp.type === "chapter" ? "Chapter" : "Association"} - {acknowledgementApp.categoryName || "-"}</p>
+                      <p><span className="font-semibold">Email:</span> {acknowledgementApp.email || "-"}</p>
+                    </div>
+                    <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+                      The email will inform the applicant of their selection and request their confirmation to accept the role.
+                    </p>
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      disabled={acknowledgementProcessing}
+                      onClick={() => {
+                        acknowledgementModal.closeModal();
+                        setAcknowledgementApp(null);
+                      }}
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={acknowledgementProcessing || !acknowledgementApp.email}
+                      onClick={() => void handleSendAcknowledgement()}
+                      className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50"
+                    >
+                      {acknowledgementProcessing && (
+                        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      )}
+                      {acknowledgementProcessing ? "Sending…" : "Send Acknowledgement"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={acknowledgementProcessing || !acknowledgementApp.email}
+                      onClick={() => handlePreviewAcknowledgementEmail()}
+                      className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      Preview Email
+                    </button>
+                  </div>
+                  {!acknowledgementApp.email && (
+                    <p className="mt-3 text-xs text-red-600 dark:text-red-400">
+                      No email address found for this applicant.
+                    </p>
+                  )}
+
+                  {acknowledgementEmailInitial && (
+                    <EmailPreviewModal
+                      isOpen={acknowledgementEmailPreviewOpen}
+                      onClose={() => {
+                        if (!acknowledgementEmailMutation.isPending) {
+                          setAcknowledgementEmailPreviewOpen(false);
+                        }
+                      }}
+                      initial={acknowledgementEmailInitial}
+                      sending={acknowledgementEmailMutation.isPending}
+                      onSend={async (payload) => {
+                        if (!acknowledgementApp) return;
+                        const res = await acknowledgementEmailMutation.mutateAsync({
+                          alumniId: acknowledgementApp.alumniId,
+                          recipientEmail: acknowledgementApp.email,
+                          actionType: EMAIL_ACTION_TYPE.LEADERSHIP_ACKNOWLEDGEMENT,
+                          subject: payload.subject,
+                          body: payload.body,
+                        });
+                        if (res.ok) {
+                          toast.success("Email sent");
+                          setAcknowledgementEmailPreviewOpen(false);
+                          acknowledgementModal.closeModal();
+                          setAcknowledgementApp(null);
+                        } else {
+                          toast.error(res.errorMessage || "Failed to send email");
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               </Modal>
             )}
@@ -3893,6 +4084,7 @@ function ApplicationActionsDropdown({
   onAction,
   onDownloadApplication,
   onRecommend,
+  onSendAcknowledgement,
 }: {
   app: LeadershipApplication;
   isOpen: boolean;
@@ -3903,9 +4095,10 @@ function ApplicationActionsDropdown({
   canFinalize: boolean;
   status: string;
   onViewApplication: (app: LeadershipApplication) => void;
-  onAction: (action: "assessment" | "approve" | "unapprove" | "delete", id: number, type: "chapter" | "association") => Promise<void>;
+  onAction: (action: "assessment" | "approve" | "unapprove" | "delete" | "invalid", id: number, type: "chapter" | "association") => Promise<void>;
   onDownloadApplication: (type: "chapter" | "association", applicationId: number) => void;
   onRecommend: (app: LeadershipApplication) => void;
+  onSendAcknowledgement: (app: LeadershipApplication) => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
@@ -4052,6 +4245,38 @@ function ApplicationActionsDropdown({
                 </>
               )}
 
+              {status !== "invalid" && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    void onAction("invalid", app.id, app.type);
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <svg className="h-4 w-4 text-red-400 group-hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                  <span className="group-hover:text-red-600 dark:group-hover:text-red-400">Invalid</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onSendAcknowledgement(app);
+                  onClose();
+                }}
+                className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
+              >
+                <svg className="h-4 w-4 text-teal-500 group-hover:text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                </svg>
+                <span className="group-hover:text-teal-700 dark:group-hover:text-teal-300">Send Acknowledgement</span>
+              </button>
+
               <div className="my-1.5 mx-3 border-t border-gray-100 dark:border-gray-800" />
               <div className="px-3 py-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Danger</p>
@@ -4129,6 +4354,7 @@ function ApplicationsTable({
   onViewApplication,
   onDownloadApplication,
   onRecommend,
+  onSendAcknowledgement,
   processingIds,
   sortKey,
   sortDir,
@@ -4137,11 +4363,12 @@ function ApplicationsTable({
   applications: LeadershipApplication[];
   loading: boolean;
   isAdmin: boolean;
-  onAction: (action: "assessment" | "approve" | "unapprove" | "delete", id: number, type: "chapter" | "association") => Promise<void>;
+  onAction: (action: "assessment" | "approve" | "unapprove" | "delete" | "invalid", id: number, type: "chapter" | "association") => Promise<void>;
   onViewAdditionalAchievements: (app: LeadershipApplication) => void;
   onViewApplication: (app: LeadershipApplication) => void;
   onDownloadApplication: (type: "chapter" | "association", applicationId: number) => void;
   onRecommend: (app: LeadershipApplication) => void;
+  onSendAcknowledgement: (app: LeadershipApplication) => void;
   processingIds: Set<number>;
   sortKey: SortKey;
   sortDir: "asc" | "desc";
@@ -4326,7 +4553,9 @@ function ApplicationsTable({
                       ? "bg-blue-50 text-blue-800 border-blue-200"
                       : String(app.status || "").toLowerCase() === "rejected"
                         ? "bg-rose-50 text-rose-800 border-rose-200"
-                        : "bg-amber-50 text-amber-800 border-amber-200"
+                        : String(app.status || "").toLowerCase() === "invalid"
+                          ? "bg-red-50 text-red-800 border-red-200"
+                          : "bg-amber-50 text-amber-800 border-amber-200"
                 }`}
               >
                 {(() => {
@@ -4334,6 +4563,7 @@ function ApplicationsTable({
                   if (s === "rejected") return "Not Approved";
                   if (s === "assessed") return "Assessed";
                   if (s === "approved") return "Approved";
+                  if (s === "invalid") return "Invalid";
                   return "Pending";
                 })()}
               </span>
@@ -4349,7 +4579,7 @@ function ApplicationsTable({
                 {(() => {
                   const status = String(app.status || "pending").toLowerCase();
                   const rowKey = `${app.type}-${app.id}`;
-                  const canAssess = status !== "approved" && status !== "rejected";
+                  const canAssess = status !== "approved" && status !== "rejected" && status !== "invalid";
                   const canFinalize = status === "assessed";
                   return (
                     <ApplicationActionsDropdown
@@ -4365,6 +4595,7 @@ function ApplicationsTable({
                       onAction={onAction}
                       onDownloadApplication={onDownloadApplication}
                       onRecommend={onRecommend}
+                      onSendAcknowledgement={onSendAcknowledgement}
                     />
                   );
                 })()}

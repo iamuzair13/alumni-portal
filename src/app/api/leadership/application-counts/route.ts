@@ -129,6 +129,7 @@ export async function GET(req: NextRequest) {
       assessed: 0,
       approved: 0,
       rejected: 0,
+      invalid: 0,
     };
 
     if (type === "all" || type === "chapter") {
@@ -159,6 +160,7 @@ export async function GET(req: NextRequest) {
         if (s === "approved") counts.approved += c;
         else if (s === "assessed") counts.assessed += c;
         else if (s === "rejected") counts.rejected += c;
+        else if (s === "invalid") counts.invalid += c;
         else counts.pending += c;
       }
     }
@@ -190,11 +192,12 @@ export async function GET(req: NextRequest) {
         if (s === "approved") counts.approved += c;
         else if (s === "assessed") counts.assessed += c;
         else if (s === "rejected") counts.rejected += c;
+        else if (s === "invalid") counts.invalid += c;
         else counts.pending += c;
       }
     }
 
-    counts.all = counts.pending + counts.assessed + counts.approved + counts.rejected;
+    counts.all = counts.pending + counts.assessed + counts.approved + counts.rejected + counts.invalid;
 
     return NextResponse.json({ counts }, { status: 200 });
   } catch (err) {

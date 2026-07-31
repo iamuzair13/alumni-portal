@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { action, applicationId, type, adminCriteriaIds, optionalCriteriaProficiency, criterionObtainedMarks: criterionObtainedMarksBody, assessmentRemarks, unapprovalRemarks, strategyAssessmentMarks, achievementAssessmentMarks } = body as {
-      action?: "assessment" | "approve" | "unapprove" | "delete" | "reject";
+      action?: "assessment" | "approve" | "unapprove" | "delete" | "reject" | "invalid";
       applicationId?: number;
       type?: "chapter" | "association";
       adminCriteriaIds?: unknown;
@@ -482,6 +482,26 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, message: "Application assessed successfully" });
+      } else if (action === "invalid") {
+        await sql/* sql */`
+          UPDATE public.chapter_leadership
+          SET status = 'invalid',
+              updated_at = NOW()
+          WHERE id = ${Number(applicationId)}
+        `;
+
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "leadership.invalid",
+            entityType: "chapter_leadership",
+            entityId: Number(applicationId),
+            metadata: { type: "chapter", alumniId },
+          },
+        });
+
+        return NextResponse.json({ success: true, message: "Application marked as invalid successfully" });
       } else if (action === "unapprove" || action === "reject") {
         // Only assessed applications can be unapproved.
         const currentStatus = String((appRecord[0] as { status?: unknown })?.status ?? "pending").toLowerCase();
@@ -884,6 +904,25 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, message: "Application assessed successfully" });
+      } else if (action === "invalid") {
+        await sql/* sql */`
+          UPDATE public.tblalumniassociation
+          SET status = 'invalid'
+          WHERE id = ${Number(applicationId)}
+        `;
+
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "leadership.invalid",
+            entityType: "tblalumniassociation",
+            entityId: Number(applicationId),
+            metadata: { type: "association", alumniId },
+          },
+        });
+
+        return NextResponse.json({ success: true, message: "Application marked as invalid successfully" });
       } else if (action === "unapprove" || action === "reject") {
         // Only assessed applications can be unapproved.
         const currentStatus = String((appRecord[0] as { status?: unknown })?.status ?? "pending").toLowerCase();
