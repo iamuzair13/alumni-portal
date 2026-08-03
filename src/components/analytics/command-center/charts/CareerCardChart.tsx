@@ -1,40 +1,25 @@
 "use client";
 
 import React from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { ChartEmpty } from "./ChartEmpty";
 
 const UOL_COLOR = "#6366F1";
 const OTHER_COLOR = "#14B8A6";
 
-type OutsideLabelProps = {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  outerRadius: number;
-  name: string;
-  value: number;
-  pct: number;
-};
-
-function OutsideLabel({ cx, cy, midAngle, outerRadius, name, value, pct }: OutsideLabelProps) {
-  const RADIAN = Math.PI / 180;
-  const sin = Math.sin(-midAngle * RADIAN);
-  const cos = Math.cos(-midAngle * RADIAN);
-  const lineStart = outerRadius + 4;
-  const lineEnd = outerRadius + 18;
-  const textX = cx + (lineEnd + 4) * cos;
-  const textY = cy + (lineEnd + 4) * sin;
-  const anchor = cos >= 0 ? "start" : "end";
-  return (
-    <g>
-      <line x1={cx + lineStart * cos} y1={cy + lineStart * sin} x2={cx + lineEnd * cos} y2={cy + lineEnd * sin} stroke="#94A3B8" strokeWidth={1} />
-      <text x={textX} y={textY - 6} textAnchor={anchor} fill="#334155" fontSize={11} fontWeight={600}>{name}</text>
-      <text x={textX} y={textY + 7} textAnchor={anchor} fill="#6366F1" fontSize={12} fontWeight={700}>
-        {value.toLocaleString()} <tspan fill="#94A3B8" fontSize={10} fontWeight={500}>({pct}%)</tspan>
-      </text>
-    </g>
-  );
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 10_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toLocaleString();
 }
 
 export function CareerCardChart({
@@ -52,63 +37,87 @@ export function CareerCardChart({
 
   const denom = Math.max(uol + other, 1);
 
-  const pieData = [
-    { name: "UOL", value: uol, pct: Math.round((uol / denom) * 100), color: UOL_COLOR },
-    { name: "Other", value: other, pct: Math.round((other / denom) * 100), color: OTHER_COLOR },
-  ].filter((d) => d.value > 0);
-
-  const rows = [
+  const chartData = [
     { label: "UOL", value: uol, pct: Math.round((uol / denom) * 100), color: UOL_COLOR },
     { label: "Other", value: other, pct: Math.round((other / denom) * 100), color: OTHER_COLOR },
   ];
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-2">
-      <div className="w-full" style={{ height: 88 }}>
+      {/* Vertical bar chart — UOL vs Other */}
+      <div className="w-full" style={{ height: 100 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart margin={{ top: 6, right: 40, bottom: 6, left: 40 }}>
-            <Pie
-              data={pieData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={24}
-              outerRadius={40}
-              paddingAngle={3}
-              stroke="none"
-              labelLine={false}
-              label={(props) => {
-                const slice = pieData[props.index];
-                return (
-                  <OutsideLabel
-                    cx={props.cx}
-                    cy={props.cy}
-                    midAngle={props.midAngle}
-                    outerRadius={props.outerRadius}
-                    name={props.name}
-                    value={slice?.value ?? 0}
-                    pct={slice?.pct ?? 0}
-                  />
-                );
-              }}
-            >
-              {pieData.map((entry, i) => (
-                <Cell key={`${entry.name}-${i}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E2E8F0" }}
-              formatter={(value: number, name: string) => [value.toLocaleString(), name]}
+          <BarChart
+            data={chartData}
+            margin={{ top: 18, right: 6, bottom: 0, left: 6 }}
+            barCategoryGap="30%"
+            maxBarSize={36}
+          >
+            <defs>
+              <linearGradient id="jobs-uol-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#818CF8" />
+                <stop offset="100%" stopColor="#6366F1" />
+              </linearGradient>
+              <linearGradient id="jobs-other-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#2DD4BF" />
+                <stop offset="100%" stopColor="#14B8A6" />
+              </linearGradient>
+            </defs>
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 10, fill: "#64748B" }}
+              axisLine={false}
+              tickLine={false}
+              interval={0}
             />
-          </PieChart>
+            <YAxis hide />
+            <Tooltip
+              cursor={{ fill: "rgba(99,102,241,0.06)" }}
+              contentStyle={{
+                fontSize: 11,
+                borderRadius: 8,
+                border: "1px solid #E2E8F0",
+                background: "#fff",
+              }}
+              formatter={(value: number, name: string, entry: { payload?: { pct?: number } }) => [
+                `${value.toLocaleString()} jobs (${entry?.payload?.pct ?? 0}%)`,
+                name,
+              ]}
+            />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive>
+              {chartData.map((entry, i) => (
+                <Cell
+                  key={entry.label}
+                  fill={i === 0 ? "url(#jobs-uol-grad)" : "url(#jobs-other-grad)"}
+                />
+              ))}
+              <LabelList
+                dataKey="value"
+                position="top"
+                formatter={formatCompact}
+                style={{ fontSize: 10, fontWeight: 700, fill: "#334155" }}
+              />
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 px-0.5">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: UOL_COLOR }} />
+          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">UOL</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: OTHER_COLOR }} />
+          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Other</span>
+        </span>
       </div>
 
       <div className="shrink-0 border-t border-slate-100 dark:border-slate-800" />
 
       <div className="flex min-w-0 w-full flex-col gap-1.5">
-        {rows.map((row) => (
+        {chartData.map((row) => (
           <div key={row.label} className="flex items-center gap-2">
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.value > 0 ? row.color : "#CBD5E1" }} />
             <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-slate-700 dark:text-slate-300">{row.label}</p>

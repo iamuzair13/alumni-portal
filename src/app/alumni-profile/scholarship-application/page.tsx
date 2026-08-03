@@ -966,14 +966,12 @@ function ScholarshipApplicationContent() {
                                 : "No tier matches your CGPA"}
                             </p>
                           </div>
-                          {isHighAchiever && (
-                            <div>
-                              <span className="text-gray-600">High Achiever Discount ({alumniMedal})</span>
-                              <p className="font-semibold text-green-700">
-                                {formatDiscountPercentDisplay(highAchieverPercent!)}
-                              </p>
-                            </div>
-                          )}
+                          <div>
+                            <span className="text-gray-600">High Achiever Discount{alumniMedal ? ` (${alumniMedal})` : ""}</span>
+                            <p className={`font-semibold ${isHighAchiever ? "text-green-700" : "text-gray-500"}`}>
+                              {isHighAchiever ? formatDiscountPercentDisplay(highAchieverPercent!) : "0%"}
+                            </p>
+                          </div>
                           {applicableDiscountPercent != null && (
                             <div>
                               <span className="text-gray-600">Total Tuition Fee Discount</span>
@@ -1016,14 +1014,12 @@ function ScholarshipApplicationContent() {
                                 : "No tier matches your CGPA"}
                             </p>
                           </div>
-                          {isHighAchiever && (
-                            <div>
-                              <span className="text-gray-600">High Achiever Discount ({alumniMedal})</span>
-                              <p className="font-semibold text-green-700">
-                                {formatDiscountPercentDisplay(highAchieverPercent!)}
-                              </p>
-                            </div>
-                          )}
+                          <div>
+                            <span className="text-gray-600">High Achiever Discount{alumniMedal ? ` (${alumniMedal})` : ""}</span>
+                            <p className={`font-semibold ${isHighAchiever ? "text-green-700" : "text-gray-500"}`}>
+                              {isHighAchiever ? formatDiscountPercentDisplay(highAchieverPercent!) : "0%"}
+                            </p>
+                          </div>
                           {applicableDiscountPercent != null && (
                             <div>
                               <span className="text-gray-600">Total Tution Fee Discount</span>

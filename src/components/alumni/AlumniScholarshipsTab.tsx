@@ -49,7 +49,7 @@ type ScholarshipResponse = {
     pending: number;
     approved: number;
     notApproved: number;
-    invalid: number;
+    notApplicable: number;
   };
 };
 
@@ -132,14 +132,14 @@ async function getAlumniScholarships(
 type SortKey = "sapid" | "name" | "faculty" | "department" | "program" | "createdAt" | "applyFor";
 type SortDir = "asc" | "desc";
 
-type StatusTabKey = "all" | "pending" | "approved" | "notApproved" | "invalid";
+type StatusTabKey = "all" | "pending" | "approved" | "notApproved" | "notApplicable";
 
 const STATUS_TABS: { key: StatusTabKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "pending", label: "Pending" },
   { key: "approved", label: "Approved" },
   { key: "notApproved", label: "Not Approved" },
-  { key: "invalid", label: "Invalid" },
+  { key: "notApplicable", label: "Not Applicable" },
 ];
 
 export const AlumniScholarshipsTab: React.FC = () => {
@@ -153,7 +153,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
   const [openActionMenuId, setOpenActionMenuId] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<StatusTabKey>("all");
   const [pendingAction, setPendingAction] = useState<{
-    type: "approve" | "unapprove" | "delete" | "invalid";
+    type: "approve" | "unapprove" | "delete" | "notApplicable";
     alumniId: number;
     name: string;
     reason?: string;
@@ -194,8 +194,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
           ? undefined
           : selectedStatus === "notApproved"
           ? "not-approved"
-          : selectedStatus === "invalid"
-          ? "invalid"
+          : selectedStatus === "notApplicable"
+          ? "not-applicable"
           : selectedStatus
       ),
     staleTime: 2 * 60 * 1000,
@@ -214,9 +214,9 @@ export const AlumniScholarshipsTab: React.FC = () => {
     const pending = data?.counts?.pending ?? 0;
     const approved = data?.counts?.approved ?? 0;
     const notApproved = data?.counts?.notApproved ?? 0;
-    const invalid = data?.counts?.invalid ?? 0;
-    const all = pending + approved + notApproved + invalid;
-    return { all, pending, approved, notApproved, invalid };
+    const notApplicable = data?.counts?.notApplicable ?? 0;
+    const all = pending + approved + notApproved + notApplicable;
+    return { all, pending, approved, notApproved, notApplicable };
   }, [data]);
 
   const sortedItems = useMemo(() => {
@@ -397,19 +397,19 @@ export const AlumniScholarshipsTab: React.FC = () => {
     }
   }, [startMut, stopMut, queryClient]);
 
-  const handleInvalid = useCallback(async (alumniId: number): Promise<void> => {
+  const handleNotApplicable = useCallback(async (alumniId: number): Promise<void> => {
     startMut(alumniId);
     try {
       const res = await fetch(`/api/alumni/scholarships/${alumniId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "invalid" }),
+        body: JSON.stringify({ status: "not-applicable" }),
       });
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: `Failed to mark invalid: ${res.status}` }));
-        throw new Error(errorData.error || `Failed to mark invalid: ${res.status}`);
+        const errorData = await res.json().catch(() => ({ error: `Failed to mark not applicable: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to mark not applicable: ${res.status}`);
       }
-      toast.success("Scholarship application marked as invalid.");
+      toast.success("Scholarship application marked as not applicable.");
       queryClient.invalidateQueries({ queryKey: ["alumni-scholarships"] });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -450,8 +450,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
         await handleApprove(alumniId);
       } else if (type === "delete") {
         await handleDelete(alumniId);
-      } else if (type === "invalid") {
-        await handleInvalid(alumniId);
+      } else if (type === "notApplicable") {
+        await handleNotApplicable(alumniId);
       } else {
         await handleUnapprove(alumniId, rejectionReason.trim() || undefined);
       }
@@ -462,7 +462,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
       // Error already handled in handleApprove/handleUnapprove/handleDelete
 
     }
-  }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove, handleDelete, handleInvalid]);
+  }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove, handleDelete, handleNotApplicable]);
 
   const handleConfirmClick = useCallback(async () => {
     if (!pendingAction) return;
@@ -614,8 +614,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 ? statusCounts.pending
                 : tab.key === "approved"
                 ? statusCounts.approved
-                : tab.key === "invalid"
-                ? statusCounts.invalid
+                : tab.key === "notApplicable"
+                ? statusCounts.notApplicable
                 : statusCounts.notApproved;
             const isSelected = selectedStatus === tab.key;
             return (
@@ -891,8 +891,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                                 : item.status === "not-approved"
                                 ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
-                                : item.status === "invalid"
-                                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                                : item.status === "not-applicable"
+                                ? "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300"
                                 : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                             }`}
                           >
@@ -900,8 +900,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                               ? "Approved"
                               : item.status === "not-approved"
                               ? "Not Approved"
-                              : item.status === "invalid"
-                              ? "Invalid"
+                              : item.status === "not-applicable"
+                              ? "Not Applicable"
                               : "Pending"}
                           </span>
                           {item.status === "not-approved" && item.rejectionReason && (
@@ -931,8 +931,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 setPendingAction({ type: "unapprove", alumniId: item.alumniId, name: item.name });
                                 confirmModal.openModal();
                               }}
-                              onInvalid={() => {
-                                setPendingAction({ type: "invalid", alumniId: item.alumniId, name: item.name });
+                              onNotApplicable={() => {
+                                setPendingAction({ type: "notApplicable", alumniId: item.alumniId, name: item.name });
                                 confirmModal.openModal();
                               }}
                               onDelete={() => {
@@ -1022,15 +1022,15 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 <CheckLineIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400 dark:text-emerald-400" />
               ) : pendingAction.type === "delete" ? (
                 <TrashBinIcon className="h-6 w-6 text-red-600 dark:text-red-400 dark:text-red-400" />
-              ) : pendingAction.type === "invalid" ? (
-                <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              ) : pendingAction.type === "notApplicable" ? (
+                <svg className="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                 </svg>
               ) : (
                 <CloseLineIcon className="h-6 w-6 text-rose-600 dark:text-rose-400 dark:text-rose-400" />
               )}
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">
-                {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : pendingAction.type === "invalid" ? "Mark Application as Invalid" : "Not Approve Application"}
+                {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : pendingAction.type === "notApplicable" ? "Mark Application as Not Applicable" : "Not Approve Application"}
               </h3>
             </div>
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
@@ -1038,8 +1038,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 <>Are you sure you want to approve the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong>?</>
               ) : pendingAction.type === "delete" ? (
                 <>Are you sure you want to delete the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong>? This action cannot be undone.</>
-              ) : pendingAction.type === "invalid" ? (
-                <>Are you sure you want to mark the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong> as invalid?</>
+              ) : pendingAction.type === "notApplicable" ? (
+                <>Are you sure you want to mark the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong> as not applicable?</>
               ) : (
                 <>Are you sure you want to mark the scholarship application as not approved for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong>?</>
               )}
@@ -1064,7 +1064,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
               </div>
             )}
 
-            {pendingAction.type !== "delete" && pendingAction.type !== "invalid" && (
+            {pendingAction.type !== "delete" && pendingAction.type !== "notApplicable" && (
               <div className="mb-6">
                 {(() => {
                   const it = itemByAlumniId.get(pendingAction.alumniId);
@@ -1126,8 +1126,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                     ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
                     : pendingAction.type === "delete"
                     ? "bg-red-600 hover:bg-red-700 focus:ring-red-500"
-                    : pendingAction.type === "invalid"
-                    ? "bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                    : pendingAction.type === "notApplicable"
+                    ? "bg-gray-600 hover:bg-gray-700 focus:ring-gray-500"
                     : "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
                 }`}
               >
@@ -1137,7 +1137,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                     Processing...
                   </span>
                 ) : (
-                  pendingAction.type === "approve" ? "Approve" : pendingAction.type === "delete" ? "Delete" : pendingAction.type === "invalid" ? "Mark Invalid" : "Not Approve"
+                  pendingAction.type === "approve" ? "Approve" : pendingAction.type === "delete" ? "Delete" : pendingAction.type === "notApplicable" ? "Mark Not Applicable" : "Not Approve"
                 )}
               </button>
             </div>
@@ -1564,7 +1564,7 @@ function ScholarshipActionsDropdown({
   onViewApplication,
   onApprove,
   onUnapprove,
-  onInvalid,
+  onNotApplicable,
   onDelete,
 }: {
   item: ScholarshipItem;
@@ -1575,7 +1575,7 @@ function ScholarshipActionsDropdown({
   onViewApplication: () => void;
   onApprove: () => void;
   onUnapprove: () => void;
-  onInvalid: () => void;
+  onNotApplicable: () => void;
   onDelete: () => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -1674,20 +1674,20 @@ function ScholarshipActionsDropdown({
                   <span className="group-hover:text-amber-700 dark:group-hover:text-amber-300">Not Approve</span>
                 </button>
               )}
-              {status !== "invalid" && (
+              {status !== "not-applicable" && (
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    onInvalid();
+                    onNotApplicable();
                     onClose();
                   }}
-                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
                 >
-                  <svg className="h-4 w-4 text-red-400 group-hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="h-4 w-4 text-gray-400 group-hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                   </svg>
-                  <span className="group-hover:text-red-600 dark:group-hover:text-red-400">Invalid</span>
+                  <span className="group-hover:text-gray-700 dark:group-hover:text-gray-300">Not Applicable</span>
                 </button>
               )}
 

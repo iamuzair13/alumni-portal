@@ -1,7 +1,15 @@
 "use client";
 
 import React from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  Bar,
+  BarChart,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { ChartEmpty } from "./ChartEmpty";
 
 const COLORS = {
@@ -9,34 +17,13 @@ const COLORS = {
   newsletters: "#14B8A6",
 };
 
-type OutsideLabelProps = {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  outerRadius: number;
-  name: string;
-  approved: number;
-  approvalPct: number;
-};
+const TOTAL_COLOR = "#C7D2FE";
+const APPROVED_COLOR = "#6366F1";
 
-function OutsideLabel({ cx, cy, midAngle, outerRadius, name, approved, approvalPct }: OutsideLabelProps) {
-  const RADIAN = Math.PI / 180;
-  const sin = Math.sin(-midAngle * RADIAN);
-  const cos = Math.cos(-midAngle * RADIAN);
-  const lineStart = outerRadius + 4;
-  const lineEnd = outerRadius + 18;
-  const textX = cx + (lineEnd + 4) * cos;
-  const textY = cy + (lineEnd + 4) * sin;
-  const anchor = cos >= 0 ? "start" : "end";
-  return (
-    <g>
-      <line x1={cx + lineStart * cos} y1={cy + lineStart * sin} x2={cx + lineEnd * cos} y2={cy + lineEnd * sin} stroke="#94A3B8" strokeWidth={1} />
-      <text x={textX} y={textY - 6} textAnchor={anchor} fill="#334155" fontSize={11} fontWeight={600}>{name}</text>
-      <text x={textX} y={textY + 7} textAnchor={anchor} fill="#6366F1" fontSize={12} fontWeight={700}>
-        {approved} <tspan fill="#94A3B8" fontSize={10} fontWeight={500}></tspan>
-      </text>
-    </g>
-  );
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 10_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toLocaleString();
 }
 
 export function PublicationsCardChart({
@@ -54,22 +41,20 @@ export function PublicationsCardChart({
     return <ChartEmpty height={96} variant="premium" message="No publications yet" />;
   }
 
-  const pieData = [
+  const chartData = [
     {
-      name: "Stories",
-      value: storiesTotal,
-      approved: storiesApproved,
+      label: "Stories",
+      Total: storiesTotal,
+      Approved: storiesApproved,
       approvalPct: storiesTotal > 0 ? Math.round((storiesApproved / storiesTotal) * 100) : 0,
-      color: COLORS.stories,
     },
     {
-      name: "Newsletters",
-      value: newsletters,
-      approved: newsletters,
+      label: "Newsletters",
+      Total: newsletters,
+      Approved: newsletters,
       approvalPct: 100,
-      color: COLORS.newsletters,
     },
-  ].filter((d) => d.value > 0);
+  ];
 
   const rows = [
     { label: "Success Stories", approved: storiesApproved, total: storiesTotal, color: COLORS.stories },
@@ -78,48 +63,80 @@ export function PublicationsCardChart({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-2">
-      <div className="w-full" style={{ height: 88 }}>
+      {/* Grouped vertical bar chart — Total vs Approved */}
+      <div className="w-full" style={{ height: 100 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart margin={{ top: 6, right: 40, bottom: 6, left: 40 }}>
-            <Pie
-              data={pieData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={24}
-              outerRadius={40}
-              paddingAngle={3}
-              stroke="none"
-              labelLine={false}
-              label={(props) => {
-                const slice = pieData[props.index];
-                return (
-                  <OutsideLabel
-                    cx={props.cx}
-                    cy={props.cy}
-                    midAngle={props.midAngle}
-                    outerRadius={props.outerRadius}
-                    name={props.name}
-                    approved={slice?.approved ?? 0}
-                    approvalPct={slice?.approvalPct ?? 0}
-                  />
-                );
-              }}
-            >
-              {pieData.map((entry, i) => (
-                <Cell key={`${entry.name}-${i}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E2E8F0" }}
-              formatter={(value: number, name: string, entry: { payload?: { approved?: number; approvalPct?: number } }) => [
-                `${entry?.payload?.approved ?? 0} approved / ${value} total (${entry?.payload?.approvalPct ?? 0}%)`,
-                name,
-              ]}
+          <BarChart
+            data={chartData}
+            margin={{ top: 18, right: 6, bottom: 0, left: 6 }}
+            barCategoryGap="25%"
+            barGap={2}
+            maxBarSize={28}
+          >
+            <defs>
+              <linearGradient id="pub-total-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#C7D2FE" />
+                <stop offset="100%" stopColor="#A5B4FC" />
+              </linearGradient>
+              <linearGradient id="pub-approved-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#818CF8" />
+                <stop offset="100%" stopColor="#6366F1" />
+              </linearGradient>
+            </defs>
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 10, fill: "#64748B" }}
+              axisLine={false}
+              tickLine={false}
+              interval={0}
             />
-          </PieChart>
+            <YAxis hide />
+            <Tooltip
+              cursor={{ fill: "rgba(99,102,241,0.06)" }}
+              contentStyle={{
+                fontSize: 11,
+                borderRadius: 8,
+                border: "1px solid #E2E8F0",
+                background: "#fff",
+              }}
+              formatter={(value: number, name: string, entry: { payload?: { approvalPct?: number } }) => {
+                if (name === "Approved") {
+                  const pct = entry?.payload?.approvalPct ?? 0;
+                  return [`${value.toLocaleString()} approved (${pct}%)`, ""];
+                }
+                return [`${value.toLocaleString()} total`, ""];
+              }}
+            />
+            <Bar dataKey="Total" fill="url(#pub-total-grad)" radius={[3, 3, 0, 0]} isAnimationActive>
+              <LabelList
+                dataKey="Total"
+                position="top"
+                formatter={formatCompact}
+                style={{ fontSize: 9, fontWeight: 600, fill: "#94A3B8" }}
+              />
+            </Bar>
+            <Bar dataKey="Approved" fill="url(#pub-approved-grad)" radius={[3, 3, 0, 0]} isAnimationActive>
+              <LabelList
+                dataKey="Approved"
+                position="top"
+                formatter={formatCompact}
+                style={{ fontSize: 9, fontWeight: 700, fill: "#6366F1" }}
+              />
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 px-0.5">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: TOTAL_COLOR }} />
+          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Total</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: APPROVED_COLOR }} />
+          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Approved</span>
+        </span>
       </div>
 
       <div className="shrink-0 border-t border-slate-100 dark:border-slate-800" />

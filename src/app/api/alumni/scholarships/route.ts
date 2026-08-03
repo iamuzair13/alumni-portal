@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       `;
     }
 
-    // Optional status filter: pending, approved, not-approved, invalid
+    // Optional status filter: pending, approved, not-approved, not-applicable
     let statusCondition = sql``;
     if (statusFilter && statusFilter !== "all") {
       const normalized =
@@ -173,13 +173,13 @@ export async function GET(request: NextRequest) {
       pending: 0,
       approved: 0,
       notApproved: 0,
-      invalid: 0,
+      notApplicable: 0,
     };
     for (const row of countsRaw) {
       const s = row.status;
       if (s === "approved") counts.approved = Number(row.count || 0);
       else if (s === "not-approved" || s === "not approved") counts.notApproved = Number(row.count || 0);
-      else if (s === "invalid") counts.invalid = Number(row.count || 0);
+      else if (s === "not-applicable") counts.notApplicable = Number(row.count || 0);
       else counts.pending = counts.pending + Number(row.count || 0);
     }
 

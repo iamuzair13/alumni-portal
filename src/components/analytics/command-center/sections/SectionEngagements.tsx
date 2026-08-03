@@ -300,7 +300,7 @@ export function SectionEngagements({
 
             primaryValue={career.jobs.total}
 
-            secondaryLabel={shortQuarter ? `${shortQuarter}` : ""}
+            secondaryLabel=""
 
             masonrySize="lg"
 
@@ -342,9 +342,9 @@ export function SectionEngagements({
 
             primaryValue={meetups.events.total + meetups.meetups.total}
 
-            secondaryLabel={meetups.quarterLabel ? `${meetups.quarterLabel}` : ""}
+            secondaryLabel=""
 
-            masonrySize="md"
+            masonrySize="lg"
 
             chartFill
 

@@ -1,7 +1,16 @@
 "use client";
 
 import React from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { ChartEmpty } from "./ChartEmpty";
 
 export type ScholarshipCardRow = {
@@ -18,59 +27,13 @@ const SLICE_COLORS: Record<string, string> = {
 };
 const FALLBACK_COLORS = ["#6366F1", "#14B8A6", "#F59E0B", "#10B981", "#94A3B8"];
 
-type OutsideLabelProps = {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  outerRadius: number;
-  name: string;
-  approved: number;
-  approvalPct: number;
-};
+const APPLIED_COLOR = "#C7D2FE";
+const APPROVED_COLOR = "#6366F1";
 
-function OutsideLabel({ cx, cy, midAngle, outerRadius, name, approved, approvalPct }: OutsideLabelProps) {
-  const RADIAN = Math.PI / 180;
-  const sin = Math.sin(-midAngle * RADIAN);
-  const cos = Math.cos(-midAngle * RADIAN);
-
-  const lineStart = outerRadius + 4;
-  const lineEnd = outerRadius + 18;
-  const textX = cx + (lineEnd + 4) * cos;
-  const textY = cy + (lineEnd + 4) * sin;
-  const anchor = cos >= 0 ? "start" : "end";
-
-  return (
-    <g>
-      <line
-        x1={cx + lineStart * cos}
-        y1={cy + lineStart * sin}
-        x2={cx + lineEnd * cos}
-        y2={cy + lineEnd * sin}
-        stroke="#94A3B8"
-        strokeWidth={1}
-      />
-      <text
-        x={textX}
-        y={textY - 6}
-        textAnchor={anchor}
-        fill="#334155"
-        fontSize={11}
-        fontWeight={600}
-      >
-        {name}
-      </text>
-      <text
-        x={textX}
-        y={textY + 7}
-        textAnchor={anchor}
-        fill="#6366F1"
-        fontSize={12}
-        fontWeight={700}
-      >
-        {approved} <tspan fill="#94A3B8" fontSize={10} fontWeight={500}>({approvalPct}%)</tspan>
-      </text>
-    </g>
-  );
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 10_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toLocaleString();
 }
 
 export function ScholarshipsCardChart({
@@ -85,71 +48,99 @@ export function ScholarshipsCardChart({
   }
 
   const activeRows = rows.filter((r) => r.applied > 0 || r.approved > 0);
-  const pieData =
+  const chartData =
     activeRows.length > 0
-      ? activeRows.map((r, i) => ({
-          name: r.short || r.type,
+      ? activeRows.map((r) => ({
+          label: r.short || r.type,
           fullName: r.type,
-          value: r.applied,
-          approved: r.approved,
+          Applied: r.applied,
+          Approved: r.approved,
           approvalPct: r.applied > 0 ? Math.round((r.approved / r.applied) * 100) : 0,
-          color: SLICE_COLORS[r.type] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
         }))
-      : [{ name: "Approved", fullName: "Approved", value: total, approved: total, approvalPct: 100, color: "#6366F1" }];
-
-  const grandTotal = pieData.reduce((s, d) => s + d.value, 0);
+      : [{ label: "Approved", fullName: "Approved", Applied: 0, Approved: total, approvalPct: 100 }];
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-2">
-      {/* Donut — full width so outside labels have room on both sides */}
-      <div className="w-full" style={{ height: 88 }}>
+      {/* Grouped vertical bar chart — Applied vs Approved */}
+      <div className="w-full" style={{ height: 100 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart margin={{ top: 6, right: 40, bottom: 6, left: 40 }}>
-            <Pie
-              data={pieData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={24}
-              outerRadius={40}
-              paddingAngle={3}
-              stroke="none"
-              labelLine={false}
-              label={(props) => {
-                const slice = pieData[props.index];
-                return (
-                  <OutsideLabel
-                    cx={props.cx}
-                    cy={props.cy}
-                    midAngle={props.midAngle}
-                    outerRadius={props.outerRadius}
-                    name={props.name}
-                    approved={slice?.approved ?? 0}
-                    approvalPct={slice?.approvalPct ?? 0}
-                  />
-                );
-              }}
-            >
-              {pieData.map((entry, i) => (
-                <Cell key={`${entry.name}-${i}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E2E8F0" }}
-              formatter={(value: number, name: string, entry: { payload?: { approved?: number; approvalPct?: number } }) => [
-                `${entry?.payload?.approved ?? 0} approved / ${value} applied (${entry?.payload?.approvalPct ?? 0}%)`,
-                name,
-              ]}
+          <BarChart
+            data={chartData}
+            margin={{ top: 18, right: 6, bottom: 0, left: 6 }}
+            barCategoryGap="25%"
+            barGap={2}
+            maxBarSize={28}
+          >
+            <defs>
+              <linearGradient id="scholarship-applied-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#C7D2FE" />
+                <stop offset="100%" stopColor="#A5B4FC" />
+              </linearGradient>
+              <linearGradient id="scholarship-approved-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#818CF8" />
+                <stop offset="100%" stopColor="#6366F1" />
+              </linearGradient>
+            </defs>
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 10, fill: "#64748B" }}
+              axisLine={false}
+              tickLine={false}
+              interval={0}
             />
-          </PieChart>
+            <YAxis hide />
+            <Tooltip
+              cursor={{ fill: "rgba(99,102,241,0.06)" }}
+              contentStyle={{
+                fontSize: 11,
+                borderRadius: 8,
+                border: "1px solid #E2E8F0",
+                background: "#fff",
+              }}
+              formatter={(value: number, name: string, entry: { payload?: { approvalPct?: number; fullName?: string } }) => {
+                if (name === "Approved") {
+                  const pct = entry?.payload?.approvalPct ?? 0;
+                  return [`${value.toLocaleString()} approved (${pct}%)`, entry?.payload?.fullName ?? name];
+                }
+                return [`${value.toLocaleString()} applied`, entry?.payload?.fullName ?? name];
+              }}
+            />
+            <Bar dataKey="Applied" fill="url(#scholarship-applied-grad)" radius={[3, 3, 0, 0]} isAnimationActive>
+              <LabelList
+                dataKey="Applied"
+                position="top"
+                formatter={formatCompact}
+                style={{ fontSize: 9, fontWeight: 600, fill: "#94A3B8" }}
+              />
+            </Bar>
+            <Bar dataKey="Approved" fill="url(#scholarship-approved-grad)" radius={[3, 3, 0, 0]} isAnimationActive>
+              <LabelList
+                dataKey="Approved"
+                position="top"
+                formatter={formatCompact}
+                style={{ fontSize: 9, fontWeight: 700, fill: "#6366F1" }}
+              />
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 px-0.5">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: APPLIED_COLOR }} />
+          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Applied</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: APPROVED_COLOR }} />
+          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Approved</span>
+        </span>
       </div>
 
       {/* Divider */}
       <div className="shrink-0 border-t border-slate-100 dark:border-slate-800" />
 
-      {/* Breakdown list — unchanged labels */}
+      {/* Breakdown list */}
       <div className="flex min-w-0 w-full flex-col gap-1.5">
         {rows.map((row) => {
           const color = SLICE_COLORS[row.type] ?? "#94A3B8";
