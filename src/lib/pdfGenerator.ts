@@ -85,6 +85,8 @@ export interface ScholarshipLetterPDFData {
   sapCode: string;
   passingOutYear?: string | null;
   admissionApplicationRef?: string | null;
+  applicationYear?: string | null;
+  applicationTerm?: string | null;
   scholarshipApplicationPdfId?: string | null;
   discountType?: string | null;
   requestedProgramDegree?: string;
@@ -1023,6 +1025,10 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         form.drawFullRow("Application Date", data.dateFormatted);
       }
 
+      const yearDisplay = data.applicationYear || "—";
+      const termDisplay = data.applicationTerm || "—";
+      form.drawFieldPair("Year", yearDisplay, "Term", termDisplay);
+
       form.drawSection("a", "Alumni Details");
       form.drawFieldPair("Name", data.studentName, "Father's Name", data.fatherName);
       form.drawFieldPair("Date of Birth", data.dob, "CNIC", data.cnic);
@@ -1059,29 +1065,26 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           if (data.applyAdmissionFeeDiscount === true && fb.admissionFeeDiscount != null && fb.admissionFeeDiscount > 0) {
             form.drawFullRow("Admission Fee Discount (Standalone)", fb.admissionFeeDisplay);
           }
-          form.drawFullRow("Tuition Fee Discount", fb.tuitionFeeDisplay);
-          if (fb.highAchieverDiscount != null && fb.highAchieverDiscount > 0) {
-            form.drawFullRow(
-              `High Achiever Discount (${data.medal || "Medalist"})`,
-              fb.highAchieverDisplay,
-            );
-          }
-          form.drawFullRow("Total Tuition Fee Discount", fb.totalDisplay);
+          form.drawFieldPair(
+            "Tuition Fee Discount",
+            fb.tuitionFeeDisplay,
+            `High Achiever Discount (${data.medal || "Medalist"})`,
+            fb.highAchieverDiscount != null ? fb.highAchieverDisplay : "0%",
+          );
+          const totalFeeDiscount = (fb.tuitionFeeDiscount ?? 0) + (fb.highAchieverDiscount ?? 0);
+          form.drawFullRow("Total Tuition Fee Discount", `${totalFeeDiscount}%`);
         } else {
           if (data.applyAdmissionFeeDiscount === true && data.admissionFeePercent != null && data.admissionFeePercent > 0) {
             form.drawFullRow("Admission Fee Discount (Standalone)", `${data.admissionFeePercent}%`);
           }
-          form.drawFullRow("Tuition Fee Discount", data.tuitionFeePercent != null ? `${data.tuitionFeePercent}%` : "—");
-          if (data.highAchieverPercent != null && data.highAchieverPercent > 0) {
-            form.drawFullRow(
-              `High Achiever Discount (${data.medal || "Medalist"})`,
-              `${data.highAchieverPercent}%`,
-            );
-          }
-          const total = data.tuitionFeePercent != null && data.highAchieverPercent != null
-            ? data.tuitionFeePercent + data.highAchieverPercent
-            : data.tuitionFeePercent ?? data.highAchieverPercent ?? null;
-          form.drawFullRow("Total Tuition Fee Discount", total != null ? `${total}%` : "—");
+          form.drawFieldPair(
+            "Tuition Fee Discount",
+            data.tuitionFeePercent != null ? `${data.tuitionFeePercent}%` : "—",
+            `High Achiever Discount (${data.medal || "Medalist"})`,
+            data.highAchieverPercent != null ? `${data.highAchieverPercent}%` : "0%",
+          );
+          const totalFeeDiscount = (data.tuitionFeePercent ?? 0) + (data.highAchieverPercent ?? 0);
+          form.drawFullRow("Total Tuition Fee Discount", `${totalFeeDiscount}%`);
         }
         form.drawFullRow("Admission Reference No", data.admissionApplicationRef);
       } else {
@@ -1153,7 +1156,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           ];
       form.drawChecklistTable(docItems);
 
-      form.drawSignatureBlock("Reviewed By (ARO)", "Approved By (Competent Authority)");
+      form.drawSignatureBlock("Reviewed By (ARO)", "Approved By (Refer to attached approval from competent authority)");
       form.drawFooter();
       form.ensureSinglePage();
 

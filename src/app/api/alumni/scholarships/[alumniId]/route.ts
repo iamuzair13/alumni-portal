@@ -224,6 +224,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         asch.admission_application_ref,
         asch.grade_percent,
         asch.applied_discount_percent,
+        asch.application_year,
+        asch.application_term,
         a.alumniname,
         a.sapid,
         a.registrationno,
@@ -269,6 +271,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       admission_application_ref: string | null;
       grade_percent: string | null;
       applied_discount_percent: number | null;
+      application_year: number | null;
+      application_term: string | null;
       alumniname: string | null;
       sapid: string | null;
       registrationno: string | null;
@@ -532,6 +536,11 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       mastersAdmissionSummary,
       passingOutYear: passingOutYearDisplay,
       admissionApplicationRef: admissionRefDisplay,
+      applicationYear:
+        app.application_year != null && Number.isFinite(Number(app.application_year))
+          ? String(Number(app.application_year))
+          : null,
+      applicationTerm: String(app.application_term || "").trim() || null,
       scholarshipApplicationPdfId,
     };
 
@@ -565,6 +574,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         sapCode: applicationLetter.sapCode,
         passingOutYear: applicationLetter.passingOutYear,
         admissionApplicationRef: applicationLetter.admissionApplicationRef,
+        applicationYear: applicationLetter.applicationYear ?? null,
+        applicationTerm: applicationLetter.applicationTerm ?? null,
         scholarshipApplicationPdfId: applicationLetter.scholarshipApplicationPdfId ?? null,
         discountType: app.discount_type,
         requestedProgramDegree: applicationLetter.requestedProgramDegree,

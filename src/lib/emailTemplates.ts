@@ -540,13 +540,10 @@ export function generateAdminActionEmail(input: {
         Greetings from the UOL Alumni Community!
       </p>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
-        We are pleased to inform you that, following the review of your application, you have been selected for the position of <strong>{POSITION_TITLE}</strong> for the <strong>{ORG}</strong>.
+        We are pleased to inform you that, following the review of your application, you have been shortlisted as one of the potential candidates for the position of <strong>{POSITION_TITLE}</strong> for the <strong>{ORG}</strong>.
       </p>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
-        We kindly request you to confirm your consent and willingness to embrace this role. Your confirmation will enable us to formally approve your application and proceed with the next steps.
-      </p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
-        We are excited to welcome you to this new journey and look forward to working together to strengthen our alumni community, foster meaningful connections, and create greater opportunities for our alumni.
+        We kindly request you to confirm your consent and willingness to embrace this role. Your confirmation will enable us to further process/review your application and take your application forward for the final Alumni Board Approval.
       </p>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
         Please confirm your acceptance of this role by selecting Yes. If you do not wish to accept the position, please select No.

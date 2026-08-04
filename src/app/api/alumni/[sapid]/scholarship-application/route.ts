@@ -50,6 +50,8 @@ type Payload = {
   tuitionFeePercent?: number | string | null;
   highAchieverPercent?: number | string | null;
   applyAdmissionFeeDiscount?: boolean | string | null;
+  applicationYear?: number | string | null;
+  applicationTerm?: string | null;
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -143,6 +145,8 @@ export async function POST(
       null;
     let admissionApplicationRef: string | null = null;
     let gradePercent: string | null = null;
+    let applicationYear: number | null = null;
+    let applicationTerm: string | null = null;
     let clientAppliedPercent: number | null = null;
     let clientAdmissionFeePercent: number | null = null;
     let clientTuitionFeePercent: number | null = null;
@@ -158,6 +162,13 @@ export async function POST(
       applyingFor = String(formData.get("applyingFor") || "").trim();
       degreeTitle = String(formData.get("degreeTitle") || "").trim();
       gradePercent = normalizeGradePercent(formData.get("gradePercent"));
+      const rawYear = formData.get("applicationYear");
+      if (rawYear != null && String(rawYear).trim() !== "") {
+        const y = Number(rawYear);
+        if (Number.isFinite(y) && y > 0) applicationYear = Math.trunc(y);
+      }
+      const rawTerm = String(formData.get("applicationTerm") || "").trim();
+      if (rawTerm) applicationTerm = rawTerm;
       const rawPct = formData.get("appliedDiscountPercent");
       if (rawPct != null && String(rawPct).trim() !== "") {
         const n = Number(rawPct);
@@ -313,6 +324,12 @@ export async function POST(
       applyingFor = String(payload.applyingFor || "").trim();
       degreeTitle = String(payload.degreeTitle || "").trim();
       gradePercent = normalizeGradePercent(payload.gradePercent);
+      if (payload.applicationYear != null && payload.applicationYear !== "") {
+        const y = Number(payload.applicationYear);
+        if (Number.isFinite(y) && y > 0) applicationYear = Math.trunc(y);
+      }
+      const termVal = String(payload.applicationTerm || "").trim();
+      if (termVal) applicationTerm = termVal;
       if (payload.appliedDiscountPercent != null && payload.appliedDiscountPercent !== "") {
         const n = Number(payload.appliedDiscountPercent);
         if (Number.isFinite(n)) clientAppliedPercent = n;
@@ -630,6 +647,8 @@ export async function POST(
         admission_application_ref,
         grade_percent,
         applied_discount_percent,
+        application_year,
+        application_term,
         status
       ) VALUES (
         ${alumni.alumniid},
@@ -646,6 +665,8 @@ export async function POST(
         ${admissionApplicationRef},
         ${gradePercent},
         ${appliedDiscountPercent},
+        ${applicationYear},
+        ${applicationTerm},
         'pending'
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -662,6 +683,8 @@ export async function POST(
         admission_application_ref = EXCLUDED.admission_application_ref,
         grade_percent = EXCLUDED.grade_percent,
         applied_discount_percent = EXCLUDED.applied_discount_percent,
+        application_year = EXCLUDED.application_year,
+        application_term = EXCLUDED.application_term,
         status = 'pending',
         reason = NULL
     `;

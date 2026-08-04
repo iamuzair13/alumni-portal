@@ -210,6 +210,10 @@ function ScholarshipApplicationContent() {
   const [admissionApplicationRef, setAdmissionApplicationRef] = useState("");
   /** Optional marks % for Educational Record (stored on scholarship application, not profile). */
   const [gradePercent, setGradePercent] = useState("");
+  /** Scholarship application year (starts from 2026, future years generated dynamically). */
+  const [applicationYear, setApplicationYear] = useState<string>("");
+  /** Scholarship application term (Summer / Spring). */
+  const [applicationTerm, setApplicationTerm] = useState<string>("");
 
   // Declaration
   const [mastersDeclarationAccepted, setMastersDeclarationAccepted] = useState(false);
@@ -361,12 +365,46 @@ function ScholarshipApplicationContent() {
     { value: "A Levels", label: "A Levels" },
   ];
 
+  // Scholarship application year options: start from 2026 and extend 5 years beyond the current year.
+  const SCHOLARSHIP_APPLICATION_YEAR_START = 2026;
+  const applicationYearOptions = (() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const endYear = Math.max(currentYear + 5, SCHOLARSHIP_APPLICATION_YEAR_START + 5);
+    const years: number[] = [];
+    for (let y = SCHOLARSHIP_APPLICATION_YEAR_START; y <= endYear; y++) {
+      years.push(y);
+    }
+    return years;
+  })();
+
+  const applicationTermOptions = [
+    { value: "Summer", label: "Summer" },
+    { value: "Spring", label: "Spring" },
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (profileCgpa == null) {
       toast.error("Please add your CGPA in your alumni profile before applying.", {
         duration: 5000,
+        style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
+      });
+      return;
+    }
+
+    if (!applicationYear) {
+      toast.error("Please select the application Year.", {
+        duration: 4000,
+        style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
+      });
+      return;
+    }
+
+    if (!applicationTerm) {
+      toast.error("Please select the application Term.", {
+        duration: 4000,
         style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
       });
       return;
@@ -613,6 +651,8 @@ function ScholarshipApplicationContent() {
               if (gradePercent.trim()) {
                 fd.set("gradePercent", gradePercent.trim());
               }
+              fd.set("applicationYear", applicationYear);
+              fd.set("applicationTerm", applicationTerm);
 
               return fetch(url, { method: "POST", body: fd });
             })()
@@ -655,6 +695,8 @@ function ScholarshipApplicationContent() {
               if (gradePercent.trim()) {
                 fd.set("gradePercent", gradePercent.trim());
               }
+              fd.set("applicationYear", applicationYear);
+              fd.set("applicationTerm", applicationTerm);
               return fetch(url, { method: "POST", body: fd });
             })()
           : await fetch(url, {
@@ -674,6 +716,8 @@ function ScholarshipApplicationContent() {
                 kinshipCnic: formData.kinshipCnic || null,
                 fatherCnic: formData.fatherCnic || null,
                 gradePercent: gradePercent.trim() || null,
+                applicationYear: applicationYear || null,
+                applicationTerm: applicationTerm || null,
               }),
             });
 
@@ -932,6 +976,46 @@ function ScholarshipApplicationContent() {
                       {categoriesLoading ? "Loading categories..." : "Select discount category"}
                     </option>
                     {SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="applicationYear" className="mb-2 text-sm text-slate-900 font-medium block">
+                    Year <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="applicationYear"
+                    value={applicationYear}
+                    onChange={(e) => setApplicationYear(e.target.value)}
+                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                    required
+                  >
+                    <option value="">Select year</option>
+                    {applicationYearOptions.map((y) => (
+                      <option key={y} value={String(y)}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="applicationTerm" className="mb-2 text-sm text-slate-900 font-medium block">
+                    Term <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="applicationTerm"
+                    value={applicationTerm}
+                    onChange={(e) => setApplicationTerm(e.target.value)}
+                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                    required
+                  >
+                    <option value="">Select term</option>
+                    {applicationTermOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>

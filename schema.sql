@@ -86,6 +86,12 @@ ALTER TABLE IF EXISTS public.alumni_scholarships
 ALTER TABLE IF EXISTS public.alumni_scholarships
     ADD COLUMN IF NOT EXISTS applied_discount_percent numeric(5, 2);
 
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS application_year integer;
+
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS application_term text COLLATE pg_catalog."default";
+
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.alumni_scholarships
