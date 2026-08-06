@@ -211,7 +211,7 @@ function ScholarshipApplicationContent() {
   const [gradePercent, setGradePercent] = useState("");
   /** Scholarship application year (starts from 2026, future years generated dynamically). */
   const [applicationYear, setApplicationYear] = useState<string>("");
-  /** Scholarship application term (Summer / Spring). */
+  /** Scholarship application term (Fall / Spring). */
   const [applicationTerm, setApplicationTerm] = useState<string>("");
 
   // Declaration
@@ -378,7 +378,7 @@ function ScholarshipApplicationContent() {
   })();
 
   const applicationTermOptions = [
-    { value: "Summer", label: "Summer" },
+    { value: "Fall", label: "Fall" },
     { value: "Spring", label: "Spring" },
   ];
 
