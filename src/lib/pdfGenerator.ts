@@ -110,13 +110,15 @@ export interface ScholarshipLetterPDFData {
     kinLastDegreeCertificate?: string;
     kinPassingOutYear?: string;
   };
+  withdrawnAt?: string | null;
+  withdrawnBy?: string | null;
+  withdrawalReason?: string | null;
 }
 
 export interface MembershipFormPDFData {
   facilityType: "gym" | "pool" | "cricket";
   headerTitle: string;
   dateFormatted: string;
-  applicationRef: string | null;
   studentName: string;
   fatherName: string;
   dob: string;
@@ -157,6 +159,9 @@ export interface MembershipFormPDFData {
   originalAmount?: number | null;
   discountPercent?: number | null;
   discountBasis?: string | null;
+  withdrawnAt?: string | null;
+  withdrawnBy?: string | null;
+  withdrawalReason?: string | null;
 }
 
 export interface UpskillApplicationData {
@@ -823,6 +828,34 @@ function createApplicationFormRenderer(
 
   const remaining = () => contentBottom - y;
 
+  const drawWithdrawalNotice = (info: { withdrawnAt?: string | null; withdrawnBy?: string | null; withdrawalReason?: string | null }) => {
+    if (!info.withdrawnAt && !info.withdrawalReason) return;
+    drawSection("!", "Withdrawal Notice");
+    doc.setFillColor(254, 242, 242);
+    doc.rect(m, y, W, 14, "F");
+    doc.setDrawColor(...THEME.colors.border);
+    doc.setLineWidth(0.1);
+    doc.rect(m, y, W, 14, "S");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontSmall);
+    doc.setTextColor(185, 28, 28);
+    doc.text("This application has been WITHDRAWN.", m + 2, y + 5);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(metrics.fontTiny);
+    doc.setTextColor(...THEME.colors.text);
+    if (info.withdrawnAt) {
+      doc.text(`Withdrawal Date: ${info.withdrawnAt}`, m + 2, y + 8.5);
+    }
+    if (info.withdrawnBy) {
+      doc.text(`Withdrawn By: ${info.withdrawnBy}`, m + 2, y + 11);
+    }
+    if (info.withdrawalReason) {
+      const reasonLines = doc.splitTextToSize(`Reason: ${info.withdrawalReason}`, W - 4);
+      doc.text(reasonLines, m + 2, y + 13.5);
+    }
+    y += 16;
+  };
+
   return {
     m,
     W,
@@ -846,6 +879,7 @@ function createApplicationFormRenderer(
     drawMembershipSignatures,
     drawFooter,
     ensureSinglePage,
+    drawWithdrawalNotice,
   };
 }
 
@@ -1048,7 +1082,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         form.drawFieldPair("Applicable Discount", data.requestedDiscount, "Applying For", data.applyingFor);
         if (data.highAchieverPercent != null && data.highAchieverPercent > 0) {
           form.drawFullRow(
-            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `High Achiever Discount`,
             `${data.highAchieverPercent}%`,
           );
         }
@@ -1068,7 +1102,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           form.drawFieldPair(
             "Tuition Fee Discount",
             fb.tuitionFeeDisplay,
-            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `High Achiever Discount `,
             fb.highAchieverDiscount != null ? fb.highAchieverDisplay : "0%",
           );
           const totalFeeDiscount = (fb.tuitionFeeDiscount ?? 0) + (fb.highAchieverDiscount ?? 0);
@@ -1080,7 +1114,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           form.drawFieldPair(
             "Tuition Fee Discount",
             data.tuitionFeePercent != null ? `${data.tuitionFeePercent}%` : "—",
-            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `High Achiever Discount `,
             data.highAchieverPercent != null ? `${data.highAchieverPercent}%` : "0%",
           );
           const totalFeeDiscount = (data.tuitionFeePercent ?? 0) + (data.highAchieverPercent ?? 0);
@@ -1096,7 +1130,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         );
         if (data.highAchieverPercent != null && data.highAchieverPercent > 0) {
           form.drawFullRow(
-            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `High Achiever Discount`,
             `${data.highAchieverPercent}%`,
           );
         }
@@ -1156,6 +1190,11 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           ];
       form.drawChecklistTable(docItems);
 
+      form.drawWithdrawalNotice({
+        withdrawnAt: data.withdrawnAt,
+        withdrawnBy: data.withdrawnBy,
+        withdrawalReason: data.withdrawalReason,
+      });
       form.drawSignatureBlock("Reviewed By (ARO)", "Approved By (Refer to attached approval from competent authority)");
       form.drawFooter();
       form.ensureSinglePage();
@@ -1310,12 +1349,7 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       form.drawHeader(data.headerTitle);
       form.drawFormBodyStart();
 
-      const appRef = String(data.applicationRef || "").trim();
-      if (appRef) {
-        form.drawFieldPair("Application Date", data.dateFormatted, "Application ID", appRef);
-      } else {
-        form.drawFullRow("Application Date", data.dateFormatted);
-      }
+      form.drawFullRow("Application Date", data.dateFormatted);
 
       form.drawSection("A", "Alumni Personal Details");
       form.drawFieldPair("Name", data.studentName, "Father's Name", data.fatherName);
@@ -1394,6 +1428,11 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFullRow("Note : ", "Any revision in the membership fee after this month will be communicated by the gym manager.")
       }
 
+      form.drawWithdrawalNotice({
+        withdrawnAt: data.withdrawnAt,
+        withdrawnBy: data.withdrawnBy,
+        withdrawalReason: data.withdrawalReason,
+      });
       form.drawMembershipSignatures("Reviewed By (ARO)", "1. Approved By (ARO)", "2. Approved By (Facility Manager )");
       form.drawFooter();
       form.ensureSinglePage();

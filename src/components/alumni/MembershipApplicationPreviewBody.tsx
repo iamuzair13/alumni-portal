@@ -75,12 +75,6 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
                   {application.studentName || "-"}
                 </span>
               </div>
-              {application.applicationRef && (
-                <div className="mt-1 text-sm text-slate-600 dark:text-gray-300">
-                  Application ID:{" "}
-                  <span className="font-semibold">{application.applicationRef}</span>
-                </div>
-              )}
             </div>
             <div className="text-sm text-slate-700 whitespace-nowrap dark:text-gray-300">
               Date: <span className="font-semibold">{application.dateFormatted}</span>
@@ -176,6 +170,24 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
                 </table>
               </div>
             </div>
+            {application.withdrawnAt && (
+              <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-800 dark:bg-orange-900/20">
+                <div className="text-sm font-bold text-orange-800 dark:text-orange-300">
+                  This application has been WITHDRAWN
+                </div>
+                <div className="mt-1 text-xs text-orange-700 dark:text-orange-400 space-y-0.5">
+                  {application.withdrawnAt && (
+                    <div>Withdrawal Date: {application.withdrawnAt}</div>
+                  )}
+                  {application.withdrawnBy && (
+                    <div>Withdrawn By: {application.withdrawnBy}</div>
+                  )}
+                  {application.withdrawalReason && (
+                    <div>Reason: {application.withdrawalReason}</div>
+                  )}
+                </div>
+              </div>
+            )}
             {application.declarationText ? (
               <div className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700">
                 <div className="bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 dark:bg-gray-800 dark:text-gray-100">

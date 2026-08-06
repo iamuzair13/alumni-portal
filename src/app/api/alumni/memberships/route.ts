@@ -20,12 +20,14 @@ type RawRow = {
   swimmingpool_membership_month: string | null;
   cricket_membership_month: string | null;
   facility_type: string | null;
-  application_ref: string | null;
   membership_type: string | null;
   membership_start_date: string | null;
   preferred_timing: string | null;
   status: string | null;
   reason: string | null;
+  withdrawn_at: string | null;
+  withdrawn_by: string | null;
+  withdrawal_reason: string | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -95,12 +97,14 @@ export async function GET(request: NextRequest) {
         am.swimmingpool_membership_month,
         am.cricket_membership_month,
         am.facility_type,
-        am.application_ref,
         am.membership_type,
         am.membership_start_date,
         am.preferred_timing,
         COALESCE(am.status, 'pending') AS status,
-        am.reason
+        am.reason,
+        am.withdrawn_at,
+        am.withdrawn_by,
+        am.withdrawal_reason
       FROM public.alumni_memberships am
       JOIN public.tbl_alumni a ON a.alumniid = am.alumniid
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -131,12 +135,14 @@ export async function GET(request: NextRequest) {
       swimmingPoolMembershipMonth: r.swimmingpool_membership_month ?? null,
       cricketMembershipMonth: r.cricket_membership_month ?? null,
       facilityType: r.facility_type ?? null,
-      applicationRef: r.application_ref ?? null,
       membershipType: r.membership_type ?? null,
       membershipStartDate: r.membership_start_date ?? null,
       preferredTiming: r.preferred_timing ?? null,
       status: (r.status ?? "pending").toLowerCase(),
       rejectionReason: r.reason ?? null,
+      withdrawnAt: r.withdrawn_at ?? null,
+      withdrawnBy: r.withdrawn_by ?? null,
+      withdrawalReason: r.withdrawal_reason ?? null,
     }));
 
     // Compute status counts (pending, approved, not-approved) across all filtered records
@@ -154,6 +160,7 @@ export async function GET(request: NextRequest) {
       pending: 0,
       approved: 0,
       notApproved: 0,
+      withdrawn: 0,
     };
 
     for (const row of countsRows as any[]) {
@@ -163,6 +170,8 @@ export async function GET(request: NextRequest) {
         counts.approved = count;
       } else if (status === "not-approved") {
         counts.notApproved = count;
+      } else if (status === "withdrawn") {
+        counts.withdrawn = count;
       } else {
         counts.pending += count;
       }

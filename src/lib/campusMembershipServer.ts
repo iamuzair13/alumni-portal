@@ -47,26 +47,6 @@ export type CampusMembershipSubmitBody = {
   };
 };
 
-export async function generateMembershipApplicationRef(): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `AM-S-${year}-`;
-  const rows = await sql/* sql */`
-    SELECT application_ref
-    FROM public.alumni_memberships
-    WHERE application_ref LIKE ${prefix + "%"}
-    ORDER BY id DESC
-    LIMIT 1
-  `;
-  const last = rows[0]?.application_ref as string | undefined;
-  let seq = 1;
-  if (last) {
-    const part = last.slice(prefix.length);
-    const n = parseInt(part, 10);
-    if (Number.isFinite(n)) seq = n + 1;
-  }
-  return `${prefix}${String(seq).padStart(3, "0")}`;
-}
-
 export function buildApplicationDetails(
   facilityType: CampusFacilityType,
   body: CampusMembershipSubmitBody,
@@ -119,10 +99,9 @@ export async function insertCampusMembershipApplication(
   facilityType: CampusFacilityType,
   alumniId: number,
   body: CampusMembershipSubmitBody,
-): Promise<{ applicationRef: string }> {
+): Promise<void> {
   const config = CAMPUS_FACILITY_CONFIG[facilityType];
   const applicationDetails = buildApplicationDetails(facilityType, body);
-  const applicationRef = await generateMembershipApplicationRef();
   const monthLabel = formatMembershipMonthFromDate(body.membershipStartDate);
   const startDate = body.membershipStartDate.trim();
 
@@ -134,7 +113,6 @@ export async function insertCampusMembershipApplication(
     INSERT INTO public.alumni_memberships (
       alumniid,
       facility_type,
-      application_ref,
       discount_type,
       membership_type,
       membership_start_date,
@@ -149,7 +127,6 @@ export async function insertCampusMembershipApplication(
     VALUES (
       ${alumniId},
       ${facilityType},
-      ${applicationRef},
       ${config.discountType},
       ${body.membershipType.trim()},
       ${startDate}::date,
@@ -162,6 +139,4 @@ export async function insertCampusMembershipApplication(
       'pending'
     )
   `;
-
-  return { applicationRef };
 }

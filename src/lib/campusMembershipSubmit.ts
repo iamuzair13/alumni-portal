@@ -204,7 +204,7 @@ export async function handleCampusMembershipPost(
     },
   };
 
-  const { applicationRef } = await insertCampusMembershipApplication(facilityType, alum.alumniid, body);
+  await insertCampusMembershipApplication(facilityType, alum.alumniid, body);
 
   try {
     const alumniEmail = alum.personalemail || alum.officialemail || alum.universityemail;
@@ -240,6 +240,5 @@ export async function handleCampusMembershipPost(
   return NextResponse.json({
     success: true,
     message: `${facilityLabel} membership application submitted successfully`,
-    applicationRef,
   });
 }
