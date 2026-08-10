@@ -25,6 +25,9 @@ type RawRow = {
   discount_type: string | null;
   status: string | null;
   reason: string | null;
+  withdrawn_at: string | null;
+  withdrawn_by: string | null;
+  withdrawal_reason: string | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -106,7 +109,10 @@ export async function GET(request: NextRequest) {
         asch.degree_title,
         asch.discount_type,
         COALESCE(asch.status, 'pending') AS status,
-        asch.reason
+        asch.reason,
+        asch.withdrawn_at,
+        asch.withdrawn_by,
+        asch.withdrawal_reason
       FROM public.alumni_scholarships asch
       JOIN public.tbl_alumni a ON a.alumniid = asch.id
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -154,6 +160,9 @@ export async function GET(request: NextRequest) {
       discountType: r.discount_type ?? null,
       status: (r.status ?? "pending").toLowerCase(),
       rejectionReason: r.reason ?? null,
+      withdrawnAt: r.withdrawn_at ?? null,
+      withdrawnBy: r.withdrawn_by ?? null,
+      withdrawalReason: r.withdrawal_reason ?? null,
     };
     });
 
@@ -174,12 +183,14 @@ export async function GET(request: NextRequest) {
       approved: 0,
       notApproved: 0,
       notApplicable: 0,
+      withdrawn: 0,
     };
     for (const row of countsRaw) {
       const s = row.status;
       if (s === "approved") counts.approved = Number(row.count || 0);
       else if (s === "not-approved" || s === "not approved") counts.notApproved = Number(row.count || 0);
       else if (s === "not-applicable") counts.notApplicable = Number(row.count || 0);
+      else if (s === "withdrawn") counts.withdrawn = Number(row.count || 0);
       else counts.pending = counts.pending + Number(row.count || 0);
     }
 

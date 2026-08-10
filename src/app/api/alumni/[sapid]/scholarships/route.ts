@@ -76,7 +76,10 @@ export async function GET(
         degree_title,
         admission_application_ref,
         COALESCE(status, 'pending') AS status,
-        reason
+        reason,
+        withdrawn_at,
+        withdrawn_by,
+        withdrawal_reason
       FROM public.alumni_scholarships
       WHERE id = ${alumni.alumniid}
       ORDER BY created_at DESC
@@ -91,12 +94,14 @@ export async function GET(
         swimmingpool_membership_month,
         cricket_membership_month,
         facility_type,
-        application_ref,
         membership_type,
         membership_start_date,
         preferred_timing,
         COALESCE(status, 'pending') AS status,
-        reason
+        reason,
+        withdrawn_at,
+        withdrawn_by,
+        withdrawal_reason
       FROM public.alumni_memberships
       WHERE alumniid = ${alumni.alumniid}
       ORDER BY created_at DESC
@@ -115,6 +120,9 @@ export async function GET(
       admissionApplicationRef: app.admission_application_ref ?? null,
       status: (app.status ?? "pending").toLowerCase(),
       rejectionReason: app.reason ?? null,
+      withdrawnAt: app.withdrawn_at ? new Date(app.withdrawn_at).toISOString() : null,
+      withdrawnBy: app.withdrawn_by ?? null,
+      withdrawalReason: app.withdrawal_reason ?? null,
     }));
 
     const membershipItems = membershipApplications.map((app: any) => ({
@@ -125,12 +133,14 @@ export async function GET(
       swimmingPoolMembershipMonth: app.swimmingpool_membership_month ?? null,
       cricketMembershipMonth: app.cricket_membership_month ?? null,
       facilityType: app.facility_type ?? null,
-      applicationRef: app.application_ref ?? null,
       membershipType: app.membership_type ?? null,
       membershipStartDate: app.membership_start_date ?? null,
       preferredTiming: app.preferred_timing ?? null,
       status: (app.status ?? "pending").toLowerCase(),
       rejectionReason: app.reason ?? null,
+      withdrawnAt: app.withdrawn_at ? new Date(app.withdrawn_at).toISOString() : null,
+      withdrawnBy: app.withdrawn_by ?? null,
+      withdrawalReason: app.withdrawal_reason ?? null,
     }));
 
     // Combine and sort by creation date (newest first)

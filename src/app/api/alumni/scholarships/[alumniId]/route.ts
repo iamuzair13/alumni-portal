@@ -226,6 +226,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         asch.applied_discount_percent,
         asch.application_year,
         asch.application_term,
+        asch.withdrawn_at,
+        asch.withdrawn_by,
+        asch.withdrawal_reason,
         a.alumniname,
         a.sapid,
         a.registrationno,
@@ -273,6 +276,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       applied_discount_percent: number | null;
       application_year: number | null;
       application_term: string | null;
+      withdrawn_at: string | null;
+      withdrawn_by: string | null;
+      withdrawal_reason: string | null;
       alumniname: string | null;
       sapid: string | null;
       registrationno: string | null;
@@ -451,6 +457,14 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
 
     const admissionRefDisplay = String(app.admission_application_ref ?? "").trim() || null;
 
+    const withdrawnAtDisplay = app.withdrawn_at
+      ? new Date(app.withdrawn_at).toLocaleDateString("en-PK", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : null;
+
     const applyingForDisplay = discountTypeOptionLabel(app.discount_type, app.apply_for);
 
     const kinshipDetails = {
@@ -536,6 +550,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       mastersAdmissionSummary,
       passingOutYear: passingOutYearDisplay,
       admissionApplicationRef: admissionRefDisplay,
+      withdrawnAt: withdrawnAtDisplay,
+      withdrawnBy: app.withdrawn_by ?? null,
+      withdrawalReason: app.withdrawal_reason ?? null,
       applicationYear:
         app.application_year != null && Number.isFinite(Number(app.application_year))
           ? String(Number(app.application_year))
@@ -589,6 +606,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         uploadedDocuments: applicationLetter.uploadedDocuments,
         isKinship: applicationLetter.isKinship,
         kinshipDetails: applicationLetter.kinshipDetails,
+        withdrawnAt: applicationLetter.withdrawnAt,
+        withdrawnBy: applicationLetter.withdrawnBy,
+        withdrawalReason: applicationLetter.withdrawalReason,
       });
 
       return new NextResponse(new Uint8Array(pdfBuffer), {
@@ -638,11 +658,37 @@ export async function PATCH(
     }
 
     const body = await request.json().catch(() => ({}));
-    const { status, rejectionReason, documentChecklist } = body as {
+    const { status, rejectionReason, documentChecklist, admissionApplicationRef, withdrawalReason } = body as {
       status?: string;
       rejectionReason?: string;
       documentChecklist?: Array<{ label: string; verified: "YES" | "NO" }>;
+      admissionApplicationRef?: string | null;
+      withdrawalReason?: string;
     };
+
+    // Admin-only update of Admission Reference No / Application ID
+    if (admissionApplicationRef !== undefined) {
+      const refValue =
+        typeof admissionApplicationRef === "string" ? admissionApplicationRef.trim() : null;
+
+      const rows = await sql/* sql */`
+        SELECT id
+        FROM public.alumni_scholarships
+        WHERE id = ${alumniIdNum}
+        LIMIT 1
+      `;
+      if (!rows[0]) {
+        return NextResponse.json({ error: "Application not found" }, { status: 404 });
+      }
+
+      await sql/* sql */`
+        UPDATE public.alumni_scholarships
+        SET admission_application_ref = ${refValue}
+        WHERE id = ${alumniIdNum}
+      `;
+
+      return NextResponse.json({ success: true, admissionApplicationRef: refValue }, { status: 200 });
+    }
 
     // Admin document checklist update (stored inside uploaded_documents JSONB; no schema changes)
     if (Array.isArray(documentChecklist) && documentChecklist.length > 0) {
@@ -710,7 +756,7 @@ export async function PATCH(
     }
 
     // Validate status
-    const validStatuses = ["pending", "approved", "not-approved", "not-applicable"];
+    const validStatuses = ["pending", "approved", "not-approved", "not-applicable", "withdrawn"];
     if (!status || !validStatuses.includes(status)) {
       return NextResponse.json(
         { error: `Status must be one of: ${validStatuses.join(", ")}` },
@@ -722,6 +768,14 @@ export async function PATCH(
     if (status === "not-approved" && (!rejectionReason || rejectionReason.trim() === "")) {
       return NextResponse.json(
         { error: "Rejection reason is required when marking application as not approved" },
+        { status: 400 }
+      );
+    }
+
+    // If status is "withdrawn", withdrawalReason is required
+    if (status === "withdrawn" && (!withdrawalReason || withdrawalReason.trim() === "")) {
+      return NextResponse.json(
+        { error: "Withdrawal reason is required when withdrawing an application" },
         { status: 400 }
       );
     }
@@ -781,20 +835,28 @@ export async function PATCH(
       const rejectionReasonText = typeof rejectionReason === "string" ? rejectionReason.trim() : "";
       await sql/* sql */`
         UPDATE public.alumni_scholarships
-        SET status = ${status}, reason = ${rejectionReasonText}
+        SET status = ${status}, reason = ${rejectionReasonText}, withdrawn_at = NULL, withdrawn_by = NULL, withdrawal_reason = NULL
+        WHERE id = ${alumniIdNum}
+      `;
+    } else if (status === "withdrawn") {
+      const withdrawnBy = session.user?.email ? String(session.user.email) : null;
+      const withdrawalReasonText = typeof withdrawalReason === "string" ? withdrawalReason.trim() : "";
+      await sql/* sql */`
+        UPDATE public.alumni_scholarships
+        SET status = ${status}, reason = NULL, withdrawn_at = NOW(), withdrawn_by = ${withdrawnBy}, withdrawal_reason = ${withdrawalReasonText}
         WHERE id = ${alumniIdNum}
       `;
     } else if (status === "not-applicable") {
       await sql/* sql */`
         UPDATE public.alumni_scholarships
-        SET status = ${status}, reason = NULL
+        SET status = ${status}, reason = NULL, withdrawn_at = NULL, withdrawn_by = NULL, withdrawal_reason = NULL
         WHERE id = ${alumniIdNum}
       `;
     } else {
       // Clear rejection reason when approving or setting to pending
       await sql/* sql */`
         UPDATE public.alumni_scholarships
-        SET status = ${status}, reason = NULL
+        SET status = ${status}, reason = NULL, withdrawn_at = NULL, withdrawn_by = NULL, withdrawal_reason = NULL
         WHERE id = ${alumniIdNum}
       `;
     }

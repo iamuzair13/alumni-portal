@@ -35,12 +35,14 @@ type MembershipItem = {
   swimmingPoolMembershipMonth: string | null;
   cricketMembershipMonth: string | null;
   facilityType: string | null;
-  applicationRef: string | null;
   membershipType: string | null;
   membershipStartDate: string | null;
   preferredTiming: string | null;
   status: string;
   rejectionReason: string | null;
+  withdrawnAt: string | null;
+  withdrawnBy: string | null;
+  withdrawalReason: string | null;
 };
 
 type MembershipResponse = {
@@ -53,6 +55,7 @@ type MembershipResponse = {
     pending: number;
     approved: number;
     notApproved: number;
+    withdrawn: number;
   };
 };
 
@@ -84,13 +87,14 @@ async function getAlumniMemberships(
 type SortKey = "sapid" | "name" | "faculty" | "department" | "program" | "createdAt";
 type SortDir = "asc" | "desc";
 
-type StatusTabKey = "all" | "pending" | "approved" | "notApproved";
+type StatusTabKey = "all" | "pending" | "approved" | "notApproved" | "withdrawn";
 
 const STATUS_TABS: { key: StatusTabKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "pending", label: "Pending" },
   { key: "approved", label: "Approved" },
   { key: "notApproved", label: "Not Approved" },
+  { key: "withdrawn", label: "Withdrawn" },
 ];
 
 export const AlumniMembershipsTab: React.FC = () => {
@@ -103,13 +107,14 @@ export const AlumniMembershipsTab: React.FC = () => {
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<StatusTabKey>("all");
   const [pendingAction, setPendingAction] = useState<{
-    type: "approve" | "unapprove" | "delete";
+    type: "approve" | "unapprove" | "delete" | "withdraw";
     membershipId: number; // Membership record ID
     alumniId: number; // Alumni ID (for reference)
     name: string;
     reason?: string;
   } | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [withdrawalReason, setWithdrawalReason] = useState("");
   const [mutatingIds, setMutatingIds] = useState<Set<number>>(new Set());
   const [applicationPreview, setApplicationPreview] = useState<{
     membershipId: number;
@@ -142,6 +147,8 @@ export const AlumniMembershipsTab: React.FC = () => {
           ? undefined
           : selectedStatus === "notApproved"
           ? "not-approved"
+          : selectedStatus === "withdrawn"
+          ? "withdrawn"
           : selectedStatus
       ),
     staleTime: 2 * 60 * 1000,
@@ -160,8 +167,9 @@ export const AlumniMembershipsTab: React.FC = () => {
     const pending = data?.counts?.pending ?? 0;
     const approved = data?.counts?.approved ?? 0;
     const notApproved = data?.counts?.notApproved ?? 0;
-    const all = pending + approved + notApproved;
-    return { all, pending, approved, notApproved };
+    const withdrawn = data?.counts?.withdrawn ?? 0;
+    const all = pending + approved + notApproved + withdrawn;
+    return { all, pending, approved, notApproved, withdrawn };
   }, [data]);
 
   const sortedItems = useMemo(() => {
@@ -310,6 +318,29 @@ export const AlumniMembershipsTab: React.FC = () => {
     }
   }, [startMut, stopMut, queryClient]);
 
+  const handleWithdraw = useCallback(async (membershipId: number, reason: string): Promise<void> => {
+    startMut(membershipId);
+    try {
+      const res = await fetch(`/api/alumni/memberships/${membershipId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "withdrawn", withdrawalReason: reason }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `Failed to withdraw: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to withdraw: ${res.status}`);
+      }
+      toast.success("Membership application withdrawn successfully.");
+      queryClient.invalidateQueries({ queryKey: ["alumni-memberships"] });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to withdraw membership application.");
+      throw e;
+    } finally {
+      stopMut(membershipId);
+    }
+  }, [startMut, stopMut, queryClient]);
+
   const executePendingAction = useCallback(async () => {
     if (!pendingAction) return;
     const { type, membershipId } = pendingAction;
@@ -318,16 +349,19 @@ export const AlumniMembershipsTab: React.FC = () => {
         await handleApprove(membershipId);
       } else if (type === "delete") {
         await handleDelete(membershipId);
+      } else if (type === "withdraw") {
+        await handleWithdraw(membershipId, withdrawalReason.trim());
       } else {
         await handleUnapprove(membershipId, rejectionReason.trim() || undefined);
       }
       setPendingAction(null);
       setRejectionReason("");
+      setWithdrawalReason("");
       confirmModal.closeModal();
     } catch {
-      // Error already handled in handleApprove/handleUnapprove/handleDelete
+      // Error already handled in handleApprove/handleUnapprove/handleDelete/handleWithdraw
     }
-  }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove, handleDelete]);
+  }, [pendingAction, rejectionReason, withdrawalReason, confirmModal, handleApprove, handleUnapprove, handleDelete, handleWithdraw]);
 
   const handleConfirmClick = useCallback(async () => {
     if (!pendingAction) return;
@@ -350,6 +384,9 @@ export const AlumniMembershipsTab: React.FC = () => {
       "Swimming Pool Membership Month",
       "Status",
       "Rejection Reason",
+      "Withdrawal Reason",
+      "Withdrawn At",
+      "Withdrawn By",
     ];
 
     const columns = exportColumnKeys.map((key) => ({
@@ -376,7 +413,7 @@ export const AlumniMembershipsTab: React.FC = () => {
         if (selectedStatus && selectedStatus !== "all") {
           url.searchParams.set(
             "status",
-            selectedStatus === "notApproved" ? "not-approved" : selectedStatus
+            selectedStatus === "notApproved" ? "not-approved" : selectedStatus === "withdrawn" ? "withdrawn" : selectedStatus
           );
         }
 
@@ -415,6 +452,9 @@ export const AlumniMembershipsTab: React.FC = () => {
         "Swimming Pool Membership Month": item.swimmingPoolMembershipMonth || "",
         "Status": item.status || "",
         "Rejection Reason": item.rejectionReason || "",
+        "Withdrawal Reason": item.withdrawalReason || "",
+        "Withdrawn At": item.withdrawnAt || "",
+        "Withdrawn By": item.withdrawnBy || "",
       }));
     };
 
@@ -473,6 +513,8 @@ export const AlumniMembershipsTab: React.FC = () => {
                 ? statusCounts.pending
                 : tab.key === "approved"
                 ? statusCounts.approved
+                : tab.key === "withdrawn"
+                ? statusCounts.withdrawn
                 : statusCounts.notApproved;
             const isSelected = selectedStatus === tab.key;
             return (
@@ -714,6 +756,8 @@ export const AlumniMembershipsTab: React.FC = () => {
                                 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                                 : item.status === "not-approved"
                                 ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                                : item.status === "withdrawn"
+                                ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
                                 : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                             }`}
                           >
@@ -721,12 +765,20 @@ export const AlumniMembershipsTab: React.FC = () => {
                               ? "Approved"
                               : item.status === "not-approved"
                               ? "Not Approved"
+                              : item.status === "withdrawn"
+                              ? "Withdrawn"
                               : "Pending"}
                           </span>
                           {item.status === "not-approved" && item.rejectionReason && (
                             <div className="mt-1 text-xs text-gray-600 dark:text-gray-400 max-w-xs">
                               <span className="font-medium">Reason: </span>
                               <span className="italic">{item.rejectionReason}</span>
+                            </div>
+                          )}
+                          {item.status === "withdrawn" && item.withdrawalReason && (
+                            <div className="mt-1 text-xs text-gray-600 dark:text-gray-400 max-w-xs">
+                              <span className="font-medium">Withdrawal Reason: </span>
+                              <span className="italic">{item.withdrawalReason}</span>
                             </div>
                           )}
                         </div>
@@ -773,6 +825,25 @@ export const AlumniMembershipsTab: React.FC = () => {
                                 title="Not Approve"
                               >
                                 <CloseLineIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                              </button>
+                            )}
+                            {item.status !== "withdrawn" && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setWithdrawalReason("");
+                                  setPendingAction({ type: "withdraw", membershipId: item.id, alumniId: item.alumniId, name: item.name });
+                                  confirmModal.openModal();
+                                }}
+                                disabled={mutatingIds.has(item.id)}
+                                className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-orange-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                aria-label="Withdraw"
+                                title="Withdraw"
+                              >
+                                <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1018 0 9 9 0 00-18 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
+                                </svg>
                               </button>
                             )}
                             <button
@@ -870,11 +941,16 @@ export const AlumniMembershipsTab: React.FC = () => {
                 <CheckLineIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
               ) : pendingAction.type === "delete" ? (
                 <TrashBinIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+              ) : pendingAction.type === "withdraw" ? (
+                <svg className="h-6 w-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1018 0 9 9 0 00-18 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
+                </svg>
               ) : (
                 <CloseLineIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
               )}
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
-                {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : "Not Approve Application"}
+                {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : pendingAction.type === "withdraw" ? "Withdraw Application" : "Not Approve Application"}
               </h3>
             </div>
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 dark:text-gray-300 dark:bg-gray-900">
@@ -882,6 +958,8 @@ export const AlumniMembershipsTab: React.FC = () => {
                 <>Are you sure you want to approve the membership application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{pendingAction.name}</strong>?</>
               ) : pendingAction.type === "delete" ? (
                 <>Are you sure you want to delete the membership application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{pendingAction.name}</strong>? This action cannot be undone.</>
+              ) : pendingAction.type === "withdraw" ? (
+                <>Are you sure you want to withdraw the membership application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{pendingAction.name}</strong>? This will mark the application as withdrawn.</>
               ) : (
                 <>Are you sure you want to mark the membership application as not approved for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{pendingAction.name}</strong>?</>
               )}
@@ -906,7 +984,27 @@ export const AlumniMembershipsTab: React.FC = () => {
               </div>
             )}
 
-            {pendingAction.type !== "delete" && (
+            {pendingAction.type === "withdraw" && (
+              <div className="mb-6">
+                <label htmlFor="withdrawal-reason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 dark:text-gray-300 dark:bg-gray-900">
+                  Withdrawal Reason <span className="text-orange-600">*</span>
+                </label>
+                <textarea
+                  id="withdrawal-reason"
+                  value={withdrawalReason}
+                  onChange={(e) => setWithdrawalReason(e.target.value)}
+                  placeholder="Please provide a reason for withdrawing this application..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900">
+                  This reason will be visible to the alumni.
+                </p>
+              </div>
+            )}
+
+            {pendingAction.type !== "delete" && pendingAction.type !== "withdraw" && (
               <div className="mb-6">
                 {(() => {
                   const it = itemByMembershipId.get(pendingAction.membershipId);
@@ -969,6 +1067,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                     confirmModal.closeModal();
                     setPendingAction(null);
                     setRejectionReason("");
+                    setWithdrawalReason("");
                   }
                 }}
                 disabled={mutatingIds.has(pendingAction.membershipId)}
@@ -979,12 +1078,14 @@ export const AlumniMembershipsTab: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmClick}
-                disabled={mutatingIds.has(pendingAction.membershipId) || (pendingAction.type === "unapprove" && !rejectionReason.trim())}
+                disabled={mutatingIds.has(pendingAction.membershipId) || (pendingAction.type === "unapprove" && !rejectionReason.trim()) || (pendingAction.type === "withdraw" && !withdrawalReason.trim())}
                 className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300 dark:bg-gray-900 dark:hover:bg-gray-800 ${
                   pendingAction.type === "approve"
                     ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
                     : pendingAction.type === "delete"
                     ? "bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                    : pendingAction.type === "withdraw"
+                    ? "bg-orange-600 hover:bg-orange-700 focus:ring-orange-500"
                     : "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
                 }`}
               >
@@ -994,7 +1095,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                     Processing...
                   </span>
                 ) : (
-                  pendingAction.type === "approve" ? "Approve" : pendingAction.type === "delete" ? "Delete" : "Not Approve"
+                  pendingAction.type === "approve" ? "Approve" : pendingAction.type === "delete" ? "Delete" : pendingAction.type === "withdraw" ? "Withdraw" : "Not Approve"
                 )}
               </button>
             </div>

@@ -92,6 +92,15 @@ ALTER TABLE IF EXISTS public.alumni_scholarships
 ALTER TABLE IF EXISTS public.alumni_scholarships
     ADD COLUMN IF NOT EXISTS application_term text COLLATE pg_catalog."default";
 
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS withdrawn_at timestamptz;
+
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS withdrawn_by text COLLATE pg_catalog."default";
+
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS withdrawal_reason text COLLATE pg_catalog."default";
+
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.alumni_scholarships

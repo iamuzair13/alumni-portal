@@ -22,6 +22,9 @@ type ScholarshipApplication = {
   admissionApplicationRef?: string | null;
   status: string;
   rejectionReason: string | null;
+  withdrawnAt: string | null;
+  withdrawnBy: string | null;
+  withdrawalReason: string | null;
 };
 
 type MembershipApplication = {
@@ -32,12 +35,14 @@ type MembershipApplication = {
   swimmingPoolMembershipMonth: string | null;
   cricketMembershipMonth: string | null;
   facilityType: string | null;
-  applicationRef: string | null;
   membershipType: string | null;
   membershipStartDate: string | null;
   preferredTiming: string | null;
   status: string;
   rejectionReason: string | null;
+  withdrawnAt: string | null;
+  withdrawnBy: string | null;
+  withdrawalReason: string | null;
 };
 
 type Application = ScholarshipApplication | MembershipApplication;
@@ -82,6 +87,12 @@ function ViewApplicationsContent() {
         return (
           <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
             Not Approved
+          </span>
+        );
+      case "withdrawn":
+        return (
+          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+            Withdrawn
           </span>
         );
       default:
@@ -257,14 +268,6 @@ function ViewApplicationsContent() {
                           <p className="text-sm text-gray-900 dark:text-gray-100 capitalize">{app.facilityType}</p>
                         </div>
                       )}
-                      {app.applicationRef && (
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                            Application ID
-                          </label>
-                          <p className="text-sm text-gray-900 dark:text-gray-100">{app.applicationRef}</p>
-                        </div>
-                      )}
                       {app.membershipType && (
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
@@ -327,6 +330,38 @@ function ViewApplicationsContent() {
                         <p className="text-sm text-rose-800 dark:text-rose-200">
                           {app.rejectionReason}
                         </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {app.status === "withdrawn" && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <label className="block text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wide mb-2">
+                        Withdrawal Information
+                      </label>
+                      <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 sm:p-4 space-y-1">
+                        {app.withdrawnAt && (
+                          <p className="text-sm text-orange-800 dark:text-orange-200">
+                            <span className="font-medium">Withdrawal Date:</span>{" "}
+                            {new Date(app.withdrawnAt).toLocaleDateString("en-PK", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        )}
+                        {app.withdrawnBy && (
+                          <p className="text-sm text-orange-800 dark:text-orange-200">
+                            <span className="font-medium">Withdrawn By:</span> {app.withdrawnBy}
+                          </p>
+                        )}
+                        {app.withdrawalReason && (
+                          <p className="text-sm text-orange-800 dark:text-orange-200">
+                            <span className="font-medium">Reason:</span> {app.withdrawalReason}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}

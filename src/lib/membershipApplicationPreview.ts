@@ -18,7 +18,6 @@ export type MembershipDbRow = {
   created_at: string | null;
   status: string | null;
   facility_type: string | null;
-  application_ref: string | null;
   discount_type: string | null;
   membership_type: string | null;
   membership_start_date: string | null;
@@ -27,6 +26,9 @@ export type MembershipDbRow = {
   gym_membership_month: string | null;
   swimmingpool_membership_month: string | null;
   cricket_membership_month: string | null;
+  withdrawn_at: string | null;
+  withdrawn_by: string | null;
+  withdrawal_reason: string | null;
   alumniname: string | null;
   fathername: string | null;
   dateofbirth: string | null;
@@ -45,8 +47,10 @@ export type MembershipApplicationPreview = {
   title: string;
   headerTitle: string;
   dateFormatted: string;
-  applicationRef: string | null;
   status: string;
+  withdrawnAt: string | null;
+  withdrawnBy: string | null;
+  withdrawalReason: string | null;
   facilityType: CampusFacilityType;
   studentName: string;
   fatherName: string;
@@ -323,8 +327,16 @@ export function buildMembershipApplicationPreview(
     title: config.pageTitle,
     headerTitle: membershipPdfHeaderTitle(facilityType),
     dateFormatted,
-    applicationRef: String(row.application_ref ?? "").trim() || null,
     status: String(row.status || "pending").toLowerCase(),
+    withdrawnAt: row.withdrawn_at
+      ? new Date(row.withdrawn_at).toLocaleDateString("en-PK", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : null,
+    withdrawnBy: row.withdrawn_by ?? null,
+    withdrawalReason: row.withdrawal_reason ?? null,
     facilityType,
     studentName: missing(row.alumniname),
     fatherName: missing(row.fathername),
@@ -382,7 +394,6 @@ export function buildMembershipFormPDFData(row: MembershipDbRow): MembershipForm
     facilityType: preview.facilityType,
     headerTitle: preview.headerTitle,
     dateFormatted: preview.dateFormatted,
-    applicationRef: preview.applicationRef,
     studentName: preview.studentName,
     fatherName: preview.fatherName,
     dob: preview.dob,
@@ -419,5 +430,8 @@ export function buildMembershipFormPDFData(row: MembershipDbRow): MembershipForm
     injuryHistory: preview.injuryHistory,
     declarationText: preview.declarationText,
     documentsChecklist: preview.documentsChecklist,
+    withdrawnAt: preview.withdrawnAt,
+    withdrawnBy: preview.withdrawnBy,
+    withdrawalReason: preview.withdrawalReason,
   };
 }

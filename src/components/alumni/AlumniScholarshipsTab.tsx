@@ -37,6 +37,9 @@ type ScholarshipItem = {
   discountType: string | null;
   status: string;
   rejectionReason: string | null;
+  withdrawnAt: string | null;
+  withdrawnBy: string | null;
+  withdrawalReason: string | null;
 };
 
 type ScholarshipResponse = {
@@ -50,6 +53,7 @@ type ScholarshipResponse = {
     approved: number;
     notApproved: number;
     notApplicable: number;
+    withdrawn: number;
   };
 };
 
@@ -104,6 +108,9 @@ type ScholarshipApplicationLetter = {
     kinPassingOutYear?: string;
     kinCnic?: string;
   } | null;
+  withdrawnAt?: string | null;
+  withdrawnBy?: string | null;
+  withdrawalReason?: string | null;
 };
 
 async function getAlumniScholarships(
@@ -134,7 +141,7 @@ async function getAlumniScholarships(
 type SortKey = "sapid" | "name" | "faculty" | "department" | "program" | "createdAt" | "applyFor";
 type SortDir = "asc" | "desc";
 
-type StatusTabKey = "all" | "pending" | "approved" | "notApproved" | "notApplicable";
+type StatusTabKey = "all" | "pending" | "approved" | "notApproved" | "notApplicable" | "withdrawn";
 
 const STATUS_TABS: { key: StatusTabKey; label: string }[] = [
   { key: "all", label: "All" },
@@ -142,6 +149,7 @@ const STATUS_TABS: { key: StatusTabKey; label: string }[] = [
   { key: "approved", label: "Approved" },
   { key: "notApproved", label: "Not Approved" },
   { key: "notApplicable", label: "Not Applicable" },
+  { key: "withdrawn", label: "Withdrawn" },
 ];
 
 export const AlumniScholarshipsTab: React.FC = () => {
@@ -155,12 +163,13 @@ export const AlumniScholarshipsTab: React.FC = () => {
   const [openActionMenuId, setOpenActionMenuId] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<StatusTabKey>("all");
   const [pendingAction, setPendingAction] = useState<{
-    type: "approve" | "unapprove" | "delete" | "notApplicable";
+    type: "approve" | "unapprove" | "delete" | "notApplicable" | "withdraw";
     alumniId: number;
     name: string;
     reason?: string;
   } | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [withdrawalReason, setWithdrawalReason] = useState("");
   const [mutatingIds, setMutatingIds] = useState<Set<number>>(new Set());
   const [applicationPreview, setApplicationPreview] = useState<{
     alumniId: number;
@@ -174,6 +183,9 @@ export const AlumniScholarshipsTab: React.FC = () => {
   const [docChecklistDraft, setDocChecklistDraft] = useState<Record<string, "YES" | "NO" | null>>({});
   const [docChecklistPendingSave, setDocChecklistPendingSave] = useState(false);
   const docChecklistConfirmModal = useModal(false);
+  const [admissionRefDraft, setAdmissionRefDraft] = useState("");
+  const [admissionRefOriginal, setAdmissionRefOriginal] = useState("");
+  const [admissionRefSaving, setAdmissionRefSaving] = useState(false);
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const confirmModal = useModal();
@@ -198,6 +210,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
           ? "not-approved"
           : selectedStatus === "notApplicable"
           ? "not-applicable"
+          : selectedStatus === "withdrawn"
+          ? "withdrawn"
           : selectedStatus
       ),
     staleTime: 2 * 60 * 1000,
@@ -217,8 +231,9 @@ export const AlumniScholarshipsTab: React.FC = () => {
     const approved = data?.counts?.approved ?? 0;
     const notApproved = data?.counts?.notApproved ?? 0;
     const notApplicable = data?.counts?.notApplicable ?? 0;
-    const all = pending + approved + notApproved + notApplicable;
-    return { all, pending, approved, notApproved, notApplicable };
+    const withdrawn = data?.counts?.withdrawn ?? 0;
+    const all = pending + approved + notApproved + notApplicable + withdrawn;
+    return { all, pending, approved, notApproved, notApplicable, withdrawn };
   }, [data]);
 
   const sortedItems = useMemo(() => {
@@ -328,6 +343,9 @@ export const AlumniScholarshipsTab: React.FC = () => {
         }
       }
       setDocChecklistDraft(initDraft);
+      const refValue = data.application?.admissionApplicationRef?.trim() ?? "";
+      setAdmissionRefDraft(refValue);
+      setAdmissionRefOriginal(refValue);
       applicationPreviewModal.openModal();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -375,6 +393,35 @@ export const AlumniScholarshipsTab: React.FC = () => {
       setDocChecklistPendingSave(false);
     }
   }, [applicationPreview?.alumniId, docChecklistDraft, docChecklistConfirmModal, handleViewApplication]);
+
+  const saveAdmissionRef = useCallback(async () => {
+    if (!applicationPreview?.alumniId) return;
+    const trimmed = admissionRefDraft.trim();
+    if (trimmed === admissionRefOriginal) return;
+    setAdmissionRefSaving(true);
+    try {
+      const res = await fetch(`/api/alumni/scholarships/${applicationPreview.alumniId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ admissionApplicationRef: trimmed || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = data && typeof data === "object" && "error" in data ? String((data as any).error || "") : "";
+        throw new Error(err || `Failed to save Admission Reference No (${res.status})`);
+      }
+      const saved = (data as any)?.admissionApplicationRef ?? trimmed;
+      setAdmissionRefOriginal(typeof saved === "string" ? saved : "");
+      setAdmissionRefDraft(typeof saved === "string" ? saved : "");
+      toast.success("Admission Reference No / Application ID updated.");
+      queryClient.invalidateQueries({ queryKey: ["alumni-scholarships"] });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to save Admission Reference No");
+    } finally {
+      setAdmissionRefSaving(false);
+    }
+  }, [applicationPreview?.alumniId, admissionRefDraft, admissionRefOriginal, queryClient]);
 
   const handleUnapprove = useCallback(async (alumniId: number, reason?: string): Promise<void> => {
     startMut(alumniId);
@@ -444,6 +491,29 @@ export const AlumniScholarshipsTab: React.FC = () => {
     }
   }, [startMut, stopMut, queryClient]);
 
+  const handleWithdraw = useCallback(async (alumniId: number, reason: string): Promise<void> => {
+    startMut(alumniId);
+    try {
+      const res = await fetch(`/api/alumni/scholarships/${alumniId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "withdrawn", withdrawalReason: reason }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `Failed to withdraw: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to withdraw: ${res.status}`);
+      }
+      toast.success("Scholarship application withdrawn successfully.");
+      queryClient.invalidateQueries({ queryKey: ["alumni-scholarships"] });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to withdraw scholarship application.");
+      throw e;
+    } finally {
+      stopMut(alumniId);
+    }
+  }, [startMut, stopMut, queryClient]);
+
   const executePendingAction = useCallback(async () => {
     if (!pendingAction) return;
     const { type, alumniId } = pendingAction;
@@ -454,17 +524,20 @@ export const AlumniScholarshipsTab: React.FC = () => {
         await handleDelete(alumniId);
       } else if (type === "notApplicable") {
         await handleNotApplicable(alumniId);
+      } else if (type === "withdraw") {
+        await handleWithdraw(alumniId, withdrawalReason.trim());
       } else {
         await handleUnapprove(alumniId, rejectionReason.trim() || undefined);
       }
       setPendingAction(null);
       setRejectionReason("");
+      setWithdrawalReason("");
       confirmModal.closeModal();
     } catch (e) {
-      // Error already handled in handleApprove/handleUnapprove/handleDelete
+      // Error already handled in handleApprove/handleUnapprove/handleDelete/handleWithdraw
 
     }
-  }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove, handleDelete, handleNotApplicable]);
+  }, [pendingAction, rejectionReason, withdrawalReason, confirmModal, handleApprove, handleUnapprove, handleDelete, handleNotApplicable, handleWithdraw]);
 
   const handleConfirmClick = useCallback(async () => {
     if (!pendingAction) return;
@@ -490,6 +563,9 @@ export const AlumniScholarshipsTab: React.FC = () => {
       "Scholarship Degree Title",
       "Status",
       "Rejection Reason",
+      "Withdrawal Reason",
+      "Withdrawn At",
+      "Withdrawn By",
     ];
 
     const columns = exportColumnKeys.map((key) => ({
@@ -516,7 +592,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
         if (selectedStatus && selectedStatus !== "all") {
           url.searchParams.set(
             "status",
-            selectedStatus === "notApproved" ? "not-approved" : selectedStatus
+            selectedStatus === "notApproved" ? "not-approved" : selectedStatus === "notApplicable" ? "not-applicable" : selectedStatus
           );
         }
 
@@ -558,6 +634,9 @@ export const AlumniScholarshipsTab: React.FC = () => {
         "Scholarship Degree Title": item.scholarshipDegreeTitle || "",
         "Status": item.status || "",
         "Rejection Reason": item.rejectionReason || "",
+        "Withdrawal Reason": item.withdrawalReason || "",
+        "Withdrawn At": item.withdrawnAt || "",
+        "Withdrawn By": item.withdrawnBy || "",
       }));
     };
 
@@ -618,6 +697,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 ? statusCounts.approved
                 : tab.key === "notApplicable"
                 ? statusCounts.notApplicable
+                : tab.key === "withdrawn"
+                ? statusCounts.withdrawn
                 : statusCounts.notApproved;
             const isSelected = selectedStatus === tab.key;
             return (
@@ -895,6 +976,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
                                 : item.status === "not-applicable"
                                 ? "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300"
+                                : item.status === "withdrawn"
+                                ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
                                 : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                             }`}
                           >
@@ -904,12 +987,20 @@ export const AlumniScholarshipsTab: React.FC = () => {
                               ? "Not Approved"
                               : item.status === "not-applicable"
                               ? "Not Applicable"
+                              : item.status === "withdrawn"
+                              ? "Withdrawn"
                               : "Pending"}
                           </span>
                           {item.status === "not-approved" && item.rejectionReason && (
                             <div className="mt-1 text-xs text-gray-600 dark:text-gray-400 max-w-xs">
                               <span className="font-medium">Reason: </span>
                               <span className="italic">{item.rejectionReason}</span>
+                            </div>
+                          )}
+                          {item.status === "withdrawn" && item.withdrawalReason && (
+                            <div className="mt-1 text-xs text-gray-600 dark:text-gray-400 max-w-xs">
+                              <span className="font-medium">Withdrawal Reason: </span>
+                              <span className="italic">{item.withdrawalReason}</span>
                             </div>
                           )}
                         </div>
@@ -935,6 +1026,11 @@ export const AlumniScholarshipsTab: React.FC = () => {
                               }}
                               onNotApplicable={() => {
                                 setPendingAction({ type: "notApplicable", alumniId: item.alumniId, name: item.name });
+                                confirmModal.openModal();
+                              }}
+                              onWithdraw={() => {
+                                setWithdrawalReason("");
+                                setPendingAction({ type: "withdraw", alumniId: item.alumniId, name: item.name });
                                 confirmModal.openModal();
                               }}
                               onDelete={() => {
@@ -1028,11 +1124,16 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 <svg className="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                 </svg>
+              ) : pendingAction.type === "withdraw" ? (
+                <svg className="h-6 w-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1018 0 9 9 0 00-18 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
+                </svg>
               ) : (
                 <CloseLineIcon className="h-6 w-6 text-rose-600 dark:text-rose-400 dark:text-rose-400" />
               )}
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">
-                {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : pendingAction.type === "notApplicable" ? "Mark Application as Not Applicable" : "Not Approve Application"}
+                {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : pendingAction.type === "notApplicable" ? "Mark Application as Not Applicable" : pendingAction.type === "withdraw" ? "Withdraw Application" : "Not Approve Application"}
               </h3>
             </div>
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
@@ -1042,6 +1143,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 <>Are you sure you want to delete the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong>? This action cannot be undone.</>
               ) : pendingAction.type === "notApplicable" ? (
                 <>Are you sure you want to mark the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong> as not applicable?</>
+              ) : pendingAction.type === "withdraw" ? (
+                <>Are you sure you want to withdraw the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong>? This will mark the application as withdrawn.</>
               ) : (
                 <>Are you sure you want to mark the scholarship application as not approved for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction.name}</strong>?</>
               )}
@@ -1066,7 +1169,27 @@ export const AlumniScholarshipsTab: React.FC = () => {
               </div>
             )}
 
-            {pendingAction.type !== "delete" && pendingAction.type !== "notApplicable" && (
+            {pendingAction.type === "withdraw" && (
+              <div className="mb-6">
+                <label htmlFor="withdrawal-reason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
+                  Withdrawal Reason <span className="text-orange-600">*</span>
+                </label>
+                <textarea
+                  id="withdrawal-reason"
+                  value={withdrawalReason}
+                  onChange={(e) => setWithdrawalReason(e.target.value)}
+                  placeholder="Please provide a reason for withdrawing this application..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-400">
+                  This reason will be visible to the alumni.
+                </p>
+              </div>
+            )}
+
+            {pendingAction.type !== "delete" && pendingAction.type !== "notApplicable" && pendingAction.type !== "withdraw" && (
               <div className="mb-6">
                 {(() => {
                   const it = itemByAlumniId.get(pendingAction.alumniId);
@@ -1112,6 +1235,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                     confirmModal.closeModal();
                     setPendingAction(null);
                     setRejectionReason("");
+                    setWithdrawalReason("");
                   }
                 }}
                 disabled={mutatingIds.has(pendingAction.alumniId)}
@@ -1122,7 +1246,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmClick}
-                disabled={mutatingIds.has(pendingAction.alumniId) || (pendingAction.type === "unapprove" && !rejectionReason.trim())}
+                disabled={mutatingIds.has(pendingAction.alumniId) || (pendingAction.type === "unapprove" && !rejectionReason.trim()) || (pendingAction.type === "withdraw" && !withdrawalReason.trim())}
                 className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:text-white dark:bg-emerald-600 dark:hover:bg-emerald-700 dark:focus:ring-emerald-500 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-500 dark:bg-rose-600 dark:hover:bg-rose-700 dark:focus:ring-rose-500 ${
                   pendingAction.type === "approve"
                     ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
@@ -1130,6 +1254,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                     ? "bg-red-600 hover:bg-red-700 focus:ring-red-500"
                     : pendingAction.type === "notApplicable"
                     ? "bg-gray-600 hover:bg-gray-700 focus:ring-gray-500"
+                    : pendingAction.type === "withdraw"
+                    ? "bg-orange-600 hover:bg-orange-700 focus:ring-orange-500"
                     : "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
                 }`}
               >
@@ -1139,7 +1265,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                     Processing...
                   </span>
                 ) : (
-                  pendingAction.type === "approve" ? "Approve" : pendingAction.type === "delete" ? "Delete" : pendingAction.type === "notApplicable" ? "Mark Not Applicable" : "Not Approve"
+                  pendingAction.type === "approve" ? "Approve" : pendingAction.type === "delete" ? "Delete" : pendingAction.type === "notApplicable" ? "Mark Not Applicable" : pendingAction.type === "withdraw" ? "Withdraw" : "Not Approve"
                 )}
               </button>
             </div>
@@ -1157,6 +1283,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
               setApplicationPreview(null);
               setApplicationPreviewError(null);
               setDocChecklistDraft({});
+              setAdmissionRefDraft("");
+              setAdmissionRefOriginal("");
             }
           }}
           className="max-w-5xl"
@@ -1220,6 +1348,25 @@ export const AlumniScholarshipsTab: React.FC = () => {
                         Date: <span className="font-semibold">{applicationPreview.application.dateFormatted}</span>
                       </div>
                     </div>
+
+                    {applicationPreview.application.withdrawnAt && (
+                      <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-800 dark:bg-orange-900/20">
+                        <div className="text-sm font-bold text-orange-800 dark:text-orange-300">
+                          This application has been WITHDRAWN
+                        </div>
+                        <div className="mt-1 text-xs text-orange-700 dark:text-orange-400 space-y-0.5">
+                          {applicationPreview.application.withdrawnAt && (
+                            <div>Withdrawal Date: {applicationPreview.application.withdrawnAt}</div>
+                          )}
+                          {applicationPreview.application.withdrawnBy && (
+                            <div>Withdrawn By: {applicationPreview.application.withdrawnBy}</div>
+                          )}
+                          {applicationPreview.application.withdrawalReason && (
+                            <div>Reason: {applicationPreview.application.withdrawalReason}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="space-y-6">
                       <div className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700 dark:bg-gray-900 ">
@@ -1364,8 +1511,32 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                     <div className="font-semibold text-slate-900 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-slate-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">
                                       Admission Reference No / Application ID
                                     </div>
-                                    <div className="mt-1 text-sm text-slate-800 break-all dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-slate-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">
-                                      {applicationPreview.application.admissionApplicationRef?.trim() || "—"}
+                                    <div className="mt-1 dark:text-gray-100 dark:bg-gray-900">
+                                      {isAdmin ? (
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="text"
+                                            value={admissionRefDraft}
+                                            onChange={(e) => setAdmissionRefDraft(e.target.value)}
+                                            maxLength={200}
+                                            placeholder="Enter admission reference or application ID"
+                                            className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                            autoComplete="off"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={saveAdmissionRef}
+                                            disabled={admissionRefSaving || admissionRefDraft.trim() === admissionRefOriginal}
+                                            className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700"
+                                          >
+                                            {admissionRefSaving ? "Saving..." : "Save"}
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="text-sm text-slate-800 break-all dark:text-gray-100">
+                                          {applicationPreview.application.admissionApplicationRef?.trim() || "—"}
+                                        </span>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 text-xs text-slate-500 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-slate-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">—</td>
@@ -1569,6 +1740,7 @@ function ScholarshipActionsDropdown({
   onApprove,
   onUnapprove,
   onNotApplicable,
+  onWithdraw,
   onDelete,
 }: {
   item: ScholarshipItem;
@@ -1580,6 +1752,7 @@ function ScholarshipActionsDropdown({
   onApprove: () => void;
   onUnapprove: () => void;
   onNotApplicable: () => void;
+  onWithdraw: () => void;
   onDelete: () => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -1692,6 +1865,23 @@ function ScholarshipActionsDropdown({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                   </svg>
                   <span className="group-hover:text-gray-700 dark:group-hover:text-gray-300">Not Applicable</span>
+                </button>
+              )}
+              {status !== "withdrawn" && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onWithdraw();
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                >
+                  <svg className="h-4 w-4 text-orange-500/80 group-hover:text-orange-600 dark:group-hover:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1018 0 9 9 0 00-18 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
+                  </svg>
+                  <span className="group-hover:text-orange-700 dark:group-hover:text-orange-300">Withdraw</span>
                 </button>
               )}
 

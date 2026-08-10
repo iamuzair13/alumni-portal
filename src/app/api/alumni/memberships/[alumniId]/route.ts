@@ -41,7 +41,6 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         am.created_at,
         COALESCE(am.status, 'pending') AS status,
         am.facility_type,
-        am.application_ref,
         am.discount_type,
         am.membership_type,
         am.membership_start_date,
@@ -50,6 +49,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         am.gym_membership_month,
         am.swimmingpool_membership_month,
         am.cricket_membership_month,
+        am.withdrawn_at,
+        am.withdrawn_by,
+        am.withdrawal_reason,
         a.alumniname,
         a.fathername,
         a.dateofbirth,
@@ -151,9 +153,9 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { status, rejectionReason } = body;
+    const { status, rejectionReason, withdrawalReason } = body;
 
-    const validStatuses = ["pending", "approved", "not-approved"];
+    const validStatuses = ["pending", "approved", "not-approved", "withdrawn"];
     if (!status || !validStatuses.includes(status)) {
       return NextResponse.json(
         { error: `Status must be one of: ${validStatuses.join(", ")}` },
@@ -164,6 +166,13 @@ export async function PATCH(
     if (status === "not-approved" && (!rejectionReason || rejectionReason.trim() === "")) {
       return NextResponse.json(
         { error: "Rejection reason is required when marking application as not approved" },
+        { status: 400 }
+      );
+    }
+
+    if (status === "withdrawn" && (!withdrawalReason || withdrawalReason.trim() === "")) {
+      return NextResponse.json(
+        { error: "Withdrawal reason is required when withdrawing an application" },
         { status: 400 }
       );
     }
@@ -182,13 +191,21 @@ export async function PATCH(
     if (status === "not-approved") {
       await sql/* sql */`
         UPDATE public.alumni_memberships
-        SET status = ${status}, reason = ${rejectionReason.trim()}
+        SET status = ${status}, reason = ${rejectionReason.trim()}, withdrawn_at = NULL, withdrawn_by = NULL, withdrawal_reason = NULL
+        WHERE id = ${alumniIdNum}
+      `;
+    } else if (status === "withdrawn") {
+      const withdrawnBy = session?.user?.email ? String(session.user.email) : null;
+      const withdrawalReasonText = typeof withdrawalReason === "string" ? withdrawalReason.trim() : "";
+      await sql/* sql */`
+        UPDATE public.alumni_memberships
+        SET status = ${status}, reason = NULL, withdrawn_at = NOW(), withdrawn_by = ${withdrawnBy}, withdrawal_reason = ${withdrawalReasonText}
         WHERE id = ${alumniIdNum}
       `;
     } else {
       await sql/* sql */`
         UPDATE public.alumni_memberships
-        SET status = ${status}, reason = NULL
+        SET status = ${status}, reason = NULL, withdrawn_at = NULL, withdrawn_by = NULL, withdrawal_reason = NULL
         WHERE id = ${alumniIdNum}
       `;
     }

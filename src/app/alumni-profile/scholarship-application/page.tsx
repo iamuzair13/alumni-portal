@@ -207,12 +207,11 @@ function ScholarshipApplicationContent() {
     useState<File | null>(null);
   const [docOtherFile, setDocOtherFile] = useState<File | null>(null);
   const [docOtherText, setDocOtherText] = useState("");
-  const [admissionApplicationRef, setAdmissionApplicationRef] = useState("");
   /** Optional marks % for Educational Record (stored on scholarship application, not profile). */
   const [gradePercent, setGradePercent] = useState("");
   /** Scholarship application year (starts from 2026, future years generated dynamically). */
   const [applicationYear, setApplicationYear] = useState<string>("");
-  /** Scholarship application term (Summer / Spring). */
+  /** Scholarship application term (Fall / Spring). */
   const [applicationTerm, setApplicationTerm] = useState<string>("");
 
   // Declaration
@@ -379,7 +378,7 @@ function ScholarshipApplicationContent() {
   })();
 
   const applicationTermOptions = [
-    { value: "Summer", label: "Summer" },
+    { value: "Fall", label: "Fall" },
     { value: "Spring", label: "Spring" },
   ];
 
@@ -646,7 +645,6 @@ function ScholarshipApplicationContent() {
                 fd.set("docOther", docOtherFile);
                 fd.set("docOtherText", docOtherText.trim());
               }
-              fd.set("admissionApplicationRef", admissionApplicationRef.trim());
               fd.set("declarationAccepted", mastersDeclarationAccepted ? "true" : "false");
               if (gradePercent.trim()) {
                 fd.set("gradePercent", gradePercent.trim());
@@ -817,7 +815,6 @@ function ScholarshipApplicationContent() {
       setDocKinshipAcademicCertificatesFile(null);
       setDocOtherFile(null);
       setDocOtherText("");
-      setAdmissionApplicationRef("");
       setGradePercent("");
       setMastersDeclarationAccepted(false);
     } catch (error) {
@@ -1599,25 +1596,6 @@ function ScholarshipApplicationContent() {
                             className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
                             required
                           />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="mb-2 text-sm text-slate-900 font-medium block" htmlFor="admissionApplicationRef">
-                            Admission Reference No / Application ID{" "}
-                            <span className="text-gray-500 font-normal">(Optional)</span>
-                          </label>
-                          <input
-                            id="admissionApplicationRef"
-                            type="text"
-                            value={admissionApplicationRef}
-                            onChange={(e) => setAdmissionApplicationRef(e.target.value)}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                            placeholder="Enter your admission reference or application number"
-                            maxLength={200}
-                            autoComplete="off"
-                          />
-                          <p className="mt-1 text-xs text-gray-500">
-                            If applicable, as shown on your admission letter or application portal.
-                          </p>
                         </div>
                       </div>
                     </div>
