@@ -572,7 +572,7 @@ function createApplicationFormRenderer(
   const DISCOUNT_TABLES: Record<string, DiscountTableDef> = {
     masters: {
       title: "Masters",
-      thirdColHeader: "Tuition Fee Discount",
+      thirdColHeader: "Tuition Fee Discount (CGPA Based)",
       rows: [
         { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "15%" },
         { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "25%" },
@@ -582,7 +582,7 @@ function createApplicationFormRenderer(
     },
     phd: {
       title: "PhD",
-      thirdColHeader: "Tuition Fee Discount",
+      thirdColHeader: "Tuition Fee Discount (CGPA Based)",
       rows: [
         { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "10%" },
         { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "15%" },
@@ -1048,7 +1048,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         form.drawFieldPair("Applicable Discount", data.requestedDiscount, "Applying For", data.applyingFor);
         if (data.highAchieverPercent != null && data.highAchieverPercent > 0) {
           form.drawFullRow(
-            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `Tuition Fee Discount (High Achiever)  (${data.medal || "Medalist"})`,
             `${data.highAchieverPercent}%`,
           );
         }
@@ -1068,7 +1068,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           form.drawFieldPair(
             "Tuition Fee Discount",
             fb.tuitionFeeDisplay,
-            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `Tuition Fee Discount (High Achiever) (${data.medal || "Medalist"})`,
             fb.highAchieverDiscount != null ? fb.highAchieverDisplay : "0%",
           );
           const totalFeeDiscount = (fb.tuitionFeeDiscount ?? 0) + (fb.highAchieverDiscount ?? 0);
@@ -1080,7 +1080,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           form.drawFieldPair(
             "Tuition Fee Discount",
             data.tuitionFeePercent != null ? `${data.tuitionFeePercent}%` : "—",
-            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `Tuition Fee Discount (High Achiever) (${data.medal || "Medalist"})`,
             data.highAchieverPercent != null ? `${data.highAchieverPercent}%` : "0%",
           );
           const totalFeeDiscount = (data.tuitionFeePercent ?? 0) + (data.highAchieverPercent ?? 0);
@@ -1096,7 +1096,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         );
         if (data.highAchieverPercent != null && data.highAchieverPercent > 0) {
           form.drawFullRow(
-            `High Achiever Discount (${data.medal || "Medalist"})`,
+            `Tuition Fee Discount (High Achiever) (${data.medal || "Medalist"})`,
             `${data.highAchieverPercent}%`,
           );
         }
