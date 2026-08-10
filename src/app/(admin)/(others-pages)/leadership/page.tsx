@@ -208,6 +208,26 @@ type ApplicationDetailsItem = LeadershipApplication & {
 
 const ALUMNI_PROFILE_PLACEHOLDER = "/images/person.jpg";
 
+/**
+ * Formats a raw date value (e.g. PostgreSQL `::text` output like "1990-05-15"
+ * or an ISO timestamp) into a clean DD-MM-YYYY string for Excel export.
+ * Returns an empty string for null/undefined/invalid values so the export
+ * never breaks on missing DOB data.
+ *
+ * Uses UTC getters to avoid off-by-one day shifts caused by the browser's
+ * local timezone when parsing plain "YYYY-MM-DD" date strings (which
+ * `new Date()` treats as UTC midnight).
+ */
+function formatExportDate(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return String(value).trim();
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = String(d.getUTCFullYear());
+  return `${dd}-${mm}-${yyyy}`;
+}
+
 type ViewDetailsItem = ApplicationDetailsItem & {
   profilePhotoUrl?: string | null;
   gender?: string | null;
@@ -1742,7 +1762,7 @@ export default function LeadershipPage() {
           "Department": item.departmentname || "",
           "Program": item.program_name || item.degreetitle || "",
           "CNIC": item.cnicpassport || "",
-          "Date of Birth": item.dateofbirth || "",
+          "Date of Birth": formatExportDate(item.dateofbirth),
         }));
       }
 
@@ -1768,7 +1788,7 @@ export default function LeadershipPage() {
         "Degree Title": item.degreetitle || "",
         "All Chapters": formatChapters(item),
         "Association Title": item.association_title || "",
-        "Date of Birth": item.dateofbirth || "",
+        "Date of Birth": formatExportDate(item.dateofbirth),
         "Created At": item.created_at || "",
       }));
     };
