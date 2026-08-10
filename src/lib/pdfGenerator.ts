@@ -110,10 +110,16 @@ export interface ScholarshipLetterPDFData {
     kinLastDegreeCertificate?: string;
     kinPassingOutYear?: string;
   };
+  withdrawnAt?: string | null;
+  withdrawnBy?: string | null;
+  withdrawalReason?: string | null;
 }
 
 export interface MembershipFormPDFData {
   facilityType: "gym" | "pool" | "cricket";
+  withdrawnAt?: string | null;
+  withdrawnBy?: string | null;
+  withdrawalReason?: string | null;
   headerTitle: string;
   dateFormatted: string;
   applicationRef: string | null;

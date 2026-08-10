@@ -1625,6 +1625,7 @@ export default function LeadershipPage() {
       "Department",
       "Program",
       "CNIC",
+      "Date of Birth",
     ];
 
     const applicationColumnKeys: string[] = [
@@ -1645,6 +1646,7 @@ export default function LeadershipPage() {
       "Degree Title",
       "All Chapters",
       "Association Title",
+      "Date of Birth",
       "Created At",
     ];
 
@@ -1740,6 +1742,7 @@ export default function LeadershipPage() {
           "Department": item.departmentname || "",
           "Program": item.program_name || item.degreetitle || "",
           "CNIC": item.cnicpassport || "",
+          "Date of Birth": item.dateofbirth || "",
         }));
       }
 
@@ -1765,6 +1768,7 @@ export default function LeadershipPage() {
         "Degree Title": item.degreetitle || "",
         "All Chapters": formatChapters(item),
         "Association Title": item.association_title || "",
+        "Date of Birth": item.dateofbirth || "",
         "Created At": item.created_at || "",
       }));
     };

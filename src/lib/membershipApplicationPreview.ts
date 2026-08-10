@@ -29,6 +29,7 @@ export type MembershipDbRow = {
   withdrawn_at: string | null;
   withdrawn_by: string | null;
   withdrawal_reason: string | null;
+  application_ref: string | null;
   alumniname: string | null;
   fathername: string | null;
   dateofbirth: string | null;
@@ -52,6 +53,7 @@ export type MembershipApplicationPreview = {
   withdrawnBy: string | null;
   withdrawalReason: string | null;
   facilityType: CampusFacilityType;
+  applicationRef: string | null;
   studentName: string;
   fatherName: string;
   dob: string;
@@ -338,6 +340,7 @@ export function buildMembershipApplicationPreview(
     withdrawnBy: row.withdrawn_by ?? null,
     withdrawalReason: row.withdrawal_reason ?? null,
     facilityType,
+    applicationRef: row.application_ref ?? null,
     studentName: missing(row.alumniname),
     fatherName: missing(row.fathername),
     dob: row.dateofbirth ? formatDateLong(row.dateofbirth) : "Missing",
@@ -394,6 +397,7 @@ export function buildMembershipFormPDFData(row: MembershipDbRow): MembershipForm
     facilityType: preview.facilityType,
     headerTitle: preview.headerTitle,
     dateFormatted: preview.dateFormatted,
+    applicationRef: preview.applicationRef,
     studentName: preview.studentName,
     fatherName: preview.fatherName,
     dob: preview.dob,
