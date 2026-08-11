@@ -1072,7 +1072,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
             form.drawFullRow("Admission Fee Discount (Standalone)", fb.admissionFeeDisplay);
           }
           form.drawFieldPair(
-            "Tuition Fee Discount",
+            "Tuition Fee Discount (CGPA Based)",
             fb.tuitionFeeDisplay,
             `Tuition Fee Discount (High Achiever) (${data.medal || "Medalist"})`,
             fb.highAchieverDiscount != null ? fb.highAchieverDisplay : "0%",
@@ -1084,7 +1084,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
             form.drawFullRow("Admission Fee Discount (Standalone)", `${data.admissionFeePercent}%`);
           }
           form.drawFieldPair(
-            "Tuition Fee Discount",
+            "Tuition Fee Discount (CGPA Based)",
             data.tuitionFeePercent != null ? `${data.tuitionFeePercent}%` : "—",
             `Tuition Fee Discount (High Achiever) (${data.medal || "Medalist"})`,
             data.highAchieverPercent != null ? `${data.highAchieverPercent}%` : "0%",
