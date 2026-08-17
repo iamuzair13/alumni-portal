@@ -94,6 +94,7 @@ export type AlumniFullDetails = {
   pre_sap_registration: boolean | null;
   medal: string | null;
   medal_document: string | null;
+  profile_updated: boolean | null;
 };
 
 export async function getAlumniFullDetails(sapId: string): Promise<AlumniFullDetails> {

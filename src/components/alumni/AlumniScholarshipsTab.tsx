@@ -111,6 +111,7 @@ type ScholarshipApplicationLetter = {
   withdrawnAt?: string | null;
   withdrawnBy?: string | null;
   withdrawalReason?: string | null;
+  profileUpdated?: boolean | null;
 };
 
 async function getAlumniScholarships(
@@ -186,6 +187,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
   const [admissionRefDraft, setAdmissionRefDraft] = useState("");
   const [admissionRefOriginal, setAdmissionRefOriginal] = useState("");
   const [admissionRefSaving, setAdmissionRefSaving] = useState(false);
+  const [isTogglingProfileUpdated, setIsTogglingProfileUpdated] = useState(false);
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const confirmModal = useModal();
@@ -1424,12 +1426,53 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ["Campus", applicationPreview.application.campus || "-"],
                                 ["Passing Out Year", applicationPreview.application.passingOutYear || "-"],
                                 ["CGPA/Grade", applicationPreview.application.cgpaLastDegree],
+
                               ].map(([k, v]) => (
                                 <tr key={k} className="bg-white dark:bg-gray-900">
                                   <td className="w-[260px] px-4 py-3 font-semibold text-slate-800 bg-slate-50/60 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">{k}</td>
                                   <td className="px-4 py-3 text-slate-900 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">{String(v || "-")}</td>
                                 </tr>
                               ))}
+                              <tr className="bg-white dark:bg-gray-900">
+                                <td className="w-[260px] px-4 py-3 font-semibold text-slate-800 bg-slate-50/60 dark:text-gray-100 dark:bg-gray-900">Profile Updated</td>
+                                <td className="px-4 py-3 text-slate-900 dark:text-gray-100 dark:bg-gray-900">
+                                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={applicationPreview.application.profileUpdated === true}
+                                      disabled={!isAdmin || isTogglingProfileUpdated}
+                                      onChange={async () => {
+                                        if (!applicationPreview?.alumniId) return;
+                                        const alumniIdNum = applicationPreview.alumniId;
+                                        const nextValue = !(applicationPreview.application?.profileUpdated === true);
+                                        setIsTogglingProfileUpdated(true);
+                                        try {
+                                          const res = await fetch(`/api/alumni/${encodeURIComponent(alumniIdNum)}/update-fields`, {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ profile_updated: nextValue }),
+                                          });
+                                          if (!res.ok) {
+                                            const errJson = await res.json().catch(() => null);
+                                            throw new Error(errJson?.error || "Failed to update profile updated flag");
+                                          }
+                                          toast.success(nextValue ? "Alumni marked as profile updated." : "Profile updated flag cleared.");
+                                          await handleViewApplication(alumniIdNum);
+                                        } catch (e) {
+                                          const msg = e instanceof Error ? e.message : "Failed to update profile updated flag";
+                                          toast.error(msg);
+                                        } finally {
+                                          setIsTogglingProfileUpdated(false);
+                                        }
+                                      }}
+                                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    />
+                                    <span className="text-sm">
+                                      {isTogglingProfileUpdated ? "Updating..." : applicationPreview.application.profileUpdated === true ? "Yes" : "No"}
+                                    </span>
+                                  </label>
+                                </td>
+                              </tr>
                             </tbody>
                           </table>
                         </div>

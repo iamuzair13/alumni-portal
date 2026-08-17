@@ -113,6 +113,7 @@ export interface ScholarshipLetterPDFData {
   withdrawnAt?: string | null;
   withdrawnBy?: string | null;
   withdrawalReason?: string | null;
+  profileUpdated?: boolean | null;
 }
 
 export interface MembershipFormPDFData {
@@ -1135,6 +1136,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         form.drawFieldPair("Department", data.department, "Program", data.previousDegree);
         form.drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
         form.drawFullRow("Passing Out Year", data.passingOutYear);
+        form.drawFullRow("Profile Updated", data.profileUpdated === true ? "Yes" : "No");
       }
 
       form.drawSection("d", "Documents Checklist");

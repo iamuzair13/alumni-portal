@@ -306,6 +306,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const medalDocumentVal = "medal_document" in body ? cleanValue("medal_document", body.medal_document) : undefined;
     // Consent field
     const alumniConsentInfoVal = "alumni_consent_info" in body ? cleanValue("alumni_consent_info", body.alumni_consent_info) : undefined;
+    // Profile updated flag (admin-only)
+    const profileUpdatedVal = isAdmin && "profile_updated" in body
+      ? (body.profile_updated === true || body.profile_updated === "true" || body.profile_updated === 1 || body.profile_updated === "1")
+      : undefined;
     // Chapter fields
     const chapter1IdVal = "chapter1_id" in body ? (body.chapter1_id !== null && body.chapter1_id !== undefined && body.chapter1_id !== "" ? Number(body.chapter1_id) : null) : undefined;
     const chapter2IdVal = "chapter2_id" in body ? (body.chapter2_id !== null && body.chapter2_id !== undefined && body.chapter2_id !== "" ? Number(body.chapter2_id) : null) : undefined;
@@ -409,6 +413,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       medal: medalVal,
       medal_document: medalDocumentVal,
       alumni_consent_info: alumniConsentInfoVal,
+      profile_updated: profileUpdatedVal,
       chapter1_id: chapter1IdVal,
       chapter2_id: chapter2IdVal,
       chapter3_id: chapter3IdVal,
@@ -682,6 +687,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("medal", medalVal);
       addUpdate("medal_document", medalDocumentVal);
       addUpdate("alumni_consent_info", alumniConsentInfoVal);
+      addUpdate("profile_updated", profileUpdatedVal);
       addUpdate("faculty", facultyIdVal);
       addUpdate("department", departmentIdVal);
       addUpdate("program", programIdVal);

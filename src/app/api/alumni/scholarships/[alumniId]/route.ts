@@ -245,7 +245,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         a.personalemail,
         a.universityemail,
         a.officialemail,
-        a.medal
+        a.medal,
+        a.profile_updated
       FROM public.alumni_scholarships asch
       JOIN public.tbl_alumni a ON a.alumniid = asch.id
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -296,6 +297,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       universityemail: string | null;
       officialemail: string | null;
       medal: string | null;
+      profile_updated: boolean | null;
     };
 
     const alumniName = String(app.alumniname || "");
@@ -559,6 +561,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
           : null,
       applicationTerm: String(app.application_term || "").trim() || null,
       scholarshipApplicationPdfId,
+      profileUpdated: app.profile_updated === true,
     };
 
     if (mode === "letter-pdf") {
@@ -609,6 +612,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         withdrawnAt: applicationLetter.withdrawnAt,
         withdrawnBy: applicationLetter.withdrawnBy,
         withdrawalReason: applicationLetter.withdrawalReason,
+        profileUpdated: applicationLetter.profileUpdated,
       });
 
       return new NextResponse(new Uint8Array(pdfBuffer), {

@@ -237,6 +237,7 @@ type AlumniFullData = {
   pre_sap_registration: boolean | null;
   medal: string | null;
   medal_document: string | null;
+  profile_updated: boolean | null;
 };
 
 const toBoolPreSap = (value: unknown): boolean => {
@@ -633,6 +634,8 @@ function AlumniExpandableDetails({
   const [isAutoAssigningCategory, setIsAutoAssigningCategory] = useState(false);
   const [isUploadingMedalDoc, setIsUploadingMedalDoc] = useState(false);
   const medalDocFileRef = useRef<HTMLInputElement>(null);
+  const [isTogglingProfileUpdated, setIsTogglingProfileUpdated] = useState(false);
+  const canToggleProfileUpdated = canModify(session.data?.user) && !readOnly;
 
   const safePasswordValue = useMemo(() => {
     const raw = data?.password;
@@ -1239,7 +1242,7 @@ function AlumniExpandableDetails({
 
   const handleDelete = async () => {
     if (!currentSapId || !data) return;
-    
+
     // Validate identifier before proceeding
     if (String(currentSapId || "").trim() === "") {
       toast.error("Invalid identifier. Cannot delete alumni.");
@@ -1250,18 +1253,18 @@ function AlumniExpandableDetails({
     try {
       const stableIdentifier = data?.alumniid ? String(data.alumniid) : currentSapId;
 
-      const res = await fetch(`/api/alumni/${encodeURIComponent(stableIdentifier)}`, { 
+      const res = await fetch(`/api/alumni/${encodeURIComponent(stableIdentifier)}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" }
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: `Failed to delete: ${res.status}` }));
         throw new Error(errorData.error || `Failed to delete: ${res.status}`);
       }
-      
+
       toast.success("Alumni deleted successfully.");
-      
+
       // Invalidate all alumni-related queries to ensure fresh data
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["alumni"] }),
@@ -1269,11 +1272,11 @@ function AlumniExpandableDetails({
         queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }),
         queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false })
       ]);
-      
+
       // Close the details panel and modal
       deleteModal.closeModal();
       onClose();
-      
+
       // Optionally navigate away or refresh the page
       // router.refresh();
     } catch (e: unknown) {
@@ -1282,6 +1285,37 @@ function AlumniExpandableDetails({
 
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleToggleProfileUpdated = async () => {
+    if (!data) return;
+    const stableIdentifier = data?.alumniid ? String(data.alumniid) : currentSapId;
+    if (!stableIdentifier) {
+      toast.error("Invalid identifier for profile update flag.");
+      return;
+    }
+    const nextValue = !toBoolPreSap(data.profile_updated);
+    setIsTogglingProfileUpdated(true);
+    try {
+      const res = await fetch(`/api/alumni/${encodeURIComponent(stableIdentifier)}/update-fields`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile_updated: nextValue }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update profile updated flag");
+      }
+      setValue("profile_updated", nextValue);
+      queryClient.invalidateQueries({ queryKey: ["alumni"] });
+      queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", currentSapId] });
+      toast.success(nextValue ? "Alumni marked as profile updated." : "Profile updated flag cleared.");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to update profile updated flag";
+      toast.error(msg);
+    } finally {
+      setIsTogglingProfileUpdated(false);
     }
   };
 
@@ -2139,12 +2173,31 @@ function AlumniExpandableDetails({
           />
           <CompactField label="Last Updated" value={formatDateDisplay(data.updated_at)} isEditing={isFieldEditing("updated_at")} readOnly={true} register={register} name="updated_at" />
           <CompactField label="Created Date" value={data.createddatetime} isEditing={isFieldEditing("createddatetime")} readOnly={readOnly} register={register} name="createddatetime" onEdit={() => startEditingField("createddatetime")} />
-          <CompactField 
-            label="Photo Usage Consent" 
-            value={data.alumni_consent_pic === true ? "Allowed" : data.alumni_consent_pic === false ? "Not Allowed" : "Not Set"} 
-            isEditing={false} 
+          <CompactField
+            label="Photo Usage Consent"
+            value={data.alumni_consent_pic === true ? "Allowed" : data.alumni_consent_pic === false ? "Not Allowed" : "Not Set"}
+            isEditing={false}
             readOnly={true}
           />
+          <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Profile Updated:</span>
+            {canToggleProfileUpdated ? (
+              <label className="flex items-center gap-2 text-xs text-gray-800 dark:text-gray-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={toBoolPreSap(data.profile_updated)}
+                  onChange={handleToggleProfileUpdated}
+                  disabled={isTogglingProfileUpdated}
+                  className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                {isTogglingProfileUpdated ? "Updating..." : toBoolPreSap(data.profile_updated) ? "Yes" : "No"}
+              </label>
+            ) : (
+              <span className="text-xs text-gray-900 dark:text-gray-100">
+                {toBoolPreSap(data.profile_updated) ? "Yes" : "No"}
+              </span>
+            )}
+          </div>
         </div>
 
         {editingFields.size > 0 && !readOnly && (
