@@ -83,6 +83,7 @@ export interface ScholarshipLetterPDFData {
   discountTiers?: ScholarshipDiscountTierPdfRow[];
   documentsAttached: string[];
   sapCode: string;
+  registrationNo?: string | null;
   passingOutYear?: string | null;
   admissionApplicationRef?: string | null;
   applicationYear?: string | null;
@@ -1134,7 +1135,14 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       } else {
         form.drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
         form.drawFieldPair("Department", data.department, "Program", data.previousDegree);
-        form.drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
+        form.drawFieldPair(
+          "SAP ID / Registration No",
+          [data.sapCode, data.registrationNo]
+            .filter((x) => x && String(x).trim() !== "" && x !== "Data is missing")
+            .join(" / ") || "Data is missing",
+          "CGPA / Grade",
+          data.cgpaLastDegree,
+        );
         form.drawFullRow("Passing Out Year", data.passingOutYear);
         form.drawFullRow("Profile Updated", data.profileUpdated === true ? "Yes" : "No");
       }

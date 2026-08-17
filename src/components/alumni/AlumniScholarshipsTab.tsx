@@ -84,6 +84,7 @@ type ScholarshipApplicationLetter = {
   documentsAttached: string[];
   uploadedDocuments?: Array<{ label: string; filename: string; url: string; adminVerified?: "YES" | "NO" | null }>;
   sapCode: string;
+  registrationNo?: string | null;
   requestedProgramDegree?: string;
   faculty?: string;
   department?: string;
@@ -1703,7 +1704,11 @@ export const AlumniScholarshipsTab: React.FC = () => {
                           <table className="min-w-full text-sm dark:text-gray-100 dark:bg-gray-900">
                             <tbody className="divide-y divide-slate-200 dark:divide-gray-700 dark:text-gray-100 dark:bg-gray-900 ">
                               {[
-                                ["SAP Code", applicationPreview.application.sapCode],
+                                ["SAP Code / Registration No",
+                                  [
+                                    applicationPreview.application.sapCode,
+                                    applicationPreview.application.registrationNo,
+                                  ].filter((x) => x && x !== "Data is missing" && String(x).trim() !== "").join(" / ") || "-"],
                               ].map(([k, v]) => (
                                 <tr key={k} className="bg-white dark:bg-gray-900">
                                   <td className="w-[260px] px-4 py-3 font-semibold text-slate-800 bg-slate-50/60 dark:text-gray-100 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 ">{k}</td>
