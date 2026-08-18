@@ -1496,7 +1496,7 @@ function ScholarshipApplicationContent() {
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
                           <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Copy of Admission Letter (PhD – UOL) <span className="text-red-500">*</span>
+                            Copy of Admission Letter<span className="text-red-500">*</span>
                           </label>
                           <input
                             type="file"

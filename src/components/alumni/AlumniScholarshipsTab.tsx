@@ -1599,7 +1599,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                         "CNIC Copy (Alumni)",
                                       ]
                                     : [
-                                        "Copy of Admission Letter (PhD – UOL)",
+                                        "Copy of Admission Letter",
                                         "Academic Transcripts and Certificates",
                                         "Alumni Card",
                                         "Curriculum Vitae (CV)",

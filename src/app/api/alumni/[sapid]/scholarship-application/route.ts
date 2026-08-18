@@ -213,7 +213,7 @@ export async function POST(
         };
 
         const requiredFiles: Array<{ key: string; label: string; slot: string }> = [
-          { key: "docAdmissionLetter", label: "Copy of Admission Letter (PhD – UOL)", slot: "admission-letter" },
+          { key: "docAdmissionLetter", label: "Copy of Admission Letter", slot: "admission-letter" },
           { key: "docAlumniProof", label: "Alumni Card", slot: "alumni-card" },
           { key: "docCnic", label: "CNIC Copy", slot: "cnic" },
         ];
