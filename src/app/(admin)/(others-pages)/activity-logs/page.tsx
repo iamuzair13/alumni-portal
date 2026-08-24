@@ -237,13 +237,37 @@ export default function ActivityLogsPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 dark:text-gray-300 dark:bg-gray-900">Action</label>
-            <input
+            <select
               value={action}
               onChange={(e) => setAction(e.target.value)}
               className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm dark:text-gray-300 dark:bg-gray-900"
-              placeholder="users.create"
               disabled={mainTab !== "activity"}
-            />
+            >
+              <option value="">All actions</option>
+              <optgroup label="Alumni">
+                <option value="alumni.update">alumni.update</option>
+                <option value="alumni.update_fields">alumni.update_fields</option>
+                <option value="alumni.delete">alumni.delete</option>
+                <option value="ALUMNI_VERIFY">ALUMNI_VERIFY</option>
+                <option value="ALUMNI_UNVERIFY">ALUMNI_UNVERIFY</option>
+              </optgroup>
+              <optgroup label="Alumni Cards">
+                <option value="alumni_cards.create">alumni_cards.create</option>
+                <option value="alumni_cards.update">alumni_cards.update</option>
+                <option value="alumni_cards.update_status">alumni_cards.update_status</option>
+                <option value="alumni_cards.update_image">alumni_cards.update_image</option>
+                <option value="alumni_cards.submit_revision">alumni_cards.submit_revision</option>
+                <option value="alumni_cards.delete">alumni_cards.delete</option>
+              </optgroup>
+              <optgroup label="Users">
+                <option value="users.create">users.create</option>
+                <option value="users.update">users.update</option>
+                <option value="users.delete">users.delete</option>
+              </optgroup>
+              <optgroup label="Leadership">
+                <option value="leadership">leadership (all)</option>
+              </optgroup>
+            </select>
           </div>
 
           <div>

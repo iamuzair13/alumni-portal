@@ -7,6 +7,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { isCardPictureUpdateAllowed } from "@/lib/alumniCardImage";
 import { normalizePublicImageFilename } from "@/lib/uploadsImageUrl";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 const CARD_UPLOAD_DIR = join(process.cwd(), "public", "images");
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
@@ -149,6 +150,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
         await unlink(previousPath).catch(() => undefined);
       }
     }
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni_cards.update_image",
+        entityType: "tblcard",
+        entityId: record.alumniid,
+        metadata: {
+          sapid: normalizedSapid,
+          alumniId: record.alumniid,
+          previousImage: previous,
+          newImage: savedFilename,
+          actorIsAdmin: isAdmin,
+        },
+      },
+    });
 
     return NextResponse.json({ ok: true, image: savedFilename }, { status: 200 });
   } catch (err) {

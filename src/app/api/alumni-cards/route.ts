@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { isCardPictureUpdateAllowed } from "@/lib/alumniCardImage";
 import { ALUMNI_CARD_VALIDITY_ISO } from "@/lib/cardValidity";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 const CARD_UPLOAD_DIR = join(process.cwd(), "public", "images");
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
@@ -203,6 +204,24 @@ export async function POST(req: Request) {
         }
       }
       
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: isNewApplication ? "alumni_cards.create" : "alumni_cards.update",
+          entityType: "tblcard",
+          entityId: rows[0]?.cardid ?? alumniId,
+          metadata: {
+            alumniId,
+            sapid: alumni.sapid,
+            registrationno: alumni.registrationno,
+            isNewApplication,
+            status,
+            cardaddress,
+          },
+        },
+      });
+
       return NextResponse.json({ cardid: rows[0]?.cardid }, { status: 201 });
     }
 
@@ -368,6 +387,24 @@ export async function POST(req: Request) {
       }
     }
     
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: isNewApplication ? "alumni_cards.create" : "alumni_cards.update",
+        entityType: "tblcard",
+        entityId: rows[0]?.cardid ?? alumniId,
+        metadata: {
+          alumniId,
+          sapid: alumni.sapid,
+          registrationno: alumni.registrationno,
+          isNewApplication,
+          status,
+          image: storedFilename,
+        },
+      },
+    });
+
     return NextResponse.json({ cardid: rows[0]?.cardid, image: storedFilename }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create card";

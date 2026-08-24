@@ -117,6 +117,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
 
     // SECURITY: Only admins and superadmins can update card status
     if (!canModify(session.user)) {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "alumni_cards.update_status",
+          entityType: "tblcard",
+          entityId: String(sapid || "").trim() || null,
+          success: false,
+          errorMessage: "FORBIDDEN",
+        },
+      });
       return NextResponse.json({ error: "Forbidden: Only admins and superadmins can update card status" }, { status: 403 });
     }
 
@@ -287,6 +298,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     if (!dbCardRows[0]) {
       return NextResponse.json({ message: "Card not found or update failed" }, { status: 404 });
     }
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni_cards.update_status",
+        entityType: "tblcard",
+        entityId: dbCardRows[0].cardid,
+        metadata: {
+          sapid: normalizedSapid,
+          alumniId: dbCardRows[0].alumniid,
+          previousStatus: currentStatus,
+          newStatus: finalStatus,
+          reasonOnhold: finalStatus === "Onhold" ? reasonOnhold : null,
+        },
+      },
+    });
 
     return NextResponse.json({ cardid: dbCardRows[0].cardid }, { status: 200 });
   } catch {

@@ -28,3 +28,6 @@ CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_actor
 
 CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_action
   ON public.admin_activity_logs (action, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_entity
+  ON public.admin_activity_logs (entity_type, entity_id);

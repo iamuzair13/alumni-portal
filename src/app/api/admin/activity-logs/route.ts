@@ -48,7 +48,12 @@ export async function GET(req: Request) {
     }
 
     if (action) {
-      conditions.push(sql`action = ${action}`);
+      const actionNorm = String(action).trim();
+      if (actionNorm.includes("%") || actionNorm.includes("_")) {
+        conditions.push(sql`action ILIKE ${actionNorm}`);
+      } else {
+        conditions.push(sql`action ILIKE ${`%${actionNorm}%`}`);
+      }
     }
 
     if (from) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 export async function POST(req: Request) {
   try {
@@ -66,6 +67,21 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni_cards.submit_revision",
+        entityType: "tblcard",
+        entityId: rows[0].cardid,
+        metadata: {
+          sapid: sapId,
+          previousStatus: "Onhold",
+          newStatus: "UnderReview",
+        },
+      },
+    });
 
     return NextResponse.json({ ok: true, cardid: rows[0].cardid }, { status: 200 });
   } catch (e) {
