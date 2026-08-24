@@ -85,6 +85,8 @@ function ScholarshipApplicationContent() {
     kinshipLastDegreeCertificate: "",
     kinshipPassingOutYear: "",
     kinshipCnic: "",
+    kinshipGradeType: "",
+    kinshipGradeValue: "",
     fatherCnic: "",
   });
 
@@ -357,6 +359,7 @@ function ScholarshipApplicationContent() {
   }, [data?.father_cnic]);
 
   const kinshipLastDegreeCertificateOptions = [
+    {value: "BS", label: "BS"},
     { value: "FA", label: "FA" },
     { value: "FSC", label: "FSC" },
     { value: "ICS", label: "ICS" },
@@ -364,14 +367,15 @@ function ScholarshipApplicationContent() {
     { value: "A Levels", label: "A Levels" },
   ];
 
-  // Scholarship application year options: start from 2026 and extend 5 years beyond the current year.
-  const SCHOLARSHIP_APPLICATION_YEAR_START = 2026;
+  // Scholarship application year options: include the previous 10 years from the
+  // current year and extend 5 years beyond the current year for future intakes.
   const applicationYearOptions = (() => {
     const now = new Date();
     const currentYear = now.getFullYear();
-    const endYear = Math.max(currentYear + 5, SCHOLARSHIP_APPLICATION_YEAR_START + 5);
+    const startYear = currentYear - 10;
+    const endYear = currentYear + 5;
     const years: number[] = [];
-    for (let y = SCHOLARSHIP_APPLICATION_YEAR_START; y <= endYear; y++) {
+    for (let y = startYear; y <= endYear; y++) {
       years.push(y);
     }
     return years;
@@ -537,7 +541,9 @@ function ScholarshipApplicationContent() {
         !formData.kinshipAdmissionRefNo ||
         !formData.kinshipLastDegreeCertificate ||
         !formData.kinshipPassingOutYear ||
-        !formData.kinshipCnic)
+        !formData.kinshipCnic ||
+        !formData.kinshipGradeType ||
+        !formData.kinshipGradeValue)
     ) {
       toast.error("Please complete all required kinship details.", {
         duration: 4000,
@@ -549,6 +555,46 @@ function ScholarshipApplicationContent() {
         },
       });
       return;
+    }
+
+    if (isKinshipFlow && formData.kinshipGradeType && formData.kinshipGradeValue) {
+      const gradeNum = Number(formData.kinshipGradeValue);
+      if (!Number.isFinite(gradeNum) || gradeNum < 0) {
+        toast.error("Please enter a valid grade value.", {
+          duration: 4000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '12px',
+            borderRadius: '8px',
+          },
+        });
+        return;
+      }
+      if (formData.kinshipGradeType === "CGPA" && gradeNum > 4) {
+        toast.error("CGPA cannot exceed 4.00.", {
+          duration: 4000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '12px',
+            borderRadius: '8px',
+          },
+        });
+        return;
+      }
+      if (formData.kinshipGradeType === "Percentage" && gradeNum > 100) {
+        toast.error("Percentage cannot exceed 100.0%.", {
+          duration: 4000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '12px',
+            borderRadius: '8px',
+          },
+        });
+        return;
+      }
     }
     if (
       isKinshipFlow &&
@@ -680,6 +726,8 @@ function ScholarshipApplicationContent() {
               );
               fd.set("kinshipPassingOutYear", formData.kinshipPassingOutYear);
               fd.set("kinshipCnic", formData.kinshipCnic);
+              fd.set("kinshipGradeType", formData.kinshipGradeType);
+              fd.set("kinshipGradeValue", formData.kinshipGradeValue);
               fd.set("fatherCnic", formData.fatherCnic || "");
               fd.set(
                 "docKinshipAcademicCertificates",
@@ -712,6 +760,8 @@ function ScholarshipApplicationContent() {
                 kinshipName: formData.kinshipName || null,
                 kinshipFatherName: formData.kinshipFatherName || null,
                 kinshipCnic: formData.kinshipCnic || null,
+                kinshipGradeType: formData.kinshipGradeType || null,
+                kinshipGradeValue: formData.kinshipGradeValue || null,
                 fatherCnic: formData.fatherCnic || null,
                 gradePercent: gradePercent.trim() || null,
                 applicationYear: applicationYear || null,
@@ -793,6 +843,8 @@ function ScholarshipApplicationContent() {
         kinshipLastDegreeCertificate: "",
         kinshipPassingOutYear: "",
         kinshipCnic: "",
+        kinshipGradeType: "",
+        kinshipGradeValue: "",
         fatherCnic: data?.father_cnic || "",
       });
 
@@ -1822,6 +1874,56 @@ function ScholarshipApplicationContent() {
                           </select>
                         </div>
                         <div><label className="mb-2 text-sm text-slate-900 font-medium block">CNIC (Kinship) <span className="text-red-500">*</span></label><input type="text" value={formData.kinshipCnic} onChange={(e) => setFormData({ ...formData, kinshipCnic: e.target.value })} className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all" required /></div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Grade Type <span className="text-red-500">*</span></label>
+                          <select
+                            value={formData.kinshipGradeType}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                kinshipGradeType: e.target.value,
+                                kinshipGradeValue: "",
+                              })
+                            }
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            required
+                          >
+                            <option value="">Select grade type</option>
+                            <option value="CGPA">CGPA</option>
+                            <option value="Percentage">Percentage</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            {formData.kinshipGradeType === "Percentage"
+                              ? "Percentage (%)"
+                              : formData.kinshipGradeType === "CGPA"
+                                ? "CGPA"
+                                : "Grade Value"}{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step={formData.kinshipGradeType === "Percentage" ? "0.1" : "0.01"}
+                            min={0}
+                            max={formData.kinshipGradeType === "Percentage" ? 100 : 4}
+                            value={formData.kinshipGradeValue}
+                            onChange={(e) =>
+                              setFormData({ ...formData, kinshipGradeValue: e.target.value })
+                            }
+                            placeholder={
+                              formData.kinshipGradeType === "Percentage"
+                                ? "0.0 - 100.0"
+                                : formData.kinshipGradeType === "CGPA"
+                                  ? "0.00 - 4.00"
+                                  : "Select grade type first"
+                            }
+                            disabled={!formData.kinshipGradeType}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                            required
+                          />
+                        </div>
                       </div>
                     </div>
 

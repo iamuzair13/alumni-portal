@@ -43,6 +43,8 @@ type Payload = {
   kinshipLastDegreeCertificate?: string | null;
   kinshipPassingOutYear?: string | null;
   kinshipCnic?: string | null;
+  kinshipGradeType?: string | null;
+  kinshipGradeValue?: string | null;
   fatherCnic?: string | null;
   gradePercent?: string | null;
   appliedDiscountPercent?: number | string | null;
@@ -273,6 +275,8 @@ export async function POST(
         payload.kinshipPassingOutYear =
           String(formData.get("kinshipPassingOutYear") || "").trim() || null;
         payload.kinshipCnic = String(formData.get("kinshipCnic") || "").trim() || null;
+        payload.kinshipGradeType = String(formData.get("kinshipGradeType") || "").trim() || null;
+        payload.kinshipGradeValue = String(formData.get("kinshipGradeValue") || "").trim() || null;
         payload.fatherCnic = String(formData.get("fatherCnic") || "").trim() || null;
         const requiredFiles: Array<{ key: string; label: string; slot: string }> = [
           {
@@ -314,6 +318,8 @@ export async function POST(
           kinshipAdmissionRefNo: payload.kinshipAdmissionRefNo,
           kinshipLastDegreeCertificate: payload.kinshipLastDegreeCertificate,
           kinshipPassingOutYear: payload.kinshipPassingOutYear,
+          kinshipGradeType: payload.kinshipGradeType,
+          kinshipGradeValue: payload.kinshipGradeValue,
           fatherCnic: payload.fatherCnic,
         };
         uploadedDocuments = uploaded;
@@ -630,6 +636,32 @@ export async function POST(
     const kinshipLastName =
       kinshipNameParts.length > 1 ? kinshipNameParts.slice(1).join(" ") : null;
     const kinshipCnic = payload.kinshipCnic ? String(payload.kinshipCnic).trim() : null;
+
+    // Validate kinship grade type/value when provided
+    let kinshipGradeType: string | null = null;
+    let kinshipGradeValue: string | null = null;
+    if (isScholarshipKinshipCategory(discountType)) {
+      const gt = String(payload.kinshipGradeType || "").trim();
+      const gv = String(payload.kinshipGradeValue || "").trim();
+      if (!gt || !gv) {
+        return NextResponse.json({ error: "Grade type and value are required for kinship applications." }, { status: 400 });
+      }
+      if (gt !== "CGPA" && gt !== "Percentage") {
+        return NextResponse.json({ error: "Grade type must be CGPA or Percentage." }, { status: 400 });
+      }
+      const gvNum = Number(gv);
+      if (!Number.isFinite(gvNum) || gvNum < 0) {
+        return NextResponse.json({ error: "Grade value must be a valid non-negative number." }, { status: 400 });
+      }
+      if (gt === "CGPA" && gvNum > 4) {
+        return NextResponse.json({ error: "CGPA cannot exceed 4.00." }, { status: 400 });
+      }
+      if (gt === "Percentage" && gvNum > 100) {
+        return NextResponse.json({ error: "Percentage cannot exceed 100.0." }, { status: 400 });
+      }
+      kinshipGradeType = gt;
+      kinshipGradeValue = gv;
+    }
 
     await sql/* sql */`
       INSERT INTO public.alumni_scholarships (

@@ -108,6 +108,8 @@ type ScholarshipApplicationLetter = {
     kinLastDegreeCertificate?: string;
     kinPassingOutYear?: string;
     kinCnic?: string;
+    kinGradeType?: string;
+    kinGradeValue?: string;
   } | null;
   withdrawnAt?: string | null;
   withdrawnBy?: string | null;
@@ -1513,6 +1515,18 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                     applicationPreview.application.kinshipDetails?.kinPassingOutYear || "-",
                                   ],
                                   ["CNIC", applicationPreview.application.kinshipDetails?.kinCnic || "-"],
+                                  [
+                                    "Grade Type",
+                                    applicationPreview.application.kinshipDetails?.kinGradeType || "-",
+                                  ],
+                                  [
+                                    applicationPreview.application.kinshipDetails?.kinGradeType === "Percentage"
+                                      ? "Percentage (%)"
+                                      : applicationPreview.application.kinshipDetails?.kinGradeType === "CGPA"
+                                        ? "CGPA"
+                                        : "Grade Value",
+                                    applicationPreview.application.kinshipDetails?.kinGradeValue || "-",
+                                  ],
                                 ].map(([k, v]) => (
                                   <tr key={k} className="bg-white dark:bg-gray-900">
                                     <td className="w-[260px] px-4 py-3 font-semibold text-slate-800 bg-slate-50/60 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">{k}</td>

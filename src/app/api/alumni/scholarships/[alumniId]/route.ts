@@ -498,6 +498,12 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipPassingOutYear || "").trim() ||
         "Data is missing",
       kinCnic: String(app.kinship_cnic || "").trim() || "Data is missing",
+      kinGradeType:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipGradeType || "").trim() ||
+        "Data is missing",
+      kinGradeValue:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipGradeValue || "").trim() ||
+        "Data is missing",
     };
 
     const applicationLetter = {

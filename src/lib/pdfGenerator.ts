@@ -110,6 +110,8 @@ export interface ScholarshipLetterPDFData {
     kinAdmissionRefNo?: string;
     kinLastDegreeCertificate?: string;
     kinPassingOutYear?: string;
+    kinGradeType?: string;
+    kinGradeValue?: string;
   };
   withdrawnAt?: string | null;
   withdrawnBy?: string | null;
@@ -1132,6 +1134,18 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           data.kinshipDetails?.kinLastDegreeCertificate,
         );
         form.drawFullRow("Passing Out Year", data.kinshipDetails?.kinPassingOutYear);
+        const kinGradeTypeLabel =
+          data.kinshipDetails?.kinGradeType === "Percentage"
+            ? "Percentage (%)"
+            : data.kinshipDetails?.kinGradeType === "CGPA"
+              ? "CGPA"
+              : "Grade Value";
+        form.drawFieldPair(
+          "Grade Type",
+          data.kinshipDetails?.kinGradeType,
+          kinGradeTypeLabel,
+          data.kinshipDetails?.kinGradeValue,
+        );
       } else {
         form.drawFieldPair("Campus", data.campus, "Faculty", data.faculty);
         form.drawFieldPair("Department", data.department, "Program", data.previousDegree);
