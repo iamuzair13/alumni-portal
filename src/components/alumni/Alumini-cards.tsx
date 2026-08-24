@@ -5,6 +5,7 @@ import { LockIcon, EyeIcon, CheckLineIcon, BoltIcon, TimeIcon, GroupIcon, FileIc
 import { AlumniDataTable } from "./AlumniCard";
 import { useCardApplicants, type CardStatusFilter, type CardApplicant, type OverdueType } from "@/app/queries/fetch-card-applicants";
 import { useUpdateApplicantStatus } from "@/app/queries/fetch-card-applicants";
+import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { 
   type CardStatus,
@@ -372,6 +373,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
   }, [countsData, data]);
   
   const updateStatusMutation = useUpdateApplicantStatus();
+  const queryClient = useQueryClient();
 
   const cards = useMemo(() => {
     if (!data?.items) return [];
@@ -406,6 +408,16 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         return;
       }
       if (key === "delete") {
+        const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(alumni.id)}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: "Failed to delete card" }));
+          throw new Error(errData.error || `Failed (${res.status})`);
+        }
+        // Invalidate queries to refresh the list
+        queryClient.invalidateQueries({ queryKey: ["alumni", "card", "applicants"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["alumni-cards", "counts"] });
         toast.success("Alumni card deleted successfully");
         return;
       }

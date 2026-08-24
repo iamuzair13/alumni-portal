@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { resolvePreferredCardImage } from "@/lib/alumniCardImage";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -75,34 +76,45 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       : "alumni-image.jpg";
     
     // Keep tblcard synced with resolved picture for legacy records.
+    // IMPORTANT: Only update existing card records. Do NOT create new card records
+    // from a GET download request — that would silently create applications with
+    // UnderReview status, which has caused cards to "reappear" after deletion.
     try {
       const alumniId = data.alumniid;
       const originalImageFilename = imageName; // Keep the original filename from tbl_alumni
-      
+
       // Check if card exists
       const cardExists = await sql/* sql */`
-        SELECT cardid FROM public.tblcard 
-        WHERE alumniid = ${alumniId} 
+        SELECT cardid FROM public.tblcard
+        WHERE alumniid = ${alumniId}
         LIMIT 1
       ` as Array<{ cardid: number }>;
-      
+
       if (cardExists[0]) {
         // Card exists, update both card_image and cardpicture with original filename from tbl_alumni
         await sql/* sql */`
-          UPDATE public.tblcard 
+          UPDATE public.tblcard
           SET card_image = ${originalImageFilename}, cardpicture = ${originalImageFilename}
           WHERE alumniid = ${alumniId}
         `;
-      } else {
-        // Card doesn't exist, create it with the original image filename from tbl_alumni
-        await sql/* sql */`
-          INSERT INTO public.tblcard (alumniid, card_image, cardpicture, status, createdat)
-          VALUES (${alumniId}, ${originalImageFilename}, ${originalImageFilename}, 'UnderReview', NOW())
-          ON CONFLICT (alumniid) DO UPDATE
-          SET card_image = EXCLUDED.card_image,
-              cardpicture = EXCLUDED.cardpicture
-        `;
+
+        await logAdminAction({
+          session,
+          req: _,
+          input: {
+            action: "alumni_cards.update_image",
+            entityType: "tblcard",
+            entityId: cardExists[0].cardid,
+            metadata: {
+              sapid: normalizedSapid,
+              alumniId,
+              newImage: originalImageFilename,
+              source: "download-image-sync",
+            },
+          },
+        });
       }
+      // If no card exists, do NOT create one — this is a download request, not an application
     } catch (saveError) {
       // Don't fail the download if saving to tblcard fails
       // The download should still proceed even if database update fails

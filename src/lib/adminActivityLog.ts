@@ -39,8 +39,8 @@ export async function logAdminAction(params: {
   req?: Request;
   input: AdminActivityLogInput;
 }): Promise<void> {
+  const { session, req, input } = params;
   try {
-    const { session, req, input } = params;
     const actorUserIdRaw = (session?.user as { userId?: number | string } | undefined)?.userId;
     const actorUserId = actorUserIdRaw === undefined || actorUserIdRaw === null ? null : Number(actorUserIdRaw);
 
@@ -83,6 +83,7 @@ export async function logAdminAction(params: {
         ${metadataJson}
       )
     `;
-  } catch {
+  } catch (logErr) {
+    console.error("[adminActivityLog] Failed to log action:", String(input.action), logErr);
   }
 }

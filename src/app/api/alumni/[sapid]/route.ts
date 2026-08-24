@@ -478,6 +478,14 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       }
     }
     
+    // Fetch card data BEFORE deletion (CASCADE will remove it), so we can log it
+    const cardBeforeDelete = await sql/* sql */`
+      SELECT cardid, status, cardpicture, card_image
+      FROM public.tblcard
+      WHERE alumniid = ${alumniId}
+      LIMIT 1
+    ` as Array<{ cardid: number; status: string | null; cardpicture: string | null; card_image: string | null }>;
+
     // Use a transaction to ensure atomic deletion and handle foreign key cascades properly
     // Delete by alumniid (primary key) which is more efficient and required for FK relationships
     // Use retry logic for connection timeouts
@@ -492,7 +500,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
         // Ignore if no records exist or table doesn't exist
 
       }
-      
+
       try {
         await tx/* sql */`
           DELETE FROM public.alumni_scholarships WHERE id = ${alumniId}`;
@@ -501,19 +509,19 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
         // Ignore if no records exist or table doesn't exist
 
       }
-      
+
       // Delete the alumni record by alumniid
       // Foreign key constraints with ON DELETE CASCADE will automatically delete related records
       // (tblcard, tblchapters, alumni_talk_sessions, tblalumnistories, alumni_chapter)
       const deleteResult = await tx/* sql */`
-        DELETE FROM public.tbl_alumni 
-        WHERE alumniid = ${alumniId} 
+        DELETE FROM public.tbl_alumni
+        WHERE alumniid = ${alumniId}
         RETURNING alumniid, sapid, alumniname`;
-      
+
       if (!deleteResult[0]) {
         throw new Error("Failed to delete alumni record");
       }
-      
+
       return deleteResult[0];
     }));
 
@@ -531,6 +539,26 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
         },
       },
     });
+
+    // Log the cascaded card deletion explicitly (ON DELETE CASCADE removes it silently)
+    if (cardBeforeDelete[0]) {
+      await logAdminAction({
+        session,
+        req: _,
+        input: {
+          action: "alumni_cards.delete",
+          entityType: "tblcard",
+          entityId: cardBeforeDelete[0].cardid,
+          metadata: {
+            sapid: result.sapid,
+            registrationno: foundRegNo,
+            alumniId: result.alumniid,
+            previousStatus: cardBeforeDelete[0].status,
+            cascadeReason: "alumni_record_deleted",
+          },
+        },
+      });
+    }
 
     return NextResponse.json({ 
       ok: true, 
