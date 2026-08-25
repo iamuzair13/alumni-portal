@@ -62,7 +62,7 @@ export function StatTile({
         className={twMerge(
           "rounded-lg border p-2.5 text-left transition-all",
           isSelected
-            ? "border-accent-300 bg-accent-50/50 ring-1 ring-accent-500/15 dark:border-accent-700 dark:bg-accent-900/10 dark:ring-accent-500/15"
+            ? "border-accent-400 bg-accent-50/70 ring-2 ring-accent-500/30 shadow-theme-sm dark:border-accent-600 dark:bg-accent-900/20 dark:ring-accent-400/30"
             : "border-gray-200/60 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800/60 dark:bg-gray-900/40 dark:hover:border-gray-700 dark:hover:bg-gray-800/40",
           className
         )}

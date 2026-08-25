@@ -47,7 +47,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       ? "hover:border-accent-300 hover:shadow-theme-md dark:hover:border-accent-700/60"
       : "";
     const activeState = active
-      ? "ring-1 ring-accent-500/20 bg-accent-50/40 border-accent-200 dark:ring-accent-400/20 dark:bg-accent-900/10 dark:border-accent-800"
+      ? "ring-2 ring-accent-500/40 bg-accent-50/70 border-accent-300 shadow-theme-md dark:ring-accent-400/40 dark:bg-accent-900/20 dark:border-accent-700"
       : "";
 
     return (
