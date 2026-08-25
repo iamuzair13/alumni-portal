@@ -32,6 +32,165 @@ type LogsResponse = {
   offset: number;
 };
 
+// Friendly label map for action strings shown in the logs table.
+// Falls back to the raw action string if no mapping is found.
+const ACTION_LABELS: Record<string, string> = {
+  // Alumni
+  "alumni.update": "Update Alumni Profile",
+  "alumni.update_fields": "Update Alumni Fields",
+  "alumni.delete": "Delete Alumni Record",
+  "alumni.create": "Create / Register Alumni",
+  "alumni.change_password": "Change Password",
+  "alumni.send_credentials": "Send Login Credentials",
+  "alumni.upload_medal_document": "Upload Medal Document",
+  "alumni.update_profile_picture": "Update Profile Picture",
+  "alumni.update_social_links": "Update Social Media Links",
+  "alumni.verify_image": "Verify Alumni Image",
+  ALUMNI_VERIFY: "Verify Alumni (Approve)",
+  ALUMNI_UNVERIFY: "Unverify Alumni (Reject)",
+  // Alumni Cards
+  "alumni_cards.create": "Create Alumni Card",
+  "alumni_cards.update": "Update Alumni Card",
+  "alumni_cards.update_status": "Change Card Status",
+  "alumni_cards.update_image": "Update Card Image",
+  "alumni_cards.submit_revision": "Submit Card Revision",
+  "alumni_cards.delete": "Delete Alumni Card",
+  CARD_EXISTS: "Card Exists (Block Delete)",
+  // Users
+  "users.create": "Create User",
+  "users.update": "Update User",
+  "users.delete": "Delete User",
+  "users.self_update": "Update Own Profile",
+  // Stories
+  "stories.create": "Submit Story",
+  "stories.update": "Update Story",
+  "stories.delete": "Delete Story",
+  "stories.review": "Approve / Reject Story",
+  // Scholarships
+  "scholarships.apply": "Submit Scholarship Application",
+  "scholarships.update_status": "Update Scholarship Status",
+  "scholarships.delete": "Delete Scholarship Application",
+  // Memberships
+  "memberships.update_status": "Update Membership Status",
+  "memberships.delete": "Delete Membership",
+  "memberships.gym_submit": "Submit Gym Membership",
+  "memberships.swimming_pool_submit": "Submit Swimming Pool Membership",
+  "memberships.cricket_submit": "Submit Cricket Membership",
+  // Talks
+  "talks.submit": "Submit Talk Session",
+  "talks.update_status": "Update Talk Status",
+  "talks.delete": "Delete Talk Session",
+  // Events
+  "events.create": "Create Event",
+  "events.update": "Update Event",
+  "events.delete": "Delete Event",
+  // Jobs
+  "jobs.create": "Post Job",
+  "jobs.update": "Update Job Posting",
+  "jobs.delete": "Delete Job Posting",
+  // Admin
+  "admin.change_approval": "Approve / Reject Profile Change Request",
+  "admin.fix_access_assignments": "Fix Access Assignments",
+};
+
+// Returns a friendly label for an action string. Handles dynamic action
+// prefixes (e.g. "organization.faculty_create", "settings.scholarship_update",
+// "admin.newsletter_create") by mapping the prefix to a category label.
+function friendlyAction(action: string): string {
+  if (ACTION_LABELS[action]) return ACTION_LABELS[action];
+  // Organization actions: organization.faculty_create / _update / _delete etc.
+  if (action.startsWith("organization.")) {
+    const rest = action.slice("organization.".length);
+    const [entity, verb] = rest.split("_");
+    const entityLabel = entity
+      ? entity.charAt(0).toUpperCase() + entity.slice(1)
+      : "Organization";
+    const verbLabel =
+      verb === "create"
+        ? "Create"
+        : verb === "update"
+        ? "Update"
+        : verb === "delete"
+        ? "Delete"
+        : verb
+        ? verb.charAt(0).toUpperCase() + verb.slice(1)
+        : "Action";
+    return `${verbLabel} ${entityLabel}`;
+  }
+  // Settings actions: settings.scholarship_update, settings.cgpa_tier_create, etc.
+  if (action.startsWith("settings.")) {
+    const rest = action.slice("settings.".length);
+    const parts = rest.split("_");
+    // Find the verb (last token: create/update/delete)
+    const verb = parts[parts.length - 1];
+    const subject = parts.slice(0, -1).join(" ");
+    const verbLabel =
+      verb === "create"
+        ? "Create"
+        : verb === "update"
+        ? "Update"
+        : verb === "delete"
+        ? "Delete"
+        : verb.charAt(0).toUpperCase() + verb.slice(1);
+    const subjectLabel = subject
+      ? subject.replace(/\b\w/g, (c) => c.toUpperCase())
+      : "Settings";
+    return `${verbLabel} ${subjectLabel} (Settings)`;
+  }
+  // Newsletter actions: admin.newsletter_create / _upload_image
+  if (action.startsWith("admin.newsletter")) {
+    if (action.includes("upload")) return "Upload Newsletter Image";
+    if (action.includes("create")) return "Create Newsletter";
+    if (action.includes("update")) return "Update Newsletter";
+    if (action.includes("delete")) return "Delete Newsletter";
+    return "Newsletter Action";
+  }
+  // Distinguished alumni
+  if (action.startsWith("distinguished_alumni.")) {
+    const verb = action.split(".").pop();
+    const verbLabel =
+      verb === "create"
+        ? "Create"
+        : verb === "update"
+        ? "Update"
+        : verb === "delete"
+        ? "Delete"
+        : "Action";
+    return `${verbLabel} Distinguished Alumni`;
+  }
+  // Merchants
+  if (action.startsWith("merchants.")) {
+    const verb = action.split(".").pop();
+    const verbLabel =
+      verb === "create"
+        ? "Create"
+        : verb === "update"
+        ? "Update"
+        : verb === "delete"
+        ? "Delete"
+        : "Action";
+    return `${verbLabel} Merchant`;
+  }
+  // Email
+  if (action.startsWith("email.")) {
+    if (action.includes("send_credentials")) return "Send Login Credentials";
+    if (action.includes("send")) return "Send Email";
+    return "Email Action";
+  }
+  // Auth
+  if (action.startsWith("auth.")) {
+    if (action.includes("login")) return "Login";
+    if (action.includes("logout")) return "Logout";
+    return "Auth Action";
+  }
+  // Leadership
+  if (action.startsWith("leadership")) return "Leadership Action";
+  // Fallback: prettify dots and underscores
+  return action
+    .replace(/[._]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 type LoginLogRow = {
   id: number;
   created_at: string;
@@ -245,95 +404,95 @@ export default function ActivityLogsPage() {
             >
               <option value="">All actions</option>
               <optgroup label="Alumni">
-                <option value="alumni.update">alumni.update</option>
-                <option value="alumni.update_fields">alumni.update_fields</option>
-                <option value="alumni.delete">alumni.delete</option>
-                <option value="alumni.create">alumni.create</option>
-                <option value="alumni.change_password">alumni.change_password</option>
-                <option value="alumni.send_credentials">alumni.send_credentials</option>
-                <option value="alumni.upload_medal_document">alumni.upload_medal_document</option>
-                <option value="alumni.update_profile_picture">alumni.update_profile_picture</option>
-                <option value="alumni.update_social_links">alumni.update_social_links</option>
-                <option value="alumni.verify_image">alumni.verify_image</option>
-                <option value="ALUMNI_VERIFY">ALUMNI_VERIFY</option>
-                <option value="ALUMNI_UNVERIFY">ALUMNI_UNVERIFY</option>
+                <option value="alumni.update">Update Alumni Profile</option>
+                <option value="alumni.update_fields">Update Alumni Fields</option>
+                <option value="alumni.delete">Delete Alumni Record</option>
+                <option value="alumni.create">Create / Register Alumni</option>
+                <option value="alumni.change_password">Change Password</option>
+                <option value="alumni.send_credentials">Send Login Credentials</option>
+                <option value="alumni.upload_medal_document">Upload Medal Document</option>
+                <option value="alumni.update_profile_picture">Update Profile Picture</option>
+                <option value="alumni.update_social_links">Update Social Media Links</option>
+                <option value="alumni.verify_image">Verify Alumni Image</option>
+                <option value="ALUMNI_VERIFY">Verify Alumni (Approve)</option>
+                <option value="ALUMNI_UNVERIFY">Unverify Alumni (Reject)</option>
               </optgroup>
               <optgroup label="Alumni Cards">
-                <option value="alumni_cards.create">alumni_cards.create</option>
-                <option value="alumni_cards.update">alumni_cards.update</option>
-                <option value="alumni_cards.update_status">alumni_cards.update_status</option>
-                <option value="alumni_cards.update_image">alumni_cards.update_image</option>
-                <option value="alumni_cards.submit_revision">alumni_cards.submit_revision</option>
-                <option value="alumni_cards.delete">alumni_cards.delete</option>
+                <option value="alumni_cards.create">Create Alumni Card</option>
+                <option value="alumni_cards.update">Update Alumni Card</option>
+                <option value="alumni_cards.update_status">Change Card Status</option>
+                <option value="alumni_cards.update_image">Update Card Image</option>
+                <option value="alumni_cards.submit_revision">Submit Card Revision</option>
+                <option value="alumni_cards.delete">Delete Alumni Card</option>
               </optgroup>
-              <optgroup label="Users">
-                <option value="users.create">users.create</option>
-                <option value="users.update">users.update</option>
-                <option value="users.delete">users.delete</option>
-                <option value="users.self_update">users.self_update</option>
+              <optgroup label="Users (Admin / Staff)">
+                <option value="users.create">Create User</option>
+                <option value="users.update">Update User</option>
+                <option value="users.delete">Delete User</option>
+                <option value="users.self_update">Update Own Profile</option>
               </optgroup>
               <optgroup label="Leadership">
-                <option value="leadership">leadership (all)</option>
+                <option value="leadership">All Leadership Actions</option>
               </optgroup>
-              <optgroup label="Stories">
-                <option value="stories.create">stories.create</option>
-                <option value="stories.update">stories.update</option>
-                <option value="stories.delete">stories.delete</option>
-                <option value="stories.review">stories.review</option>
+              <optgroup label="Success Stories">
+                <option value="stories.create">Submit Story</option>
+                <option value="stories.update">Update Story</option>
+                <option value="stories.delete">Delete Story</option>
+                <option value="stories.review">Approve / Reject Story</option>
               </optgroup>
               <optgroup label="Scholarships">
-                <option value="scholarships.apply">scholarships.apply</option>
-                <option value="scholarships.update_status">scholarships.update_status</option>
-                <option value="scholarships.delete">scholarships.delete</option>
+                <option value="scholarships.apply">Submit Scholarship Application</option>
+                <option value="scholarships.update_status">Update Scholarship Status</option>
+                <option value="scholarships.delete">Delete Scholarship Application</option>
               </optgroup>
               <optgroup label="Memberships">
-                <option value="memberships.update_status">memberships.update_status</option>
-                <option value="memberships.delete">memberships.delete</option>
-                <option value="memberships.gym_submit">memberships.gym_submit</option>
-                <option value="memberships.swimming_pool_submit">memberships.swimming_pool_submit</option>
-                <option value="memberships.cricket_submit">memberships.cricket_submit</option>
+                <option value="memberships.update_status">Update Membership Status</option>
+                <option value="memberships.delete">Delete Membership</option>
+                <option value="memberships.gym_submit">Submit Gym Membership</option>
+                <option value="memberships.swimming_pool_submit">Submit Swimming Pool Membership</option>
+                <option value="memberships.cricket_submit">Submit Cricket Membership</option>
               </optgroup>
-              <optgroup label="Talks">
-                <option value="talks.submit">talks.submit</option>
-                <option value="talks.update_status">talks.update_status</option>
-                <option value="talks.delete">talks.delete</option>
+              <optgroup label="Mentorship / Talks">
+                <option value="talks.submit">Submit Talk Session</option>
+                <option value="talks.update_status">Update Talk Status</option>
+                <option value="talks.delete">Delete Talk Session</option>
               </optgroup>
               <optgroup label="Events">
-                <option value="events.create">events.create</option>
-                <option value="events.update">events.update</option>
-                <option value="events.delete">events.delete</option>
+                <option value="events.create">Create Event</option>
+                <option value="events.update">Update Event</option>
+                <option value="events.delete">Delete Event</option>
               </optgroup>
               <optgroup label="Jobs">
-                <option value="jobs.create">jobs.create</option>
-                <option value="jobs.update">jobs.update</option>
-                <option value="jobs.delete">jobs.delete</option>
+                <option value="jobs.create">Post Job</option>
+                <option value="jobs.update">Update Job Posting</option>
+                <option value="jobs.delete">Delete Job Posting</option>
               </optgroup>
-              <optgroup label="Organization">
-                <option value="organization.faculty">faculties (all)</option>
-                <option value="organization.department">departments (all)</option>
-                <option value="organization.program">programs (all)</option>
-                <option value="organization.course">courses (all)</option>
-                <option value="organization.chapter">chapters (all)</option>
+              <optgroup label="Organization (Faculties / Departments / Programs)">
+                <option value="organization.faculty">All Faculty Actions</option>
+                <option value="organization.department">All Department Actions</option>
+                <option value="organization.program">All Program Actions</option>
+                <option value="organization.course">All Course Actions</option>
+                <option value="organization.chapter">All Chapter Actions</option>
               </optgroup>
-              <optgroup label="Settings">
-                <option value="settings.">settings (all)</option>
+              <optgroup label="Settings & Configuration">
+                <option value="settings.">All Settings Changes</option>
               </optgroup>
-              <optgroup label="Admin">
-                <option value="admin.change_approval">admin.change_approval</option>
-                <option value="admin.newsletter">admin.newsletter (all)</option>
-                <option value="admin.fix_access_assignments">admin.fix_access_assignments</option>
+              <optgroup label="Admin Actions">
+                <option value="admin.change_approval">Approve / Reject Profile Change Request</option>
+                <option value="admin.newsletter">All Newsletter Actions</option>
+                <option value="admin.fix_access_assignments">Fix Access Assignments</option>
               </optgroup>
               <optgroup label="Distinguished Alumni">
-                <option value="distinguished_alumni.">distinguished_alumni (all)</option>
+                <option value="distinguished_alumni.">All Distinguished Alumni Actions</option>
               </optgroup>
-              <optgroup label="Merchants">
-                <option value="merchants.">merchants (all)</option>
+              <optgroup label="Merchants (Discount Partners)">
+                <option value="merchants.">All Merchant Actions</option>
               </optgroup>
               <optgroup label="Email">
-                <option value="email.">email (all)</option>
+                <option value="email.">All Email Actions</option>
               </optgroup>
-              <optgroup label="Auth">
-                <option value="auth.">auth (all)</option>
+              <optgroup label="Authentication">
+                <option value="auth.">All Auth Actions</option>
               </optgroup>
             </select>
           </div>
@@ -467,8 +626,8 @@ export default function ActivityLogsPage() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-sm font-mono dark:text-gray-300 dark:bg-gray-900">
-                      {row.action}
+                    <TableCell className="px-4 py-3 text-sm dark:text-gray-300 dark:bg-gray-900">
+                      <span title={row.action}>{friendlyAction(row.action)}</span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-sm dark:text-gray-300 dark:bg-gray-900">
                       <span className="font-medium">{row.entity_type || "-"}</span>

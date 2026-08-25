@@ -104,17 +104,24 @@ async function resolveProgramName(idStr: string | undefined): Promise<string | n
 async function loadDiscountTiersForPdf(
   discountType: string | null | undefined,
   applyFor?: string | null,
-): Promise<{ tiers: ScholarshipDiscountTierPdfRow[]; cgpaTiers: ScholarshipCgpaDiscountTier[] }> {
+): Promise<{
+  tiers: ScholarshipDiscountTierPdfRow[];
+  cgpaTiers: ScholarshipCgpaDiscountTier[];
+  admissionCgpaTiers: ScholarshipCgpaDiscountTier[];
+  tuitionCgpaTiers: ScholarshipCgpaDiscountTier[];
+}> {
   const slug = String(discountType || "").trim();
-  if (!slug) return { tiers: [], cgpaTiers: [] };
+  if (!slug) return { tiers: [], cgpaTiers: [], admissionCgpaTiers: [], tuitionCgpaTiers: [] };
 
   // For merged scholarship slugs, load tiers from both component categories
   if (isMergedScholarshipSlug(slug)) {
     const componentSlugs = getMergedFeeComponentSlugs(slug);
-    if (!componentSlugs) return { tiers: [], cgpaTiers: [] };
+    if (!componentSlugs) return { tiers: [], cgpaTiers: [], admissionCgpaTiers: [], tuitionCgpaTiers: [] };
 
     const allTiers: ScholarshipCgpaDiscountTier[] = [];
     const allPdfTiers: ScholarshipDiscountTierPdfRow[] = [];
+    let admissionCgpaTiers: ScholarshipCgpaDiscountTier[] = [];
+    let tuitionCgpaTiers: ScholarshipCgpaDiscountTier[] = [];
 
     for (const componentSlug of [componentSlugs.admissionSlug, componentSlugs.tuitionSlug]) {
       const catRows = await sql/* sql */`
@@ -146,9 +153,16 @@ async function loadDiscountTiersForPdf(
       );
       allTiers.push(...cgpaTiers);
       allPdfTiers.push(...mapTiersForPdf(cgpaTiers, catLabel));
+
+      // Track admission vs tuition tiers separately for CGPA-based resolution
+      if (componentSlug === componentSlugs.admissionSlug) {
+        admissionCgpaTiers = cgpaTiers;
+      } else if (componentSlug === componentSlugs.tuitionSlug) {
+        tuitionCgpaTiers = cgpaTiers;
+      }
     }
 
-    return { tiers: allPdfTiers, cgpaTiers: allTiers };
+    return { tiers: allPdfTiers, cgpaTiers: allTiers, admissionCgpaTiers, tuitionCgpaTiers };
   }
 
   const categoryRows = await sql/* sql */`
@@ -157,10 +171,10 @@ async function loadDiscountTiersForPdf(
     LIMIT 1
   `;
   const categoryRow = categoryRows[0] as { id: unknown; label?: unknown } | undefined;
-  if (!categoryRow) return { tiers: [], cgpaTiers: [] };
+  if (!categoryRow) return { tiers: [], cgpaTiers: [], admissionCgpaTiers: [], tuitionCgpaTiers: [] };
 
   const categoryId = Number(categoryRow.id);
-  if (!Number.isFinite(categoryId)) return { tiers: [], cgpaTiers: [] };
+  if (!Number.isFinite(categoryId)) return { tiers: [], cgpaTiers: [], admissionCgpaTiers: [], tuitionCgpaTiers: [] };
 
   const categoryLabel =
     String(categoryRow.label || "").trim() || discountCategoryLabel(discountType, applyFor);
@@ -186,6 +200,8 @@ async function loadDiscountTiersForPdf(
   return {
     tiers: mapTiersForPdf(cgpaTiers, categoryLabel),
     cgpaTiers,
+    admissionCgpaTiers: [],
+    tuitionCgpaTiers: cgpaTiers,
   };
 }
 
@@ -574,15 +590,51 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
     };
 
     if (mode === "letter-pdf") {
-      const { tiers: discountTiers, cgpaTiers } = await loadDiscountTiersForPdf(
-        app.discount_type,
-        app.apply_for,
-      );
+      const { tiers: discountTiers, cgpaTiers, admissionCgpaTiers, tuitionCgpaTiers } =
+        await loadDiscountTiersForPdf(app.discount_type, app.apply_for);
       const alumniCgpa = parseCgpa(app.cgpa);
+
+      // For merged scholarship slugs, resolve admission and tuition fee discounts
+      // from their respective CGPA tiers so the "Discount Information" section above
+      // the table matches the checked row in the discount tier table below.
+      let resolvedAdmissionFeePercent = applicationLetter.admissionFeePercent;
+      let resolvedTuitionFeePercent = applicationLetter.tuitionFeePercent;
+      if (isMergedScholarshipSlug(String(app.discount_type || "").trim()) && alumniCgpa != null) {
+        // Override stale/missing stored values with CGPA-resolved values
+        const admissionFromTier =
+          admissionCgpaTiers.length > 0
+            ? resolveDiscountPercent(alumniCgpa, admissionCgpaTiers)
+            : null;
+        const tuitionFromTier =
+          tuitionCgpaTiers.length > 0
+            ? resolveDiscountPercent(alumniCgpa, tuitionCgpaTiers)
+            : null;
+        if (admissionFromTier != null) resolvedAdmissionFeePercent = admissionFromTier;
+        if (tuitionFromTier != null) resolvedTuitionFeePercent = tuitionFromTier;
+      }
+
       const applicableDiscountPercent =
         parseDiscountPercentValue(app.applied_discount_percent) ??
-        (alumniCgpa != null ? resolveDiscountPercent(alumniCgpa, cgpaTiers) : null) ??
+        (alumniCgpa != null
+          ? isMergedScholarshipSlug(String(app.discount_type || "").trim()) &&
+            tuitionCgpaTiers.length > 0
+            ? resolveDiscountPercent(alumniCgpa, tuitionCgpaTiers)
+            : resolveDiscountPercent(alumniCgpa, cgpaTiers)
+          : null) ??
         parseDiscountPercentValue(applicationLetter.requestedDiscount);
+
+      // Rebuild fee breakdown with CGPA-resolved values for merged slugs
+      const resolvedFeeBreakdown = isMergedScholarshipSlug(String(app.discount_type || "").trim())
+        ? resolveFeeBreakdownDisplay({
+            discountType: app.discount_type,
+            admissionFeePercent: resolvedAdmissionFeePercent,
+            tuitionFeePercent: resolvedTuitionFeePercent,
+            highAchieverPercent: applicationLetter.highAchieverPercent,
+            applyAdmissionFeeDiscount: applicationLetter.applyAdmissionFeeDiscount,
+            legacyAppliedPercent: parseDiscountPercentValue(app.applied_discount_percent),
+          })
+        : applicationLetter.feeBreakdown;
+
       const pdfBuffer = await generateScholarshipLetterPDF({
         dateFormatted: applicationLetter.dateFormatted,
         studentName: applicationLetter.studentName,
@@ -592,12 +644,12 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         cgpaLastDegree: applicationLetter.cgpaLastDegree,
         requestedDiscount: applicationLetter.requestedDiscount,
         appliedDiscountPercent: applicableDiscountPercent,
-        admissionFeePercent: applicationLetter.admissionFeePercent,
-        tuitionFeePercent: applicationLetter.tuitionFeePercent,
+        admissionFeePercent: resolvedAdmissionFeePercent,
+        tuitionFeePercent: resolvedTuitionFeePercent,
         highAchieverPercent: applicationLetter.highAchieverPercent,
         applyAdmissionFeeDiscount: applicationLetter.applyAdmissionFeeDiscount,
         medal: applicationLetter.medal,
-        feeBreakdown: applicationLetter.feeBreakdown,
+        feeBreakdown: resolvedFeeBreakdown,
         discountTiers,
         documentsAttached: applicationLetter.documentsAttached,
         sapCode: applicationLetter.sapCode,
