@@ -1288,16 +1288,18 @@ export const AlumniTabs: React.FC = () => {
   // }, [selected, statusFilter, paginatedData]);
   
   // Fetch counts separately (lightweight query) - stable caching to prevent reloading
+  // NOTE: statusFilter (tab selection) is intentionally EXCLUDED from the counts query
+  // so that clicking KPI tabs does NOT recalculate counts. Counts are only recalculated
+  // when actual filters (faculty, department, search, etc.) are applied.
   const {
     data: countsData,
     isLoading: isLoadingCounts,
   } = useQuery<AlumniCounts, Error>({
     queryKey: [
-      "alumnilist-counts", 
-      debouncedQuery, 
-      statusFilter,
-      selectedFaculties, 
-      selectedDepartments, 
+      "alumnilist-counts",
+      debouncedQuery,
+      selectedFaculties,
+      selectedDepartments,
       selectedPrograms,
       selectedGenders,
       selectedMaritalStatuses,
@@ -1327,9 +1329,9 @@ export const AlumniTabs: React.FC = () => {
       selectedCategories
     ],
     queryFn: ({ signal }) => getAlumniCounts(
-      signal, 
+      signal,
       debouncedQuery || undefined,
-      statusFilter,
+      undefined, // statusFilter intentionally omitted — tab clicks should not recalculate counts
       selectedFaculties.length > 0 ? selectedFaculties : undefined,
       selectedDepartments.length > 0 ? selectedDepartments : undefined,
       selectedPrograms.length > 0 ? selectedPrograms : undefined,
