@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import { LockIcon, EyeIcon, CheckLineIcon, BoltIcon, TimeIcon, GroupIcon, FileIcon, AlertIcon } from "@/icons";
 import { AlumniDataTable } from "./AlumniCard";
-import { useCardApplicants, type CardStatusFilter, type CardApplicant, type OverdueType } from "@/app/queries/fetch-card-applicants";
+import { useCardApplicants, useCardCounts, type CardStatusFilter, type CardApplicant, type OverdueType } from "@/app/queries/fetch-card-applicants";
 import { useUpdateApplicantStatus } from "@/app/queries/fetch-card-applicants";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -362,15 +362,16 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     apiStatusForFetch === "overdue" ? { overdueType: selectedOverdueType } : undefined
   );
   
-  const { data: countsData, isLoading: countsLoading } = useCardApplicants("all");
-  
+  // Use the lightweight counts-only endpoint so tab clicks don't recalculate counts.
+  // The counts query is completely independent of the selected status tab.
+  const { data: countsData, isLoading: countsLoading } = useCardCounts();
+
   const counts = useMemo(() => {
-    const c = countsData?.counts || data?.counts;
-    return c || { 
+    return countsData || {
       all: 0, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0,
       "overdue-under-review": 0, "overdue-under-printing": 0,
     };
-  }, [countsData, data]);
+  }, [countsData]);
   
   const updateStatusMutation = useUpdateApplicantStatus();
   const queryClient = useQueryClient();
@@ -489,7 +490,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
               tab={tab}
               isSelected={selectedStatus === tab.key}
               count={getTabCount(tab.key)}
-              isLoading={countsLoading || isLoading}
+              isLoading={countsLoading}
               onClick={() => {
                 if (tab.key === "overdue") {
                   setSelectedStatus("overdue");
@@ -515,7 +516,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
               value={selectedOverdueType}
               onChange={setSelectedOverdueType}
               counts={counts}
-              isLoading={countsLoading || isLoading}
+              isLoading={countsLoading}
             />
           </div>
         </div>
