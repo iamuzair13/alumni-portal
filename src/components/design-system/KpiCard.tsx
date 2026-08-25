@@ -110,8 +110,19 @@ export function KpiCard({
         </div>
       )}
 
+      {isSelected && (
+        <div className="absolute left-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-accent-500 text-white shadow-sm dark:bg-accent-400" aria-hidden>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-1.5 pr-8">
-        <p className="text-[10px] font-semibold uppercase leading-3 tracking-wider text-gray-400 dark:text-gray-500">
+        <p className={twMerge(
+          "text-[10px] font-semibold uppercase leading-3 tracking-wider",
+          isSelected ? "text-accent-700 dark:text-accent-300" : "text-gray-400 dark:text-gray-500"
+        )}>
           {label}
         </p>
         {(trend || badge) && (
