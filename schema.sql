@@ -604,7 +604,7 @@ CREATE TABLE public.tblcard (
   validity_date date,
   comment text,
   CONSTRAINT tblcard_pkey PRIMARY KEY (alumniid),
-  CONSTRAINT tblcard_alumniid_fkey FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid)
+  CONSTRAINT tblcard_alumniid_fkey FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid) ON DELETE RESTRICT
 );
 CREATE TABLE public.tblchapters (
   id integer NOT NULL DEFAULT nextval('tblchapters_id_seq'::regclass),

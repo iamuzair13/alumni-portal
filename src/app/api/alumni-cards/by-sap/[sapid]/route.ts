@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
@@ -323,9 +324,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
 }
 
 export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
+  let sapid: string | undefined;
+  let session: Session | null = null;
   try {
-    const { sapid } = await ctx.params;
-    const session = await auth();
+    sapid = (await ctx.params).sapid;
+    session = await auth();
 
     // SECURITY: Verify authentication
     if (!session?.user) {
@@ -439,6 +442,17 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed";
+    await logAdminAction({
+      session,
+      req: _,
+      input: {
+        action: "alumni_cards.delete",
+        entityType: "tblcard",
+        entityId: String(sapid || "").trim() || null,
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

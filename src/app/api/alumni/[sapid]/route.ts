@@ -478,13 +478,40 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       }
     }
     
-    // Fetch card data BEFORE deletion (CASCADE will remove it), so we can log it
-    const cardBeforeDelete = await sql/* sql */`
-      SELECT cardid, status, cardpicture, card_image
+    // Check if the alumni has a card. tblcard has ON DELETE RESTRICT, so the DB will
+    // reject the alumni deletion if a card exists. We check upfront to give a clear error.
+    const cardCheck = await sql/* sql */`
+      SELECT cardid, status
       FROM public.tblcard
       WHERE alumniid = ${alumniId}
       LIMIT 1
-    ` as Array<{ cardid: number; status: string | null; cardpicture: string | null; card_image: string | null }>;
+    ` as Array<{ cardid: number; status: string | null }>;
+
+    if (cardCheck[0]) {
+      await logAdminAction({
+        session,
+        req: _,
+        input: {
+          action: "alumni.delete",
+          entityType: "tbl_alumni",
+          entityId: alumniId,
+          success: false,
+          errorMessage: "CARD_EXISTS",
+          metadata: {
+            sapid: foundSapid,
+            cardid: cardCheck[0].cardid,
+            cardStatus: cardCheck[0].status,
+          },
+        },
+      });
+      return NextResponse.json(
+        {
+          error: "Cannot delete alumni: this alumni has an alumni card. Please delete the card first from the Cards section before deleting the alumni record.",
+          cardid: cardCheck[0].cardid,
+        },
+        { status: 409 }
+      );
+    }
 
     // Use a transaction to ensure atomic deletion and handle foreign key cascades properly
     // Delete by alumniid (primary key) which is more efficient and required for FK relationships
@@ -512,7 +539,9 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
 
       // Delete the alumni record by alumniid
       // Foreign key constraints with ON DELETE CASCADE will automatically delete related records
-      // (tblcard, tblchapters, alumni_talk_sessions, tblalumnistories, alumni_chapter)
+      // (tblchapters, alumni_talk_sessions, tblalumnistories, alumni_chapter)
+      // NOTE: tblcard has ON DELETE RESTRICT — cards are never auto-deleted.
+      //       They must be manually deleted via the Cards API (which logs the action).
       const deleteResult = await tx/* sql */`
         DELETE FROM public.tbl_alumni
         WHERE alumniid = ${alumniId}
@@ -539,26 +568,6 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
         },
       },
     });
-
-    // Log the cascaded card deletion explicitly (ON DELETE CASCADE removes it silently)
-    if (cardBeforeDelete[0]) {
-      await logAdminAction({
-        session,
-        req: _,
-        input: {
-          action: "alumni_cards.delete",
-          entityType: "tblcard",
-          entityId: cardBeforeDelete[0].cardid,
-          metadata: {
-            sapid: result.sapid,
-            registrationno: foundRegNo,
-            alumniId: result.alumniid,
-            previousStatus: cardBeforeDelete[0].status,
-            cascadeReason: "alumni_record_deleted",
-          },
-        },
-      });
-    }
 
     return NextResponse.json({ 
       ok: true, 
