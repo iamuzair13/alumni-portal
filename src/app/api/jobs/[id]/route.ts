@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -196,6 +197,8 @@ export async function PUT(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
+    await logAdminAction({ session, req: request, input: { action: "jobs.update", entityType: "tbljobs", entityId: rows[0].id, success: true, metadata: { jobId: rows[0].id, title: rows[0].title || "" } } });
+
     return NextResponse.json({
       id: rows[0].id,
       title: rows[0].title || "",
@@ -210,6 +213,7 @@ export async function PUT(
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update job";
+    await logAdminAction({ session: null, req: request, input: { action: "jobs.update", entityType: "tbljobs", success: false, errorMessage: message } }).catch(() => {});
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -247,9 +251,12 @@ export async function DELETE(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
+    await logAdminAction({ session, req: request, input: { action: "jobs.delete", entityType: "tbljobs", entityId: jobId, success: true } });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to delete job";
+    await logAdminAction({ session: null, req: request, input: { action: "jobs.delete", entityType: "tbljobs", success: false, errorMessage: message } }).catch(() => {});
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

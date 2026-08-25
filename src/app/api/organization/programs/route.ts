@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
 import { getUserAccessAssignmentsWithIds, hasAllFacultiesAccess } from "@/lib/rbac";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 // GET /api/organization/programs - Fetch all or filtered programs
 export async function GET(request: NextRequest) {
@@ -241,9 +242,12 @@ export async function POST(req: NextRequest) {
       created_at: new Date(rows[0].created_at as string),
     };
 
+    await logAdminAction({ session, req, input: { action: "organization.program_create", entityType: "tbl_programs", entityId: Number(rows[0].id), success: true, metadata: { programId: Number(rows[0].id), programName: program_name.trim() } } });
+
     return NextResponse.json({ success: true, program }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create program";
+    await logAdminAction({ session: null, req, input: { action: "organization.program_create", entityType: "tbl_programs", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -295,9 +299,12 @@ export async function PUT(req: NextRequest) {
       created_at: new Date(rows[0].created_at as string),
     };
 
+    await logAdminAction({ session, req, input: { action: "organization.program_update", entityType: "tbl_programs", entityId: Number(rows[0].id), success: true, metadata: { programId: Number(rows[0].id), programName: program_name.trim() } } });
+
     return NextResponse.json({ success: true, program }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update program";
+    await logAdminAction({ session: null, req, input: { action: "organization.program_update", entityType: "tbl_programs", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -332,9 +339,12 @@ export async function DELETE(req: NextRequest) {
       DELETE FROM public.tbl_programs WHERE id = ${Number(id)}
     `;
 
+    await logAdminAction({ session, req, input: { action: "organization.program_delete", entityType: "tbl_programs", entityId: Number(id), success: true, metadata: { programId: Number(id) } } });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete program";
+    await logAdminAction({ session: null, req, input: { action: "organization.program_delete", entityType: "tbl_programs", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

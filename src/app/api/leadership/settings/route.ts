@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 // Get leadership form settings
 export async function GET() {
@@ -79,12 +80,33 @@ export async function POST(req: NextRequest) {
         updated_by = EXCLUDED.updated_by
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.leadership_update",
+        entityType: "leadership_settings",
+        success: true,
+        metadata: { formType, isEnabled },
+      },
+    });
+
     return NextResponse.json({ 
       success: true, 
       message: "Settings updated successfully" 
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update settings";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.leadership_update",
+        entityType: "leadership_settings",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

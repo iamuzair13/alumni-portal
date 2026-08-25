@@ -248,6 +248,13 @@ export default function ActivityLogsPage() {
                 <option value="alumni.update">alumni.update</option>
                 <option value="alumni.update_fields">alumni.update_fields</option>
                 <option value="alumni.delete">alumni.delete</option>
+                <option value="alumni.create">alumni.create</option>
+                <option value="alumni.change_password">alumni.change_password</option>
+                <option value="alumni.send_credentials">alumni.send_credentials</option>
+                <option value="alumni.upload_medal_document">alumni.upload_medal_document</option>
+                <option value="alumni.update_profile_picture">alumni.update_profile_picture</option>
+                <option value="alumni.update_social_links">alumni.update_social_links</option>
+                <option value="alumni.verify_image">alumni.verify_image</option>
                 <option value="ALUMNI_VERIFY">ALUMNI_VERIFY</option>
                 <option value="ALUMNI_UNVERIFY">ALUMNI_UNVERIFY</option>
               </optgroup>
@@ -263,9 +270,70 @@ export default function ActivityLogsPage() {
                 <option value="users.create">users.create</option>
                 <option value="users.update">users.update</option>
                 <option value="users.delete">users.delete</option>
+                <option value="users.self_update">users.self_update</option>
               </optgroup>
               <optgroup label="Leadership">
                 <option value="leadership">leadership (all)</option>
+              </optgroup>
+              <optgroup label="Stories">
+                <option value="stories.create">stories.create</option>
+                <option value="stories.update">stories.update</option>
+                <option value="stories.delete">stories.delete</option>
+                <option value="stories.review">stories.review</option>
+              </optgroup>
+              <optgroup label="Scholarships">
+                <option value="scholarships.apply">scholarships.apply</option>
+                <option value="scholarships.update_status">scholarships.update_status</option>
+                <option value="scholarships.delete">scholarships.delete</option>
+              </optgroup>
+              <optgroup label="Memberships">
+                <option value="memberships.update_status">memberships.update_status</option>
+                <option value="memberships.delete">memberships.delete</option>
+                <option value="memberships.gym_submit">memberships.gym_submit</option>
+                <option value="memberships.swimming_pool_submit">memberships.swimming_pool_submit</option>
+                <option value="memberships.cricket_submit">memberships.cricket_submit</option>
+              </optgroup>
+              <optgroup label="Talks">
+                <option value="talks.submit">talks.submit</option>
+                <option value="talks.update_status">talks.update_status</option>
+                <option value="talks.delete">talks.delete</option>
+              </optgroup>
+              <optgroup label="Events">
+                <option value="events.create">events.create</option>
+                <option value="events.update">events.update</option>
+                <option value="events.delete">events.delete</option>
+              </optgroup>
+              <optgroup label="Jobs">
+                <option value="jobs.create">jobs.create</option>
+                <option value="jobs.update">jobs.update</option>
+                <option value="jobs.delete">jobs.delete</option>
+              </optgroup>
+              <optgroup label="Organization">
+                <option value="organization.faculty">faculties (all)</option>
+                <option value="organization.department">departments (all)</option>
+                <option value="organization.program">programs (all)</option>
+                <option value="organization.course">courses (all)</option>
+                <option value="organization.chapter">chapters (all)</option>
+              </optgroup>
+              <optgroup label="Settings">
+                <option value="settings.">settings (all)</option>
+              </optgroup>
+              <optgroup label="Admin">
+                <option value="admin.change_approval">admin.change_approval</option>
+                <option value="admin.newsletter">admin.newsletter (all)</option>
+                <option value="admin.fix_access_assignments">admin.fix_access_assignments</option>
+              </optgroup>
+              <optgroup label="Distinguished Alumni">
+                <option value="distinguished_alumni.">distinguished_alumni (all)</option>
+              </optgroup>
+              <optgroup label="Merchants">
+                <option value="merchants.">merchants (all)</option>
+              </optgroup>
+              <optgroup label="Email">
+                <option value="email.">email (all)</option>
+              </optgroup>
+              <optgroup label="Auth">
+                <option value="auth.">auth (all)</option>
               </optgroup>
             </select>
           </div>

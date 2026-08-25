@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 type LeadershipType = "chapter" | "association";
 type RoleName = "president" | "vice_president" | "coordinator";
@@ -103,9 +104,30 @@ export async function PUT(req: NextRequest) {
       RETURNING id, leadership_type, role_name, role_description, office_term_governance_html, code_of_ethics, compliance_declaration
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.leadership_role_update",
+        entityType: "leadership_roles",
+        success: true,
+        metadata: { type, role },
+      },
+    });
+
     return NextResponse.json({ role: rows?.[0] ?? null }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update role description";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.leadership_role_update",
+        entityType: "leadership_roles",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

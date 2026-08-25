@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildIdBasedAccessFilterSQL } from "@/lib/rbac";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -507,9 +508,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "distinguished_alumni.create",
+        entityType: "distinguished_alumni",
+        success: true,
+        entityId: parsed?.id,
+        metadata: { slug, name },
+      },
+    });
+
     return NextResponse.json({ item: parsed }, { status: 201 });
   } catch (error) {
 
+    await logAdminAction({
+      session: null,
+      req: request,
+      input: {
+        action: "distinguished_alumni.create",
+        entityType: "distinguished_alumni",
+        success: false,
+        errorMessage: error instanceof Error ? error.message : "Failed to create distinguished alumni",
+      },
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create distinguished alumni" },
       { status: 500 }

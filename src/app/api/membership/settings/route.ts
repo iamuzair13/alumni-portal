@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import {
   getAllMembershipSettings,
   isValidDiscountBasis,
@@ -125,6 +126,17 @@ export async function PUT(req: NextRequest) {
         updated_by       = EXCLUDED.updated_by
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.membership_update",
+        entityType: "membership_settings",
+        success: true,
+        metadata: { facilityType, discountBasis: basis, originalPayment, paymentAmount, discountPct },
+      },
+    });
+
     return NextResponse.json({
       success: true,
       message: "Membership settings updated successfully",
@@ -136,6 +148,16 @@ export async function PUT(req: NextRequest) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update settings";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.membership_update",
+        entityType: "membership_settings",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

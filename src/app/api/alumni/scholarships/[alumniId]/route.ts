@@ -19,6 +19,8 @@ import {
   resolveHighAchieverPercent,
 } from "@/lib/scholarshipLetter";
 import { resolveStoredUploadUrl } from "@/lib/uploadsImageUrl";
+import { logAdminAction } from "@/lib/adminActivityLog";
+import type { Session } from "next-auth";
 import {
   mapTiersForPdf,
   parseCgpa,
@@ -651,8 +653,9 @@ export async function PATCH(
   request: NextRequest,
   ctx: { params: Promise<{ alumniId: string }> }
 ) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -698,6 +701,18 @@ export async function PATCH(
         SET admission_application_ref = ${refValue}
         WHERE id = ${alumniIdNum}
       `;
+
+      await logAdminAction({
+        session,
+        req: request,
+        input: {
+          action: "scholarships.update_status",
+          entityType: "alumni_scholarships",
+          entityId: alumniIdNum,
+          success: true,
+          metadata: { alumniId: alumniIdNum, detail: "admissionApplicationRef updated" },
+        },
+      });
 
       return NextResponse.json({ success: true, admissionApplicationRef: refValue }, { status: 200 });
     }
@@ -763,6 +778,18 @@ export async function PATCH(
         SET uploaded_documents = ${JSON.stringify(arr)}
         WHERE id = ${alumniIdNum}
       `;
+
+      await logAdminAction({
+        session,
+        req: request,
+        input: {
+          action: "scholarships.update_status",
+          entityType: "alumni_scholarships",
+          entityId: alumniIdNum,
+          success: true,
+          metadata: { alumniId: alumniIdNum, detail: "documentChecklist updated" },
+        },
+      });
 
       return NextResponse.json({ success: true }, { status: 200 });
     }
@@ -873,6 +900,18 @@ export async function PATCH(
       `;
     }
 
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "scholarships.update_status",
+        entityType: "alumni_scholarships",
+        entityId: alumniIdNum,
+        success: true,
+        metadata: { alumniId: alumniIdNum, status, detail: `status set to ${status}` },
+      },
+    });
+
     return NextResponse.json(
       { 
         success: true, 
@@ -881,6 +920,16 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (err) {
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "scholarships.update_status",
+        entityType: "alumni_scholarships",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to update scholarship status",
+      },
+    });
 
     const msg = err instanceof Error ? err.message : "Failed to update scholarship status";
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -891,8 +940,9 @@ export async function DELETE(
   request: NextRequest,
   ctx: { params: Promise<{ alumniId: string }> }
 ) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -927,8 +977,30 @@ export async function DELETE(
       WHERE id = ${scholarshipId}
     `;
 
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "scholarships.delete",
+        entityType: "alumni_scholarships",
+        entityId: scholarshipId,
+        success: true,
+        metadata: { alumniId: scholarshipId },
+      },
+    });
+
     return NextResponse.json({ success: true, message: "Scholarship application deleted successfully" }, { status: 200 });
   } catch (err) {
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "scholarships.delete",
+        entityType: "alumni_scholarships",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to delete scholarship application",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to delete scholarship application";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

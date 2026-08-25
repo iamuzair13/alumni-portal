@@ -13,6 +13,7 @@ import {
   EMAIL_TRIGGERED_BY,
   insertEmailLog,
 } from "@/lib/emailLogs";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 type SendCredentialsBody = {
   alumniId: number;
@@ -107,11 +108,34 @@ export async function POST(req: NextRequest) {
     });
 
     if (!emailRes.ok) {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "email.send_credentials",
+          entityType: "email",
+          success: false,
+          entityId: alumniId,
+          errorMessage: emailRes.errorMessage ?? "Failed to send email",
+        },
+      });
       return NextResponse.json(
         { ok: false, error: emailRes.errorMessage ?? "Failed to send email" },
         { status: 500 }
       );
     }
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "email.send_credentials",
+        entityType: "email",
+        success: true,
+        entityId: alumniId,
+        metadata: { recipientEmail },
+      },
+    });
 
     return NextResponse.json(
       {
@@ -122,6 +146,16 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to send credentials";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "email.send_credentials",
+        entityType: "email",
+        success: false,
+        errorMessage: message,
+      },
+    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

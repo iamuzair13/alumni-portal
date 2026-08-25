@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -210,6 +211,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create job" }, { status: 500 });
     }
 
+    await logAdminAction({ session, req: request, input: { action: "jobs.create", entityType: "tbljobs", entityId: rows[0].id, success: true, metadata: { jobId: rows[0].id, title: rows[0].title || "" } } });
+
     return NextResponse.json({
       id: rows[0].id,
       title: rows[0].title || "",
@@ -224,6 +227,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create job";
+    await logAdminAction({ session: null, req: request, input: { action: "jobs.create", entityType: "tbljobs", success: false, errorMessage: message } }).catch(() => {});
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -12,6 +12,8 @@ import {
   getMembershipSettingsByFacilityType,
   membershipDiscountBasisLabel,
 } from "@/lib/membershipSettings";
+import { logAdminAction } from "@/lib/adminActivityLog";
+import type { Session } from "next-auth";
 
 export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniId: string }> }) {
   try {
@@ -135,8 +137,9 @@ export async function PATCH(
   request: NextRequest,
   ctx: { params: Promise<{ alumniId: string }> }
 ) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -210,8 +213,30 @@ export async function PATCH(
       `;
     }
 
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "memberships.update_status",
+        entityType: "alumni_memberships",
+        entityId: alumniIdNum,
+        success: true,
+        metadata: { alumniId: alumniIdNum, status },
+      },
+    });
+
     return NextResponse.json({ success: true, status }, { status: 200 });
   } catch (err) {
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "memberships.update_status",
+        entityType: "alumni_memberships",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to update membership status",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to update membership status";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -221,8 +246,9 @@ export async function DELETE(
   request: NextRequest,
   ctx: { params: Promise<{ alumniId: string }> }
 ) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -254,11 +280,33 @@ export async function DELETE(
       WHERE id = ${membershipId}
     `;
 
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "memberships.delete",
+        entityType: "alumni_memberships",
+        entityId: membershipId,
+        success: true,
+        metadata: { alumniId: membershipId },
+      },
+    });
+
     return NextResponse.json(
       { success: true, message: "Membership application deleted successfully" },
       { status: 200 },
     );
   } catch (err) {
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "memberships.delete",
+        entityType: "alumni_memberships",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to delete membership application",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to delete membership application";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

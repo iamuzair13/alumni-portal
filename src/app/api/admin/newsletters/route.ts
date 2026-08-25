@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 function toInt(v: string | null, fallback: number): number {
   if (!v) return fallback;
@@ -106,9 +107,12 @@ export async function POST(req: Request) {
       RETURNING id, created_at, title, date, image, link
     `;
 
+    await logAdminAction({ session, req, input: { action: "admin.newsletter_create", entityType: "newsletters", entityId: inserted?.[0]?.id, success: true, metadata: { newsletterId: inserted?.[0]?.id, title } } });
+
     return NextResponse.json({ item: inserted?.[0] ?? null }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
+    await logAdminAction({ session: null, req, input: { action: "admin.newsletter_create", entityType: "newsletters", success: false, errorMessage: message } }).catch(() => {});
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

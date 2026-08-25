@@ -3,6 +3,7 @@ import path from "path";
 import { mkdir, writeFile } from "fs/promises";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -59,9 +60,12 @@ export async function POST(req: Request) {
     const bytes = Buffer.from(await file.arrayBuffer());
     await writeFile(path.join(imagesDir, filename), bytes);
 
+    await logAdminAction({ session, req, input: { action: "admin.newsletter_upload_image", entityType: "newsletters", success: true, metadata: { filename } } });
+
     return NextResponse.json({ url: `/images/${filename}`, filename }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
+    await logAdminAction({ session: null, req, input: { action: "admin.newsletter_upload_image", entityType: "newsletters", success: false, errorMessage: message } }).catch(() => {});
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

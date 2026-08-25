@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildIdBasedAccessFilterSQL } from "@/lib/rbac";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -352,9 +353,31 @@ export async function PUT(
       }
     }
 
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "distinguished_alumni.update",
+        entityType: "distinguished_alumni",
+        success: true,
+        entityId: idNum,
+        metadata: { slug, name },
+      },
+    });
+
     return NextResponse.json({ item: parsed }, { status: 200 });
   } catch (error) {
 
+    await logAdminAction({
+      session: null,
+      req: request,
+      input: {
+        action: "distinguished_alumni.update",
+        entityType: "distinguished_alumni",
+        success: false,
+        errorMessage: error instanceof Error ? error.message : "Failed to update distinguished alumni",
+      },
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to update distinguished alumni" },
       { status: 500 }
@@ -402,12 +425,34 @@ export async function DELETE(
       WHERE id = ${idNum}
     `;
 
+    await logAdminAction({
+      session,
+      req: request,
+      input: {
+        action: "distinguished_alumni.delete",
+        entityType: "distinguished_alumni",
+        success: true,
+        entityId: idNum,
+        metadata: { name: existing[0]?.name },
+      },
+    });
+
     return NextResponse.json(
       { message: "Distinguished alumni deleted successfully", deletedItem: existing[0] },
       { status: 200 }
     );
   } catch (error) {
 
+    await logAdminAction({
+      session: null,
+      req: request,
+      input: {
+        action: "distinguished_alumni.delete",
+        entityType: "distinguished_alumni",
+        success: false,
+        errorMessage: error instanceof Error ? error.message : "Failed to delete distinguished alumni",
+      },
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to delete distinguished alumni" },
       { status: 500 }

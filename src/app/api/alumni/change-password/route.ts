@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import { verifyPassword } from "@/auth/credentials";
 
 export async function POST(req: NextRequest) {
@@ -63,9 +64,32 @@ export async function POST(req: NextRequest) {
       WHERE alumniid = ${Number(alumniId)}
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni.change_password",
+        entityType: "tbl_alumni",
+        entityId: String(alumniId),
+        success: true,
+        metadata: {
+          sapid: (session.user as { sapid?: string | null })?.sapid ?? null,
+        },
+      },
+    });
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to change password";
+    await logAdminAction({
+      session: await auth(),
+      req,
+      input: {
+        action: "alumni.change_password",
+        entityType: "tbl_alumni",
+        success: false,
+        errorMessage: message,
+      },
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

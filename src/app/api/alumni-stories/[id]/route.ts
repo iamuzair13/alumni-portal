@@ -28,6 +28,8 @@ import { existsSync } from "fs";
 import { getUploadsImagesDir } from "@/lib/uploadsDir";
 import { sanitizeStoryHtml } from "@/lib/sanitizeStoryHtml";
 import { pickAlumniContactEmail } from "@/lib/successStoryEmailContent";
+import { logAdminAction } from "@/lib/adminActivityLog";
+import type { Session } from "next-auth";
 
 type StoryDetailRow = {
   id: number;
@@ -204,8 +206,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
 }
 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -518,6 +521,18 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         WHERE alumniid = ${alumniId}`;
     }
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "stories.update",
+        entityType: "tblalumnistories",
+        entityId: storyId,
+        success: true,
+        metadata: { storyId, alumniId },
+      },
+    });
+
     return NextResponse.json(
       {
         message: resetModeration ? "Story updated and submitted for review" : "Story updated successfully",
@@ -527,14 +542,25 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       { status: 200 }
     );
   } catch (err) {
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "stories.update",
+        entityType: "tblalumnistories",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to update story",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to update story";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -557,8 +583,30 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ message: "Story not found", error: "NOT_FOUND" }, { status: 404 });
     }
 
+    await logAdminAction({
+      session,
+      req: _,
+      input: {
+        action: "stories.delete",
+        entityType: "tblalumnistories",
+        entityId: storyId,
+        success: true,
+        metadata: { storyId },
+      },
+    });
+
     return new NextResponse(null, { status: 204 });
   } catch (err) {
+    await logAdminAction({
+      session,
+      req: _,
+      input: {
+        action: "stories.delete",
+        entityType: "tblalumnistories",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to delete",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to delete";
     const isConnectionError =
       err instanceof Error &&

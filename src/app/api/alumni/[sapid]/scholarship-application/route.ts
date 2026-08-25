@@ -28,6 +28,8 @@ import {
   resolveDiscountPercent,
   type ScholarshipCgpaDiscountTier,
 } from "@/lib/scholarshipDiscount";
+import { logAdminAction } from "@/lib/adminActivityLog";
+import type { Session } from "next-auth";
 
 type Payload = {
   discountType?: string;
@@ -121,8 +123,9 @@ export async function POST(
   req: NextRequest,
   ctx: { params: Promise<{ sapid: string }> }
 ) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
     }
@@ -756,6 +759,18 @@ export async function POST(
       });
     }
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "scholarships.apply",
+        entityType: "alumni_scholarships",
+        entityId: alumni.alumniid,
+        success: true,
+        metadata: { sapid: normalizedSapid, scholarshipType: discountType },
+      },
+    });
+
     return NextResponse.json(
       {
         ok: true,
@@ -766,6 +781,16 @@ export async function POST(
       { status: 201 }
     );
   } catch (err) {
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "scholarships.apply",
+        entityType: "alumni_scholarships",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to submit scholarship application",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to submit scholarship application";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

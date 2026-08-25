@@ -15,6 +15,7 @@ import {
   normalizePublicImageFilename,
 } from "@/lib/uploadsImageUrl";
 import { getUploadsImagesDir } from "@/lib/uploadsDir";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 function toUtcIso(date: unknown, time?: unknown): string | undefined {
   try {
@@ -349,6 +350,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         }
       }
 
+      await logAdminAction({ session, req, input: { action: "events.update", entityType: "tbl_events", entityId: result[0].id, success: true, metadata: { eventId: result[0].id, title } } });
+
       return NextResponse.json({ id: result[0].id, message: "Event updated successfully" }, { status: 200 });
     } catch (imageError) {
       // Clean up newly saved images on error
@@ -369,15 +372,18 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       }
       
       const errorMsg = imageError instanceof Error ? imageError.message : "Failed to update images";
+      await logAdminAction({ session, req, input: { action: "events.update", entityType: "tbl_events", entityId: eid, success: false, errorMessage: errorMsg, metadata: { title } } }).catch(() => {});
       return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Invalid request";
+    await logAdminAction({ session: null, req, input: { action: "events.update", entityType: "tbl_events", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
 
-export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const session = await auth();
   try {
     const { id } = await ctx.params;
     const eid = Number(id);
@@ -390,9 +396,11 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> 
     if (!res[0]) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
+    await logAdminAction({ session, req, input: { action: "events.delete", entityType: "tbl_events", entityId: eid, success: true } });
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete";
+    await logAdminAction({ session, req, input: { action: "events.delete", entityType: "tbl_events", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

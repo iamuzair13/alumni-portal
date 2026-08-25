@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 /**
  * One-time fix endpoint to update all access assignments with the typo
@@ -69,6 +70,16 @@ export async function POST() {
       new Map(allUpdated.map((item) => [item.id, item])).values()
     );
 
+    await logAdminAction({
+      session,
+      input: {
+        action: "admin.fix_access_assignments",
+        entityType: "user_access_assignments",
+        success: true,
+        metadata: { totalUnique: uniqueUpdated.length },
+      },
+    });
+
     return NextResponse.json({
       success: true,
       message: `Updated ${uniqueUpdated.length} access assignment(s)`,
@@ -86,6 +97,15 @@ export async function POST() {
   } catch (err) {
 
     const message = err instanceof Error ? err.message : "Internal Server Error";
+    await logAdminAction({
+      session: null,
+      input: {
+        action: "admin.fix_access_assignments",
+        entityType: "user_access_assignments",
+        success: false,
+        errorMessage: message,
+      },
+    });
     return NextResponse.json({ 
       error: message,
       success: false 

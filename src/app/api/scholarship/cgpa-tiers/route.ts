@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import {
   validateTierRanges,
   type ScholarshipCgpaDiscountTier,
@@ -94,9 +95,32 @@ export async function POST(req: NextRequest) {
       RETURNING id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
     `;
 
-    return NextResponse.json({ item: mapTier((rows?.[0] as Record<string, unknown>) ?? {}) }, { status: 200 });
+    const created = mapTier((rows?.[0] as Record<string, unknown>) ?? {});
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.cgpa_tier_create",
+        entityType: "scholarship_cgpa_tiers",
+        success: true,
+        entityId: created.id,
+        metadata: { categoryId, cgpaMin, cgpaMax, discountPercent },
+      },
+    });
+
+    return NextResponse.json({ item: created }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create tier";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.cgpa_tier_create",
+        entityType: "scholarship_cgpa_tiers",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -170,9 +194,32 @@ export async function PUT(req: NextRequest) {
       RETURNING id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
     `;
 
-    return NextResponse.json({ item: mapTier((rows?.[0] as Record<string, unknown>) ?? {}) }, { status: 200 });
+    const updated = mapTier((rows?.[0] as Record<string, unknown>) ?? {});
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.cgpa_tier_update",
+        entityType: "scholarship_cgpa_tiers",
+        success: true,
+        entityId: id,
+        metadata: { cgpaMin, cgpaMax, discountPercent },
+      },
+    });
+
+    return NextResponse.json({ item: updated }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update tier";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.cgpa_tier_update",
+        entityType: "scholarship_cgpa_tiers",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -195,9 +242,29 @@ export async function DELETE(req: NextRequest) {
     await sql/* sql */`
       DELETE FROM public.scholarship_cgpa_discount_tiers WHERE id = ${id}
     `;
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.cgpa_tier_delete",
+        entityType: "scholarship_cgpa_tiers",
+        success: true,
+        entityId: id,
+      },
+    });
     return NextResponse.json({ deleted: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete tier";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.cgpa_tier_delete",
+        entityType: "scholarship_cgpa_tiers",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

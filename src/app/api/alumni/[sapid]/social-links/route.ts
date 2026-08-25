@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
+import { auth } from "@/lib/auth";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
     const { sapid } = await ctx.params;
+    const session = await auth();
     
     // Verify alumni exists
     const alumniRows = await sql/* sql */`
@@ -38,8 +41,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const linkedinVal = linkedin !== undefined ? (linkedin || null) : null;
 
     await sql/* sql */`
-      UPDATE public.tbl_alumni 
-      SET 
+      UPDATE public.tbl_alumni
+      SET
         facebook = ${facebookVal},
         instagram = ${instagramVal},
         youtube = ${youtubeVal},
@@ -47,12 +50,35 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       WHERE sapid = ${sapid}
     `;
 
-    return NextResponse.json({ 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni.update_social_links",
+        entityType: "tbl_alumni",
+        entityId: sapid,
+        success: true,
+        metadata: {
+          sapid,
+        },
+      },
+    });
+    return NextResponse.json({
       ok: true,
-      message: "Social media links updated successfully" 
+      message: "Social media links updated successfully"
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update social media links";
+    await logAdminAction({
+      session: await auth(),
+      req,
+      input: {
+        action: "alumni.update_social_links",
+        entityType: "tbl_alumni",
+        success: false,
+        errorMessage: message,
+      },
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

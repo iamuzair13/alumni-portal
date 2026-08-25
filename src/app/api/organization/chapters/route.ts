@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser, isAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { parseChapterCities, serializeChapterCities } from "@/lib/chapterCities";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 // GET - Fetch all chapters
 export async function GET() {
@@ -131,6 +132,8 @@ export async function POST(req: NextRequest) {
     const newChapter = newChapterRaw
       ? ({ ...newChapterRaw, cities: parseChapterCities((newChapterRaw as Record<string, unknown>).cities) } as Record<string, unknown>)
       : newChapterRaw;
+    await logAdminAction({ session, req, input: { action: "organization.chapter_create", entityType: "tblchapters", entityId: Number((newChapterRaw as Record<string, unknown>)?.id), success: true, metadata: { chapterId: Number((newChapterRaw as Record<string, unknown>)?.id), nationalChapter: national_chapter?.trim() || null, internationalChapter: international_chapter?.trim() || null } } });
+
     return NextResponse.json({ 
       success: true, 
       chapter: newChapter as { 
@@ -146,6 +149,7 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create chapter";
+    await logAdminAction({ session: null, req, input: { action: "organization.chapter_create", entityType: "tblchapters", success: false, errorMessage: message } }).catch(() => {});
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -226,6 +230,8 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
     }
 
+    await logAdminAction({ session, req, input: { action: "organization.chapter_update", entityType: "tblchapters", entityId: id, success: true, metadata: { chapterId: id, nationalChapter: national_chapter?.trim() || null, internationalChapter: international_chapter?.trim() || null } } });
+
     return NextResponse.json({ 
       success: true, 
       chapter: updated as { 
@@ -241,6 +247,7 @@ export async function PUT(req: NextRequest) {
     }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to update chapter";
+    await logAdminAction({ session: null, req, input: { action: "organization.chapter_update", entityType: "tblchapters", success: false, errorMessage: message } }).catch(() => {});
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -294,9 +301,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
     }
 
+    await logAdminAction({ session, req, input: { action: "organization.chapter_delete", entityType: "tblchapters", entityId: chapterId, success: true, metadata: { chapterId } } });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to delete chapter";
+    await logAdminAction({ session: null, req, input: { action: "organization.chapter_delete", entityType: "tblchapters", success: false, errorMessage: message } }).catch(() => {});
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

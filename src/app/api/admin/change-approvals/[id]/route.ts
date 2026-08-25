@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 function normalizeValue(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -247,9 +248,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ error: (result as any).error }, { status: (result as any).status ?? 500 });
     }
 
+    await logAdminAction({ session, req, input: { action: "admin.change_approval", entityType: "tbl_alumni", entityId: requestId, success: true, metadata: { alumniId: requestId, decision: action === "accept" ? "accepted" : "rejected" } } });
+
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
+    await logAdminAction({ session: null, req, input: { action: "admin.change_approval", entityType: "tbl_alumni", success: false, errorMessage: message } }).catch(() => {});
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 // GET /api/organization/courses - Fetch all courses
 export async function GET() {
@@ -59,9 +60,12 @@ export async function POST(req: NextRequest) {
       course_code: rows[0].course_code ? Number(rows[0].course_code) : null,
     };
 
+    await logAdminAction({ session, req, input: { action: "organization.course_create", entityType: "tbl_courses", entityId: Number(rows[0].id), success: true, metadata: { courseId: Number(rows[0].id), courseName: course_name.trim() } } });
+
     return NextResponse.json({ success: true, course }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create course";
+    await logAdminAction({ session: null, req, input: { action: "organization.course_create", entityType: "tbl_courses", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -102,9 +106,12 @@ export async function PUT(req: NextRequest) {
       course_code: rows[0].course_code ? Number(rows[0].course_code) : null,
     };
 
+    await logAdminAction({ session, req, input: { action: "organization.course_update", entityType: "tbl_courses", entityId: Number(rows[0].id), success: true, metadata: { courseId: Number(rows[0].id), courseName: course_name.trim() } } });
+
     return NextResponse.json({ success: true, course }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update course";
+    await logAdminAction({ session: null, req, input: { action: "organization.course_update", entityType: "tbl_courses", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -128,9 +135,12 @@ export async function DELETE(req: NextRequest) {
       DELETE FROM public.tbl_courses WHERE id = ${Number(id)}
     `;
 
+    await logAdminAction({ session, req, input: { action: "organization.course_delete", entityType: "tbl_courses", entityId: Number(id), success: true, metadata: { courseId: Number(id) } } });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete course";
+    await logAdminAction({ session: null, req, input: { action: "organization.course_delete", entityType: "tbl_courses", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

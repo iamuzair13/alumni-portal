@@ -8,6 +8,7 @@ import type { Session } from "next-auth";
 import { sendEmailDetailed } from "@/lib/email";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 import { EMAIL_LOG_STATUS, EMAIL_TRIGGERED_BY, insertEmailLog } from "@/lib/emailLogs";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 async function resolveAlumniIdFromSession(session: Session | null): Promise<
   | { ok: true; alumniid: number; email: string | null; userSapid: string | null; userRegNo: string | null }
@@ -289,8 +290,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
     }
@@ -407,16 +409,39 @@ export async function POST(req: Request) {
       });
     }
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "talks.submit",
+        entityType: "tblalumnitalks",
+        entityId: inserted?.id ?? null,
+        success: true,
+        metadata: { alumniid: me.alumniid, talkId: inserted?.id ?? null },
+      },
+    });
+
     return NextResponse.json({ ok: true, id: inserted?.id ?? null }, { status: 201 });
   } catch (err) {
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "talks.submit",
+        entityType: "tblalumnitalks",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to submit",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to submit";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 export async function PATCH(req: Request) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
     const { canModify } = await import("@/lib/alumniProfile");
@@ -462,6 +487,17 @@ export async function PATCH(req: Request) {
             updated_at = now()
           WHERE id = ${id}
         `;
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "talks.update_status",
+            entityType: "tblalumnitalks",
+            entityId: id,
+            success: true,
+            metadata: { id, action },
+          },
+        });
         return NextResponse.json({ ok: true }, { status: 200 });
       }
 
@@ -471,6 +507,17 @@ export async function PATCH(req: Request) {
           SET status = ${"cancelled"}, updated_at = now()
           WHERE id = ${id}
         `;
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "talks.update_status",
+            entityType: "tblalumnitalks",
+            entityId: id,
+            success: true,
+            metadata: { id, action },
+          },
+        });
         return NextResponse.json({ ok: true }, { status: 200 });
       }
 
@@ -511,6 +558,17 @@ export async function PATCH(req: Request) {
           updated_at = now()
         WHERE id = ${id}
       `;
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "talks.update_status",
+          entityType: "tblalumnitalks",
+          entityId: id,
+          success: true,
+          metadata: { id, action },
+        },
+      });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
@@ -531,6 +589,17 @@ export async function PATCH(req: Request) {
           updated_at = now()
         WHERE id = ${id}
       `;
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "talks.update_status",
+          entityType: "tblalumnitalks",
+          entityId: id,
+          success: true,
+          metadata: { id, action },
+        },
+      });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
@@ -540,6 +609,17 @@ export async function PATCH(req: Request) {
         SET status = ${"conducted"}, updated_at = now()
         WHERE id = ${id}
       `;
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "talks.update_status",
+          entityType: "tblalumnitalks",
+          entityId: id,
+          success: true,
+          metadata: { id, action },
+        },
+      });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
@@ -549,19 +629,41 @@ export async function PATCH(req: Request) {
         SET status = ${"cancelled"}, updated_at = now()
         WHERE id = ${id}
       `;
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "talks.update_status",
+          entityType: "tblalumnitalks",
+          entityId: id,
+          success: true,
+          metadata: { id, action },
+        },
+      });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
     return NextResponse.json({ error: "ACTION_NOT_SUPPORTED" }, { status: 400 });
   } catch (err) {
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "talks.update_status",
+        entityType: "tblalumnitalks",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to update",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to update";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
     const { canModify } = await import("@/lib/alumniProfile");
@@ -587,8 +689,30 @@ export async function DELETE(req: Request) {
       DELETE FROM public.alumni_talk_sessions WHERE id = ${id}
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "talks.delete",
+        entityType: "tblalumnitalks",
+        entityId: id,
+        success: true,
+        metadata: { id },
+      },
+    });
+
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "talks.delete",
+        entityType: "tblalumnitalks",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to delete",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to delete";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

@@ -4,10 +4,13 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { normalizeStoryStatus } from "@/lib/alumniStories";
+import { logAdminAction } from "@/lib/adminActivityLog";
+import type { Session } from "next-auth";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!canModify(session?.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -71,6 +74,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     });
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "stories.review",
+        entityType: "tblalumnistories",
+        entityId: storyId,
+        success: true,
+        metadata: { storyId, decision: action === "approve" ? "approved" : "rejected" },
+      },
+    });
+
     return NextResponse.json(
       {
         success: true,
@@ -80,6 +95,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       { status: 200 }
     );
   } catch (err) {
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "stories.review",
+        entityType: "tblalumnistories",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Failed to review story",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Failed to review story";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

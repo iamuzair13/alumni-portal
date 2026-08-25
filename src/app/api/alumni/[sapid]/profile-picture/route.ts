@@ -4,6 +4,7 @@ import { writeFile, mkdir, unlink, stat, readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import { canModify, isViewerUser } from "@/lib/alumniProfile";
 import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
@@ -321,10 +322,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
 
 
 
-    return NextResponse.json({ 
-      ok: true, 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni.update_profile_picture",
+        entityType: "tbl_alumni",
+        entityId: String(alumni.alumniid),
+        success: true,
+        metadata: {
+          sapid: normalizedIdentifier,
+          filename,
+        },
+      },
+    });
+    return NextResponse.json({
+      ok: true,
       imagePath,
-      message: "Profile picture updated successfully" 
+      message: "Profile picture updated successfully"
     }, { status: 200 });
   } catch (err) {
     const duration = Date.now() - startTime;
@@ -338,11 +353,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
 
     // Return detailed error in development, generic in production
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const errorMessage = isDevelopment 
-      ? `Failed to update profile picture: ${error.message}` 
+    const errorMessage = isDevelopment
+      ? `Failed to update profile picture: ${error.message}`
       : "Failed to update profile picture. Please contact administrator if this persists.";
-    
-    return NextResponse.json({ 
+
+    await logAdminAction({
+      session: await auth(),
+      req,
+      input: {
+        action: "alumni.update_profile_picture",
+        entityType: "tbl_alumni",
+        success: false,
+        errorMessage: error.message,
+      },
+    });
+    return NextResponse.json({
       error: errorMessage,
       ...(isDevelopment && { details: errorDetails })
     }, { status: 500 });

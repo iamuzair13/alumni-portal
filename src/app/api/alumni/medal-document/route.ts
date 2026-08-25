@@ -4,6 +4,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join, extname } from "path";
 import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import { getUploadsImagesDir } from "@/lib/uploadsDir";
 import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
@@ -99,12 +100,36 @@ export async function POST(req: NextRequest) {
       WHERE alumniid = ${alumniId}
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni.upload_medal_document",
+        entityType: "tbl_alumni",
+        entityId: String(alumniId),
+        success: true,
+        metadata: {
+          sapid: String(alumniId),
+          filename,
+        },
+      },
+    });
     return NextResponse.json(
       { success: true, url: fileUrl, filename, size: file.size, type: file.type },
       { status: 200 }
     );
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to upload medal document";
+    await logAdminAction({
+      session: await auth(),
+      req,
+      input: {
+        action: "alumni.upload_medal_document",
+        entityType: "tbl_alumni",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

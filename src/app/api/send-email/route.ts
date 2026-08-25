@@ -10,6 +10,7 @@ import {
   insertEmailLog,
 } from "@/lib/emailLogs";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 type SendEmailBody = {
   recipientEmail: string;
@@ -122,6 +123,19 @@ export async function POST(req: NextRequest) {
       actionType,
     });
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "email.send",
+        entityType: "email",
+        success: res.ok,
+        entityId: alumniId,
+        metadata: { recipientEmail, actionType, subject },
+        errorMessage: res.ok ? null : res.errorMessage ?? "Unknown error",
+      },
+    });
+
     return NextResponse.json(
       {
         ok: res.ok,
@@ -131,6 +145,16 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to send email";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "email.send",
+        entityType: "email",
+        success: false,
+        errorMessage: message,
+      },
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

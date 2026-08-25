@@ -1,16 +1,39 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { logAdminAction } from "@/lib/adminActivityLog";
+import type { Session } from "next-auth";
 import { handleCampusMembershipPost } from "@/lib/campusMembershipSubmit";
 
 export async function POST(req: Request) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
     }
-    return await handleCampusMembershipPost(req, "gym", session);
+    const result = await handleCampusMembershipPost(req, "gym", session);
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "memberships.gym_submit",
+        entityType: "alumni_memberships",
+        success: true,
+      },
+    });
+    return result;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Failed to submit application";
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "memberships.gym_submit",
+        entityType: "alumni_memberships",
+        success: false,
+        errorMessage,
+      },
+    });
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

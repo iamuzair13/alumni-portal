@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { sql } from "@/lib/dbconnect";
+import { auth } from "@/lib/auth";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import { sendEmailDetailed } from "@/lib/email";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 import { EMAIL_LOG_STATUS, EMAIL_TRIGGERED_BY, insertEmailLog } from "@/lib/emailLogs";
@@ -37,6 +39,7 @@ function normalizeEmail(input: unknown): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
     const ip = req.headers.get("x-forwarded-for") || "unknown";
 
     rateLimitPrune();
@@ -149,9 +152,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: emailRes.errorMessage ?? "Failed to send email" }, { status: 500 });
     }
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni.send_credentials",
+        entityType: "tbl_alumni",
+        entityId: String(alumni.alumniid),
+        success: true,
+        metadata: {
+          sapid: alumni.sapid,
+          email: recipientEmail,
+        },
+      },
+    });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to send credentials";
+    await logAdminAction({
+      session: await auth(),
+      req,
+      input: {
+        action: "alumni.send_credentials",
+        entityType: "tbl_alumni",
+        success: false,
+        errorMessage: message,
+      },
+    });
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 type LeadershipType = "chapter" | "association";
 type RoleName = "president" | "vice_president" | "coordinator";
@@ -179,9 +180,31 @@ export async function POST(req: NextRequest) {
         criterion_score
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.leadership_criteria_create",
+        entityType: "leadership_criteria",
+        success: true,
+        entityId: (rows?.[0] as { id?: number } | undefined)?.id,
+        metadata: { type, role, label },
+      },
+    });
+
     return NextResponse.json({ item: rows?.[0] ?? null }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create criteria";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.leadership_criteria_create",
+        entityType: "leadership_criteria",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -280,9 +303,30 @@ export async function PUT(req: NextRequest) {
         criterion_score
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.leadership_criteria_update",
+        entityType: "leadership_criteria",
+        success: true,
+        entityId: id,
+      },
+    });
+
     return NextResponse.json({ item: rows?.[0] ?? null }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update criteria";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.leadership_criteria_update",
+        entityType: "leadership_criteria",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -308,9 +352,30 @@ export async function DELETE(req: NextRequest) {
       WHERE id = ${id}
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.leadership_criteria_delete",
+        entityType: "leadership_criteria",
+        success: true,
+        entityId: id,
+      },
+    });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete criteria";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.leadership_criteria_delete",
+        entityType: "leadership_criteria",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

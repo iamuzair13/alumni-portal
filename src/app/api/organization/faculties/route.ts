@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
 import { getUserAccessAssignmentsWithIds, hasAllFacultiesAccess } from "@/lib/rbac";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 // GET /api/organization/faculties - Fetch all faculties
 export async function GET() {
@@ -105,9 +106,12 @@ export async function POST(req: NextRequest) {
       created_at: new Date(rows[0].created_at as string),
     };
 
+    await logAdminAction({ session, req, input: { action: "organization.faculty_create", entityType: "tbl_faculties", entityId: Number(rows[0].id), success: true, metadata: { facultyId: Number(rows[0].id), facultyName: faculty_name.trim() } } });
+
     return NextResponse.json({ success: true, faculty }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create faculty";
+    await logAdminAction({ session: null, req, input: { action: "organization.faculty_create", entityType: "tbl_faculties", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -144,9 +148,12 @@ export async function PUT(req: NextRequest) {
       created_at: new Date(rows[0].created_at as string),
     };
 
+    await logAdminAction({ session, req, input: { action: "organization.faculty_update", entityType: "tbl_faculties", entityId: Number(rows[0].id), success: true, metadata: { facultyId: Number(rows[0].id), facultyName: faculty_name.trim() } } });
+
     return NextResponse.json({ success: true, faculty }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update faculty";
+    await logAdminAction({ session: null, req, input: { action: "organization.faculty_update", entityType: "tbl_faculties", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -192,9 +199,12 @@ export async function DELETE(req: NextRequest) {
       DELETE FROM public.tbl_faculties WHERE id = ${Number(id)}
     `;
 
+    await logAdminAction({ session, req, input: { action: "organization.faculty_delete", entityType: "tbl_faculties", entityId: Number(id), success: true, metadata: { facultyId: Number(id) } } });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete faculty";
+    await logAdminAction({ session: null, req, input: { action: "organization.faculty_delete", entityType: "tbl_faculties", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

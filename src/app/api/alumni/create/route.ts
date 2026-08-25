@@ -2,6 +2,7 @@ import { sql } from "@/lib/dbconnect";
 import { NextResponse } from "next/server";
 import generateEasyPassword from "@/lib/passwordUtils";
 import { auth } from "@/lib/auth";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import { parseChapterCities } from "@/lib/chapterCities";
 import { erpClient } from "@/lib/erpClient";
 import {
@@ -206,7 +207,7 @@ type TblAlumniBody = {
 export async function POST(req: Request) {
   try {
     // Get session if available (optional - registration is public)
-    await auth();
+    const session = await auth();
     const body = (await req.json()) as TblAlumniBody;
     
     // NOTE: Duplicate checks now only validate PRIMARY identifiers (SAP ID, Registration Number, CNIC/Passport).
@@ -1032,15 +1033,55 @@ export async function POST(req: Request) {
     if (isUpdate) {
       response.updated = true;
       response.message = "Alumni record updated successfully. Status set to 'Under Approval'.";
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "alumni.create",
+          entityType: "tbl_alumni",
+          entityId: String(id ?? null),
+          success: true,
+          metadata: {
+            sapid: clean(body.sapid),
+            alumniname: clean(body.alumniname),
+            email: clean(body.personalemail),
+          },
+        },
+      });
       return NextResponse.json(response, { status: 200 });
     } else {
       response.message = "Alumni registered successfully. Status set to 'Under Approval'.";
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "alumni.create",
+          entityType: "tbl_alumni",
+          entityId: String(id ?? null),
+          success: true,
+          metadata: {
+            sapid: clean(body.sapid),
+            alumniname: clean(body.alumniname),
+            email: clean(body.personalemail),
+          },
+        },
+      });
       return NextResponse.json(response, { status: 201 });
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
     const stack = err instanceof Error ? err.stack : undefined;
 
+    await logAdminAction({
+      session: await auth(),
+      req,
+      input: {
+        action: "alumni.create",
+        entityType: "tbl_alumni",
+        success: false,
+        errorMessage: message,
+      },
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -15,6 +15,7 @@ import {
   normalizePublicImageFilename,
 } from "@/lib/uploadsImageUrl";
 import { getUploadsImagesDir } from "@/lib/uploadsDir";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 type EventListItem = {
   id: string;
@@ -320,6 +321,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Failed to create event" }, { status: 500 });
       }
 
+      await logAdminAction({ session, req, input: { action: "events.create", entityType: "tbl_events", entityId: eventId, success: true, metadata: { eventId, title } } });
+
       return NextResponse.json({ id: eventId, message: "Event created successfully" }, { status: 201 });
     } catch (imageError) {
       // Clean up saved images on error
@@ -334,10 +337,12 @@ export async function POST(req: Request) {
       }
 
       const errorMsg = imageError instanceof Error ? imageError.message : "Failed to save images";
+      await logAdminAction({ session, req, input: { action: "events.create", entityType: "tbl_events", success: false, errorMessage: errorMsg, metadata: { title } } }).catch(() => {});
       return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Invalid request";
+    await logAdminAction({ session: null, req, input: { action: "events.create", entityType: "tbl_events", success: false, errorMessage: msg } }).catch(() => {});
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }

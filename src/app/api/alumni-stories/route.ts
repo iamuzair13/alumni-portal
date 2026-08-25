@@ -25,6 +25,8 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { sanitizeStoryHtml, storyHtmlTextContent } from "@/lib/sanitizeStoryHtml";
 import { pickAlumniContactEmail } from "@/lib/successStoryEmailContent";
+import { logAdminAction } from "@/lib/adminActivityLog";
+import type { Session } from "next-auth";
 
 type StoryItem = {
   id: string;
@@ -237,8 +239,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  let session: Session | null = null;
   try {
-    const session = await auth();
+    session = await auth();
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -487,6 +490,17 @@ export async function POST(req: Request) {
         }
       }
     } catch (dbError) {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "stories.create",
+          entityType: "tblalumnistories",
+          entityId: alumniId,
+          success: false,
+          errorMessage: dbError instanceof Error ? dbError.message : "Unknown database error",
+        },
+      });
       return NextResponse.json(
         {
           message: "Failed to save story to database",
@@ -502,6 +516,18 @@ export async function POST(req: Request) {
       );
     }
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "stories.create",
+        entityType: "tblalumnistories",
+        entityId: alumniId,
+        success: true,
+        metadata: { alumniId },
+      },
+    });
+
     return NextResponse.json(
       {
         ok: true,
@@ -512,6 +538,16 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err) {
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "stories.create",
+        entityType: "tblalumnistories",
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
     const msg = err instanceof Error ? err.message : "Invalid JSON";
     const statusCode =
       err instanceof Error && msg.includes("Unauthorized")

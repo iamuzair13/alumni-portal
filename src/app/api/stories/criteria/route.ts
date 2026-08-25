@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 export type StoryCriterion = {
   id: number;
@@ -98,9 +99,31 @@ export async function POST(req: NextRequest) {
         sort_order
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.stories_criteria_create",
+        entityType: "stories_criteria",
+        success: true,
+        entityId: (rows?.[0] as { id?: number } | undefined)?.id,
+        metadata: { label },
+      },
+    });
+
     return NextResponse.json({ item: rows?.[0] ?? null }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create criterion";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.stories_criteria_create",
+        entityType: "stories_criteria",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -166,9 +189,30 @@ export async function PUT(req: NextRequest) {
         sort_order
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.stories_criteria_update",
+        entityType: "stories_criteria",
+        success: true,
+        entityId: id,
+      },
+    });
+
     return NextResponse.json({ item: rows?.[0] ?? null }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update criterion";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.stories_criteria_update",
+        entityType: "stories_criteria",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -193,9 +237,30 @@ export async function DELETE(req: NextRequest) {
       WHERE id = ${id}
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.stories_criteria_delete",
+        entityType: "stories_criteria",
+        success: true,
+        entityId: id,
+      },
+    });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete criterion";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.stories_criteria_delete",
+        entityType: "stories_criteria",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

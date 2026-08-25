@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import {
   parseFlowType,
   slugifyCategoryLabel,
@@ -136,9 +137,32 @@ export async function POST(req: NextRequest) {
       RETURNING id, slug, label, flow_type, default_apply_for, sort_order, is_active
     `;
 
-    return NextResponse.json({ item: mapCategory((rows?.[0] as Record<string, unknown>) ?? {}) }, { status: 200 });
+    const created = mapCategory((rows?.[0] as Record<string, unknown>) ?? {});
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.scholarship_category_create",
+        entityType: "scholarship_categories",
+        success: true,
+        entityId: created.id,
+        metadata: { slug, label, flowType },
+      },
+    });
+
+    return NextResponse.json({ item: created }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create category";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.scholarship_category_create",
+        entityType: "scholarship_categories",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     if (msg.includes("unique") || msg.includes("duplicate")) {
       return NextResponse.json({ error: "A category with this slug already exists" }, { status: 409 });
     }
@@ -220,9 +244,32 @@ export async function PUT(req: NextRequest) {
       RETURNING id, slug, label, flow_type, default_apply_for, sort_order, is_active
     `;
 
-    return NextResponse.json({ item: mapCategory((rows?.[0] as Record<string, unknown>) ?? {}) }, { status: 200 });
+    const updated = mapCategory((rows?.[0] as Record<string, unknown>) ?? {});
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.scholarship_category_update",
+        entityType: "scholarship_categories",
+        success: true,
+        entityId: id,
+        metadata: { slug, label, flowType },
+      },
+    });
+
+    return NextResponse.json({ item: updated }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update category";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.scholarship_category_update",
+        entityType: "scholarship_categories",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -259,15 +306,47 @@ export async function DELETE(req: NextRequest) {
         SET is_active = false, updated_at = NOW()
         WHERE id = ${id}
       `;
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "settings.scholarship_category_delete",
+          entityType: "scholarship_categories",
+          success: true,
+          entityId: id,
+          metadata: { slug, deactivated: true },
+        },
+      });
       return NextResponse.json({ deactivated: true }, { status: 200 });
     }
 
     await sql/* sql */`
       DELETE FROM public.scholarship_discount_categories WHERE id = ${id}
     `;
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.scholarship_category_delete",
+        entityType: "scholarship_categories",
+        success: true,
+        entityId: id,
+        metadata: { slug, deleted: true },
+      },
+    });
     return NextResponse.json({ deleted: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete category";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.scholarship_category_delete",
+        entityType: "scholarship_categories",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

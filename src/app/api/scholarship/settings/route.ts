@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 const FORM_TYPE = "scholarship_application";
 
@@ -75,12 +76,33 @@ export async function POST(req: NextRequest) {
         updated_by = EXCLUDED.updated_by
     `;
 
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "settings.scholarship_update",
+        entityType: "scholarship_settings",
+        success: true,
+        metadata: { formType, isEnabled },
+      },
+    });
+
     return NextResponse.json({
       success: true,
       message: "Settings updated successfully",
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update settings";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "settings.scholarship_update",
+        entityType: "scholarship_settings",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { readFile, stat } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 /**
  * GET /api/alumni/[sapid]/verify-image?filename=xxx
@@ -63,7 +64,20 @@ export async function GET(
 
     const stats = await stat(filePath);
     const fileContent = await readFile(filePath);
-    
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni.verify_image",
+        entityType: "tbl_alumni",
+        entityId: sapid,
+        success: true,
+        metadata: {
+          sapid,
+        },
+      },
+    });
     return NextResponse.json({
       exists: true,
       path: filePath,
@@ -79,6 +93,16 @@ export async function GET(
     }, { status: 200 });
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
+    await logAdminAction({
+      session: await auth(),
+      req,
+      input: {
+        action: "alumni.verify_image",
+        entityType: "tbl_alumni",
+        success: false,
+        errorMessage: error.message,
+      },
+    });
     return NextResponse.json({
       error: error.message,
       stack: error.stack

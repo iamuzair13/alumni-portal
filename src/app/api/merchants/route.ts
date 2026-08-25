@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
 import { isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 export type Merchant = {
   id: number;
@@ -128,12 +129,35 @@ export async function POST(req: NextRequest) {
                 discount_pct, status, created_at, updated_at
     `;
 
+    const created = mapMerchant((rows?.[0] as Record<string, unknown>) ?? {});
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "merchants.create",
+        entityType: "merchants",
+        success: true,
+        entityId: created.id,
+        metadata: { businessName, discountType },
+      },
+    });
+
     return NextResponse.json(
-      { item: mapMerchant((rows?.[0] as Record<string, unknown>) ?? {}) },
+      { item: created },
       { status: 201 }
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create merchant";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "merchants.create",
+        entityType: "merchants",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -222,12 +246,35 @@ export async function PUT(req: NextRequest) {
                 discount_pct, status, created_at, updated_at
     `;
 
+    const updated = mapMerchant((rows?.[0] as Record<string, unknown>) ?? {});
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "merchants.update",
+        entityType: "merchants",
+        success: true,
+        entityId: id,
+        metadata: { businessName, discountType },
+      },
+    });
+
     return NextResponse.json(
-      { item: mapMerchant((rows?.[0] as Record<string, unknown>) ?? {}) },
+      { item: updated },
       { status: 200 }
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update merchant";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "merchants.update",
+        entityType: "merchants",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -255,9 +302,29 @@ export async function DELETE(req: NextRequest) {
     }
 
     await sql/* sql */`DELETE FROM public.merchants WHERE id = ${id}`;
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "merchants.delete",
+        entityType: "merchants",
+        success: true,
+        entityId: id,
+      },
+    });
     return NextResponse.json({ deleted: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete merchant";
+    await logAdminAction({
+      session: null,
+      req,
+      input: {
+        action: "merchants.delete",
+        entityType: "merchants",
+        success: false,
+        errorMessage: msg,
+      },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
