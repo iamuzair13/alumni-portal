@@ -1,4 +1,6 @@
 "use client";
+// This page uses useSearchParams() which requires dynamic rendering.
+export const dynamic = "force-dynamic";
 
 import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";

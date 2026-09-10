@@ -18,6 +18,19 @@ export type CardApplicant = {
   delivery_house_no: string | null;
   status: string | null;
   createdat: string | null;
+  cnicno: string | null;
+  cardpicture: string | null;
+  card_image: string | null;
+  cnicpassport: string | null;
+  contactno: string | null;
+  contactno1: string | null;
+  campusname: string | null;
+  country: string | null;
+  city: string | null;
+  address: string | null;
+  image1: string | null;
+  image2: string | null;
+  reason_onhold: string | null;
 };
 
 export type CardStatusFilter = "all" | "under-review" | "underprinting" | "active" | "onhold" | "delivered" | "overdue";
@@ -110,6 +123,31 @@ export function useCardCounts() {
         "overdue-under-review": 0,
         "overdue-under-printing": 0,
       };
+    },
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+  });
+}
+
+export type OnHoldReasonEntry = {
+  reason: string;
+  count: number;
+};
+
+export function useOnHoldReasons() {
+  return useQuery<{ reasons: OnHoldReasonEntry[] }>({
+    queryKey: ["alumni", "card", "onhold-reasons"],
+    queryFn: async () => {
+      const res = await fetch(`/api/alumni-cards/onhold-reasons`, { cache: "no-store" });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || `Failed (${res.status})`);
+      }
+      const j = await res.json();
+      return { reasons: (j?.reasons ?? []) as OnHoldReasonEntry[] };
     },
     staleTime: 60 * 1000,
     gcTime: 10 * 60_000,

@@ -25,9 +25,13 @@ import {
 
 /** Stored in tblcard.reason_onhold; sent in notification email. */
 export const ON_HOLD_REASON_OPTIONS = [
-  { value: "Picture issue", label: "📷 Picture Issue — Blurry, incorrect format, or missing photo" },
-  { value: "Data Mismatch", label: "📋 Data Mismatch — Information doesn't match university records" },
   { value: "Islamabad Campus", label: "🏛️ Islamabad Campus" },
+  { value: "CNIC Missing", label: "🪪 CNIC Missing — National ID not provided" },
+  { value: "Incomplete Postal Address", label: "📮 Incomplete Postal Address — Missing delivery details" },
+  { value: "Rural Area Address", label: "🏡 Rural Area Address — Delivery to rural/non-urban location" },
+  { value: "Foreign Postal Address", label: "🌍 Foreign Postal Address — International delivery required" },
+  { value: "Unprofessional Picture", label: "🖼️ Unprofessional Picture — Photo doesn't meet guidelines" },
+  { value: "Mobile Number Missing", label: "📱 Mobile Number Missing — No contact number on file" },
 ] as const;
 
 export type OnHoldReason = (typeof ON_HOLD_REASON_OPTIONS)[number]["value"];

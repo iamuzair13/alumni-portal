@@ -22,6 +22,42 @@ export default function UserDropdown() {
   const isAlumni = t === "alumni";
   const isAdminUser = t === "admin" || t === "viewer" || t === "superadmin";
 
+  const roleBadge = (() => {
+    if (t === "superadmin") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold leading-none text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
+          Super Admin
+        </span>
+      );
+    }
+    if (t === "admin" || t === "staff") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold leading-none text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+          Admin
+        </span>
+      );
+    }
+    if (t === "viewer" || t === "user") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold leading-none text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-gray-500"></span>
+          Viewer
+        </span>
+      );
+    }
+    if (isAlumni) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold leading-none text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          Alumni
+        </span>
+      );
+    }
+    return null;
+  })();
+
   const { data: userImageData } = useCurrentUserImage((isAlumni || isAdminUser) && status === "authenticated");
 
   const resolvedUserImagePath = useMemo(() => {
@@ -103,8 +139,11 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
           />
         </span>
 
-        <span className="mr-1 block text-theme-sm font-medium text-[#183D32] dark:text-emerald-200">
-          {status === "loading" ? "Loading" : session?.user?.name || "User"}
+        <span className="mr-1 flex flex-col items-start">
+          <span className="block text-theme-sm font-medium text-[#183D32] dark:text-emerald-200">
+            {status === "loading" ? "Loading" : session?.user?.name || "User"}
+          </span>
+          {roleBadge}
         </span>
 
         <svg
@@ -141,6 +180,9 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
             {status === "loading" ? "" : session?.user?.email || ""}
           </span>
+          {roleBadge && (
+            <span className="mt-1.5 block">{roleBadge}</span>
+          )}
         </div>
 
         <ul className="flex flex-col gap-1 pt-4 pb-3 border-b border-gray-200 dark:border-gray-800">

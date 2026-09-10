@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ComponentCard from "@/components/common/ComponentCard";
 import SearchToolbar from "@/components/common/SearchToolbar";
+import Button from "@/components/ui/button/Button";
 import Badge from "../ui/badge/Badge";
 import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon, MailIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
@@ -1263,6 +1264,8 @@ export const AlumniTabs: React.FC = () => {
     apiSortBy,
     sortDirection
   );
+
+
 
   useEffect(() => {
     const firstId = (paginatedData?.items?.[0] as any)?.alumniid;
@@ -2846,6 +2849,7 @@ export const AlumniTabs: React.FC = () => {
           searchOnChange={setQuery}
           searchPlaceholder="Search by SR.No, name, SAP ID, registration no, email, faculty, department, or program..."
           searchId="alumni-search"
+          actions={[]}
           filtersActive={hasActiveFilters}
           onClearFilters={handleClearFilters}
           onResetSort={handleResetSort}
@@ -5855,7 +5859,7 @@ export const AlumniTabs: React.FC = () => {
         )}
         </>
         </div>
-      
+
       {/* Confirmation Modal */}
       {duplicatesModal.isOpen && pendingDuplicateGate && duplicateGateTarget && (
         <Modal

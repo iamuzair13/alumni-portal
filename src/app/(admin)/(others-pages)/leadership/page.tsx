@@ -1,4 +1,6 @@
 "use client";
+// This page uses useSearchParams() which requires dynamic rendering.
+export const dynamic = "force-dynamic";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";

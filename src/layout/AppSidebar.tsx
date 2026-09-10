@@ -144,6 +144,8 @@ const navItems: NavItem[] = [
 
       { name: "Memberships", path: "/setup?tab=memberships" },
 
+      { name: "Bulk Upload", path: "/setup?tab=bulk-upload" },
+
       { name: "Activity Logs", path: "/activity-logs" },
 
     ],
@@ -172,7 +174,7 @@ const TEXT_COLORS = {
 
 const AppSidebarContent: React.FC = () => {
 
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleSidebar } = useSidebar();
 
   const pathname = usePathname();
 
@@ -784,6 +786,49 @@ const AppSidebarContent: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
 
     >
+
+      {/* Floating sidebar toggle — professional circular button at the sidebar's right edge (desktop only) */}
+      <button
+
+        type="button"
+
+        onClick={toggleSidebar}
+
+        aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+
+        title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+
+        className="absolute -right-3 top-20 z-[60] hidden h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-accent-600 shadow-lg transition-all duration-200 hover:scale-110 hover:border-accent-300 hover:text-accent-700 hover:shadow-xl active:scale-95 dark:border-gray-600 dark:bg-gray-800 dark:text-accent-300 dark:hover:border-accent-500 dark:hover:text-accent-200 lg:flex"
+
+      >
+
+        <svg
+
+          width="14"
+
+          height="14"
+
+          viewBox="0 0 24 24"
+
+          fill="none"
+
+          stroke="currentColor"
+
+          strokeWidth="2.5"
+
+          strokeLinecap="round"
+
+          strokeLinejoin="round"
+
+          className={`transition-transform duration-300 ${isExpanded ? "" : "rotate-180"}`}
+
+        >
+
+          <path d="M15 18l-6-6 6-6" />
+
+        </svg>
+
+      </button>
 
       <div
 

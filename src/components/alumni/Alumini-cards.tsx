@@ -39,6 +39,19 @@ type AlumniCardItem = {
   deliverySocietyName?: string | null;
   deliveryStreetNo?: string | null;
   deliveryHouseNo?: string | null;
+  cnicno?: string | null;
+  cnicpassport?: string | null;
+  contactno?: string | null;
+  contactno1?: string | null;
+  campusname?: string | null;
+  country?: string | null;
+  city?: string | null;
+  address?: string | null;
+  image1?: string | null;
+  image2?: string | null;
+  cardpicture?: string | null;
+  card_image?: string | null;
+  reason_onhold?: string | null;
 };
 
 type ActionKey = "view" | "verify" | "decline" | "suspend" | "delete";
@@ -107,6 +120,19 @@ function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { d
     deliverySocietyName: applicant.delivery_society_name ?? null,
     deliveryStreetNo: applicant.delivery_street_no ?? null,
     deliveryHouseNo: applicant.delivery_house_no ?? null,
+    cnicno: applicant.cnicno ?? null,
+    cnicpassport: applicant.cnicpassport ?? null,
+    contactno: applicant.contactno ?? null,
+    contactno1: applicant.contactno1 ?? null,
+    campusname: applicant.campusname ?? null,
+    country: applicant.country ?? null,
+    city: applicant.city ?? null,
+    address: applicant.address ?? null,
+    image1: applicant.image1 ?? null,
+    image2: applicant.image2 ?? null,
+    cardpicture: applicant.cardpicture ?? null,
+    card_image: applicant.card_image ?? null,
+    reason_onhold: applicant.reason_onhold ?? null,
   };
 }
 
@@ -163,6 +189,17 @@ const STATUS_TABS: { key: AlumniCardTab; label: string; icon: React.FC<{ classNa
   { key: "overdue", label: "Overdue (Admin)", icon: AlertIcon, desc: "" },
   { key: "overdue_by_alumni", label: "Overdue (Alumni)", icon: AlertIcon, desc: "" },
 ];
+
+// ─── Data Issue Filters (driven by distinct on hold reasons from DB) ───
+export type DataIssueKey = string; // reason_onhold value from tblcard
+
+function normalizeReason(v: string | null | undefined): string {
+  return String(v ?? "").trim();
+}
+
+function hasDataIssue(item: AlumniCardItem, reason: DataIssueKey): boolean {
+  return normalizeReason(item.reason_onhold) === reason;
+}
 
 // ─── Sub-Components ───
 
@@ -332,10 +369,128 @@ function LoadingState({ pageSize }: { pageSize: number }) {
   );
 }
 
+function DataIssuesFilter({
+  selected,
+  onChange,
+  options,
+  counts,
+  isLoading,
+}: {
+  selected: DataIssueKey[];
+  onChange: (issues: DataIssueKey[]) => void;
+  options: { key: DataIssueKey; label: string }[];
+  counts: Record<string, number>;
+  isLoading?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const toggle = (key: DataIssueKey) => {
+    onChange(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 ${
+          selected.length > 0
+            ? "border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-600 dark:bg-amber-900/20 dark:text-amber-300"
+            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700/50"
+        }`}
+      >
+        <AlertIcon className="h-4 w-4" />
+        <span>Data Issues</span>
+        {selected.length > 0 && (
+          <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+            {selected.length}
+          </span>
+        )}
+        <svg
+          className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+          <div className="border-b border-gray-100 px-4 py-3 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-gray-900 dark:text-white">Filter by Data Issues</span>
+              {selected.length > 0 && (
+                <button
+                  onClick={() => onChange([])}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">On hold reasons in this status</p>
+          </div>
+          <div className="max-h-72 overflow-y-auto p-2">
+            {isLoading ? (
+              <div className="px-3 py-6 text-center text-xs text-gray-400">Loading reasons...</div>
+            ) : options.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-gray-400">No on hold reasons found</div>
+            ) : (
+              options.map((opt) => {
+                const isSelected = selected.includes(opt.key);
+                const count = counts[opt.key] ?? 0;
+                return (
+                  <label
+                    key={opt.key}
+                    className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+                      isSelected
+                        ? "bg-amber-50 dark:bg-amber-900/20"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggle(opt.key)}
+                      className="h-4 w-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500/30 dark:border-gray-600 dark:bg-gray-700"
+                    />
+                    <span className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300">{opt.label}</span>
+                    <span className={`inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums ${
+                      count > 0
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                        : "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500"
+                    }`}>
+                      {count}
+                    </span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all", pageSize = 12 }) => {
   const [selectedStatus, setSelectedStatus] = useState<AlumniCardTab>(initialStatus as CardStatusFilter);
   const [selectedOverdueType, setSelectedOverdueType] = useState<OverdueType>("under-review");
   const [overdueByAlumniIds, setOverdueByAlumniIds] = useState<string[]>([]);
+  const [selectedDataIssues, setSelectedDataIssues] = useState<DataIssueKey[]>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -388,6 +543,41 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     }));
   }, [data]);
 
+  // Build filter options from distinct on hold reasons present in the
+  // currently loaded cards (already filtered by the selected status tab).
+  // This keeps the dropdown in sync with the status tabs.
+  const dataIssueOptions = useMemo(() => {
+    const reasonMap = new Map<string, number>();
+    for (const item of cards) {
+      const reason = normalizeReason(item.reason_onhold);
+      if (!reason) continue;
+      reasonMap.set(reason, (reasonMap.get(reason) ?? 0) + 1);
+    }
+    // Sort by count descending so the most common reasons appear first
+    return Array.from(reasonMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([reason, count]) => ({ key: reason as DataIssueKey, label: reason, count }));
+  }, [cards]);
+
+  // Count how many cards in the current view match each on hold reason
+  const dataIssueCounts = useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const opt of dataIssueOptions) {
+      result[opt.key] = opt.count;
+    }
+    return result;
+  }, [dataIssueOptions]);
+
+  // Apply data issue filters to cards (OR logic across selected reasons).
+  // Each card has a single reason_onhold value, so matching ANY selected
+  // reason is the correct semantic — AND would always return empty.
+  const filteredCards = useMemo(() => {
+    if (selectedDataIssues.length === 0) return cards;
+    return cards.filter((item) =>
+      selectedDataIssues.some((issue) => hasDataIssue(item, issue))
+    );
+  }, [cards, selectedDataIssues]);
+
   const getTabCount = (key: AlumniCardTab): number => {
     if (key === "all") return counts.all || 0;
     if (key === "under-review") return counts["under-review"] || 0;
@@ -437,7 +627,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     }
   };
 
-  const total = cards.length;
+  const total = filteredCards.length;
   const loading = isLoading;
 
   return (
@@ -498,6 +688,9 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                 } else {
                   setSelectedStatus(tab.key);
                 }
+                // Clear data issue filters when switching tabs so stale
+                // selections from a previous status don't persist
+                setSelectedDataIssues([]);
               }}
             />
           ))}
@@ -522,6 +715,24 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         </div>
       )}
 
+      {/* ─── Data Issues Filter ─── */}
+      <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <span className="font-medium">Need Correction:</span>
+          {selectedDataIssues.length > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+              {selectedDataIssues.length} filter{selectedDataIssues.length !== 1 ? "s" : ""} active
+            </span>
+          )}
+        </div>
+        <DataIssuesFilter
+          selected={selectedDataIssues}
+          onChange={setSelectedDataIssues}
+          options={dataIssueOptions}
+          counts={dataIssueCounts}
+        />
+      </div>
+
       {/* ─── Content Area ─── */}
       <div className="px-6 py-6">
         {isError && (
@@ -535,14 +746,34 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
 
         {loading ? (
           <LoadingState pageSize={pageSize} />
-        ) : cards.length === 0 ? (
+        ) : filteredCards.length === 0 ? (
           <div className="rounded-2xl border border-gray-200/80 bg-white dark:border-gray-700/80 dark:bg-gray-800/30 shadow-sm">
-            <EmptyState status={selectedStatus} />
+            {cards.length === 0 ? (
+              <EmptyState status={selectedStatus} />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="h-20 w-20 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-4 shadow-inner">
+                  <AlertIcon className="h-8 w-8 text-amber-500" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">No matching records</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
+                  No cards match the selected data issue filters. Try clearing some filters.
+                </p>
+                {selectedDataIssues.length > 0 && (
+                  <button
+                    onClick={() => setSelectedDataIssues([])}
+                    className="mt-4 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50 overflow-hidden">
             <AlumniDataTable
-              items={cards}
+              items={filteredCards}
               loading={loading}
               error={isError ? (error instanceof Error ? error.message : "Failed to load") : null}
               defaultPageSize={pageSize}
@@ -567,6 +798,9 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-4 bg-gray-50/80 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800">
           <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
             Showing <span className="font-bold text-gray-900 dark:text-white">{total.toLocaleString()}</span> {total === 1 ? "record" : "records"}
+            {selectedDataIssues.length > 0 && cards.length !== filteredCards.length && (
+              <span className="text-gray-400 dark:text-gray-500"> of <span className="font-semibold">{cards.length.toLocaleString()}</span></span>
+            )}
           </span>
           <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />

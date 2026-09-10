@@ -214,7 +214,8 @@ export function useAlumniListPaginated(
   cnicPassportState?: string | string[],
   category?: string | string[],
   sortBy?: string,
-  sortOrder?: "asc" | "desc"
+  sortOrder?: "asc" | "desc",
+  options?: { enabled?: boolean }
 ) {
   return useQuery<AlumniListResponse, Error>({
     queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, occupationTransitionTiming, sector, workCity, workCountry, employer, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState, personalEmailState, contactNoState, cnicPassportState, category, sortBy, sortOrder],
@@ -259,6 +260,7 @@ export function useAlumniListPaginated(
         sortOrder
       );
     },
+    enabled: options?.enabled ?? true,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -406,4 +408,3 @@ export async function getAlumniCounts(
   const data = (await res.json()) as AlumniCounts;
   return data;
 }
-

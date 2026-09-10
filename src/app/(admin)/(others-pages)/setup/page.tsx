@@ -1,9 +1,10 @@
 "use client";
+// This page uses useSearchParams() which requires dynamic rendering.
+export const dynamic = "force-dynamic";
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useUsersList } from "@/app/queries/fetch-users";
-import ComponentCard from "@/components/common/ComponentCard";
 import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
 import Input from "@/components/form/input/InputField";
@@ -28,6 +29,7 @@ import ScholarshipDiscountManager from "@/components/scholarship/ScholarshipDisc
 import MerchantsComponent from "@/components/setup/MerchantsComponent";
 import MembershipSettingsComponent from "@/components/setup/MembershipSettingsComponent";
 import StoriesCriteriaManager from "@/components/setup/StoriesCriteriaManager";
+import BulkUploadTab from "@/components/setup/BulkUploadTab";
 import type { ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
 
 type LeadershipType = "chapter" | "association";
@@ -352,7 +354,7 @@ function SetupPageContent() {
 
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
-  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership" | "scholarships" | "merchants" | "stories" | "memberships";
+  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership" | "scholarships" | "merchants" | "stories" | "memberships" | "bulk-upload";
 
   const TABS: Array<{ key: SetupTabKey; label: string }> = [
     { key: "users", label: "Users" },
@@ -366,6 +368,7 @@ function SetupPageContent() {
           { key: "scholarships" as const, label: "Scholarships" },
           { key: "stories" as const, label: "Stories" },
           { key: "memberships" as const, label: "Memberships" },
+          { key: "bulk-upload" as const, label: "Bulk Upload" },
         ]
       : []),
   ];
@@ -777,35 +780,12 @@ function SetupPageContent() {
   };
 
   return (
-    <div className="">
-      <ComponentCard title="Setup" className="overflow-x-hidden dark:text-gray-300 dark:bg-gray-900">
+    <div className="px-4 py-4 sm:px-6 lg:px-8">
         {/* Notifications */}
         <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 dark:text-gray-300 dark:bg-gray-900">
           {toasts.map((t) => (
             <Alert key={t.id} variant={t.type} title={t.type === "success" ? "Success" : "Error"} message={t.message} />
           ))}
-        </div>
-
-        {/* Role indicator */}
-        <div className="mb-4 flex items-center justify-between dark:text-gray-300 dark:bg-gray-900">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {isSuperAdmin ? (
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300">
-                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                Super Admin - Full Permissions
-              </span>
-            ) : isAdmin ? (
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                Admin - Modify Permission
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                <span className="w-2 h-2 rounded-full bg-gray-500"></span>
-                Viewer - View Permission Only
-              </span>
-            )}
-          </div>
         </div>
 
         <div
@@ -1441,7 +1421,10 @@ function SetupPageContent() {
             <MembershipSettingsComponent />
           </div>
         )}
-      </ComponentCard>
+
+        {selected === "bulk-upload" && isSuperAdmin && (
+          <BulkUploadTab />
+        )}
 
       <style jsx>{`
         .tab-list {

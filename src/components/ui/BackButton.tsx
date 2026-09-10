@@ -1,14 +1,11 @@
 "use client";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Suspense, useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 
 function BackButtonContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const pathname = usePathname();
-  const safeSearchParams = searchParams ?? new URLSearchParams();
-  const sapId = safeSearchParams.get("sapid");
   const [isNavigating, setIsNavigating] = useState(false);
 
   // Reset loading state when pathname changes (navigation completed)
@@ -21,10 +18,7 @@ function BackButtonContent() {
     setIsNavigating(true);
     if (typeof window === "undefined") {
       // Server-side: navigate to profile
-      const profileUrl = sapId 
-        ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}`
-        : "/alumni-profile";
-      router.push(profileUrl);
+      router.push("/alumni-profile");
       return;
     }
 
@@ -59,6 +53,8 @@ function BackButtonContent() {
     }
 
     // For other pages or if no valid referrer, navigate to profile page with sapid if available
+    const searchParams = new URLSearchParams(window.location.search);
+    const sapId = searchParams.get("sapid");
     const profileUrl = sapId 
       ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}`
       : "/alumni-profile";
@@ -86,12 +82,6 @@ function BackButtonContent() {
 }
 
 export default function BackButton() {
-  return (
-    <Suspense fallback={
-      <div className="w-12 h-12 flex items-center justify-center bg-gray-300 rounded-full animate-pulse" />
-    }>
-      <BackButtonContent />
-    </Suspense>
-  );
+  return <BackButtonContent />;
 }
 

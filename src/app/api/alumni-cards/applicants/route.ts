@@ -72,7 +72,20 @@ export async function GET(request: Request) {
         c.delivery_street_no,
         c.delivery_house_no,
         c.status,
-        c.createdat
+        c.createdat,
+        c.cnicno,
+        c.cardpicture,
+        c.card_image,
+        a.cnicpassport,
+        a.contactno,
+        a.contactno1,
+        a.campusname,
+        a.country,
+        a.city,
+        a.address,
+        a.image1,
+        a.image2,
+        c.reason_onhold
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty

@@ -4,14 +4,13 @@
 import type { FC, ReactNode } from "react";
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 
 import UserDropdown from "@/components/header/UserDropdown";
-import ComponentCard from "@/components/common/ComponentCard";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useSidebar } from "@/context/SidebarContext";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
@@ -259,11 +258,7 @@ const UnifiedHeader: FC<Props> = ({ variant, showTabsContent = true }) => {
 /* ─────────────── Tabs Variant ─────────────── */
 
 const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }) => {
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
-
-  const safeSearchParams = searchParams ?? new URLSearchParams();
 
   const getTabFromUrl = useCallback((): MenuKey => {
     const p = String(pathname ?? "");
@@ -273,164 +268,33 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
     if (p === "/alumni-stories" || p.startsWith("/alumni-stories/")) {
       return "AlumniStories";
     }
-    const tabFromUrl = safeSearchParams.get("tab");
-    if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) {
-      return urlTabToMenuKey[tabFromUrl];
+    if (typeof window !== "undefined") {
+      const tabFromUrl = new URLSearchParams(window.location.search).get("tab");
+      if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) {
+        return urlTabToMenuKey[tabFromUrl];
+      }
     }
     return "AlumniTabs";
-  }, [pathname, safeSearchParams]);
+  }, [pathname]);
 
   const [selected, setSelected] = useState<MenuKey>(getTabFromUrl);
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  // Track scroll for header elevation
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Tab counts query
-  const {
-    data: tabCountsData,
-  } = useQuery({
-    queryKey: ["dashboard-tab-counts"],
-    queryFn: fetchTabCounts,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-    refetchOnMount: false,
-  });
-
-  const tabCounts = useMemo(() => tabCountsData ?? {}, [tabCountsData]);
-
-  const handleTabChange = useCallback(
-    (tab: MenuKey) => {
-      setSelected(tab);
-      if (tab === "Leadership") {
-        router.push("/leadership", { scroll: false });
-        return;
-      }
-      if (tab === "AlumniStories") {
-        router.push("/alumni-stories?tab=viewStories", { scroll: false });
-        return;
-      }
-      const urlTab = menuKeyToUrlTab[tab];
-      router.push(`/dashboard?tab=${urlTab}`, { scroll: false });
-    },
-    [router]
-  );
 
   // Sync with URL changes
   useEffect(() => {
-    const validTab = getTabFromUrl();
-    setSelected(validTab);
+    setSelected(getTabFromUrl());
   }, [getTabFromUrl]);
 
-  const isSecondaryNav = !showTabsContent;
+  // Tabs variant now only renders the content area.
+  // The TabBar navigation is rendered inline in the topbar (UnifiedHeaderTopbar).
+  if (!showTabsContent) {
+    // Secondary mode (e.g. /leadership, /alumni-stories) — nav is in the topbar, no content here.
+    return null;
+  }
 
   return (
-    <>
-      {/* Sits below AppHeader (sticky topbar). Secondary mode is nav-only on pages like /leadership. */}
-      <div
-        className={`
-          sticky top-[var(--app-header-height,4.25rem)] z-40 w-full max-w-full border-b bg-white/95 backdrop-blur-xl transition-shadow duration-300
-          dark:bg-gray-900/95
-          ${
-            isScrolled
-              ? "border-gray-200/80 shadow-md shadow-gray-900/5 dark:border-gray-700/60 dark:shadow-black/20"
-              : "border-gray-200/60 dark:border-gray-800/80"
-          }
-        `}
-      >
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8">
-          <div className={`flex flex-col gap-3 ${isSecondaryNav ? "py-2" : "py-3"}`}>
-            {showTabsContent ? (
-              <div className="flex items-center justify-between gap-3">
-                <div className="hidden min-w-0 items-center gap-3 sm:flex">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-500/10 dark:bg-accent-500/15">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      className="text-accent-600 dark:text-accent-300"
-                    >
-                      <path
-                        d="M12 2L2 7L12 12L22 7L12 2Z"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M2 17L12 22L22 17"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M2 12L12 17L22 12"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <h1 className="text-sm font-bold text-gray-900 dark:text-white">Alumni Portal</h1>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Manage alumni records, events, and engagement
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleTabChange("AadAlumni")}
-                  className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-white shadow-theme-sm transition-all hover:bg-accent-600 hover:shadow-theme-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/30 active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-                  </svg>
-                  <span className="hidden sm:inline">Add Alumni</span>
-                  <span className="sm:hidden">Add</span>
-                </button>
-              </div>
-            ) : null}
-
-            <nav className="min-w-0 w-full">
-              <TabBar
-                items={MENU_TABS.map((tab) => ({
-                  key: tab.key,
-                  label: tab.label,
-                  count: tab.showCounter
-                    ? tabCounts[tab.key]
-                      ? tabCounts[tab.key]!.all
-                      : undefined
-                    : undefined,
-                }))}
-                selected={selected}
-                onSelect={(key) => handleTabChange(key as MenuKey)}
-              />
-            </nav>
-          </div>
-        </div>
-      </div>
-
-      {showTabsContent && (
-        <div className="relative z-0 mx-auto w-full max-w-[1600px] scroll-mt-4 px-4 pt-4 pb-6 sm:px-6 sm:pt-6 lg:px-8">
-          <ComponentCard className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <TabContent selected={selected} />
-          </ComponentCard>
-        </div>
-      )}
-    </>
+    <div className="relative z-0 w-full px-4 py-4 sm:px-6 lg:px-8">
+      <TabContent selected={selected} />
+    </div>
   );
 };
 
@@ -441,15 +305,7 @@ const UnifiedHeaderTopbar: FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   const pathname = usePathname();
-  const { isExpanded, isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
-
-  const handleToggle = useCallback(() => {
-    if (window.innerWidth >= 1024) {
-      toggleSidebar();
-    } else {
-      toggleMobileSidebar();
-    }
-  }, [toggleSidebar, toggleMobileSidebar]);
+  const { isMobileOpen, toggleMobileSidebar } = useSidebar();
 
   const toggleApplicationMenu = useCallback(() => {
     setApplicationMenuOpen((prev) => !prev);
@@ -461,6 +317,61 @@ const UnifiedHeaderTopbar: FC = () => {
   const isAlumni = t === "alumni";
   const isSuperAdmin = isSuperAdminUser(session?.user);
   const isAnalyticsRoute = pathname === "/admin/analytics";
+
+  // ─── Tab logic for tabbed routes (dashboard, leadership, alumni-stories) ───
+  const router = useRouter();
+
+  const isTabbedRoute = !isAlumni && !isAnalyticsRoute && (
+    pathname === "/dashboard" ||
+    pathname === "/leadership" ||
+    pathname === "/alumni-stories" ||
+    (pathname?.startsWith("/alumni-stories/") ?? false)
+  );
+  const isDashboardRoute = pathname === "/dashboard";
+
+  const getTabFromUrl = useCallback((): MenuKey => {
+    const p = String(pathname ?? "");
+    if (p === "/leadership" || p.startsWith("/leadership/")) return "Leadership";
+    if (p === "/alumni-stories" || p.startsWith("/alumni-stories/")) return "AlumniStories";
+    if (typeof window !== "undefined") {
+      const tabFromUrl = new URLSearchParams(window.location.search).get("tab");
+      if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) return urlTabToMenuKey[tabFromUrl];
+    }
+    return "AlumniTabs";
+  }, [pathname]);
+
+  const [selectedTab, setSelectedTab] = useState<MenuKey>(getTabFromUrl);
+
+  useEffect(() => {
+    if (isTabbedRoute) setSelectedTab(getTabFromUrl());
+  }, [getTabFromUrl, isTabbedRoute]);
+
+  const { data: tabCountsData } = useQuery({
+    queryKey: ["dashboard-tab-counts"],
+    queryFn: fetchTabCounts,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+    enabled: isTabbedRoute,
+  });
+
+  const tabCounts = useMemo(() => tabCountsData ?? {}, [tabCountsData]);
+
+  const handleTabChange = useCallback((tab: MenuKey) => {
+    setSelectedTab(tab);
+    if (tab === "Leadership") {
+      router.push("/leadership", { scroll: false });
+      return;
+    }
+    if (tab === "AlumniStories") {
+      router.push("/alumni-stories?tab=viewStories", { scroll: false });
+      return;
+    }
+    const urlTab = menuKeyToUrlTab[tab];
+    router.push(`/dashboard?tab=${urlTab}`, { scroll: false });
+  }, [router]);
 
   // Track scroll
   useEffect(() => {
@@ -499,14 +410,14 @@ const UnifiedHeaderTopbar: FC = () => {
       `}
     >
       <div
-        className={`mx-auto w-full max-w-[1600px] border-b px-4 py-3 sm:px-6 lg:px-8 ${
+        className={`mx-auto w-full max-w-[1600px] px-4 py-2.5 sm:px-6 lg:px-8 ${
           isAnalyticsRoute
             ? "grid grid-cols-[auto_1fr_auto] items-center gap-3 sm:grid-cols-3 sm:gap-4"
-            : "flex items-center justify-between gap-3"
+            : "flex items-center gap-3"
         }`}
       >
-        {/* Left section: Logo / Toggle */}
-        <div className={`flex min-w-0 items-center ${isAnalyticsRoute ? "justify-self-start" : "gap-3 sm:gap-4"}`}>
+        {/* Left section: Logo / Mobile menu */}
+        <div className={`flex min-w-0 items-center ${isAnalyticsRoute ? "justify-self-start" : "shrink-0"}`}>
           {isAlumni ? (
             <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
               <Image
@@ -548,9 +459,10 @@ const UnifiedHeaderTopbar: FC = () => {
               />
             </Link>
           ) : (
+            /* Mobile-only sidebar toggle (desktop uses floating toggle on sidebar) */
             <button
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700 dark:focus-visible:ring-accent-400/30 lg:h-10 lg:w-10"
-              onClick={handleToggle}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700 dark:focus-visible:ring-accent-400/30 lg:hidden"
+              onClick={toggleMobileSidebar}
               aria-label={isMobileOpen ? "Close sidebar" : "Open sidebar"}
             >
               <AnimatePresence mode="wait">
@@ -593,18 +505,53 @@ const UnifiedHeaderTopbar: FC = () => {
             </button>
           )}
         </div>
-        {/* Super Admin Actions */}
 
+        {/* Analytics title */}
         {isAnalyticsRoute ? (
           <h1 className="min-w-0 truncate px-2 text-center text-base font-bold tracking-tight text-accent-700 dark:text-accent-300 sm:text-lg lg:text-xl">
             Portal Analytics
           </h1>
         ) : null}
 
+        {/* TabBar — inline navigation for tabbed routes (dashboard, leadership, alumni-stories) */}
+        {isTabbedRoute ? (
+          <nav className="min-w-0 flex-1">
+            <TabBar
+              items={MENU_TABS.map((tab) => ({
+                key: tab.key,
+                label: tab.label,
+                count: tab.showCounter
+                  ? tabCounts[tab.key]
+                    ? tabCounts[tab.key]!.all
+                    : undefined
+                  : undefined,
+              }))}
+              selected={selectedTab}
+              onSelect={(key) => handleTabChange(key as MenuKey)}
+            />
+          </nav>
+        ) : !isAlumni && !isAnalyticsRoute ? (
+          <div className="flex-1" />
+        ) : null}
+
         {/* Right section: Actions & User */}
         <div
-          className={`flex items-center gap-2 ${isAnalyticsRoute ? "justify-self-end justify-end" : ""}`}
+          className={`flex items-center gap-2 ${isAnalyticsRoute ? "justify-self-end justify-end" : "shrink-0"}`}
         >
+          {/* Add Alumni button — only on dashboard route */}
+          {isDashboardRoute && !isAlumni ? (
+            <button
+              type="button"
+              onClick={() => handleTabChange("AadAlumni")}
+              className="hidden shrink-0 items-center gap-2 rounded-lg bg-accent-500 px-3.5 py-2 text-sm font-medium text-white shadow-theme-sm transition-all hover:bg-accent-600 hover:shadow-theme-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/30 active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500 sm:inline-flex"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+              </svg>
+              <span className="hidden md:inline">Add Alumni</span>
+            </button>
+          ) : null}
+
           {isSuperAdmin && !isAnalyticsRoute ? (
             <Link
               target="_blank"
