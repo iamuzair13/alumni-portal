@@ -2,9 +2,9 @@
 "use client"
 
 import type { FC, ReactNode } from "react";
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter, usePathname } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -249,16 +249,23 @@ const TabContent: FC<{ selected: MenuKey }> = ({ selected }) => {
 
 const UnifiedHeader: FC<Props> = ({ variant, showTabsContent = true }) => {
   return variant === "tabs" ? (
-    <UnifiedHeaderTabs showTabsContent={showTabsContent} />
+    <Suspense fallback={null}>
+      <UnifiedHeaderTabs showTabsContent={showTabsContent} />
+    </Suspense>
   ) : (
-    <UnifiedHeaderTopbar />
+    <Suspense fallback={null}>
+      <UnifiedHeaderTopbar />
+    </Suspense>
   );
 };
 
 /* ─────────────── Tabs Variant ─────────────── */
 
 const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }) => {
+  const searchParams = useSearchParams();
   const pathname = usePathname();
+
+  const safeSearchParams = searchParams ?? new URLSearchParams();
 
   const getTabFromUrl = useCallback((): MenuKey => {
     const p = String(pathname ?? "");
@@ -268,14 +275,12 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
     if (p === "/alumni-stories" || p.startsWith("/alumni-stories/")) {
       return "AlumniStories";
     }
-    if (typeof window !== "undefined") {
-      const tabFromUrl = new URLSearchParams(window.location.search).get("tab");
-      if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) {
-        return urlTabToMenuKey[tabFromUrl];
-      }
+    const tabFromUrl = safeSearchParams.get("tab");
+    if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) {
+      return urlTabToMenuKey[tabFromUrl];
     }
     return "AlumniTabs";
-  }, [pathname]);
+  }, [pathname, safeSearchParams]);
 
   const [selected, setSelected] = useState<MenuKey>(getTabFromUrl);
 
@@ -320,6 +325,8 @@ const UnifiedHeaderTopbar: FC = () => {
 
   // ─── Tab logic for tabbed routes (dashboard, leadership, alumni-stories) ───
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
 
   const isTabbedRoute = !isAlumni && !isAnalyticsRoute && (
     pathname === "/dashboard" ||
@@ -333,12 +340,10 @@ const UnifiedHeaderTopbar: FC = () => {
     const p = String(pathname ?? "");
     if (p === "/leadership" || p.startsWith("/leadership/")) return "Leadership";
     if (p === "/alumni-stories" || p.startsWith("/alumni-stories/")) return "AlumniStories";
-    if (typeof window !== "undefined") {
-      const tabFromUrl = new URLSearchParams(window.location.search).get("tab");
-      if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) return urlTabToMenuKey[tabFromUrl];
-    }
+    const tabFromUrl = safeSearchParams.get("tab");
+    if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) return urlTabToMenuKey[tabFromUrl];
     return "AlumniTabs";
-  }, [pathname]);
+  }, [pathname, safeSearchParams]);
 
   const [selectedTab, setSelectedTab] = useState<MenuKey>(getTabFromUrl);
 
