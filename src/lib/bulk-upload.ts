@@ -170,20 +170,21 @@ export const IMPORTABLE_COLUMNS: ImportableColumn[] = [
     dbColumn: "alumniemail",
     label: "Alumni Email",
     type: "email",
-    required: true,
+    required: false,
     maxLength: 150,
-    aliases: ["alumni email", "alumniemail", "email", "email address", "primary email"],
+    aliases: ["alumni email", "alumniemail", "primary email"],
     group: "Contact",
-    description: "Primary email for the alumni account (required)",
+    description: "Alumni account email (optional)",
   },
   {
     dbColumn: "personalemail",
     label: "Personal Email",
     type: "email",
-    required: false,
+    required: true,
     maxLength: 100,
-    aliases: ["personal email", "personalemail", "personal email address"],
+    aliases: ["personal email", "personalemail", "personal email address", "email", "email address"],
     group: "Contact",
+    description: "Personal email of the alumni (required)",
   },
   {
     dbColumn: "universityemail",
@@ -708,7 +709,7 @@ async function buildFkLookups(): Promise<FkLookup> {
     sql/* sql */`SELECT id, department_name FROM public.tbl_departments WHERE department_name IS NOT NULL`,
     sql/* sql */`SELECT id, program_name FROM public.tbl_programs WHERE program_name IS NOT NULL`,
     sql/* sql */`SELECT LOWER(TRIM(COALESCE(sapid, ''))) as sapid FROM public.tbl_alumni WHERE sapid IS NOT NULL AND sapid != ''`,
-    sql/* sql */`SELECT LOWER(TRIM(COALESCE(alumniemail, ''))) as email FROM public.tbl_alumni WHERE alumniemail IS NOT NULL AND alumniemail != ''`,
+    sql/* sql */`SELECT LOWER(TRIM(COALESCE(alumniemail, ''))) as email FROM public.tbl_alumni WHERE alumniemail IS NOT NULL AND alumniemail != '' UNION SELECT LOWER(TRIM(COALESCE(personalemail, ''))) as email FROM public.tbl_alumni WHERE personalemail IS NOT NULL AND personalemail != ''`,
   ]) as unknown as [
     Array<{ id: bigint; faculty_name: string }>,
     Array<{ id: bigint; department_name: string }>,
@@ -958,9 +959,17 @@ export async function validateRecords(
       });
     }
 
-    // Check required: alumniemail — generate default if missing
-    if (!mappedRecord.alumniemail) {
-      mappedRecord.alumniemail = `alumni_${sapid}@uol.edu.pk`;
+    // Check required: personalemail — required field
+    if (!mappedRecord.personalemail) {
+      errors.push({
+        rowNumber,
+        sapid,
+        name,
+        field: "personalemail",
+        message: "Personal Email is required",
+        originalValue: "",
+      });
+      continue;
     }
 
     // Duplicate check: SAP ID within file
@@ -986,8 +995,8 @@ export async function validateRecords(
       continue;
     }
 
-    // Duplicate check: email within file
-    const email = String(mappedRecord.alumniemail ?? "").toLowerCase().trim();
+    // Duplicate check: email within file (check personalemail and alumniemail)
+    const email = String(mappedRecord.personalemail ?? mappedRecord.alumniemail ?? "").toLowerCase().trim();
     if (email && seenEmailsInFile.has(email)) {
       duplicates.push({
         rowNumber,
