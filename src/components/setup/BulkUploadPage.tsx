@@ -389,6 +389,12 @@ export default function BulkUploadPage() {
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
                     Max file size: 50 MB · Max rows: 50,000
                   </p>
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                    <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.7-3L13.7 4a2 2 0 00-3.4 0L3.3 16A2 2 0 005 19z" />
+                    </svg>
+                    <span>All imported records will be set to <strong>Under Approval</strong> status and must be verified by an admin before activation.</span>
+                  </div>
                 </>
               )}
             </div>
@@ -691,6 +697,15 @@ export default function BulkUploadPage() {
                   <strong>Mapped fields:</strong> {Object.values(mapping).filter((v) => v !== "__skip__").length}
                 </p>
               </div>
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                <svg className="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.7-3L13.7 4a2 2 0 00-3.4 0L3.3 16A2 2 0 005 19z" />
+                </svg>
+                <div>
+                  <p className="font-semibold">All {validation.validRows} records will be imported with status <span className="underline">Under Approval</span>.</p>
+                  <p className="mt-1 text-xs">Each record must be reviewed and verified by an admin before it becomes active in the system.</p>
+                </div>
+              </div>
               {validation.validRows === 0 ? (
                 <p className="mt-3 text-sm font-semibold text-red-600">
                   No valid records to import. Please fix the errors and re-validate.
@@ -732,6 +747,18 @@ export default function BulkUploadPage() {
               <SummaryCard label="Skipped" value={importResult.skipped} color="amber" />
               <SummaryCard label="Failed" value={importResult.failed} color="red" />
             </div>
+
+            {importResult.inserted > 0 && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                <svg className="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="font-semibold">{importResult.inserted} record(s) imported with <span className="underline">Under Approval</span> status.</p>
+                  <p className="mt-1 text-xs">Navigate to the alumni dashboard to review and verify these records before they become active.</p>
+                </div>
+              </div>
+            )}
 
             {importResult.errors.length > 0 && (
               <div>

@@ -1012,6 +1012,7 @@ export async function validateRecords(
 
     // Set defaults for new records
     mappedRecord.datasource = mappedRecord.datasource ?? `Bulk Import: ${fileName}`;
+    // Enforce under-approval status — all bulk-imported records require admin verification
     mappedRecord.verify = "underApproval";
 
     validRecords.push({
@@ -1055,6 +1056,9 @@ export async function importRecords(
       await sql.begin(async (tx) => {
         for (const record of batch) {
           try {
+            // Enforce under-approval status for all bulk-imported records
+            record.verify = "underApproval";
+
             // Build column list and values, excluding internal fields
             const columns: string[] = [];
             const values: unknown[] = [];
