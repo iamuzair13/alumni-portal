@@ -1046,74 +1046,57 @@ export async function validateRecords(
 
 // ─── Import ───────────────────────────────────────────────────────────────────
 
-const BATCH_SIZE = 100;
-
 export async function importRecords(
   validRecords: ValidationSummary["validRecords"]
 ): Promise<ImportResult> {
   const startTime = Date.now();
   let inserted = 0;
-  let skipped = 0;
   let failed = 0;
   const errors: Array<{ rowNumber: number; sapid: string; message: string }> = [];
 
-  // Process in batches with transactions
-  for (let i = 0; i < validRecords.length; i += BATCH_SIZE) {
-    const batch = validRecords.slice(i, i + BATCH_SIZE);
-
+  // Insert records individually so each record succeeds or fails independently.
+  // We do NOT use a batch transaction because a single constraint violation
+  // (e.g. duplicate SAP ID) would abort the entire PostgreSQL transaction,
+  // causing all subsequent records in the batch to fail even if they're valid.
+  for (const record of validRecords) {
     try {
-      await sql.begin(async (tx) => {
-        for (const record of batch) {
-          try {
-            // Enforce under-approval status for all bulk-imported records
-            record.verify = "underApproval";
+      // Enforce under-approval status for all bulk-imported records
+      record.verify = "underApproval";
 
-            // Build column list and values, excluding internal fields
-            const columns: string[] = [];
-            const values: unknown[] = [];
+      // Build column list and values, excluding internal fields
+      const columns: string[] = [];
+      const values: unknown[] = [];
 
-            for (const [key, value] of Object.entries(record)) {
-              if (key.startsWith("_")) continue;
-              if (value === null || value === undefined || value === "") continue;
-              columns.push(key);
-              values.push(value);
-            }
+      for (const [key, value] of Object.entries(record)) {
+        if (key.startsWith("_")) continue;
+        if (value === null || value === undefined || value === "") continue;
+        columns.push(key);
+        values.push(value);
+      }
 
-            // Add system fields
-            columns.push("createddatetime");
-            values.push(new Date().toISOString());
-            columns.push("updated_at");
-            values.push(new Date().toISOString().slice(0, 10));
+      // Add system fields
+      columns.push("createddatetime");
+      values.push(new Date().toISOString());
+      columns.push("updated_at");
+      values.push(new Date().toISOString().slice(0, 10));
 
-            const placeholders = values.map((_, idx) => `$${idx + 1}`).join(", ");
-            await tx.unsafe(
-              `INSERT INTO public.tbl_alumni (${columns.join(", ")}) VALUES (${placeholders})`,
-              values as never[]
-            );
-            inserted++;
-          } catch (err) {
-            failed++;
-            errors.push({
-              rowNumber: record._rowNumber,
-              sapid: record._sapid,
-              message: err instanceof Error ? err.message : "Insert failed",
-            });
-          }
-        }
-      });
-    } catch (txErr) {
-      // Whole batch transaction failed — count remaining as failed
-      const batchFailed = batch.length - (inserted % batch.length || 0);
-      failed += batchFailed;
+      const placeholders = values.map((_, idx) => `$${idx + 1}`).join(", ");
+      await sql.unsafe(
+        `INSERT INTO public.tbl_alumni (${columns.join(", ")}) VALUES (${placeholders})`,
+        values as never[]
+      );
+      inserted++;
+    } catch (err) {
+      failed++;
       errors.push({
-        rowNumber: batch[0]?._rowNumber ?? 0,
-        sapid: batch[0]?._sapid ?? "",
-        message: txErr instanceof Error ? txErr.message : "Batch transaction failed",
+        rowNumber: record._rowNumber,
+        sapid: record._sapid,
+        message: err instanceof Error ? err.message : "Insert failed",
       });
     }
   }
 
-  skipped = validRecords.length - inserted - failed;
+  const skipped = validRecords.length - inserted - failed;
 
   return {
     totalRows: validRecords.length,
