@@ -47,10 +47,10 @@ export async function GET(request: NextRequest) {
           AND (
             COALESCE(s.storytitle, '') ILIKE ${`%${search}%`}
             OR COALESCE(a.alumniname, '') ILIKE ${`%${search}%`}
-            OR COALESCE(a.degreetitle, '') ILIKE ${`%${search}%`}
+            OR COALESCE(p.program_name, '') ILIKE ${`%${search}%`}
             OR COALESCE(a.academicsession, '') ILIKE ${`%${search}%`}
-            OR COALESCE(f.faculty_name, a.facultyname, '') ILIKE ${`%${search}%`}
-            OR COALESCE(d.department_name, a.departmentname, '') ILIKE ${`%${search}%`}
+            OR COALESCE(f.faculty_name, '') ILIKE ${`%${search}%`}
+            OR COALESCE(d.department_name, '') ILIKE ${`%${search}%`}
           )`
       : sql``;
 
@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
       INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
       LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE ${EXTERNAL_SUCCESS_STORY_BASE_WHERE}
         ${searchCondition}
     `;

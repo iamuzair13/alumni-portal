@@ -6,18 +6,21 @@ export async function GET() {
     // Fetch all unique faculty-department combinations with their programs
     const result = await sql/* sql */`
       SELECT DISTINCT 
-        facultyname,
-        departmentname,
-        degreetitle,
+        f.faculty_name as facultyname,
+        d.department_name as departmentname,
+        p.program_name as degreetitle,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE facultyname IS NOT NULL 
-        AND TRIM(facultyname) != ''
-        AND departmentname IS NOT NULL 
-        AND TRIM(departmentname) != ''
-        AND degreetitle IS NOT NULL 
-        AND TRIM(degreetitle) != ''
-      GROUP BY facultyname, departmentname, degreetitle
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
+      WHERE f.faculty_name IS NOT NULL 
+        AND TRIM(f.faculty_name) != ''
+        AND d.department_name IS NOT NULL 
+        AND TRIM(d.department_name) != ''
+        AND p.program_name IS NOT NULL 
+        AND TRIM(p.program_name) != ''
+      GROUP BY f.faculty_name, d.department_name, p.program_name
       ORDER BY facultyname ASC, departmentname ASC, degreetitle ASC
     `;
 
@@ -54,13 +57,14 @@ export async function GET() {
     // Also get standalone programs (those without faculty/department mapping)
     const standalonePrograms = await sql/* sql */`
       SELECT DISTINCT 
-        degreetitle,
+        p.program_name as degreetitle,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE degreetitle IS NOT NULL 
-        AND TRIM(degreetitle) != ''
-        AND (facultyname IS NULL OR TRIM(facultyname) = '' OR departmentname IS NULL OR TRIM(departmentname) = '')
-      GROUP BY degreetitle
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
+      WHERE p.program_name IS NOT NULL 
+        AND TRIM(p.program_name) != ''
+        AND (a.faculty IS NULL OR a.department IS NULL)
+      GROUP BY p.program_name
       ORDER BY degreetitle ASC
     `;
 

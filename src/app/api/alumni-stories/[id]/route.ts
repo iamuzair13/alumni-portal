@@ -132,7 +132,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         s.signature_confirmed,
         s.signature_confirmed_at,
         a.alumniname,
-        a.degreetitle,
+        p.program_name AS degreetitle,
         a.academicsession,
         a.image1,
         a.sapid,
@@ -141,6 +141,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         a.universityemail
       FROM public.tblalumnistories s
       INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE s.id = ${storyId}
         AND s.alumnistories IS NOT NULL
         AND s.alumnistories != ''
@@ -505,11 +506,25 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     if (isStaffEditor) {
+      let facultyId: number | null = null;
+      let departmentId: number | null = null;
+      if (v.faculty) {
+        const facultyRows = await sql/* sql */`
+          SELECT id FROM public.tbl_faculties WHERE LOWER(TRIM(faculty_name)) = LOWER(TRIM(${String(v.faculty)})) LIMIT 1
+        `;
+        if (facultyRows[0]) facultyId = Number((facultyRows[0] as { id: number }).id);
+      }
+      if (v.department) {
+        const deptRows = await sql/* sql */`
+          SELECT id FROM public.tbl_departments WHERE LOWER(TRIM(department_name)) = LOWER(TRIM(${String(v.department)})) LIMIT 1
+        `;
+        if (deptRows[0]) departmentId = Number((deptRows[0] as { id: number }).id);
+      }
       await sql/* sql */`
         UPDATE public.tbl_alumni
         SET alumniname = ${v.name},
-            facultyname = ${v.faculty},
-            departmentname = ${v.department},
+            faculty = ${facultyId},
+            department = ${departmentId},
             yearofending = ${v.passingYear ?? null},
             contactno = ${v.contactNumber ?? null},
             personalemail = ${v.email}

@@ -14,6 +14,47 @@ type BulkEditBody = {
 
 const SENSITIVE_FIELDS = new Set(["verify", "category"]);
 
+/**
+ * Resolve faculty/department/program names to their FK IDs.
+ * The staff bulk-upload modal sends human-readable names from dropdown options,
+ * but tbl_alumni stores bigint FKs in faculty/department/program columns.
+ */
+async function resolveFkNamesToIds(updates: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const resolved = { ...updates };
+
+  const facultyName = resolved.faculty;
+  if (typeof facultyName === "string" && facultyName.trim()) {
+    const rows = await sql<{ id: bigint }[]>`
+      SELECT id FROM public.tbl_faculties
+      WHERE LOWER(TRIM(faculty_name)) = LOWER(TRIM(${facultyName}))
+      LIMIT 1
+    `;
+    resolved.faculty = rows[0]?.id ?? null;
+  }
+
+  const departmentName = resolved.department;
+  if (typeof departmentName === "string" && departmentName.trim()) {
+    const rows = await sql<{ id: bigint }[]>`
+      SELECT id FROM public.tbl_departments
+      WHERE LOWER(TRIM(department_name)) = LOWER(TRIM(${departmentName}))
+      LIMIT 1
+    `;
+    resolved.department = rows[0]?.id ?? null;
+  }
+
+  const programName = resolved.program;
+  if (typeof programName === "string" && programName.trim()) {
+    const rows = await sql<{ id: bigint }[]>`
+      SELECT id FROM public.tbl_programs
+      WHERE LOWER(TRIM(program_name)) = LOWER(TRIM(${programName}))
+      LIMIT 1
+    `;
+    resolved.program = rows[0]?.id ?? null;
+  }
+
+  return resolved;
+}
+
 async function tableExists(tableName: string): Promise<boolean> {
   const rows = await sql/* sql */`
     SELECT EXISTS (
@@ -83,7 +124,6 @@ async function updateAlumniBySap(sapids: string[], updates: Record<string, unkno
     "contactno1",
     "cnicpassport",
     "yearofending",
-    "degree_title",
     "lasttimelogin",
     "logincount",
     "about",
@@ -134,7 +174,6 @@ async function insertAlumni(sapid: string, updates: Record<string, unknown>) {
     "contactno1",
     "cnicpassport",
     "yearofending",
-    "degree_title",
     "lasttimelogin",
     "logincount",
     "about",
@@ -237,6 +276,9 @@ export async function PATCH(req: Request) {
       delete normalizedUpdates.remarks;
     }
 
+    // Resolve faculty/department/program names to FK IDs
+    const resolvedUpdates = await resolveFkNamesToIds(normalizedUpdates);
+
     const tableReady = await tableExists("tbl_alumni");
     if (!tableReady) {
       return NextResponse.json({ error: "TABLE_NOT_AVAILABLE" }, { status: 500 });
@@ -256,10 +298,10 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "NO_ROWS_FOUND" }, { status: 404 });
       }
 
-      const emailFields = ["personalemail", "officialemail"].filter((key) => Object.prototype.hasOwnProperty.call(normalizedUpdates, key));
+      const emailFields = ["personalemail", "officialemail"].filter((key) => Object.prototype.hasOwnProperty.call(resolvedUpdates, key));
       if (emailFields.length > 0) {
         for (const field of emailFields) {
-          const email = String(normalizedUpdates[field] ?? "").trim();
+          const email = String(resolvedUpdates[field] ?? "").trim();
           if (!email) continue;
           const columnName = field === "personalemail" ? "personalemail" : "officialemail";
           const conflicts = await sql.unsafe(
@@ -275,7 +317,7 @@ export async function PATCH(req: Request) {
         }
       }
 
-      updatedCount += await updateAlumniBySap(employeeIds, normalizedUpdates);
+      updatedCount += await updateAlumniBySap(employeeIds, resolvedUpdates);
       employeeIds.forEach((sapid) => affected.add(sapid));
     }
 
@@ -293,7 +335,8 @@ export async function PATCH(req: Request) {
           delete nextUpdates.remarks;
         }
         delete (nextUpdates as Record<string, unknown>).sapid;
-        const count = await updateAlumniBySap([draft.sapid], nextUpdates);
+        const resolvedDraftUpdates = await resolveFkNamesToIds(nextUpdates);
+        const count = await updateAlumniBySap([draft.sapid], resolvedDraftUpdates);
         if (count > 0) {
           updatedCount += count;
           affected.add(draft.sapid);
@@ -306,7 +349,8 @@ export async function PATCH(req: Request) {
         insertUpdates.about = insertUpdates.remarks;
         delete insertUpdates.remarks;
       }
-      const inserted = await insertAlumni(draft.sapid, insertUpdates);
+      const resolvedInsertUpdates = await resolveFkNamesToIds(insertUpdates);
+      const inserted = await insertAlumni(draft.sapid, resolvedInsertUpdates);
       if (inserted) {
         updatedCount += 1;
         affected.add(draft.sapid);

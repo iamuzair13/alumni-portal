@@ -75,36 +75,42 @@ export async function GET() {
             // Program-level assignment
             testQuery = sql/* sql */`
               SELECT COUNT(*) as count
-              FROM public.tbl_alumni
-              WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
-                AND facultyname IS NOT NULL AND TRIM(facultyname) != ''
-                AND LOWER(TRIM(facultyname)) = LOWER(${assignment.faculty_name})
-                AND departmentname IS NOT NULL AND TRIM(departmentname) != ''
-                AND LOWER(TRIM(departmentname)) = LOWER(${assignment.department_name})
-                AND degreetitle IS NOT NULL AND TRIM(degreetitle) != ''
-                AND LOWER(TRIM(degreetitle)) = LOWER(${assignment.program_name})
+              FROM public.tbl_alumni a
+              LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+              LEFT JOIN public.tbl_departments d ON d.id = a.department
+              LEFT JOIN public.tbl_programs p ON p.id = a.program
+              WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
+                AND f.faculty_name IS NOT NULL AND TRIM(f.faculty_name) != ''
+                AND LOWER(TRIM(f.faculty_name)) = LOWER(${assignment.faculty_name})
+                AND d.department_name IS NOT NULL AND TRIM(d.department_name) != ''
+                AND LOWER(TRIM(d.department_name)) = LOWER(${assignment.department_name})
+                AND p.program_name IS NOT NULL AND TRIM(p.program_name) != ''
+                AND LOWER(TRIM(p.program_name)) = LOWER(${assignment.program_name})
               LIMIT 1
             `;
           } else if (assignment.department_name) {
             // Department-level assignment
             testQuery = sql/* sql */`
               SELECT COUNT(*) as count
-              FROM public.tbl_alumni
-              WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
-                AND facultyname IS NOT NULL AND TRIM(facultyname) != ''
-                AND LOWER(TRIM(facultyname)) = LOWER(${assignment.faculty_name})
-                AND departmentname IS NOT NULL AND TRIM(departmentname) != ''
-                AND LOWER(TRIM(departmentname)) = LOWER(${assignment.department_name})
+              FROM public.tbl_alumni a
+              LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+              LEFT JOIN public.tbl_departments d ON d.id = a.department
+              WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
+                AND f.faculty_name IS NOT NULL AND TRIM(f.faculty_name) != ''
+                AND LOWER(TRIM(f.faculty_name)) = LOWER(${assignment.faculty_name})
+                AND d.department_name IS NOT NULL AND TRIM(d.department_name) != ''
+                AND LOWER(TRIM(d.department_name)) = LOWER(${assignment.department_name})
               LIMIT 1
             `;
           } else {
             // Faculty-level assignment
             testQuery = sql/* sql */`
               SELECT COUNT(*) as count
-              FROM public.tbl_alumni
-              WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
-                AND facultyname IS NOT NULL AND TRIM(facultyname) != ''
-                AND LOWER(TRIM(facultyname)) = LOWER(${assignment.faculty_name})
+              FROM public.tbl_alumni a
+              LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+              WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
+                AND f.faculty_name IS NOT NULL AND TRIM(f.faculty_name) != ''
+                AND LOWER(TRIM(f.faculty_name)) = LOWER(${assignment.faculty_name})
               LIMIT 1
             `;
           }
@@ -144,13 +150,15 @@ export async function GET() {
         try {
           const depts = await sql/* sql */`
             SELECT DISTINCT 
-              departmentname,
+              d.department_name as departmentname,
               COUNT(*) as count
-            FROM public.tbl_alumni
-            WHERE LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))
-              AND departmentname IS NOT NULL 
-              AND TRIM(departmentname) != ''
-            GROUP BY departmentname
+            FROM public.tbl_alumni a
+            LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+            LEFT JOIN public.tbl_departments d ON d.id = a.department
+            WHERE LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(${faculty}))
+              AND d.department_name IS NOT NULL 
+              AND TRIM(d.department_name) != ''
+            GROUP BY d.department_name
             ORDER BY count DESC
             LIMIT 20
           `;

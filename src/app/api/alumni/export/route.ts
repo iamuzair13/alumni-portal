@@ -238,15 +238,15 @@ export async function GET(req: Request) {
         OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(a.facultyname, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(a.departmentname, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(p.program_name, '')) LIKE ${searchTerm}
       )`;
     }
     
     // Build filters for faculty, department, program
     // IMPORTANT: Faculty/Department values come from /api/alumni/faculties and /api/alumni/departments
-    // and are numeric IDs (or "NULL"). Programs come from /api/alumni/programs and map to a.degreetitle.
+    // and are numeric IDs (or "NULL"). Programs come from /api/alumni/programs and map to p.program_name.
     let facultyFilter = sql``;
     if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
       if (Array.isArray(faculty) && faculty.length > 0) {
@@ -311,18 +311,18 @@ export async function GET(req: Request) {
         const programConditions = program.map((prog) => {
           const normalized = String(prog).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '')`;
+            return sql`(p.program_name IS NULL OR TRIM(COALESCE(p.program_name, '')) = '')`;
           }
-          return sql`(LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${prog})))`;
+          return sql`(LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(${prog})))`;
         });
         const combinedCondition = combineOrConditions(programConditions);
         programFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(program) && program) {
         const normalized = String(program).trim();
         if (normalized === "NULL" || normalized === "null") {
-          programFilter = sql`AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '')`;
+          programFilter = sql`AND (p.program_name IS NULL OR TRIM(COALESCE(p.program_name, '')) = '')`;
         } else {
-          programFilter = sql`AND (LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${program})))`;
+          programFilter = sql`AND (LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(${program})))`;
         }
       }
     }
@@ -908,10 +908,9 @@ export async function GET(req: Request) {
     const query = sql/* sql */`
       SELECT 
         a.*,
-        -- Prefer ID-based names when available, fall back to legacy text columns
-        COALESCE(f.faculty_name, a.facultyname) AS facultyname,
-        COALESCE(d.department_name, a.departmentname) AS departmentname,
-        COALESCE(p.program_name, a.degreetitle) AS degreetitle,
+        f.faculty_name AS facultyname,
+        d.department_name AS departmentname,
+        p.program_name AS degreetitle,
         p.program_name,
         -- Chapter data
         ac.chapter1 as chapter1_id,

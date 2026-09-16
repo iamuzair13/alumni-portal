@@ -20,12 +20,13 @@ export async function GET() {
 
     // Get all unique faculty names from database
     const dbFaculties = await sql/* sql */`
-      SELECT DISTINCT 
-        facultyname,
+      SELECT DISTINCT
+        f.faculty_name as facultyname,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE facultyname IS NOT NULL AND TRIM(facultyname) != ''
-      GROUP BY facultyname
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      WHERE f.faculty_name IS NOT NULL AND TRIM(f.faculty_name) != ''
+      GROUP BY f.faculty_name
       ORDER BY count DESC;
     `;
 

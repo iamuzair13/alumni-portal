@@ -27,30 +27,33 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
-    // Fetch unique degree title values with counts (from degree_title column, not higher_education_program)
+    // Fetch unique degree title values with counts (from program lookup, not higher_education_program)
     const rows = await sql/* sql */`
       SELECT 
         CASE 
-          WHEN a.degree_title IS NULL OR TRIM(COALESCE(a.degree_title, '')) = '' 
+          WHEN p.program_name IS NULL OR TRIM(COALESCE(p.program_name, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(a.degree_title)
+          ELSE TRIM(p.program_name)
         END as degree_title_value,
         COUNT(*) as count
       FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE ${baseWhere}
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN a.degree_title IS NULL OR TRIM(COALESCE(a.degree_title, '')) = '' 
+          WHEN p.program_name IS NULL OR TRIM(COALESCE(p.program_name, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(a.degree_title)
+          ELSE TRIM(p.program_name)
         END
       ORDER BY 
         CASE 
-          WHEN a.degree_title IS NULL OR TRIM(COALESCE(a.degree_title, '')) = '' 
+          WHEN p.program_name IS NULL OR TRIM(COALESCE(p.program_name, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(a.degree_title)
+          ELSE TRIM(p.program_name)
         END ASC
     `;
 

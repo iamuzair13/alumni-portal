@@ -44,8 +44,9 @@ export async function GET(
 
     // Fetch alumni with pagination
     const result = await sql`
-      SELECT alumniid, alumniname, degreetitle, yearofending, image1
-      FROM public.tbl_alumni
+      SELECT a.alumniid, a.alumniname, p.program_name as degreetitle, a.yearofending, a.image1
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE ${whereConditions}
       LIMIT ${limit}
       OFFSET ${offset}

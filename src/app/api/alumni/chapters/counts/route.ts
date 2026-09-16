@@ -75,14 +75,14 @@ export async function GET(request: NextRequest) {
     let facultyFilterCondition = sql``;
     if (selectedFaculties.length > 0) {
       const normalizedFaculties = selectedFaculties.map(f => f.toLowerCase());
-      facultyFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = ANY(${normalizedFaculties})`;
+      facultyFilterCondition = sql` AND LOWER(TRIM(COALESCE(f.faculty_name, ''))) = ANY(${normalizedFaculties})`;
     }
     
     // Build department filter condition (case-insensitive with trim) - handle multiple
     let departmentFilterCondition = sql``;
     if (selectedDepartments.length > 0) {
       const normalizedDepartments = selectedDepartments.map(d => d.toLowerCase());
-      departmentFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = ANY(${normalizedDepartments})`;
+      departmentFilterCondition = sql` AND LOWER(TRIM(COALESCE(d.department_name, ''))) = ANY(${normalizedDepartments})`;
     }
     
     // Build verified filter condition
@@ -111,7 +111,10 @@ export async function GET(request: NextRequest) {
     // Base query: start from tbl_alumni and LEFT JOIN alumni_chapter to include ALL alumni,
     // including those without any chapter membership (ac.* will be NULL for non-members).
     const baseQueryFromAlumni = sql`FROM public.tbl_alumni a
-      LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid`;
+      LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program`;
     
     // Helper conditions for membership:
     // Members = alumni who have a row in alumni_chapter (ac.id IS NOT NULL)

@@ -29,7 +29,7 @@ import ScholarshipDiscountManager from "@/components/scholarship/ScholarshipDisc
 import MerchantsComponent from "@/components/setup/MerchantsComponent";
 import MembershipSettingsComponent from "@/components/setup/MembershipSettingsComponent";
 import StoriesCriteriaManager from "@/components/setup/StoriesCriteriaManager";
-import BulkUploadTab from "@/components/setup/BulkUploadTab";
+import BulkUploadPage from "@/components/setup/BulkUploadPage";
 import type { ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
 
 type LeadershipType = "chapter" | "association";
@@ -1423,7 +1423,7 @@ function SetupPageContent() {
         )}
 
         {selected === "bulk-upload" && isSuperAdmin && (
-          <BulkUploadTab />
+          <BulkUploadPage />
         )}
 
       <style jsx>{`

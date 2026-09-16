@@ -27,26 +27,29 @@ export async function GET(req: Request) {
     const rows = await sql/* sql */`
       SELECT 
         CASE 
-          WHEN a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '' 
+          WHEN p.program_name IS NULL OR TRIM(COALESCE(p.program_name, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(a.degreetitle)
+          ELSE TRIM(p.program_name)
         END as program_value,
         COUNT(*) as count
       FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE ${baseWhere}
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '' 
+          WHEN p.program_name IS NULL OR TRIM(COALESCE(p.program_name, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(a.degreetitle)
+          ELSE TRIM(p.program_name)
         END
       ORDER BY 
         CASE 
-          WHEN a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '' 
+          WHEN p.program_name IS NULL OR TRIM(COALESCE(p.program_name, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(a.degreetitle)
+          ELSE TRIM(p.program_name)
         END ASC
     `;
 

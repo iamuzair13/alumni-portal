@@ -367,11 +367,10 @@ export async function buildResourceAccessFilterSQL(
       const facultyNames = facultyResources.map(r => r.resource_name);
       conditions.push(sql`
         (
-          (facultyname IS NOT NULL AND LOWER(TRIM(facultyname)) = ANY(${facultyNames.map(n => n.toLowerCase().trim())}))
-          OR (faculty IS NOT NULL AND faculty IN (
+          faculty IS NOT NULL AND faculty IN (
             SELECT legacy_faculty_id FROM public.resources 
             WHERE type = 'faculty' AND LOWER(TRIM(name)) = ANY(${facultyNames.map(n => n.toLowerCase().trim())})
-          ))
+          )
         )
       `);
     }
@@ -381,11 +380,10 @@ export async function buildResourceAccessFilterSQL(
       const deptNames = departmentResources.map(r => r.resource_name);
       conditions.push(sql`
         (
-          (departmentname IS NOT NULL AND LOWER(TRIM(departmentname)) = ANY(${deptNames.map(n => n.toLowerCase().trim())}))
-          OR (department IS NOT NULL AND department IN (
+          department IS NOT NULL AND department IN (
             SELECT legacy_department_id FROM public.resources 
             WHERE type = 'department' AND LOWER(TRIM(name)) = ANY(${deptNames.map(n => n.toLowerCase().trim())})
-          ))
+          )
         )
       `);
     }

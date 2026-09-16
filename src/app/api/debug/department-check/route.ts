@@ -24,13 +24,15 @@ export async function GET(req: Request) {
     // Get all departments for this faculty
     const departments = await sql/* sql */`
       SELECT DISTINCT 
-        departmentname,
+        d.department_name as departmentname,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))
-        AND departmentname IS NOT NULL 
-        AND TRIM(departmentname) != ''
-      GROUP BY departmentname
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      WHERE LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(${faculty}))
+        AND d.department_name IS NOT NULL 
+        AND TRIM(d.department_name) != ''
+      GROUP BY d.department_name
       ORDER BY count DESC;
     `;
 

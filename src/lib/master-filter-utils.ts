@@ -133,10 +133,10 @@ export function buildMasterFilterConditions(
     const program = getFilterValue("program");
     if (program && (Array.isArray(program) ? program.length > 0 : program)) {
       if (Array.isArray(program) && program.length > 0) {
-        const conditions = program.map(p => sql`LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${p}))`);
+        const conditions = program.map(p => sql`program IN (SELECT id FROM public.tbl_programs WHERE LOWER(TRIM(COALESCE(program_name, ''))) = LOWER(TRIM(${p})))`);
         filterConditions.push(sql`(${combineOrConditions(conditions)})`);
       } else if (!Array.isArray(program) && program) {
-        filterConditions.push(sql`LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`);
+        filterConditions.push(sql`program IN (SELECT id FROM public.tbl_programs WHERE LOWER(TRIM(COALESCE(program_name, ''))) = LOWER(TRIM(${program})))`);
       }
     }
   }

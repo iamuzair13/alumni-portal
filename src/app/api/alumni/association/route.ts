@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
         ${baseQuery}
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE 1=1
           ${accessFilterCondition}
           ${facultyFilterCondition}
@@ -116,9 +117,9 @@ export async function GET(request: NextRequest) {
           a.alumniid,
           a.sapid,
           a.alumniname,
-          COALESCE(d.department_name, a.departmentname) as departmentname,
-          COALESCE(f.faculty_name, a.facultyname) as facultyname,
-          a.degreetitle,
+          d.department_name as departmentname,
+          f.faculty_name as facultyname,
+          p.program_name as degreetitle,
           a.personalemail,
           a.officialemail,
           a.universityemail,
@@ -134,6 +135,7 @@ export async function GET(request: NextRequest) {
         ${baseQuery}
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE 1=1
           ${accessFilterCondition}
           ${facultyFilterCondition}

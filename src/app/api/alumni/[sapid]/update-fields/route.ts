@@ -261,9 +261,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const aboutVal = "about" in body ? cleanValue("about", body.about) : undefined;
     const yearofstartingVal = "yearofstarting" in body ? (body.yearofstarting !== null && body.yearofstarting !== undefined && body.yearofstarting !== "" ? Number(body.yearofstarting) : null) : undefined;
     const yearofendingVal = "yearofending" in body ? (body.yearofending !== null && body.yearofending !== undefined && body.yearofending !== "" ? Number(body.yearofending) : null) : undefined;
-    const facultynameVal = "facultyname" in body ? cleanValue("facultyname", body.facultyname) : undefined;
-    const departmentnameVal = "departmentname" in body ? cleanValue("departmentname", body.departmentname) : undefined;
-    const degreetitleVal = "degreetitle" in body ? cleanValue("degreetitle", body.degreetitle) : undefined;
     const campusnameVal = "campusname" in body ? cleanValue("campusname", body.campusname) : undefined;
     const datasourceVal = "datasource" in body ? cleanValue("datasource", body.datasource) : undefined;
     const alumnistatusVal = "alumnistatus" in body ? cleanValue("alumnistatus", body.alumnistatus) : undefined;
@@ -385,9 +382,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       aboutme: aboutmeVal,
       yearofstarting: yearofstartingVal,
       yearofending: yearofendingVal,
-      facultyname: facultynameVal,
-      departmentname: departmentnameVal,
-      degreetitle: degreetitleVal,
       campusname: campusnameVal,
       datasource: datasourceVal,
       alumnistatus: alumnistatusVal,
@@ -396,7 +390,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       youtube: youtubeVal,
       linkedin: linkedinVal,
       password: passwordVal,
-      degree_title: degreeTitleVal,
       higher_education_institute_name: higherEducationInstituteNameVal,
       higher_education_program: higherEducationProgramVal,
       higher_education_institute_country: higherEducationInstituteCountryVal,
@@ -580,39 +573,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         }
       };
       
-      // If faculty ID is being updated and facultyname is not explicitly provided, fetch and update facultyname
-      if (facultyIdVal !== undefined && facultyIdVal !== null && facultynameVal === undefined) {
-        try {
-          const facultyRow = await tx`SELECT faculty_name FROM public.tbl_faculties WHERE id = ${facultyIdVal}`;
-          if (facultyRow && facultyRow.length > 0) {
-            addUpdate("facultyname", facultyRow[0].faculty_name);
-          }
-        } catch (err) {
-        }
-      }
-      
-      // If department ID is being updated and departmentname is not explicitly provided, fetch and update departmentname
-      if (departmentIdVal !== undefined && departmentIdVal !== null && departmentnameVal === undefined) {
-        try {
-          const deptRow = await tx`SELECT department_name FROM public.tbl_departments WHERE id = ${departmentIdVal}`;
-          if (deptRow && deptRow.length > 0) {
-            addUpdate("departmentname", deptRow[0].department_name);
-          }
-        } catch (err) {
-        }
-      }
-      
-      // If program ID is being updated and degreetitle is not explicitly provided, fetch and update degreetitle
-      if (programIdVal !== undefined && programIdVal !== null && degreetitleVal === undefined) {
-        try {
-          const programRow = await tx`SELECT program_name FROM public.tbl_programs WHERE id = ${programIdVal}`;
-          if (programRow && programRow.length > 0) {
-            addUpdate("degreetitle", programRow[0].program_name);
-          }
-        } catch (err) {
-        }
-      }
-      
       // Add all fields that need updating
       addUpdate("sapid", sapidVal);
       addUpdate("registrationno", registrationnoVal);
@@ -660,9 +620,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("about", aboutVal);
       addUpdate("yearofstarting", yearofstartingVal);
       addUpdate("yearofending", yearofendingVal);
-      addUpdate("facultyname", facultynameVal);
-      addUpdate("departmentname", departmentnameVal);
-      addUpdate("degreetitle", degreetitleVal);
       addUpdate("campusname", campusnameVal);
       addUpdate("datasource", datasourceVal);
       addUpdate("alumnistatus", alumnistatusVal);
@@ -670,7 +627,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("instagram", instagramVal);
       addUpdate("youtube", youtubeVal);
       addUpdate("linkedin", linkedinVal);
-      addUpdate("degree_title", degreeTitleVal);
       addUpdate("higher_education_institute_name", higherEducationInstituteNameVal);
       addUpdate("higher_education_program", higherEducationProgramVal);
       addUpdate("higher_education_institute_country", higherEducationInstituteCountryVal);

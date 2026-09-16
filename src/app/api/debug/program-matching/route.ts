@@ -50,24 +50,29 @@ export async function GET(req: Request) {
       // First check if there are any alumni records for this faculty/department at all
       const totalAlumni = await sql/* sql */`
         SELECT COUNT(*) as total
-        FROM public.tbl_alumni
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
         WHERE 
-          (${faculty ? sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(${faculty})` : sql`1=1`})
-          AND (${department ? sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(${department})` : sql`1=1`})
+          (${faculty ? sql`LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(${faculty})` : sql`1=1`})
+          AND (${department ? sql`LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(${department})` : sql`1=1`})
       `;
       
       // Get all degreetitle values for this faculty and department
       const dbPrograms = await sql/* sql */`
         SELECT DISTINCT 
-          degreetitle,
+          p.program_name as degreetitle,
           COUNT(*) as count
-        FROM public.tbl_alumni
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE 
-          (${faculty ? sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(${faculty})` : sql`1=1`})
-          AND (${department ? sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(${department})` : sql`1=1`})
-          AND degreetitle IS NOT NULL 
-          AND TRIM(degreetitle) != ''
-        GROUP BY degreetitle
+          (${faculty ? sql`LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(${faculty})` : sql`1=1`})
+          AND (${department ? sql`LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(${department})` : sql`1=1`})
+          AND p.program_name IS NOT NULL 
+          AND TRIM(p.program_name) != ''
+        GROUP BY p.program_name
         ORDER BY count DESC
         LIMIT 20
       `;
@@ -80,16 +85,19 @@ export async function GET(req: Request) {
       
       const patternMatches = await sql/* sql */`
         SELECT DISTINCT 
-          degreetitle,
+          p.program_name as degreetitle,
           COUNT(*) as count
-        FROM public.tbl_alumni
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE 
-          (${faculty ? sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(${faculty})` : sql`1=1`})
-          AND (${department ? sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(${department})` : sql`1=1`})
-          AND degreetitle IS NOT NULL 
-          AND TRIM(degreetitle) != ''
-          AND LOWER(degreetitle) LIKE LOWER(${programPattern})
-        GROUP BY degreetitle
+          (${faculty ? sql`LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(${faculty})` : sql`1=1`})
+          AND (${department ? sql`LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(${department})` : sql`1=1`})
+          AND p.program_name IS NOT NULL 
+          AND TRIM(p.program_name) != ''
+          AND LOWER(p.program_name) LIKE LOWER(${programPattern})
+        GROUP BY p.program_name
         ORDER BY count DESC
         LIMIT 20
       `;

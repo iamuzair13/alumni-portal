@@ -380,7 +380,7 @@ export default function BulkUploadStaffModal({
       [sap]: {
         ...(prev[sap] ?? {}),
         [fieldId]: value,
-        ...(fieldId === "facultyname" ? { departmentname: "" } : {}),
+        ...(fieldId === "faculty" ? { department: "" } : {}),
         ...(fieldId === "category" ? { subcategory: "" } : {}),
       },
     }));
@@ -407,7 +407,7 @@ export default function BulkUploadStaffModal({
     const dirty = value !== original;
     const baseClass = `w-full rounded-lg border px-2 py-1 text-sm ${dirty ? "border-amber-400 bg-amber-50" : "border-gray-300 bg-white"} dark:border-gray-700 dark:bg-gray-900`;
 
-    if (column.id === "facultyname") {
+    if (column.id === "faculty") {
       return (
         <select value={value} onChange={(e) => updateRowValue(row.sap, column.id, e.target.value)} className={baseClass}>
           <option value="">Select</option>
@@ -420,7 +420,7 @@ export default function BulkUploadStaffModal({
       );
     }
 
-    if (column.id === "departmentname") {
+    if (column.id === "department") {
       return (
         <select value={value} onChange={(e) => updateRowValue(row.sap, column.id, e.target.value)} className={baseClass}>
           <option value="">Select</option>
@@ -433,7 +433,7 @@ export default function BulkUploadStaffModal({
       );
     }
 
-    if (column.id === "degreetitle") {
+    if (column.id === "program") {
       return (
         <select value={value} onChange={(e) => updateRowValue(row.sap, column.id, e.target.value)} className={baseClass}>
           <option value="">Select</option>

@@ -384,7 +384,7 @@ export async function GET(req: Request) {
 
     const facultyScholarshipRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(*)::int AS applied,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) = 'approved')::int AS approved,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('approved','not-approved'))::int AS processed,
@@ -492,7 +492,7 @@ export async function GET(req: Request) {
 
     const facultyMembershipRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(*)::int AS total,
         COUNT(*) FILTER (
           WHERE LOWER(TRIM(COALESCE(m.facility_type,''))) = 'gym'
@@ -544,7 +544,7 @@ export async function GET(req: Request) {
 
     const facultyRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(*)::int AS registrations,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'true')::int AS verified,
         COUNT(*) FILTER (WHERE
@@ -563,7 +563,7 @@ export async function GET(req: Request) {
 
     const facultyCategoryRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(DISTINCT a.alumniid) FILTER (
           WHERE LOWER(COALESCE(a.verify, '')) = 'true'
             AND (
@@ -616,7 +616,7 @@ export async function GET(req: Request) {
 
     const facultyOccupationRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(*) FILTER (
           WHERE LOWER(COALESCE(a.verify, '')) = 'true'
             AND LOWER(TRIM(COALESCE(a.employeed,''))) IN ('employed','employed/business')
@@ -651,7 +651,7 @@ export async function GET(req: Request) {
 
     const facultyTransitionRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(*) FILTER (
           WHERE LOWER(COALESCE(a.verify, '')) = 'true'
             AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) = 'before graduation'
@@ -694,7 +694,7 @@ export async function GET(req: Request) {
 
     const facultyLocationRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(*) FILTER (
           WHERE LOWER(COALESCE(a.verify, '')) = 'true'
             AND LOWER(TRIM(COALESCE(a.province,''))) LIKE '%punjab%'
@@ -911,7 +911,7 @@ export async function GET(req: Request) {
 
     const facultyHonorCardRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(*) FILTER (WHERE c.status IS NULL OR TRIM(COALESCE(c.status,'')) = '')::int AS applied,
         COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) IN ('UNDERREVIEW','PENDING'))::int AS review,
         COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) = 'ONHOLD')::int AS on_hold,
@@ -2108,7 +2108,7 @@ export async function GET(req: Request) {
 
     const facultyPublicationRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(s.status, ''))) = 'approved')::int AS approved,
         COUNT(*) FILTER (WHERE s.createdat >= ${qStart}::timestamp${qEndStory})::int AS quarter,
@@ -2151,7 +2151,7 @@ export async function GET(req: Request) {
 
     const facultyDiscountRows = await sql/* sql */`
       SELECT
-        COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(a.facultyname), ''), 'Under Processing') AS faculty,
+        COALESCE(NULLIF(TRIM(f.faculty_name), ''), 'Under Processing') AS faculty,
         COUNT(*)::int AS total,
         COUNT(*) FILTER (
           WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%dining%'

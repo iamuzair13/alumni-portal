@@ -47,9 +47,9 @@ export async function GET(req: Request) {
         OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(a.facultyname, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(a.departmentname, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(p.program_name, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(c1.national_chapter, c1.international_chapter, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(c2.national_chapter, c2.international_chapter, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(c3.national_chapter, c3.international_chapter, '')) LIKE ${searchTerm}
@@ -115,7 +115,7 @@ export async function GET(req: Request) {
     let facultyFilterCondition = sql``;
     if (selectedFaculties.length > 0) {
       const normalizedFaculties = selectedFaculties.map(f => f.toLowerCase());
-      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = ${f}`);
+      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(f.faculty_name, ''))) = ${f}`);
       if (facultyConditions.length === 1) {
         facultyFilterCondition = sql` AND ${facultyConditions[0]}`;
       } else if (facultyConditions.length > 1) {
@@ -128,7 +128,7 @@ export async function GET(req: Request) {
     let departmentFilterCondition = sql``;
     if (selectedDepartments.length > 0) {
       const normalizedDepartments = selectedDepartments.map(d => d.toLowerCase());
-      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = ${d}`);
+      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(d.department_name, ''))) = ${d}`);
       if (departmentConditions.length === 1) {
         departmentFilterCondition = sql` AND ${departmentConditions[0]}`;
       } else if (departmentConditions.length > 1) {
@@ -205,6 +205,9 @@ export async function GET(req: Request) {
       LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
       LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2
       LEFT JOIN public.tblchapters c3 ON c3.id = ac.chapter3
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       LEFT JOIN public.tbl_faculties assoc ON assoc.id = a.association_id
       WHERE a.alumniid IS NOT NULL
         ${accessFilterCondition}

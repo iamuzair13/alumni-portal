@@ -19,7 +19,7 @@ export function buildAssociationTabFacultyFilterSQL(
       const id = parseInt(t, 10);
       return sql`a.faculty = ${id}`;
     }
-    return sql`LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = ${t.toLowerCase()}`;
+    return sql`LOWER(TRIM(f.faculty_name)) = ${t.toLowerCase()}`;
   });
   const combinedCondition = combineOrConditions(facultyConditions);
   if (facultyConditions.length === 1) {
@@ -41,7 +41,7 @@ export function buildAssociationTabDepartmentFilterSQL(
       const id = parseInt(t, 10);
       return sql`a.department = ${id}`;
     }
-    return sql`LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = ${t.toLowerCase()}`;
+    return sql`LOWER(TRIM(d.department_name)) = ${t.toLowerCase()}`;
   });
   const combinedCondition = combineOrConditions(departmentConditions);
   if (departmentConditions.length === 1) {

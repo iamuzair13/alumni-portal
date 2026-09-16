@@ -25,9 +25,9 @@ export async function GET() {
         a.alumniid,
         a.sapid,
         a.alumniname,
-        a.departmentname,
-        a.facultyname,
-        a.degreetitle,
+        d.department_name as departmentname,
+        f.faculty_name as facultyname,
+        p.program_name as degreetitle,
         a.personalemail,
         a.officialemail,
         a.universityemail,
@@ -36,6 +36,9 @@ export async function GET() {
         cl.created_at
       FROM public.tbl_alumni a
       JOIN public.chapter_leadership cl ON cl.id = a.chapter_leadership
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE 1=1
         ${accessFilterCondition}
       ORDER BY cl.created_at DESC NULLS LAST, a.alumniid DESC`;

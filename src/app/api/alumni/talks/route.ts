@@ -150,9 +150,9 @@ export async function GET(req: Request) {
           a.sapid,
           a.registrationno,
           a.alumniname,
-          a.departmentname,
-          a.facultyname,
-          a.degreetitle,
+          d.department_name AS departmentname,
+          f.faculty_name AS facultyname,
+          p.program_name AS degreetitle,
           a.personalemail,
           a.officialemail,
           a.universityemail,
@@ -179,6 +179,9 @@ export async function GET(req: Request) {
           s.alumni_note
         FROM public.tbl_alumni a
           INNER JOIN public.alumni_talk_sessions s ON s.alumniid = a.alumniid
+          LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+          LEFT JOIN public.tbl_departments d ON d.id = a.department
+          LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE ${baseWhere}
         ${sapidCondition}
         ${accessFilterCondition}

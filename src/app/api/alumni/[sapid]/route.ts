@@ -108,18 +108,33 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     // First try to find by SAP ID
     let rows = await sql/* sql */`
-      SELECT * FROM public.tbl_alumni WHERE sapid = ${normalizedIdentifier} LIMIT 1`;
+      SELECT a.*, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
+      WHERE a.sapid = ${normalizedIdentifier} LIMIT 1`;
     
     // If not found by SAP ID, try registration number
     if (!rows[0]) {
       rows = await sql/* sql */`
-        SELECT * FROM public.tbl_alumni WHERE registrationno = ${normalizedIdentifier} LIMIT 1`;
+        SELECT a.*, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.registrationno = ${normalizedIdentifier} LIMIT 1`;
     }
 
     // If still not found, try alumniid (if identifier is numeric)
     if (!rows[0] && !Number.isNaN(Number(normalizedIdentifier))) {
       rows = await sql/* sql */`
-        SELECT * FROM public.tbl_alumni WHERE alumniid = ${Number(normalizedIdentifier)} LIMIT 1`;
+        SELECT a.*, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.alumniid = ${Number(normalizedIdentifier)} LIMIT 1`;
     }
     
     if (!rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -347,8 +362,11 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         registrationno = ${v.registrationNo}, alumniname = ${v.name}, gender = ${v.gender}, fathername = ${v.fatherName ?? null},
         dateofbirth = ${v.dob ?? null}, maritalstatus = ${v.maritalStatus ?? null}, cnicpassport = ${v.cnicOrPassport},
         contactno = ${contactno}, personalemail = ${v.personalEmail}, password = ${v.password}, address = ${v.address ?? null},
-        province = ${v.province ?? null}, city = ${v.homeCity}, country = ${v.homeCountry}, campusname = ${v.campus}, facultyname = ${v.faculty},
-        departmentname = ${v.department}, degreetitle = ${v.program}, yearofending = ${v.passingYear}, employeed = ${v.employmentStatus},
+        province = ${v.province ?? null}, city = ${v.homeCity}, country = ${v.homeCountry}, campusname = ${v.campus},
+        faculty = (SELECT id FROM public.tbl_faculties WHERE faculty_name = ${v.faculty} LIMIT 1),
+        department = (SELECT id FROM public.tbl_departments WHERE department_name = ${v.department} LIMIT 1),
+        program = (SELECT id FROM public.tbl_programs WHERE program_name = ${v.program} LIMIT 1),
+        yearofending = ${v.passingYear}, employeed = ${v.employmentStatus},
         industry = ${v.sector ?? null}, nameoforganization = ${v.organization ?? null}, designation = ${v.designation ?? null},
         totalyearsofexpereince = ${v.totalExperienceYears ?? null}, officialemail = ${v.officialEmail ?? null}, officialnumber = ${v.officialPhone ?? null},
         datasource = ${v.source ?? null}, verify = ${v.verified === true ? "true" : v.verified === false ? "false" : null}, alumnistatus = ${v.category ?? null}, updated_at = CURRENT_DATE

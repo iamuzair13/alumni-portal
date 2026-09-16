@@ -1,0 +1,114 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link [ref=e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "Logo" [ref=e6]
+      - navigation [ref=e8]:
+        - generic [ref=e10]:
+          - heading "Menu" [level=2] [ref=e11]
+          - list [ref=e12]:
+            - listitem [ref=e13]:
+              - button "Dashboard" [ref=e14] [cursor=pointer]
+              - list [ref=e21]:
+                - listitem [ref=e22]:
+                  - link "Dashboard" [ref=e23] [cursor=pointer]:
+                    - /url: /dashboard?tab=dashboard
+                - listitem [ref=e24]:
+                  - link "Alumni Cards" [ref=e25] [cursor=pointer]:
+                    - /url: /dashboard?tab=alumni-cards
+                - listitem [ref=e26]:
+                  - link "Alumni Talks" [ref=e27] [cursor=pointer]:
+                    - /url: /dashboard?tab=alumni-talks
+                - listitem [ref=e28]:
+                  - link "Success Stories" [ref=e29] [cursor=pointer]:
+                    - /url: /alumni-stories?tab=viewStories
+                - listitem [ref=e30]:
+                  - link "Alumni Chapters" [ref=e31] [cursor=pointer]:
+                    - /url: /dashboard?tab=alumni-chapters
+                - listitem [ref=e32]:
+                  - link "Alumni Association" [ref=e33] [cursor=pointer]:
+                    - /url: /dashboard?tab=alumni-association
+                - listitem [ref=e34]:
+                  - link "Alumni Scholarships" [ref=e35] [cursor=pointer]:
+                    - /url: /dashboard?tab=alumni-scholarships
+                - listitem [ref=e36]:
+                  - link "Alumni Memberships" [ref=e37] [cursor=pointer]:
+                    - /url: /dashboard?tab=alumni-memberships
+                - listitem [ref=e38]:
+                  - link "Leadership" [ref=e39] [cursor=pointer]:
+                    - /url: /leadership
+                - listitem [ref=e40]:
+                  - link "Jobs" [ref=e41] [cursor=pointer]:
+                    - /url: /dashboard?tab=jobs
+                - listitem [ref=e42]:
+                  - link "Add Alumni" [ref=e43] [cursor=pointer]:
+                    - /url: /dashboard?tab=add-alumni
+            - listitem [ref=e44]:
+              - button "Success Stories" [ref=e45] [cursor=pointer]
+              - list [ref=e52]:
+                - listitem [ref=e53]:
+                  - link "View Stories" [ref=e54] [cursor=pointer]:
+                    - /url: /alumni-stories?tab=viewStories
+                - listitem [ref=e55]:
+                  - link "Add Story" [ref=e56] [cursor=pointer]:
+                    - /url: /alumni-stories?tab=addStory
+            - listitem [ref=e57]:
+              - button "Events Management" [ref=e58] [cursor=pointer]
+              - list [ref=e65]:
+                - listitem [ref=e66]:
+                  - link "View Events" [ref=e67] [cursor=pointer]:
+                    - /url: /events?tab=viewEvents
+                - listitem [ref=e68]:
+                  - link "Add Event" [ref=e69] [cursor=pointer]:
+                    - /url: /events?tab=addEvent
+    - generic [ref=e70]:
+      - banner [ref=e71]:
+        - generic [ref=e72]:
+          - button "Open sidebar" [ref=e74] [cursor=pointer]
+          - button "Open menu" [ref=e78] [cursor=pointer]
+      - generic [ref=e84]:
+        - tablist "Setup sections" [ref=e85]:
+          - tab "Open Users tab" [selected] [ref=e86] [cursor=pointer]:
+            - generic [ref=e87]:
+              - text: Users
+              - generic [ref=e88]: ...
+          - tab "Open Organizations tab" [ref=e89] [cursor=pointer]:
+            - generic [ref=e90]: Organizations
+          - tab "Open Chapters tab" [ref=e91] [cursor=pointer]:
+            - generic [ref=e92]: Chapters
+          - tab "Open Newsletters tab" [ref=e93] [cursor=pointer]:
+            - generic [ref=e94]: Newsletters
+          - tab "Open Merchants tab" [ref=e95] [cursor=pointer]:
+            - generic [ref=e96]: Merchants
+        - generic [ref=e97]:
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - heading "Total Users" [level=3] [ref=e101]
+              - paragraph [ref=e102]: ...
+            - generic [ref=e103]:
+              - generic [ref=e104]:
+                - paragraph [ref=e105]: Real-time
+                - paragraph [ref=e106]: ...
+              - generic [ref=e107]:
+                - paragraph [ref=e108]: Local
+                - paragraph [ref=e109]: "0"
+          - generic [ref=e110]:
+            - generic [ref=e111]:
+              - generic [ref=e112]: Search users
+              - textbox "Search users" [ref=e114]:
+                - /placeholder: Search users by name, email, role
+            - generic [ref=e115]:
+              - combobox "Filter by role" [ref=e116]:
+                - option "All roles" [selected]
+                - option "Super Admin"
+                - option "Admin"
+                - option "Viewer"
+              - combobox "Filter by faculty" [ref=e117]:
+                - option "All faculties" [selected]
+              - combobox "Filter by department" [ref=e118]:
+                - option "All departments" [selected]
+            - generic [ref=e119]: Viewer access - Read only
+          - paragraph [ref=e122]: Loading users...
+  - alert [ref=e123]
+  - button "Open Next.js Dev Tools" [ref=e129] [cursor=pointer]

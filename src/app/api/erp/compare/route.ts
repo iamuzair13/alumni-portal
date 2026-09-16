@@ -109,22 +109,28 @@ export async function GET(req: Request) {
     if (sapId) {
       const rows = await sql/* sql */`
         SELECT 
-          sapid, registrationno, alumniname, personalemail, officialemail, 
-          universityemail, facultyname, departmentname, degreetitle, 
-          yearofending, yearofstarting, cgpa, campusname
-        FROM public.tbl_alumni
-        WHERE sapid = ${sapId}
+          a.sapid, a.registrationno, a.alumniname, a.personalemail, a.officialemail, 
+          a.universityemail, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle, 
+          a.yearofending, a.yearofstarting, a.cgpa, a.campusname
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.sapid = ${sapId}
         LIMIT 1
       `;
       localRecord = rows[0] as Record<string, unknown> | undefined;
     } else if (registrationNo) {
       const rows = await sql/* sql */`
         SELECT 
-          sapid, registrationno, alumniname, personalemail, officialemail, 
-          universityemail, facultyname, departmentname, degreetitle, 
-          yearofending, yearofstarting, cgpa, campusname
-        FROM public.tbl_alumni
-        WHERE registrationno = ${registrationNo}
+          a.sapid, a.registrationno, a.alumniname, a.personalemail, a.officialemail, 
+          a.universityemail, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle, 
+          a.yearofending, a.yearofstarting, a.cgpa, a.campusname
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.registrationno = ${registrationNo}
         LIMIT 1
       `;
       localRecord = rows[0] as Record<string, unknown> | undefined;

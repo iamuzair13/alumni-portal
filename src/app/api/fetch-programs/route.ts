@@ -5,12 +5,13 @@ export async function GET() {
   try {
     const result = await sql/* sql */`
       SELECT DISTINCT 
-        degreetitle,
+        p.program_name as degreetitle,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE degreetitle IS NOT NULL 
-        AND TRIM(degreetitle) != ''
-      GROUP BY degreetitle
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
+      WHERE p.program_name IS NOT NULL 
+        AND TRIM(p.program_name) != ''
+      GROUP BY p.program_name
       ORDER BY degreetitle ASC
     `;
 

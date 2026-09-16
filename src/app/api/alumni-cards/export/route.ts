@@ -111,7 +111,7 @@ export async function GET(req: Request) {
         OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(p.program_name, '')) LIKE ${searchTerm}
       )`;
     }
 

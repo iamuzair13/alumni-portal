@@ -83,8 +83,9 @@ export async function GET(
     // Fetch verified alumni details with pagination
     // Use sql.unsafe for dynamic ORDER BY column name (whitelisted above)
     const result = await sql`
-      SELECT alumniid, alumniname, degreetitle, yearofending, image1
-      FROM public.tbl_alumni
+      SELECT a.alumniid, a.alumniname, p.program_name as degreetitle, a.yearofending, a.image1
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE ${whereConditions}
       ORDER BY ${sql.unsafe(sortBy)} ${sql.unsafe(order)}
       LIMIT ${limit}

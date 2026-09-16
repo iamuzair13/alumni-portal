@@ -263,22 +263,22 @@ export async function buildAccessFilterSQL(
       }
       
       // Build SQL condition that matches the assigned program OR any similar programs found in database
-      // The program names from mock-programs.json are the actual values in degreetitle
+      // Programs are now matched via FK (tbl_alumni.program -> tbl_programs.id)
       const programNamesToMatch: string[] = [];
       
       // Always include the assigned program name (exact match) - this is what was selected in the dropdown
       // This ensures that if the program name in the database matches exactly, it will be found
       programNamesToMatch.push(normalizedProgram);
       
-      // Add all matching programs from database (these are actual degreetitle values)
+      // Add all matching programs from database (these are actual program_name values)
       // Include programs with at least 40% similarity, but prioritize higher similarity
-      // These are the actual program names that exist in the database (from mock-programs.json)
+      // These are the actual program names that exist in the database (from tbl_programs)
       const allMatchingPrograms = matchingPrograms
         .filter(m => m.similarity >= 0.4) // Include programs with at least 40% similarity
         .map(m => m.program);
       
       // Add unique program names (avoid duplicates, preserve original casing from database)
-      // These program names are the actual values in tbl_alumni.degreetitle
+      // These program names are the actual values in tbl_programs.program_name
       for (const prog of allMatchingPrograms) {
         const normalized = prog.toLowerCase().trim();
         // Only add if not already in the list (case-insensitive check)
@@ -290,18 +290,15 @@ export async function buildAccessFilterSQL(
       // If no matching programs found, we still have the assigned program name
       // This ensures we always have at least one program to match against
       
-      // Build pattern for flexible matching (extract keywords from assigned program)
-      const normalizedPattern = buildProgramMatchPattern(normalizedProgram);
-      
-      // Build SQL condition that matches any of these program names
+      // Build SQL condition that matches any of these program names via FK lookup
       // Create individual conditions for each program variation
       const programConditions: ReturnType<typeof sql>[] = [];
       
       // First, add exact matches for all program variations
       for (const prog of programNamesToMatch) {
-        // Exact match (case-insensitive, trimmed) - this is the most reliable
+        // Exact match (case-insensitive, trimmed) via FK lookup
         programConditions.push(
-          sql`LOWER(TRIM(degreetitle)) = LOWER(${prog.trim()})`
+          sql`program IN (SELECT id FROM public.tbl_programs WHERE LOWER(TRIM(program_name)) = LOWER(${prog.trim()}))`
         );
       }
       
@@ -311,14 +308,14 @@ export async function buildAccessFilterSQL(
       for (const prog of topProgramsForPattern) {
         const progPattern = buildProgramMatchPattern(prog);
         programConditions.push(
-          sql`LOWER(degreetitle) LIKE LOWER(${progPattern})`
+          sql`program IN (SELECT id FROM public.tbl_programs WHERE LOWER(program_name) LIKE LOWER(${progPattern}))`
         );
       }
       
       // Combine all program conditions with OR using recursive approach
       const combineProgramConditions = (conditions: ReturnType<typeof sql>[]): ReturnType<typeof sql> => {
         if (conditions.length === 0) {
-          return sql`LOWER(TRIM(degreetitle)) = LOWER(${normalizedProgram})`;
+          return sql`program IN (SELECT id FROM public.tbl_programs WHERE LOWER(TRIM(program_name)) = LOWER(${normalizedProgram}))`;
         }
         if (conditions.length === 1) {
           return conditions[0];
@@ -333,9 +330,6 @@ export async function buildAccessFilterSQL(
       };
       
       const programCondition = combineProgramConditions(programConditions);
-      
-      // Also add the original pattern-based matching as a final fallback
-      const finalProgramCondition = sql`(${programCondition} OR LOWER(degreetitle) LIKE LOWER(${normalizedPattern}))`;
 
 
 
@@ -347,18 +341,11 @@ export async function buildAccessFilterSQL(
       const facultyMatch =
         normalizedFaculty
           ? sql`(
-              (
-                facultyname IS NOT NULL
-                AND TRIM(COALESCE(facultyname, '')) != ''
-                AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(${normalizedFaculty})
-              )
-              OR (
-                faculty IS NOT NULL
-                AND faculty IN (
-                  SELECT id
-                  FROM public.tbl_faculties
-                  WHERE LOWER(TRIM(COALESCE(faculty_name, ''))) = LOWER(${normalizedFaculty})
-                )
+              faculty IS NOT NULL
+              AND faculty IN (
+                SELECT id
+                FROM public.tbl_faculties
+                WHERE LOWER(TRIM(COALESCE(faculty_name, ''))) = LOWER(${normalizedFaculty})
               )
             )`
           : sql`1 = 1`;
@@ -366,18 +353,11 @@ export async function buildAccessFilterSQL(
       const departmentMatch =
         normalizedDept
           ? sql`(
-              (
-                departmentname IS NOT NULL
-                AND TRIM(COALESCE(departmentname, '')) != ''
-                AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(${normalizedDept})
-              )
-              OR (
-                department IS NOT NULL
-                AND department IN (
-                  SELECT id
-                  FROM public.tbl_departments
-                  WHERE LOWER(TRIM(COALESCE(department_name, ''))) = LOWER(${normalizedDept})
-                )
+              department IS NOT NULL
+              AND department IN (
+                SELECT id
+                FROM public.tbl_departments
+                WHERE LOWER(TRIM(COALESCE(department_name, ''))) = LOWER(${normalizedDept})
               )
             )`
           : sql`1 = 1`;
@@ -395,13 +375,7 @@ export async function buildAccessFilterSQL(
             )`
           : sql`1 = 0`;
 
-      const programTextMatch = sql`(
-        degreetitle IS NOT NULL
-        AND TRIM(COALESCE(degreetitle, '')) != ''
-        AND ${finalProgramCondition}
-      )`;
-
-      const programMatch = sql`(${programTextMatch} OR ${programFkMatch})`;
+      const programMatch = sql`(${programFkMatch})`;
 
       if (normalizedFaculty && normalizedDept) {
         // All three specified: faculty + department + program
@@ -451,34 +425,20 @@ export async function buildAccessFilterSQL(
         if (normalizedFaculty && normalizedDept) {
 
           const facultyMatch = sql`(
-            (
-              facultyname IS NOT NULL
-              AND TRIM(COALESCE(facultyname, '')) != ''
-              AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(${normalizedFaculty})
-            )
-            OR (
-              faculty IS NOT NULL
-              AND faculty IN (
-                SELECT id
-                FROM public.tbl_faculties
-                WHERE LOWER(TRIM(COALESCE(faculty_name, ''))) = LOWER(${normalizedFaculty})
-              )
+            faculty IS NOT NULL
+            AND faculty IN (
+              SELECT id
+              FROM public.tbl_faculties
+              WHERE LOWER(TRIM(COALESCE(faculty_name, ''))) = LOWER(${normalizedFaculty})
             )
           )`;
 
           const departmentMatch = sql`(
-            (
-              departmentname IS NOT NULL
-              AND TRIM(COALESCE(departmentname, '')) != ''
-              AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(${normalizedDept})
-            )
-            OR (
-              department IS NOT NULL
-              AND department IN (
-                SELECT id
-                FROM public.tbl_departments
-                WHERE LOWER(TRIM(COALESCE(department_name, ''))) = LOWER(${normalizedDept})
-              )
+            department IS NOT NULL
+            AND department IN (
+              SELECT id
+              FROM public.tbl_departments
+              WHERE LOWER(TRIM(COALESCE(department_name, ''))) = LOWER(${normalizedDept})
             )
           )`;
 
@@ -513,18 +473,11 @@ export async function buildAccessFilterSQL(
         const normalizedFaculty = (faculty || "").trim();
         if (normalizedFaculty) {
           const facultyMatch = sql`(
-            (
-              facultyname IS NOT NULL
-              AND TRIM(COALESCE(facultyname, '')) != ''
-              AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(${normalizedFaculty})
-            )
-            OR (
-              faculty IS NOT NULL
-              AND faculty IN (
-                SELECT id
-                FROM public.tbl_faculties
-                WHERE LOWER(TRIM(COALESCE(faculty_name, ''))) = LOWER(${normalizedFaculty})
-              )
+            faculty IS NOT NULL
+            AND faculty IN (
+              SELECT id
+              FROM public.tbl_faculties
+              WHERE LOWER(TRIM(COALESCE(faculty_name, ''))) = LOWER(${normalizedFaculty})
             )
           )`;
           conditionsArray.push(sql`(${facultyMatch})`);

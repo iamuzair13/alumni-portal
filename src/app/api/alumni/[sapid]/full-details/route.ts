@@ -20,9 +20,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     let rows = await sql/* sql */`
       SELECT 
         a.*,
-        COALESCE(f.faculty_name, a.facultyname) as facultyname,
-        COALESCE(d.department_name, a.departmentname) as departmentname,
-        COALESCE(p.program_name, a.degreetitle) as degreetitle
+        f.faculty_name as facultyname,
+        d.department_name as departmentname,
+        p.program_name as degreetitle
       FROM public.tbl_alumni a
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
       LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -35,9 +35,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       rows = await sql/* sql */`
         SELECT 
           a.*,
-          COALESCE(f.faculty_name, a.facultyname) as facultyname,
-          COALESCE(d.department_name, a.departmentname) as departmentname,
-          COALESCE(p.program_name, a.degreetitle) as degreetitle
+          f.faculty_name as facultyname,
+          d.department_name as departmentname,
+          p.program_name as degreetitle
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -51,9 +51,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       rows = await sql/* sql */`
         SELECT 
           a.*,
-          COALESCE(f.faculty_name, a.facultyname) as facultyname,
-          COALESCE(d.department_name, a.departmentname) as departmentname,
-          COALESCE(p.program_name, a.degreetitle) as degreetitle
+          f.faculty_name as facultyname,
+          d.department_name as departmentname,
+          p.program_name as degreetitle
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department

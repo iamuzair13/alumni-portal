@@ -22,16 +22,17 @@ export const EXTERNAL_SUCCESS_STORY_SELECT = sql`
     s.createdat,
     s.achievements,
     a.alumniname,
-    a.degreetitle,
+    p.program_name AS degreetitle,
     a.academicsession,
     a.yearofending,
     a.image1,
-    COALESCE(f.faculty_name, a.facultyname) AS facultyname,
-    COALESCE(d.department_name, a.departmentname) AS departmentname
+    f.faculty_name AS facultyname,
+    d.department_name AS departmentname
   FROM public.tblalumnistories s
   INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
   LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
   LEFT JOIN public.tbl_departments d ON d.id = a.department
+  LEFT JOIN public.tbl_programs p ON p.id = a.program
 `;
 
 export type ExternalSuccessStoryRow = {

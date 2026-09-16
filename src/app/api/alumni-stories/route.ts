@@ -176,12 +176,13 @@ export async function GET(req: Request) {
         s.storytitle,
         s.achievements,
         a.alumniname,
-        a.degreetitle,
+        p.program_name AS degreetitle,
         a.academicsession,
         a.image1
         ${isStaff ? sql`, a.personalemail, a.officialemail, a.universityemail` : sql``}
       FROM public.tblalumnistories s
       INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE ${BASE_WHERE}
         ${alumniIdFilter || sql``}
         ${accessFilterCondition}

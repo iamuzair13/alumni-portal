@@ -29,8 +29,11 @@ async function getProfile(searchParams: { sapid?: string }) {
   try {
     if (sapid) {
       const rows = await sql/* sql */`
-        SELECT alumniname, facultyname, departmentname, yearofending, contactno
-        FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+        SELECT a.alumniname, f.faculty_name as facultyname, d.department_name as departmentname, a.yearofending, a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        WHERE a.sapid = ${sapid} LIMIT 1`;
       return rows[0] as Profile | undefined;
     }
     const session = await auth();
@@ -41,15 +44,21 @@ async function getProfile(searchParams: { sapid?: string }) {
     
     if (sessionSapid) {
       const rows = await sql/* sql */`
-        SELECT alumniname, facultyname, departmentname, yearofending, contactno
-        FROM public.tbl_alumni WHERE sapid = ${sessionSapid} LIMIT 1`;
+        SELECT a.alumniname, f.faculty_name as facultyname, d.department_name as departmentname, a.yearofending, a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        WHERE a.sapid = ${sessionSapid} LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
     
     if (sessionRegNo) {
       const rows = await sql/* sql */`
-        SELECT alumniname, facultyname, departmentname, yearofending, contactno
-        FROM public.tbl_alumni WHERE registrationno = ${sessionRegNo} LIMIT 1`;
+        SELECT a.alumniname, f.faculty_name as facultyname, d.department_name as departmentname, a.yearofending, a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        WHERE a.registrationno = ${sessionRegNo} LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
     
@@ -57,10 +66,12 @@ async function getProfile(searchParams: { sapid?: string }) {
     const email = session?.user?.email ? String(session.user.email) : undefined;
     if (!email) return undefined;
     const rows = await sql/* sql */`
-      SELECT alumniname, facultyname, departmentname, yearofending, contactno
-      FROM public.tbl_alumni 
-      WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-      ORDER BY alumniid DESC LIMIT 1`;
+      SELECT a.alumniname, f.faculty_name as facultyname, d.department_name as departmentname, a.yearofending, a.contactno
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      WHERE a.personalemail = ${email} OR a.officialemail = ${email} OR a.universityemail = ${email}
+      ORDER BY a.alumniid DESC LIMIT 1`;
     return rows[0] as Profile | undefined;
   } catch {
     return undefined;

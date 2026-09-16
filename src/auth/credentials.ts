@@ -281,13 +281,16 @@ export async function authenticateCredentials(
     }
 
     const sapRows = await sql/* sql */`
-      SELECT alumniid, sapid, registrationno, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount
-      FROM public.tbl_alumni
-      WHERE sapid IS NOT NULL
+      SELECT a.alumniid, a.sapid, a.registrationno, a.alumniemail, a.personalemail, a.officialemail, a.universityemail, a.password, a.alumniname, d.department_name as departmentname, f.faculty_name as facultyname, p.program_name as degreetitle, a.yearofending, a.campusname, a.alumnistatus, a.verify, a.lasttimelogin, a.logincount
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
+      WHERE a.sapid IS NOT NULL
         AND (
-          TRIM(sapid) = ${trimmedIdentifier}
-          OR LOWER(TRIM(sapid)) = LOWER(${trimmedIdentifier})
-          OR REGEXP_REPLACE(LOWER(TRIM(sapid)), '[^a-z0-9]+', '', 'g') = ${normalizedIdentifier}
+          TRIM(a.sapid) = ${trimmedIdentifier}
+          OR LOWER(TRIM(a.sapid)) = LOWER(${trimmedIdentifier})
+          OR REGEXP_REPLACE(LOWER(TRIM(a.sapid)), '[^a-z0-9]+', '', 'g') = ${normalizedIdentifier}
         )
     ` as typeof arows;
 
@@ -305,13 +308,16 @@ export async function authenticateCredentials(
       log("OK", `Found alumni record with SAP ID: "${trimmedIdentifier}"`);
     } else {
       const regRows = await sql/* sql */`
-        SELECT alumniid, sapid, registrationno, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount
-        FROM public.tbl_alumni
-        WHERE registrationno IS NOT NULL
+        SELECT a.alumniid, a.sapid, a.registrationno, a.alumniemail, a.personalemail, a.officialemail, a.universityemail, a.password, a.alumniname, d.department_name as departmentname, f.faculty_name as facultyname, p.program_name as degreetitle, a.yearofending, a.campusname, a.alumnistatus, a.verify, a.lasttimelogin, a.logincount
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.registrationno IS NOT NULL
           AND (
-            TRIM(registrationno) = ${trimmedIdentifier}
-            OR LOWER(TRIM(registrationno)) = LOWER(${trimmedIdentifier})
-            OR REGEXP_REPLACE(LOWER(TRIM(registrationno)), '[^a-z0-9]+', '', 'g') = ${normalizedIdentifier}
+            TRIM(a.registrationno) = ${trimmedIdentifier}
+            OR LOWER(TRIM(a.registrationno)) = LOWER(${trimmedIdentifier})
+            OR REGEXP_REPLACE(LOWER(TRIM(a.registrationno)), '[^a-z0-9]+', '', 'g') = ${normalizedIdentifier}
           )
       ` as typeof arows;
 

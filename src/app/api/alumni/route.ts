@@ -206,9 +206,9 @@ function mapToDb(payload: z.infer<typeof alumniRegistrationComprehensiveSchema>)
     city: payload.homeCity,
     country: payload.homeCountry,
     campusname: payload.campus,
-    facultyname: payload.faculty,
-    departmentname: payload.department,
-    degreetitle: payload.program,
+    faculty: payload.faculty ? Number(payload.faculty) : null,
+    department: payload.department ? Number(payload.department) : null,
+    program: payload.program ? Number(payload.program) : null,
     yearofending: payload.passingYear,
     employeed: payload.employmentStatus,
     industry: payload.sector ?? null,
@@ -317,9 +317,9 @@ export async function GET(req: Request) {
       alumniname: (dir) => `LOWER(COALESCE(a.alumniname, '')) ${dir} NULLS LAST, a.alumniid DESC`,
       personalemail: (dir) => `LOWER(COALESCE(a.personalemail, '')) ${dir} NULLS LAST, a.alumniid DESC`,
       officialemail: (dir) => `LOWER(COALESCE(a.officialemail, '')) ${dir} NULLS LAST, a.alumniid DESC`,
-      facultyname: (dir) => `LOWER(COALESCE(f.faculty_name, a.facultyname, '')) ${dir} NULLS LAST, a.alumniid DESC`,
-      departmentname: (dir) => `LOWER(COALESCE(d.department_name, a.departmentname, '')) ${dir} NULLS LAST, a.alumniid DESC`,
-      degreetitle: (dir) => `LOWER(COALESCE(a.degreetitle, '')) ${dir} NULLS LAST, a.alumniid DESC`,
+      facultyname: (dir) => `LOWER(COALESCE(f.faculty_name, '')) ${dir} NULLS LAST, a.alumniid DESC`,
+      departmentname: (dir) => `LOWER(COALESCE(d.department_name, '')) ${dir} NULLS LAST, a.alumniid DESC`,
+      degreetitle: (dir) => `LOWER(COALESCE(p.program_name, '')) ${dir} NULLS LAST, a.alumniid DESC`,
       yearofending: (dir) => `a.yearofending ${dir} NULLS LAST, a.alumniid DESC`,
       verify: (dir) => `LOWER(TRIM(COALESCE(a.verify, ''))) ${dir} NULLS LAST, a.alumniid DESC`,
       createddatetime: (dir) => `a.createddatetime ${dir} NULLS LAST, a.alumniid DESC`,
@@ -441,18 +441,18 @@ export async function GET(req: Request) {
         const programConditions = program.map((prog) => {
           const normalized = String(prog).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(p.program_name IS NULL AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = ''))`;
+            return sql`(a.program IS NULL)`;
           }
-          return sql`(LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${prog})))`;
+          return sql`(LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(${prog})))`;
         });
         const combinedCondition = combineOrConditions(programConditions);
         programFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(program) && program) {
         const normalized = String(program).trim();
         if (normalized === "NULL" || normalized === "null") {
-          programFilter = sql`AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '')`;
+          programFilter = sql`AND (a.program IS NULL)`;
         } else {
-        programFilter = sql`AND (LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${program})))`;
+        programFilter = sql`AND (LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(${program})))`;
         }
       }
 
@@ -1304,9 +1304,9 @@ export async function GET(req: Request) {
                 OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTermForCount}
                 OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTermForCount}
                 OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(f.faculty_name, a.facultyname, '')) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(d.department_name, a.departmentname, '')) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(p.program_name, '')) LIKE ${searchTermForCount}
               )`
         : sql/* sql */`
             SELECT COUNT(*) as total
@@ -1459,10 +1459,10 @@ export async function GET(req: Request) {
         a.fathername,
         a.maritalstatus,
         a.cnicpassport,
-        COALESCE(f.faculty_name, a.facultyname) as facultyname,
+        f.faculty_name as facultyname,
         a.campusname,
-        COALESCE(d.department_name, a.departmentname) as departmentname,
-        a.degreetitle,
+        d.department_name as departmentname,
+        p.program_name as degreetitle,
         a.yearofstarting,
         a.yearofending,
         a.country,
@@ -1536,9 +1536,9 @@ export async function GET(req: Request) {
             OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(f.faculty_name, a.facultyname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(d.department_name, a.departmentname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(p.program_name, '')) LIKE ${searchTerm}
           )
         ORDER BY ${sql.unsafe(orderByClause)}
         LIMIT ${limit} OFFSET ${offset}`;
@@ -1553,10 +1553,10 @@ export async function GET(req: Request) {
         a.fathername,
         a.maritalstatus,
         a.cnicpassport,
-        COALESCE(f.faculty_name, a.facultyname) as facultyname,
+        f.faculty_name as facultyname,
         a.campusname,
-        COALESCE(d.department_name, a.departmentname) as departmentname,
-        a.degreetitle,
+        d.department_name as departmentname,
+        p.program_name as degreetitle,
         a.yearofstarting,
         a.yearofending,
         a.country,
@@ -1753,9 +1753,9 @@ export async function GET(req: Request) {
               OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTermForCount}
               OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTermForCount}
               OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(f.faculty_name, a.facultyname, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(d.department_name, a.departmentname, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(p.program_name, '')) LIKE ${searchTermForCount}
             )`
           : sql/* sql */`
               SELECT COUNT(*) as total
@@ -2019,9 +2019,9 @@ export async function POST(req: Request) {
           work_city = ${d.work_city},
           work_country = ${d.work_country},
           campusname = ${d.campusname},
-          facultyname = ${d.facultyname},
-          departmentname = ${d.departmentname},
-          degreetitle = ${d.degreetitle},
+          faculty = ${d.faculty},
+          department = ${d.department},
+          program = ${d.program},
           yearofending = ${d.yearofending},
           employeed = ${d.employeed},
           industry = ${d.industry},
@@ -2056,7 +2056,7 @@ export async function POST(req: Request) {
 
       await autoAssignAssociationFromFaculty({
         alumniId: Number(updated.alumniid),
-        facultyName: d.facultyname,
+        facultyId: d.faculty,
         onlyWhenEmpty: true,
       });
       
@@ -2079,14 +2079,14 @@ export async function POST(req: Request) {
         registrationno, sapid, alumniname, gender, fathername, dateofbirth, maritalstatus,
         cnicpassport, contactno, personalemail, password, address, province, city, country,
         work_city, work_country,
-        campusname, facultyname, departmentname, degreetitle, yearofending, employeed, industry,
+        campusname, faculty, department, program, yearofending, employeed, industry,
         nameoforganization, designation, totalyearsofexpereince, officialemail, officialnumber,
         datasource, verify, alumnistatus, todaydate
       ) VALUES (
         ${d.registrationno}, ${d.sapid}, ${d.alumniname}, ${d.gender}, ${d.fathername}, ${d.dateofbirth}, ${d.maritalstatus},
         ${d.cnicpassport}, ${d.contactno}, ${d.personalemail}, ${d.password}, ${d.address}, ${d.province}, ${d.city}, ${d.country},
         ${d.work_city}, ${d.work_country},
-        ${d.campusname}, ${d.facultyname}, ${d.departmentname}, ${d.degreetitle}, ${d.yearofending}, ${d.employeed}, ${d.industry},
+        ${d.campusname}, ${d.faculty}, ${d.department}, ${d.program}, ${d.yearofending}, ${d.employeed}, ${d.industry},
         ${d.nameoforganization}, ${d.designation}, ${d.totalyearsofexpereince}, ${d.officialemail}, ${d.officialnumber},
         ${d.datasource}, ${d.verify}, ${d.alumnistatus}, ${d.todaydate}
       )
@@ -2109,7 +2109,7 @@ export async function POST(req: Request) {
 
     await autoAssignAssociationFromFaculty({
       alumniId: Number((created as { alumniid: number }).alumniid),
-      facultyName: d.facultyname,
+      facultyId: d.faculty,
       onlyWhenEmpty: true,
     });
 

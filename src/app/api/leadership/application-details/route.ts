@@ -156,7 +156,7 @@ export async function GET(req: NextRequest) {
           f.faculty_name as facultyname,
           d.department_name as departmentname,
           p.program_name as program_name,
-          a.degreetitle
+          p.program_name as degreetitle
         FROM public.chapter_leadership cl
         LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -375,7 +375,7 @@ export async function GET(req: NextRequest) {
         f.faculty_name as facultyname,
         d.department_name as departmentname,
         p.program_name as program_name,
-        a.degreetitle
+        p.program_name as degreetitle
       FROM public.tblalumniassociation ass
       LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty

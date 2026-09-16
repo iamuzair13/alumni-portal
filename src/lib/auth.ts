@@ -291,7 +291,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
                   } else {
                     const { sql } = await import("@/lib/dbconnect");
-                    const arows = await sql/* sql */`SELECT alumniid, sapid, registrationno, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
+                    const arows = await sql/* sql */`SELECT a.alumniid, a.sapid, a.registrationno, a.alumniname, d.department_name as departmentname, f.faculty_name as facultyname, p.program_name as degreetitle, a.yearofending, a.campusname, a.alumnistatus, a.verify, a.alumniemail, a.personalemail, a.officialemail, a.universityemail FROM public.tbl_alumni a LEFT JOIN public.tbl_faculties f ON f.id = a.faculty LEFT JOIN public.tbl_departments d ON d.id = a.department LEFT JOIN public.tbl_programs p ON p.id = a.program WHERE a.alumniemail = ${email} OR a.personalemail = ${email} OR a.universityemail = ${email} LIMIT 1`;
                     const a = arows[0] as {
                       alumniid: number;
                       sapid: string | null;
@@ -343,25 +343,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // Alumni refresh: prefer alumniid, then sapid, then registrationno
             const alumniById = at.userId
               ? await sql/* sql */`
-                  SELECT alumniid, sapid, registrationno, alumniname, departmentname, alumnistatus, alumniemail, personalemail, officialemail, universityemail
-                  FROM public.tbl_alumni
-                  WHERE alumniid = ${at.userId}
+                  SELECT a.alumniid, a.sapid, a.registrationno, a.alumniname, d.department_name as departmentname, a.alumnistatus, a.alumniemail, a.personalemail, a.officialemail, a.universityemail
+                  FROM public.tbl_alumni a
+                  LEFT JOIN public.tbl_departments d ON d.id = a.department
+                  WHERE a.alumniid = ${at.userId}
                   LIMIT 1
                 `
               : [];
             const alumniBySapid = !at.userId && at.sapid
               ? await sql/* sql */`
-                  SELECT alumniid, sapid, registrationno, alumniname, departmentname, alumnistatus, alumniemail, personalemail, officialemail, universityemail
-                  FROM public.tbl_alumni
-                  WHERE sapid IS NOT NULL AND TRIM(sapid) = ${String(at.sapid).trim()}
+                  SELECT a.alumniid, a.sapid, a.registrationno, a.alumniname, d.department_name as departmentname, a.alumnistatus, a.alumniemail, a.personalemail, a.officialemail, a.universityemail
+                  FROM public.tbl_alumni a
+                  LEFT JOIN public.tbl_departments d ON d.id = a.department
+                  WHERE a.sapid IS NOT NULL AND TRIM(a.sapid) = ${String(at.sapid).trim()}
                   LIMIT 1
                 `
               : [];
             const alumniByReg = !at.userId && !at.sapid && at.registrationno
               ? await sql/* sql */`
-                  SELECT alumniid, sapid, registrationno, alumniname, departmentname, alumnistatus, alumniemail, personalemail, officialemail, universityemail
-                  FROM public.tbl_alumni
-                  WHERE registrationno IS NOT NULL AND TRIM(registrationno) = ${String(at.registrationno).trim()}
+                  SELECT a.alumniid, a.sapid, a.registrationno, a.alumniname, d.department_name as departmentname, a.alumnistatus, a.alumniemail, a.personalemail, a.officialemail, a.universityemail
+                  FROM public.tbl_alumni a
+                  LEFT JOIN public.tbl_departments d ON d.id = a.department
+                  WHERE a.registrationno IS NOT NULL AND TRIM(a.registrationno) = ${String(at.registrationno).trim()}
                   LIMIT 1
                 `
               : [];

@@ -1073,24 +1073,15 @@ function AlumniExpandableDetails({
         return;
       }
       
-      // Always include related text fields for ID-based fields
+      // Include ID-based fields for faculty/department/program
       if (editingFields.has("faculty") && allFormValues.faculty !== undefined) {
         updatePayload.faculty = allFormValues.faculty;
-        if (allFormValues.facultyname !== undefined) {
-          updatePayload.facultyname = allFormValues.facultyname;
-        }
       }
       if (editingFields.has("department") && allFormValues.department !== undefined) {
         updatePayload.department = allFormValues.department;
-        if (allFormValues.departmentname !== undefined) {
-          updatePayload.departmentname = allFormValues.departmentname;
-        }
       }
       if (editingFields.has("program") && allFormValues.program !== undefined) {
         updatePayload.program = allFormValues.program;
-        if (allFormValues.degreetitle !== undefined) {
-          updatePayload.degreetitle = allFormValues.degreetitle;
-        }
       }
 
       const stableIdentifier = data?.alumniid ? String(data.alumniid) : currentSapId;

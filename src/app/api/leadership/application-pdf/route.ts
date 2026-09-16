@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
           f.faculty_name as facultyname,
           d.department_name as departmentname,
           p.program_name as program_name,
-          a.degreetitle,
+          p.program_name as degreetitle,
           a.image1,
           a.image2
         FROM public.chapter_leadership cl
@@ -188,7 +188,7 @@ export async function GET(req: NextRequest) {
           f.faculty_name as facultyname,
           d.department_name as departmentname,
           p.program_name as program_name,
-          a.degreetitle,
+          p.program_name as degreetitle,
           a.image1,
           a.image2
         FROM public.tblalumniassociation ass

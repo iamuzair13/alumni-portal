@@ -64,8 +64,8 @@ export default async function AdminStoryEditPage({ params }: { params: Promise<{
       s.signature_confirmed_at,
       a.sapid,
       a.alumniname,
-      a.facultyname,
-      a.departmentname,
+      f.faculty_name as facultyname,
+      d.department_name as departmentname,
       a.yearofending,
       a.contactno,
       a.personalemail,
@@ -73,6 +73,8 @@ export default async function AdminStoryEditPage({ params }: { params: Promise<{
       a.universityemail
     FROM public.tblalumnistories s
     INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+    LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+    LEFT JOIN public.tbl_departments d ON d.id = a.department
     WHERE s.id = ${storyId}
       ${accessCondition}
     LIMIT 1

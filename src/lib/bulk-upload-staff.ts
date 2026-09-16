@@ -21,9 +21,9 @@ export type BulkUploadStaffRow = {
   alumniname: string | null;
   personalemail: string | null;
   officialemail: string | null;
-  facultyname: string | null;
-  departmentname: string | null;
-  degreetitle: string | null;
+  faculty: string | null;
+  department: string | null;
+  program: string | null;
   yearofending: number | null;
   designation: string | null;
   nameoforganization: string | null;
@@ -116,20 +116,20 @@ export const bulkUploadColumns: BulkUploadColumnMeta[] = [
     aliases: ["official email", "work email", "officialemail"],
   },
   {
-    id: "facultyname",
+    id: "faculty",
     label: "Org Level 1",
     group: "Basic",
     fieldType: "select",
     persistable: true,
-    aliases: ["org level 1", "org1", "faculty", "faculty name", "org1 name"],
+    aliases: ["org level 1", "org1", "faculty", "faculty name", "facultyname", "org1 name"],
   },
   {
-    id: "departmentname",
+    id: "department",
     label: "Org Level 2",
     group: "Basic",
     fieldType: "select",
     persistable: true,
-    aliases: ["org level 2", "org2", "department", "department name", "org2 name"],
+    aliases: ["org level 2", "org2", "department", "department name", "departmentname", "org2 name"],
   },
   {
     id: "campusname",
@@ -236,12 +236,12 @@ export const bulkUploadColumns: BulkUploadColumnMeta[] = [
     aliases: ["employment status", "employed", "employeed"],
   },
   {
-    id: "degreetitle",
+    id: "program",
     label: "Degree",
     group: "Compensation",
     fieldType: "text",
     persistable: true,
-    aliases: ["degree", "degree title", "program"],
+    aliases: ["degree", "degree title", "degreetitle", "program"],
   },
   {
     id: "salary",

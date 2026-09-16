@@ -142,11 +142,12 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
         cl.id as application_id,
         cl.status,
         a.alumniname,
-        TRIM(COALESCE(a.degreetitle, '')) AS degreetitle,
+        p.program_name AS degreetitle,
         a.yearofending,
         cl.bonus_marks
       FROM public.chapter_leadership cl
       LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
       WHERE 1=1
         ${chapterPostRoleCondition(role)}
@@ -221,11 +222,12 @@ export async function fetchBulkLeadershipScorecardPayload(input: {
         ass.id as application_id,
         ass.status,
         a.alumniname,
-        TRIM(COALESCE(a.degreetitle, '')) AS degreetitle,
+        p.program_name AS degreetitle,
         a.yearofending,
         ass.bonus_marks
       FROM public.tblalumniassociation ass
       LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE 1=1
         ${associationPostRoleCondition(role)}
         ${associationFilterCondition}
