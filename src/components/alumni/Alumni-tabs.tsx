@@ -2511,6 +2511,10 @@ export const AlumniTabs: React.FC = () => {
         throw new Error("Verification failed - server returned false");
       }
 
+      if (responseData.passwordGenerated) {
+        toast.success("Password was empty — a new password has been auto-generated and set.");
+      }
+      toast.success("Alumni verified successfully.");
       setActionMessage("Alumni verified successfully.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "profile", identifier] });
       queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });

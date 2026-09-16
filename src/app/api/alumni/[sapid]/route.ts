@@ -716,26 +716,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       }
     }
     
-    // Check if this is a status change from 'underApproval' to verified/unverified
-    const wasUnderApproval =
-      current.verify !== null &&
-      current.verify !== undefined &&
-      String(current.verify).trim().toLowerCase() === "underapproval";
-    
-    // When leaving underApproval: keep public.tbl_alumni.password so approval emails and /api/send-email match login.
-    // Only auto-generate if no password is stored (legacy or incomplete rows).
+    // Auto-generate password when verifying if password is empty.
+    // This applies to ALL verify attempts, not just "underApproval" transitions,
+    // so that an alumni can never be verified without a login password.
     let passwordToStore: string | null = null;
+    let passwordWasGenerated = false;
 
-    if (wasUnderApproval) {
+    if (shouldVerify) {
       const existingPlain = String(current.password || "").trim();
       if (existingPlain) {
         passwordToStore = existingPlain;
       } else {
         const { default: generateEasyPassword } = await import("@/lib/passwordUtils");
         passwordToStore = generateEasyPassword();
+        passwordWasGenerated = true;
       }
     } else {
-      // Keep existing password if alumni was already verified/unverified (admin is just changing status)
+      // Keep existing password when unverifying
       passwordToStore = current.password;
     }
     
@@ -802,7 +799,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     } catch {
     }
     
-    return NextResponse.json({ ok: true, verify: verifyString }, { status: 200 });
+    return NextResponse.json({ ok: true, verify: verifyString, passwordGenerated: passwordWasGenerated }, { status: 200 });
   } catch (err) {
 
     const message = err instanceof Error ? err.message : "Failed to update verification status";
