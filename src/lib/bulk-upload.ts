@@ -2,6 +2,7 @@ import "server-only";
 
 import * as XLSX from "xlsx";
 import { sql } from "@/lib/dbconnect";
+import generateEasyPassword from "@/lib/passwordUtils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1062,6 +1063,12 @@ export async function importRecords(
     try {
       // Enforce under-approval status for all bulk-imported records
       record.verify = "underApproval";
+
+      // Auto-generate password if not provided in the upload file
+      const existingPassword = String(record.password ?? "").trim();
+      if (!existingPassword) {
+        record.password = generateEasyPassword();
+      }
 
       // Build column list and values, excluding internal fields
       const columns: string[] = [];
