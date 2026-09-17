@@ -528,10 +528,10 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
               aria-label="Acknowledge campus collection terms"
             />
             <span className="text-sm text-slate-900">
-              I hereby acknowledge and undertake to collect my Alumni Card within 15 days of receiving a call from the authorized Alumni Office; otherwise, my card may be discarded and I will not be eligible to apply for an Alumni Card again.
+              I hereby acknowledge that my information is correct and undertake to collect my Alumni Card within 15 days of receiving a call from the authorized Alumni Office; otherwise, my card may be discarded and I will not be eligible to apply for an Alumni Card again.
               <span className="text-red-600 ml-1">*</span>
             </span>
-          </label>
+          </label> 
           {errors.collectAcknowledgment && <p className="text-xs text-red-600 mt-1 ml-7">{errors.collectAcknowledgment.message}</p>}
         </div>
       ) : (
@@ -553,7 +553,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
         </div>
       )}
 
-      <div className="mt-6">
+      {/* <div className="mt-6">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -567,7 +567,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
           </span>
         </label>
         {errors.confirmation && <p className="text-xs text-red-600 mt-1 ml-7">{errors.confirmation.message}</p>}
-      </div>
+      </div> */}
 
       <div className="flex items-center justify-end gap-2 mt-6">
         <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting} aria-label="Submit application">
