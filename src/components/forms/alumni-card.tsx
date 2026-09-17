@@ -33,6 +33,8 @@ const schema = z.object({
   deliverySocietyName: z.string().optional(),
   deliveryStreetNo: z.string().optional(),
   deliveryHouseNo: z.string().optional(),
+  collectAcknowledgment: z.boolean(),
+  postalAcknowledgment: z.boolean(),
 }).refine((data) => {
   if (data.addressPreference !== "Deliver") return true;
   const city = String(data.deliveryCity ?? "").trim();
@@ -45,6 +47,21 @@ const schema = z.object({
 }, {
   message: "City, society name, street number, and house number are required. The combined address must be at least 10 characters.",
   path: ["deliveryCity"],
+}).superRefine((data, ctx) => {
+  if (data.addressPreference === "Collect" && data.collectAcknowledgment !== true) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["collectAcknowledgment"],
+      message: "You must acknowledge and undertake the collection terms to submit the application",
+    });
+  }
+  if (data.addressPreference === "Deliver" && data.postalAcknowledgment !== true) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["postalAcknowledgment"],
+      message: "You must confirm the postal delivery terms to submit the application",
+    });
+  }
 });
 
 type FormVals = z.infer<typeof schema>;
@@ -124,6 +141,8 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       deliverySocietyName: "",
       deliveryStreetNo: "",
       deliveryHouseNo: "",
+      collectAcknowledgment: false,
+      postalAcknowledgment: false,
     },
     mode: "onChange",
   });
@@ -175,6 +194,9 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       setValue("deliverySocietyName", "");
       setValue("deliveryStreetNo", "");
       setValue("deliveryHouseNo", "");
+      setValue("postalAcknowledgment", false);
+    } else {
+      setValue("collectAcknowledgment", false);
     }
   }, [addressPreference, setValue]);
 
@@ -276,6 +298,8 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       setValue("deliverySocietyName", "");
       setValue("deliveryStreetNo", "");
       setValue("deliveryHouseNo", "");
+      setValue("collectAcknowledgment", false);
+      setValue("postalAcknowledgment", false);
       
       // Navigate back to profile page
       setTimeout(() => {
@@ -492,6 +516,42 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
         </div>
         {errors.comment && <p className="text-xs text-red-600 mt-1">{errors.comment.message}</p>}
       </div>
+
+      {addressPreference === "Collect" ? (
+        <div className="mt-6">
+          <div className="text-sm font-medium text-slate-900 mb-1">Collect from campus</div>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              {...register("collectAcknowledgment")}
+              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              aria-label="Acknowledge campus collection terms"
+            />
+            <span className="text-sm text-slate-900">
+              I hereby acknowledge and undertake to collect my Alumni Card within 15 days of receiving a call from the authorized Alumni Office; otherwise, my card may be discarded and I will not be eligible to apply for an Alumni Card again.
+              <span className="text-red-600 ml-1">*</span>
+            </span>
+          </label>
+          {errors.collectAcknowledgment && <p className="text-xs text-red-600 mt-1 ml-7">{errors.collectAcknowledgment.message}</p>}
+        </div>
+      ) : (
+        <div className="mt-6">
+          <div className="text-sm font-medium text-slate-900 mb-1">Postal Address</div>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              {...register("postalAcknowledgment")}
+              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              aria-label="Confirm postal delivery terms"
+            />
+            <span className="text-sm text-slate-900">
+              I hereby confirm that the postal address and mobile number provided are correct and up to date, and I acknowledge that if the Alumni Card is returned by the courier due to an incorrect or incomplete address, unavailability, or any other issue, my card will be discarded and I will not be eligible to apply for an Alumni Card again.
+              <span className="text-red-600 ml-1">*</span>
+            </span>
+          </label>
+          {errors.postalAcknowledgment && <p className="text-xs text-red-600 mt-1 ml-7">{errors.postalAcknowledgment.message}</p>}
+        </div>
+      )}
 
       <div className="mt-6">
         <label className="flex items-start gap-3 cursor-pointer">
