@@ -22,9 +22,6 @@ type Props = {
 
 const schema = z.object({
   pictureName: z.string().min(1, "Profile picture is required"),
-  confirmation: z.boolean().refine((val) => val === true, {
-    message: "You must confirm that the information is correct",
-  }),
   comment: z.string().optional(),
   addressPreference: z.enum(["Collect", "Deliver"], {
     message: "Please select an address preference",
@@ -134,7 +131,6 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<FormVals>({
     resolver: zodResolver(schema),
     defaultValues: {
-      confirmation: false,
       comment: "",
       addressPreference: "Collect",
       deliveryCity: "",
@@ -291,7 +287,6 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       setPreviewUrl(null);
       setSelectedFile(null);
       setValue("pictureName", "");
-      setValue("confirmation", false);
       setValue("comment", "");
       setValue("addressPreference", "Collect");
       setValue("deliveryCity", "");
@@ -552,22 +547,6 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
           {errors.postalAcknowledgment && <p className="text-xs text-red-600 mt-1 ml-7">{errors.postalAcknowledgment.message}</p>}
         </div>
       )}
-
-      {/* <div className="mt-6">
-        <label className="flex items-start gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            {...register("confirmation")}
-            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            aria-label="Confirm information is correct"
-          />
-          <span className="text-sm text-slate-900">
-            I confirm that the information is correct
-            <span className="text-red-600 ml-1">*</span>
-          </span>
-        </label>
-        {errors.confirmation && <p className="text-xs text-red-600 mt-1 ml-7">{errors.confirmation.message}</p>}
-      </div> */}
 
       <div className="flex items-center justify-end gap-2 mt-6">
         <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting} aria-label="Submit application">
