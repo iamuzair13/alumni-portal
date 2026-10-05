@@ -244,6 +244,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         asch.applied_discount_percent,
         asch.application_year,
         asch.application_term,
+        asch.semester,
         asch.withdrawn_at,
         asch.withdrawn_by,
         asch.withdrawal_reason,
@@ -295,6 +296,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       applied_discount_percent: number | null;
       application_year: number | null;
       application_term: string | null;
+      semester: number | null;
       withdrawn_at: string | null;
       withdrawn_by: string | null;
       withdrawal_reason: string | null;
@@ -341,6 +343,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         kinshipFirstName: kinshipFirstName || null,
         kinshipLastName: kinshipLastName || null,
         kinshipName: hasKinship ? `${kinshipFirstName} ${kinshipLastName}` : null,
+        semester: app.semester != null && Number.isFinite(Number(app.semester)) ? String(Number(app.semester)) : null,
       });
 
       return new NextResponse(new Uint8Array(pdfBuffer), {
@@ -585,6 +588,10 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
           ? String(Number(app.application_year))
           : null,
       applicationTerm: String(app.application_term || "").trim() || null,
+      semester:
+        app.semester != null && Number.isFinite(Number(app.semester))
+          ? String(Number(app.semester))
+          : null,
       scholarshipApplicationPdfId,
       profileUpdated: app.profile_updated === true,
     };
@@ -658,6 +665,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         admissionApplicationRef: applicationLetter.admissionApplicationRef,
         applicationYear: applicationLetter.applicationYear ?? null,
         applicationTerm: applicationLetter.applicationTerm ?? null,
+        semester: applicationLetter.semester ?? null,
         scholarshipApplicationPdfId: applicationLetter.scholarshipApplicationPdfId ?? null,
         discountType: app.discount_type,
         requestedProgramDegree: applicationLetter.requestedProgramDegree,

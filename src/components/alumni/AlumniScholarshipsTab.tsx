@@ -94,6 +94,7 @@ type ScholarshipApplicationLetter = {
   admissionApplicationRef?: string | null;
   applicationYear?: string | null;
   applicationTerm?: string | null;
+  semester?: string | null;
   mastersAdmissionSummary?: string | null;
   kinship?: { firstName: string; lastName: string; cnic: string } | null;
   isKinship?: boolean;
@@ -1383,6 +1384,9 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ["Discount Category", applicationPreview.application.scholarshipType],
                                 ["Year", applicationPreview.application.applicationYear || "-"],
                                 ["Term", applicationPreview.application.applicationTerm || "-"],
+                                ...(applicationPreview.application.isKinship
+                                  ? []
+                                  : [["Semester", applicationPreview.application.semester ? `Semester ${applicationPreview.application.semester}` : "-"] as [string, string]]),
                                 ...(applicationPreview.application.feeBreakdown
                                   ? [
                                       ...(applicationPreview.application.applyAdmissionFeeDiscount === true && applicationPreview.application.feeBreakdown.admissionFeeDiscount != null && applicationPreview.application.feeBreakdown.admissionFeeDiscount > 0

@@ -56,6 +56,7 @@ type Payload = {
   applyAdmissionFeeDiscount?: boolean | string | null;
   applicationYear?: number | string | null;
   applicationTerm?: string | null;
+  semester?: number | string | null;
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -152,6 +153,7 @@ export async function POST(
     let gradePercent: string | null = null;
     let applicationYear: number | null = null;
     let applicationTerm: string | null = null;
+    let semester: number | null = null;
     let clientAppliedPercent: number | null = null;
     let clientAdmissionFeePercent: number | null = null;
     let clientTuitionFeePercent: number | null = null;
@@ -174,6 +176,11 @@ export async function POST(
       }
       const rawTerm = String(formData.get("applicationTerm") || "").trim();
       if (rawTerm) applicationTerm = rawTerm;
+      const rawSemester = String(formData.get("semester") || "").trim();
+      if (rawSemester) {
+        const s = Number(rawSemester);
+        if (Number.isFinite(s)) semester = Math.trunc(s);
+      }
       const rawPct = formData.get("appliedDiscountPercent");
       if (rawPct != null && String(rawPct).trim() !== "") {
         const n = Number(rawPct);
@@ -339,6 +346,10 @@ export async function POST(
       }
       const termVal = String(payload.applicationTerm || "").trim();
       if (termVal) applicationTerm = termVal;
+      if (payload.semester != null && payload.semester !== "") {
+        const s = Number(payload.semester);
+        if (Number.isFinite(s)) semester = Math.trunc(s);
+      }
       if (payload.appliedDiscountPercent != null && payload.appliedDiscountPercent !== "") {
         const n = Number(payload.appliedDiscountPercent);
         if (Number.isFinite(n)) clientAppliedPercent = n;
@@ -362,6 +373,16 @@ export async function POST(
 
     if (!discountType || !applyingFor || !degreeTitle) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (
+      isScholarshipFeeDiscountFlow(discountType) &&
+      (semester == null || semester < 1 || semester > 8)
+    ) {
+      return NextResponse.json(
+        { error: "Semester is required and must be between 1 and 8." },
+        { status: 400 },
+      );
     }
 
     const alumniRows = await sql/* sql */`
@@ -684,6 +705,7 @@ export async function POST(
         applied_discount_percent,
         application_year,
         application_term,
+        semester,
         status
       ) VALUES (
         ${alumni.alumniid},
@@ -702,6 +724,7 @@ export async function POST(
         ${appliedDiscountPercent},
         ${applicationYear},
         ${applicationTerm},
+        ${semester},
         'pending'
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -720,6 +743,7 @@ export async function POST(
         applied_discount_percent = EXCLUDED.applied_discount_percent,
         application_year = EXCLUDED.application_year,
         application_term = EXCLUDED.application_term,
+        semester = EXCLUDED.semester,
         status = 'pending',
         reason = NULL
     `;

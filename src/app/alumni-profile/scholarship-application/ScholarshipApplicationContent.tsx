@@ -193,6 +193,7 @@ function ScholarshipApplicationContent() {
   const [admissionProgramId, setAdmissionProgramId] = useState<number | "">("");
   const [admissionCampus, setAdmissionCampus] = useState("");
   const [admissionSession, setAdmissionSession] = useState("");
+  const [admissionSemester, setAdmissionSemester] = useState("");
 
   // Attached documents (file uploads)
   const [docAdmissionLetterFile, setDocAdmissionLetterFile] = useState<File | null>(null);
@@ -345,6 +346,9 @@ function ScholarshipApplicationContent() {
     String(currentYear + idx),
   );
 
+  // Semester options for self (fee-discount) applications — BS runs up to 8 semesters.
+  const semesterOptions = Array.from({ length: 8 }, (_, i) => String(i + 1));
+
   const missing = (v: unknown): string => {
     const s = String(v ?? "").trim();
     return s ? s : "Data is missing";
@@ -476,7 +480,8 @@ function ScholarshipApplicationContent() {
         !admissionDepartmentId ||
         !admissionProgramId ||
         !admissionCampus ||
-        !admissionSession
+        !admissionSession ||
+        !admissionSemester
       ) {
         toast.error("Please complete all admission and document sections before submitting.", {
           duration: 5000,
@@ -677,6 +682,7 @@ function ScholarshipApplicationContent() {
               fd.set("admissionProgramId", String(admissionProgramId));
               fd.set("admissionCampus", admissionCampus);
               fd.set("admissionSession", admissionSession);
+              fd.set("semester", admissionSemester);
 
               fd.set("docAdmissionLetter", docAdmissionLetterFile as File);
               fd.set("docAlumniProof", docAlumniProofFile as File);
@@ -854,6 +860,7 @@ function ScholarshipApplicationContent() {
       setAdmissionProgramId("");
       setAdmissionCampus("");
       setAdmissionSession("");
+      setAdmissionSemester("");
       setDocAdmissionLetterFile(null);
       setDocTranscriptsFile(null);
       setDocAlumniProofFile(null);
@@ -1531,6 +1538,26 @@ function ScholarshipApplicationContent() {
                             {sessionOptions.map((y) => (
                               <option key={y} value={y}>
                                 {y}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label htmlFor="admissionSemester" className="mb-2 text-sm text-slate-900 font-medium block">
+                            Semester <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            id="admissionSemester"
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            value={admissionSemester}
+                            onChange={(e) => setAdmissionSemester(e.target.value)}
+                            required
+                          >
+                            <option value="">Select semester</option>
+                            {semesterOptions.map((s) => (
+                              <option key={s} value={s}>
+                                Semester {s}
                               </option>
                             ))}
                           </select>

@@ -101,6 +101,9 @@ ALTER TABLE IF EXISTS public.alumni_scholarships
 ALTER TABLE IF EXISTS public.alumni_scholarships
     ADD COLUMN IF NOT EXISTS withdrawal_reason text COLLATE pg_catalog."default";
 
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS semester integer;
+
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.alumni_scholarships

@@ -63,6 +63,7 @@ export interface ScholarshipApplicationData {
   kinshipFirstName?: string | null;
   kinshipLastName?: string | null;
   kinshipName?: string | null;
+  semester?: string | null;
 }
 
 export interface ScholarshipLetterPDFData {
@@ -88,6 +89,7 @@ export interface ScholarshipLetterPDFData {
   admissionApplicationRef?: string | null;
   applicationYear?: string | null;
   applicationTerm?: string | null;
+  semester?: string | null;
   scholarshipApplicationPdfId?: string | null;
   discountType?: string | null;
   requestedProgramDegree?: string;
@@ -866,7 +868,7 @@ function estimateScholarshipFormHeight(
   const tierRows = 4; // fixed 4-row discount table (per reference design)
   let rows = 1; // meta
   rows += 2; // section A
-  rows += data.isKinship ? 3 : 2;
+  rows += data.isKinship ? 3 : 3;
   if (!data.isKinship) rows += 1; // admission ref
   rows += data.isKinship ? 5 : 3; // section C
   const sections = 5;
@@ -1051,6 +1053,9 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         "Program",
         data.isKinship ? data.program : data.requestedProgramDegree,
       );
+      if (!data.isKinship) {
+        form.drawFullRow("Semester", data.semester ? `Semester ${data.semester}` : "—");
+      }
 
       if (data.isKinship) {
         form.drawFieldPair("SAP ID", data.sapCode, "CGPA / Grade", data.cgpaLastDegree);
@@ -1294,6 +1299,9 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
       }
 
       addParagraph(`Degree Title: ${data.degreeTitle}`, false, 8);
+      if (data.semester) {
+        addParagraph(`Semester: ${data.semester}`, false, 8);
+      }
       addParagraph("Please approve so that the applicant can proceed with the admission process.", false, 14);
 
       addParagraph("Regards,", false, 8);
