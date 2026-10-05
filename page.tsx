@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Roboto } from "next/font/google";
+import { roboto } from "@/lib/fonts";
 import html2canvas from "html2canvas";
 import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
@@ -20,10 +20,8 @@ type FormState = {
 const ACCESS_PIN = "2374";
 
 
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-});
+
+
 
 const normalizeOklab = (value: string) =>
   value.includes("oklab")

@@ -1,14 +1,12 @@
 "use client";
 
-import { Roboto } from "next/font/google";
+import { roboto } from "@/lib/fonts";
 import { useState, useMemo, useEffect } from "react";
 import { formatCardValidityMonthYear } from "@/lib/cardValidity";
 import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-});
+
+
 
 // Images from public folder are referenced as URL strings
 const maleFrontTemplate = "/images/cards/UOL-Alumni-Card-Artworks-Revised-Curve-png-04.png";

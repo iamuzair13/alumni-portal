@@ -1,12 +1,9 @@
-import { Outfit } from 'next/font/google';
+import { outfit } from '@/lib/fonts';
 import './globals.css';
 
 import Providers from "./providers";
 
 
-const outfit = Outfit({
-  subsets: ["latin"],
-});
 
 export default function RootLayout({
   children,

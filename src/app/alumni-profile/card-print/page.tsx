@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { flushSync } from "react-dom";
 import { useSearchParams } from "next/navigation";
-import { Roboto } from "next/font/google";
+import { roboto } from "@/lib/fonts";
 import html2canvas from "html2canvas";
 import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
@@ -14,10 +14,7 @@ import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
 import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
 
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-});
+
 
 const maleFrontTemplate = "/images/cards/alumni-card-male.jpeg";
 const femaleFrontTemplate = "/images/cards/alumni-card-female.jpeg";
