@@ -7,11 +7,19 @@ export type MembershipDiscountBasis =
 export const MEMBERSHIP_FACILITY_OPTIONS: {
   value: MembershipFacilityType;
   label: string;
+  note?: string;
 }[] = [
-  { value: "gym", label: "Gym Membership" },
+  { value: "gym", label: "Gym Membership", note: "Including 1000/- registration fee" },
   { value: "pool", label: "Swimming Pool Membership" },
   { value: "cricket", label: "Qalander Club Membership" },
 ];
+
+export function membershipFacilityNote(
+  facilityType: MembershipFacilityType | string | null | undefined,
+): string | null {
+  const key = String(facilityType || "").trim();
+  return MEMBERSHIP_FACILITY_OPTIONS.find((opt) => opt.value === key)?.note ?? null;
+}
 
 export const DISCOUNT_BASIS_OPTIONS: {
   value: MembershipDiscountBasis;

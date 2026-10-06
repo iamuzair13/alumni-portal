@@ -167,6 +167,7 @@ export interface MembershipFormPDFData {
   documentsChecklist: Array<{ label: string; status: string }>;
   paymentAmount?: number | null;
   originalAmount?: number | null;
+  membershipNote?: string | null;
   discountPercent?: number | null;
   discountBasis?: string | null;
 }
@@ -899,7 +900,7 @@ function estimateMembershipFormHeight(
       ? 1 + 4 + 5 + 2 + 2 + 2  // meta + A(4) + B membership(5) + C swimming(2) + D medical+emergency(2) + E contact(2) — approximate
       : facilityType === "cricket"
         ? 1 + 4 + 6 + 3 + 2 + 2  // meta + A(4) + B cricket(6) + C playing(3) + D emergency(2) + E checklist(2)
-        : 1 + 4 + 5 + 3 + 2 + 2; // meta + A(4) + B membership(5) + C medical(3) + D emergency(2) + E checklist(2)
+        : 1 + 4 + 6 + 3 + 2 + 2; // meta + A(4) + B membership(6) + C medical(3) + D emergency(2) + E checklist(2)
   // Gym: A B C D E = 5 sections; Pool: A B C D E F G = 7 sections; Cricket: A B C D E F = 6 sections
   const sections =
     facilityType === "pool" ? 7 : facilityType === "cricket" ? 6 : 5;
@@ -1415,6 +1416,9 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
         form.drawFieldPair("Membership Type", data.membershipType,"Preferred Timing", data.preferredTiming);
         form.drawFieldPair("Valid From", data.membershipStartDate, "Valid To", data.validTill);
         form.drawFieldPair("Original Amount", formatPaymentAmount(data.originalAmount),"Payment Amount Due", formatPaymentAmount(data.paymentAmount));
+        if (data.membershipNote) {
+          form.drawFullRow("Note", data.membershipNote);
+        }
 
         form.drawSection("C", "Medical & Fitness Information");
         form.drawFieldPair("Medical Conditions", data.medicalConditions, "Physical Disability", data.physicalDisability);

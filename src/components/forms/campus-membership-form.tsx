@@ -16,6 +16,7 @@ import {
   SWIMMING_LEVEL_OPTIONS,
   type CampusFacilityType,
 } from "@/lib/campusMembership";
+import { membershipFacilityNote } from "@/lib/membershipSettingsShared";
 
 
 type Props = {
@@ -51,6 +52,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
   const searchParams = useSearchParams();
   const sapIdFromUrl = searchParams?.get("sapid")?.trim() ?? "";
   const config = CAMPUS_FACILITY_CONFIG[facilityType];
+  const facilityNote = membershipFacilityNote(facilityType);
 
   const [resolvedSapId, setResolvedSapId] = useState("");
   const [resolvingId, setResolvingId] = useState(true);
@@ -291,7 +293,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
           <Field label="Passing Out Year" value={missing(data.yearofending)} readOnly fullWidth />
         </Section>
         <Section title="(c) Membership Details">
-          <Field label="Applying For" value={config.applyingFor} readOnly />
+          <Field label="Applying For" value={config.applyingFor} readOnly hint={facilityNote} />
           <Field label="Discount Type" value={config.discountType} readOnly />
           {facilityType === "cricket" ? (
             <>
@@ -588,12 +590,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, value, readOnly, fullWidth }: { label: string; value: string; readOnly?: boolean; fullWidth?: boolean }) {
+function Field({ label, value, readOnly, fullWidth, hint }: { label: string; value: string; readOnly?: boolean; fullWidth?: boolean; hint?: string | null }) {
   return (
     <div className={fullWidth ? "sm:col-span-2" : undefined}>
       <label className={labelBase}>{label}</label>
       <input type="text" value={value} readOnly={readOnly} className={readOnly ? inputReadOnly : inputBase} />
       {readOnly && <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>}
+      {hint && <p className="mt-1 text-xs text-amber-700">{hint}</p>}
     </div>
   );
 }

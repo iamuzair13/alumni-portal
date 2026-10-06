@@ -4,6 +4,7 @@ import {
   type CampusMembershipApplicationDetails,
 } from "@/lib/campusMembership";
 import type { MembershipFormPDFData } from "@/lib/pdfGenerator";
+import { membershipFacilityNote } from "@/lib/membershipSettingsShared";
 import { resolveStoredUploadUrl } from "@/lib/uploadsImageUrl";
 
 export type MembershipUploadedDocument = {
@@ -91,6 +92,7 @@ export type MembershipApplicationPreview = {
   declarationText: string;
   membershipSectionTitle: string;
   extraSectionTitle: string | null;
+  membershipNote: string | null;
   membershipRows: MembershipPreviewRow[];
   extraRows: MembershipPreviewRow[];
   emergencyRows: MembershipPreviewRow[];
@@ -246,6 +248,8 @@ export function buildMembershipApplicationPreview(
   const highestPlayingLevel = missing(details?.cricketDetails?.highestPlayingLevel);
   const injuryHistory = missing(details?.cricketDetails?.injuryHistory);
 
+  const membershipNote = membershipFacilityNote(facilityType);
+
   const membershipSectionTitle =
     facilityType === "pool"
       ? "Membership Details"
@@ -280,7 +284,12 @@ export function buildMembershipApplicationPreview(
             ["Valid Till", formatDateLong(validTillRaw)],
           ]
         : [
-            ["Applying For", details?.applyingFor || config.applyingFor],
+            [
+              "Applying For",
+              `${details?.applyingFor || config.applyingFor}${
+                membershipNote ? ` (${membershipNote})` : ""
+              }`,
+            ],
             ["Discount Type", details?.discountType || row.discount_type || config.discountType],
             ["Membership Type", details?.membershipType || row.membership_type || "Missing"],
             ["Membership Start Date", formatDateLong(membershipStartRaw)],
@@ -383,6 +392,7 @@ export function buildMembershipApplicationPreview(
     declarationText: CAMPUS_FACILITY_CONFIG[facilityType].declarationText,
     membershipSectionTitle,
     extraSectionTitle,
+    membershipNote,
     membershipRows,
     extraRows,
     emergencyRows,
@@ -437,5 +447,6 @@ export function buildMembershipFormPDFData(row: MembershipDbRow): MembershipForm
     withdrawnAt: preview.withdrawnAt,
     withdrawnBy: preview.withdrawnBy,
     withdrawalReason: preview.withdrawalReason,
+    membershipNote: preview.membershipNote,
   };
 }
