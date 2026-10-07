@@ -66,25 +66,25 @@ export async function POST(req: Request) {
       
       // Verify alumni exists and user has permission
       const alumniRows = await sql/* sql */`
-        SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail 
-        FROM public.tbl_alumni 
-        WHERE alumniid = ${alumniId} 
+        SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail, contactno
+        FROM public.tbl_alumni
+        WHERE alumniid = ${alumniId}
         LIMIT 1
-      ` as Array<{ alumniid: number; sapid: string | null; registrationno: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }>;
-      
+      ` as Array<{ alumniid: number; sapid: string | null; registrationno: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null; contactno: string | null }>;
+
       if (!alumniRows[0]) {
         return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
       }
-      
+
       const alumni = alumniRows[0];
       const isAdmin = canModify(session.user);
-      
+
       // Check if user owns this alumni record or is admin
       if (!isAdmin) {
         const userEmail = session.user.email ? String(session.user.email).toLowerCase().trim() : null;
         const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).toLowerCase().trim() : null;
         const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).toLowerCase().trim() : null;
-        
+
         const dbSapid = alumni.sapid ? String(alumni.sapid).toLowerCase().trim() : "";
         const dbRegNo = alumni.registrationno ? String(alumni.registrationno).toLowerCase().trim() : "";
         const dbEmails = [
@@ -92,15 +92,28 @@ export async function POST(req: Request) {
           alumni.universityemail ? String(alumni.universityemail).toLowerCase().trim() : "",
           alumni.officialemail ? String(alumni.officialemail).toLowerCase().trim() : ""
         ].filter(Boolean);
-        
+
         const isOwnerBySapid = userSapid && dbSapid && dbSapid === userSapid;
         const isOwnerByRegNo = userRegNo && dbRegNo && dbRegNo === userRegNo;
         const isOwnerByEmail = userEmail && dbEmails.includes(userEmail);
         const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
-        
+
         if (!isOwner) {
           return NextResponse.json({ error: "Forbidden: You don't have permission to apply for this alumni card" }, { status: 403 });
         }
+      }
+
+      // Card applications require reachable contact details on the alumni profile
+      const hasProfileEmail = Boolean(
+        [alumni.personalemail, alumni.officialemail, alumni.universityemail]
+          .some((e) => e && String(e).trim()),
+      );
+      const hasProfileContact = Boolean(String(alumni.contactno ?? "").trim());
+      if (!hasProfileEmail || !hasProfileContact) {
+        return NextResponse.json(
+          { error: "Email and primary contact are required on your profile before applying for the alumni card." },
+          { status: 400 }
+        );
       }
       const cnicno = String(body?.cnicno || "");
       const cardaddress = String(body?.cardaddress || "");
@@ -232,11 +245,11 @@ export async function POST(req: Request) {
     
     // Verify alumni exists and user has permission
     const alumniRows = await sql/* sql */`
-      SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail 
-      FROM public.tbl_alumni 
-      WHERE alumniid = ${alumniId} 
+      SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail, contactno
+      FROM public.tbl_alumni
+      WHERE alumniid = ${alumniId}
       LIMIT 1
-    ` as Array<{ alumniid: number; sapid: string | null; registrationno: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }>;
+    ` as Array<{ alumniid: number; sapid: string | null; registrationno: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null; contactno: string | null }>;
     
     if (!alumniRows[0]) {
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
@@ -263,12 +276,25 @@ export async function POST(req: Request) {
       const isOwnerByRegNo = userRegNo && dbRegNo && dbRegNo === userRegNo;
       const isOwnerByEmail = userEmail && dbEmails.includes(userEmail);
       const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
-      
+
       if (!isOwner) {
         return NextResponse.json({ error: "Forbidden: You don't have permission to apply for this alumni card" }, { status: 403 });
       }
     }
-    
+
+    // Card applications require reachable contact details on the alumni profile
+    const hasProfileEmail = Boolean(
+      [alumni.personalemail, alumni.officialemail, alumni.universityemail]
+        .some((e) => e && String(e).trim()),
+    );
+    const hasProfileContact = Boolean(String(alumni.contactno ?? "").trim());
+    if (!hasProfileEmail || !hasProfileContact) {
+      return NextResponse.json(
+        { error: "Email and primary contact are required on your profile before applying for the alumni card." },
+        { status: 400 }
+      );
+    }
+
     const sapId = String(formData.get("sapId") || "");
     const image = formData.get("image");
     const comment = String(formData.get("comment") || "").trim() || null;

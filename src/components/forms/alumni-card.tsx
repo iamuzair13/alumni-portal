@@ -216,6 +216,15 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
   })();
   const cnicDisplayValue = cnicFromQuery || fetchedCnicPassport || String(cnicPassport || "").trim();
 
+  // Auto-fetched contact details — required before the application can be submitted.
+  const alumniItem = (alumniDetailsQuery.data as any)?.item;
+  const emailDisplayValue = String(
+    alumniItem?.personalemail || alumniItem?.officialemail || alumniItem?.universityemail || "",
+  ).trim();
+  const contactDisplayValue = String(alumniItem?.contactno || "").trim();
+  const contactDetailsLoaded = alumniDetailsQuery.isSuccess && !!alumniItem;
+  const contactDetailsMissing = contactDetailsLoaded && (!emailDisplayValue || !contactDisplayValue);
+
   
 
   const onSubmit = async (vals: FormVals) => {
@@ -223,6 +232,13 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
     try {
       if (!selectedFile) {
         setFileError("Profile picture is required");
+        return;
+      }
+      if (contactDetailsMissing) {
+        toast.error(
+          "Your email and primary contact are required to apply for the alumni card. Please update your profile first.",
+          { duration: 5000 },
+        );
         return;
       }
       const loadingToast = toast.loading("Submitting your alumni card application...");
@@ -332,6 +348,20 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       title="Edit Passport Photo"
     />
     <form className="max-w-4xl mx-auto  " onSubmit={handleSubmit(onSubmit)} aria-label="Alumni card form">
+      {contactDetailsMissing && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-900">Email and primary contact required</p>
+          <p className="mt-1 text-sm text-amber-800">
+            Add your email and primary contact in your alumni profile before applying for the alumni card.
+          </p>
+          <a
+            href="/alumni-profile/more-details"
+            className="mt-2 inline-block text-sm font-semibold text-blue-700 hover:underline"
+          >
+            Update profile →
+          </a>
+        </div>
+      )}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className={labelBase} htmlFor="name">Name</label>
@@ -364,6 +394,20 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
             <input id="cnic" className={inputBase} value={cnicDisplayValue} readOnly aria-label="CNIC/Passport" />
           </div>
           <p className="text-xs text-blue-700 mt-1">Please make sure that your CNIC/Passport is correct. It will be used for verification and Alumni card issuance.</p>
+        </div>
+        <div>
+          <label className={labelBase} htmlFor="email">Email</label>
+          <div className="relative flex items-center">
+            <input id="email" className={inputBase} value={emailDisplayValue} readOnly aria-label="Email" />
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Auto-fetched from your profile</p>
+        </div>
+        <div>
+          <label className={labelBase} htmlFor="primaryContact">Primary Contact</label>
+          <div className="relative flex items-center">
+            <input id="primaryContact" className={inputBase} value={contactDisplayValue} readOnly aria-label="Primary contact" />
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Auto-fetched from your profile</p>
         </div>
       </div>
 
