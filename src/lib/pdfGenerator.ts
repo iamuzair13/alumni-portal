@@ -64,6 +64,7 @@ export interface ScholarshipApplicationData {
   kinshipLastName?: string | null;
   kinshipName?: string | null;
   semester?: string | null;
+  scholarshipDisclosure?: string | null;
 }
 
 export interface ScholarshipLetterPDFData {
@@ -90,6 +91,7 @@ export interface ScholarshipLetterPDFData {
   applicationYear?: string | null;
   applicationTerm?: string | null;
   semester?: string | null;
+  scholarshipDisclosure?: string | null;
   scholarshipApplicationPdfId?: string | null;
   discountType?: string | null;
   requestedProgramDegree?: string;
@@ -872,7 +874,8 @@ function estimateScholarshipFormHeight(
   rows += data.isKinship ? 3 : 3;
   if (!data.isKinship) rows += 1; // admission ref
   rows += data.isKinship ? 5 : 3; // section C
-  const sections = 5;
+  rows += 3; // declaration section (long wrapped text)
+  const sections = 6;
   const checklistItems = data.isKinship ? 6 : 5;
 
   return (
@@ -1192,6 +1195,14 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           ];
       form.drawChecklistTable(docItems);
 
+      form.drawSection("e", "Declaration");
+      form.drawFullRow(
+        "Declaration",
+        `I hereby disclose all scholarships / financial assistance currently availed by me ${
+          String(data.scholarshipDisclosure || "").trim() || "__________________________"
+        }. I understand that if awarded the Alumni Scholarship, all others shall stand cancelled. If any concealment is discovered later, all scholarships shall be cancelled/recovered and disciplinary action including cancellation of admission may be taken.`,
+      );
+
       form.drawSignatureBlock("Reviewed By (ARO)", "Approved By (Refer to attached approval from competent authority)");
       form.drawFooter();
       form.ensureSinglePage();
@@ -1303,6 +1314,13 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
       if (data.semester) {
         addParagraph(`Semester: ${data.semester}`, false, 8);
       }
+      addParagraph(
+        `I hereby disclose all scholarships / financial assistance currently availed by me ${
+          String(data.scholarshipDisclosure || "").trim() || "__________________________"
+        }. I understand that if awarded the Alumni Scholarship, all others shall stand cancelled. If any concealment is discovered later, all scholarships shall be cancelled/recovered and disciplinary action including cancellation of admission may be taken.`,
+        false,
+        10,
+      );
       addParagraph("Please approve so that the applicant can proceed with the admission process.", false, 14);
 
       addParagraph("Regards,", false, 8);

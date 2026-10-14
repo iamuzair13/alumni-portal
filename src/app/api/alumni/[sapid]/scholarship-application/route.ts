@@ -57,6 +57,8 @@ type Payload = {
   applicationYear?: number | string | null;
   applicationTerm?: string | null;
   semester?: number | string | null;
+  scholarshipDisclosure?: string | null;
+  disclosureDeclaration?: boolean | string | null;
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -154,6 +156,8 @@ export async function POST(
     let applicationYear: number | null = null;
     let applicationTerm: string | null = null;
     let semester: number | null = null;
+    let scholarshipDisclosure: string | null = null;
+    let disclosureDeclaration = false;
     let clientAppliedPercent: number | null = null;
     let clientAdmissionFeePercent: number | null = null;
     let clientTuitionFeePercent: number | null = null;
@@ -205,6 +209,9 @@ export async function POST(
       if (rawApplyAdm != null && String(rawApplyAdm).trim().toLowerCase() === "true") {
         clientApplyAdmissionFeeDiscount = true;
       }
+      scholarshipDisclosure = String(formData.get("scholarshipDisclosure") || "").trim() || null;
+      disclosureDeclaration =
+        String(formData.get("disclosureDeclaration") || "").trim().toLowerCase() === "true";
 
       if (isScholarshipFeeDiscountFlow(discountType)) {
         const admissionFacultyId = String(formData.get("admissionFacultyId") || "").trim();
@@ -369,10 +376,23 @@ export async function POST(
       if (payload.applyAdmissionFeeDiscount === true || payload.applyAdmissionFeeDiscount === "true") {
         clientApplyAdmissionFeeDiscount = true;
       }
+      scholarshipDisclosure = String(payload.scholarshipDisclosure || "").trim() || null;
+      disclosureDeclaration =
+        payload.disclosureDeclaration === true || payload.disclosureDeclaration === "true";
     }
 
     if (!discountType || !applyingFor || !degreeTitle) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (!disclosureDeclaration || !scholarshipDisclosure) {
+      return NextResponse.json(
+        {
+          error:
+            "You must disclose all scholarships / financial assistance currently availed and accept the declaration.",
+        },
+        { status: 400 },
+      );
     }
 
     if (
@@ -706,6 +726,7 @@ export async function POST(
         application_year,
         application_term,
         semester,
+        scholarship_disclosure,
         status
       ) VALUES (
         ${alumni.alumniid},
@@ -725,6 +746,7 @@ export async function POST(
         ${applicationYear},
         ${applicationTerm},
         ${semester},
+        ${scholarshipDisclosure},
         'pending'
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -744,6 +766,7 @@ export async function POST(
         application_year = EXCLUDED.application_year,
         application_term = EXCLUDED.application_term,
         semester = EXCLUDED.semester,
+        scholarship_disclosure = EXCLUDED.scholarship_disclosure,
         status = 'pending',
         reason = NULL
     `;

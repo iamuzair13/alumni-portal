@@ -219,6 +219,9 @@ function ScholarshipApplicationContent() {
 
   // Declaration
   const [mastersDeclarationAccepted, setMastersDeclarationAccepted] = useState(false);
+  // Scholarship disclosure declaration (required for all flows)
+  const [scholarshipDisclosure, setScholarshipDisclosure] = useState("");
+  const [disclosureAccepted, setDisclosureAccepted] = useState(false);
 
   // Load organization datasets when needed (fee discount and kinship flow)
   useEffect(() => {
@@ -622,6 +625,22 @@ function ScholarshipApplicationContent() {
       return;
     }
 
+    if (!scholarshipDisclosure.trim() || !disclosureAccepted) {
+      toast.error(
+        "Please disclose all scholarships / financial assistance currently availed and accept the declaration.",
+        {
+          duration: 5000,
+          style: {
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "12px",
+            borderRadius: "8px",
+          },
+        },
+      );
+      return;
+    }
+
     // Compute degree title for fee discount flow from selected admission program
     let degreeTitleToSend = (formData.degreeTitle || "").trim();
     if (isFeeFlow) {
@@ -703,6 +722,8 @@ function ScholarshipApplicationContent() {
               }
               fd.set("applicationYear", applicationYear);
               fd.set("applicationTerm", applicationTerm);
+              fd.set("scholarshipDisclosure", scholarshipDisclosure.trim());
+              fd.set("disclosureDeclaration", "true");
 
               return fetch(url, { method: "POST", body: fd });
             })()
@@ -749,6 +770,8 @@ function ScholarshipApplicationContent() {
               }
               fd.set("applicationYear", applicationYear);
               fd.set("applicationTerm", applicationTerm);
+              fd.set("scholarshipDisclosure", scholarshipDisclosure.trim());
+              fd.set("disclosureDeclaration", "true");
               return fetch(url, { method: "POST", body: fd });
             })()
           : await fetch(url, {
@@ -772,6 +795,8 @@ function ScholarshipApplicationContent() {
                 gradePercent: gradePercent.trim() || null,
                 applicationYear: applicationYear || null,
                 applicationTerm: applicationTerm || null,
+                scholarshipDisclosure: scholarshipDisclosure.trim(),
+                disclosureDeclaration: true,
               }),
             });
 
@@ -876,6 +901,8 @@ function ScholarshipApplicationContent() {
       setDocOtherText("");
       setGradePercent("");
       setMastersDeclarationAccepted(false);
+      setScholarshipDisclosure("");
+      setDisclosureAccepted(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit application. Please try again.", {
         duration: 4000,
@@ -1987,6 +2014,49 @@ function ScholarshipApplicationContent() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Declaration — required for all scholarship applications */}
+              <div className="border border-gray-200 rounded-lg p-4 sm:p-5 mt-6">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+                  Declaration <span className="text-red-500">*</span>
+                </h2>
+                <div className="mb-3">
+                  <label className="mb-2 text-sm text-slate-900 font-medium block">
+                    Scholarships / financial assistance currently availed by you{" "}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={scholarshipDisclosure}
+                    onChange={(e) => setScholarshipDisclosure(e.target.value)}
+                    placeholder='e.g. None, or list scholarship names'
+                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                    required
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Write &quot;None&quot; if you are not availing any scholarship or financial assistance.
+                  </p>
+                </div>
+                <p className="text-sm text-slate-900 mb-3">
+                  I hereby disclose all scholarships / financial assistance currently availed by me{" "}
+                  <span className="font-semibold underline decoration-dotted">
+                    {scholarshipDisclosure.trim() || "__________________________"}
+                  </span>
+                  . I understand that if awarded the Alumni Scholarship, all others shall stand
+                  cancelled. If any concealment is discovered later, all scholarships shall be
+                  cancelled/recovered and disciplinary action including cancellation of admission
+                  may be taken.
+                </p>
+                <label className="flex items-start gap-3 text-sm text-slate-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                    checked={disclosureAccepted}
+                    onChange={(e) => setDisclosureAccepted(e.target.checked)}
+                  />
+                  <span>I have read and agree to the above declaration.</span>
+                </label>
               </div>
 
               <button

@@ -104,6 +104,9 @@ ALTER TABLE IF EXISTS public.alumni_scholarships
 ALTER TABLE IF EXISTS public.alumni_scholarships
     ADD COLUMN IF NOT EXISTS semester integer;
 
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS scholarship_disclosure text COLLATE pg_catalog."default";
+
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.alumni_scholarships

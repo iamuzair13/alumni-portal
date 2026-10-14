@@ -95,6 +95,7 @@ type ScholarshipApplicationLetter = {
   applicationYear?: string | null;
   applicationTerm?: string | null;
   semester?: string | null;
+  scholarshipDisclosure?: string | null;
   mastersAdmissionSummary?: string | null;
   kinship?: { firstName: string; lastName: string; cnic: string } | null;
   isKinship?: boolean;
@@ -1410,6 +1411,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ...(applicationPreview.application.isKinship
                                   ? [["Applying For", applicationPreview.application.applyingFor || "-"]]
                                   : []),
+                                ["Scholarship Disclosure", applicationPreview.application.scholarshipDisclosure || "-"],
                               ].map(([k, v]) => (
                                 <tr key={k} className="bg-white dark:bg-gray-900">
                                   <td className="w-[260px] px-4 py-3 font-semibold text-slate-800 bg-slate-50/60 dark:text-gray-100 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">{k}</td>
