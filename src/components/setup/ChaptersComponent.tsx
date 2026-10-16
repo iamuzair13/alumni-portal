@@ -203,7 +203,7 @@ export default function ChaptersComponent() {
     <div className="">
       {/* Counter Cards */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-brand-50 dark:from-blue-900/20 dark:to-brand-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">National Chapters</p>

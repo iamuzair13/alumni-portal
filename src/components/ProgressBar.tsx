@@ -91,11 +91,11 @@ export default function ProgressBar() {
     <div className="fixed top-0 left-0 right-0 z-[1000000] pointer-events-none">
       <div className="relative h-[3px] bg-transparent">
         <div
-          className="absolute left-0 top-0 h-full w-full origin-left bg-[#183D32]"
+          className="absolute left-0 top-0 h-full w-full origin-left bg-accent-500"
           style={barStyle}
         />
       </div>
-      <div className="absolute right-2 top-1.5 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold text-[#183D32] shadow-sm border border-gray-200/70">
+      <div className="absolute right-2 top-1.5 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold text-accent-600 shadow-sm border border-gray-200/70">
         Loading… {percent}%
       </div>
     </div>

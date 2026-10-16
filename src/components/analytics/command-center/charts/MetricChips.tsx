@@ -52,13 +52,13 @@ export function MetricChips({
             }
           >
             <span
-              className={`min-w-0 truncate font-medium text-slate-500 dark:text-slate-400 ${premium ? "text-[11px]" : "text-[9px]"}`}
+              className={`min-w-0 truncate font-medium text-gray-500 dark:text-gray-400 ${premium ? "text-[11px]" : "text-[9px]"}`}
               title={d.label}
             >
               {d.label}
             </span>
             <span
-              className={`flex shrink-0 items-center gap-1.5 font-bold tabular-nums text-slate-900 dark:text-white ${premium ? "text-xs" : "text-[10px]"}`}
+              className={`flex shrink-0 items-center gap-1.5 font-bold tabular-nums text-gray-900 dark:text-white ${premium ? "text-xs" : "text-[10px]"}`}
             >
               <span
                 className={`rounded-full ${premium ? "h-2 w-2" : "h-1.5 w-1.5"}`}
@@ -92,12 +92,12 @@ export function MetricChips({
           }
         >
           <span
-            className="w-full truncate text-center text-[9px] font-medium text-slate-500 dark:text-slate-400"
+            className="w-full truncate text-center text-[9px] font-medium text-gray-500 dark:text-gray-400"
             title={d.label}
           >
             {d.label}
           </span>
-          <span className="text-[10px] font-bold tabular-nums leading-tight text-slate-900 dark:text-white">
+          <span className="text-[10px] font-bold tabular-nums leading-tight text-gray-900 dark:text-white">
             {formatValue(d)}
           </span>
         </motion.div>

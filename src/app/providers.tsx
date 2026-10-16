@@ -168,7 +168,32 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             <ThemeProvider>
               <SidebarProvider>
                 {children}
-                <Toaster position="top-center" />
+                <Toaster
+                  position="top-center"
+                  toastOptions={{
+                    duration: 4500,
+                    style: {
+                      background: "#1d2939",
+                      color: "#f9fafb",
+                      borderRadius: "10px",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      padding: "12px 16px",
+                      boxShadow:
+                        "0px 12px 16px -4px rgba(16,24,40,0.08), 0px 4px 6px -2px rgba(16,24,40,0.03)",
+                      maxWidth: "420px",
+                    },
+                    success: {
+                      iconTheme: { primary: "#32d583", secondary: "#064e3b" },
+                    },
+                    error: {
+                      iconTheme: { primary: "#f97066", secondary: "#55160c" },
+                    },
+                    loading: {
+                      iconTheme: { primary: "#68bb90", secondary: "#0b3825" },
+                    },
+                  }}
+                />
               </SidebarProvider>
             </ThemeProvider>
           </ProgressProvider>

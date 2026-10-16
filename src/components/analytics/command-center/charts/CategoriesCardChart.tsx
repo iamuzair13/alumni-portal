@@ -37,7 +37,7 @@ function TierBarRow({
   return (
     <div
       className={`grid h-full min-h-0 grid-cols-[1.5rem_minmax(0,1fr)_3.5rem_2.75rem] items-center gap-1 rounded-md px-0.5 ${
-        isLeader && bar.value > 0 ? "bg-emerald-50/60 dark:bg-emerald-500/[0.06]" : ""
+        isLeader && bar.value > 0 ? "bg-success-50/60 dark:bg-success-500/[0.06]" : ""
       }`}
     >
       <span
@@ -51,7 +51,7 @@ function TierBarRow({
         {bar.label}
       </span>
 
-      <div className="relative h-1.5 min-w-0 overflow-hidden rounded-full bg-slate-100/90 dark:bg-slate-800/70">
+      <div className="relative h-1.5 min-w-0 overflow-hidden rounded-full bg-gray-100/90 dark:bg-gray-800/70">
         <motion.div
           initial={{ width: reduced ? `${width}%` : 0 }}
           animate={{ width: `${width}%` }}
@@ -67,10 +67,10 @@ function TierBarRow({
         />
       </div>
 
-      <span className="text-right text-[11px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
+      <span className="text-right text-[11px] font-semibold tabular-nums text-gray-600 dark:text-gray-300">
         {bar.value.toLocaleString()}
       </span>
-      <span className="text-right text-[11px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+      <span className="text-right text-[11px] font-semibold tabular-nums text-gray-500 dark:text-gray-400">
         {total > 0 ? `${pct.toFixed(1)}%` : "—"}
       </span>
     </div>

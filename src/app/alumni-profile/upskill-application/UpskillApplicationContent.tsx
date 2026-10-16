@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
 import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
-import { Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import PageBanner from "@/components/ui/PageBanner";
 
 function UpskillApplicationContent() {
@@ -262,7 +262,7 @@ function UpskillApplicationContent() {
   return (
     <>
       <AppHeader />
-      <Toaster position="top-right" />
+
       <PageBanner title="Upskill & Reskill Application" />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">

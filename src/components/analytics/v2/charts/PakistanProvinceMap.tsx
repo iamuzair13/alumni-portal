@@ -104,7 +104,7 @@ export function PakistanProvinceMap({
             </span>
           ) : null}
           {other > 0 ? (
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
               Other: {other.toLocaleString()}
             </span>
           ) : null}

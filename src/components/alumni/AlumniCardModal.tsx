@@ -17,11 +17,11 @@ export default function AlumniCardModal({ alumniId, name, sapId, faculty, depart
     <dialog open className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40" aria-modal="true" role="dialog">
       <div className="w-full h-full max-h-[100vh] rounded-lg bg-white shadow-xl transition-all duration-300 ease-out flex flex-col">
         <div className="flex items-center justify-between border-b p-4 flex-shrink-0">
-          <h2 className="text-lg font-semibold text-slate-900">Apply for Alumni Card</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Apply for Alumni Card</h2>
           <Link
             aria-label="Close"
             href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile`}
-            className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100"
+            className="rounded-md px-2 py-1 text-gray-700 hover:bg-gray-100"
           >
             Close
           </Link>

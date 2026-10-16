@@ -96,7 +96,7 @@ export default function EventDetailPage() {
   if (isLoading) {
     return (
       <>
-        <div className="bg-slate-100 overflow-x-hidden min-h-screen">
+        <div className="bg-gray-100 overflow-x-hidden min-h-screen">
           <div className="border bg-white relative z-50">
             <AppHeader />
           </div>
@@ -122,7 +122,7 @@ export default function EventDetailPage() {
   if (isError || !event) {
     return (
       <>
-        <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:text-gray-300 dark:bg-gray-900">
+        <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:text-gray-300 dark:bg-gray-900">
           <div className="border bg-white relative z-50">
             <AppHeader />
           </div>
@@ -155,7 +155,7 @@ export default function EventDetailPage() {
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:text-gray-300 dark:bg-gray-900">
+      <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:text-gray-300 dark:bg-gray-900">
         <div className="border bg-white relative z-50">
           <AppHeader />
         </div>
@@ -176,7 +176,7 @@ export default function EventDetailPage() {
           {/* Main Content Card */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden dark:bg-gray-800 dark:border-gray-700">
             {/* Header Section */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 px-6 py-8 border-b border-gray-200 dark:border-gray-700">
+            <div className="bg-gradient-to-r from-blue-50 to-brand-50 dark:from-gray-900 dark:to-gray-800 px-6 py-8 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="inline-block mb-3">

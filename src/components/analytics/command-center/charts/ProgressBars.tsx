@@ -46,13 +46,13 @@ export function ProgressBars({
             className={`grid min-w-0 items-center gap-2 ${isPremium ? "grid-cols-[3rem_minmax(0,1fr)]" : "grid-cols-[2.25rem_minmax(0,1fr)]"}`}
           >
             <span
-              className="truncate text-right text-[10px] font-medium text-slate-500 dark:text-slate-400"
+              className="truncate text-right text-[10px] font-medium text-gray-500 dark:text-gray-400"
               title={p.label}
             >
               {p.label}
             </span>
             <div
-              className={`min-w-0 overflow-hidden ${isPremium ? "rounded-full bg-slate-100 dark:bg-slate-800" : "rounded-full bg-gray-200/90 dark:bg-gray-800"}`}
+              className={`min-w-0 overflow-hidden ${isPremium ? "rounded-full bg-gray-100 dark:bg-gray-800" : "rounded-full bg-gray-200/90 dark:bg-gray-800"}`}
             >
               <motion.div
                 initial={{ width: reduced ? `${pct}%` : 0 }}

@@ -8,11 +8,11 @@ type Props = {
 export default function StoryBodyContent({ html, className = "" }: Props) {
   const safeHtml = sanitizeStoryHtml(html);
   if (!safeHtml.trim()) {
-    return <p className="text-slate-500 text-sm">No story content available.</p>;
+    return <p className="text-gray-500 text-sm">No story content available.</p>;
   }
   return (
     <div
-      className={`story-body text-slate-700 leading-relaxed dark:text-gray-300 ${className}`}
+      className={`story-body text-gray-700 leading-relaxed dark:text-gray-300 ${className}`}
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   );

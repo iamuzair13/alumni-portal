@@ -35,9 +35,9 @@ type MentorshipFormValues = {
   confirmed: boolean;
 };
 
-const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all";
-const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
-const errorText = "mt-1 text-xs text-rose-600";
+const inputBase = "field-input";
+const labelBase = "mb-2 text-sm text-gray-900 font-medium block";
+const errorText = "mt-1 text-xs text-error-600";
 
 function useCurrentAlumni(email: string | undefined) {
   return useQuery({
@@ -235,7 +235,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
 
   return (
     <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
-      <h3 className="text-lg font-semibold text-slate-900 dark:text-gray-100">Mentorship Program</h3>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Mentorship Program</h3>
       <p className="text-sm text-gray-600 dark:text-gray-400">Provide details to participate in mentorship sessions.</p>
 
       <form className="max-w-4xl mx-auto mt-4" onSubmit={async (e) => { e.preventDefault(); const ok = await trigger(); if (ok) handleSubmit(onSubmit)(); }}>
@@ -243,7 +243,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
           <div>
             <label className={labelBase}>Major/Specialization</label>
             <div className="relative flex items-center">
-              <input className={`${inputBase} ${errors.major ? "border-rose-500 bg-rose-50" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} placeholder="e.g., Data Science" {...register("major", { required: "Major is required" })} />
+              <input className={`${inputBase} ${errors.major ? "border-error-500 bg-error-50" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} placeholder="e.g., Data Science" {...register("major", { required: "Major is required" })} />
             </div>
             {errors.major && <span className={errorText}>{String(errors.major.message || "Required")}</span>}
           </div>
@@ -255,7 +255,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
                 type="number" 
                 min="1"
                 step="1"
-                className={`${inputBase} ${errors.area ? "border-rose-500 bg-rose-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} 
+                className={`${inputBase} ${errors.area ? "border-error-500 bg-error-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} 
                 placeholder="e.g., 5" 
                 {...register("area", { 
                   required: "Area of experience is required",
@@ -280,7 +280,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
           <div className="md:col-span-2">
             <label className={labelBase}>Topic for mentoring - Talk</label>
             <div className="relative flex items-center">
-              <input className={`${inputBase} ${errors.topic ? "border-rose-500 bg-rose-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} placeholder="e.g., React Performance" {...register("topic", { required: "Topic is required" })} />
+              <input className={`${inputBase} ${errors.topic ? "border-error-500 bg-error-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} placeholder="e.g., React Performance" {...register("topic", { required: "Topic is required" })} />
             </div>
             {errors.topic && <span className={errorText}>{String(errors.topic.message || "Required")}</span>}
           </div>
@@ -288,7 +288,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
           <div>
             <label className={labelBase}>Mode</label>
             <div className="relative flex items-center">
-              <select className={`${inputBase} ${errors.mode ? "border-rose-500 bg-rose-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} {...register("mode", { required: "Mode is required" })}>
+              <select className={`${inputBase} ${errors.mode ? "border-error-500 bg-error-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} {...register("mode", { required: "Mode is required" })}>
                 <option value="Online">Online</option>
                 <option value="Face to Face">Face to Face</option>
               </select>
@@ -301,7 +301,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
             <div className="relative flex items-center">
               <textarea 
                 rows={4}
-                className={`${inputBase} ${errors.briefOutline ? "border-rose-500 bg-rose-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} 
+                className={`${inputBase} ${errors.briefOutline ? "border-error-500 bg-error-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`} 
                 placeholder="Please provide a brief outline of your talk..." 
                 {...register("briefOutline", { required: "Brief outline is required" })} 
               />
@@ -319,10 +319,10 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
                 const hasError = dateError || startTimeError || endTimeError;
                 
                 return (
-                  <div key={field.id} className={`p-4 border rounded-md ${hasError ? "border-rose-500 bg-rose-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : "border-gray-200 bg-gray-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}`}>
+                  <div key={field.id} className={`p-4 border rounded-md ${hasError ? "border-error-500 bg-error-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : "border-gray-200 bg-gray-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}`}>
                     <div className="grid sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="mb-1 text-xs text-slate-700 font-medium block dark:text-gray-100">Date</label>
+                        <label className="mb-1 text-xs text-gray-700 font-medium block dark:text-gray-100">Date</label>
                         <input 
                           type="date" 
                           className={`${inputBase} text-sm py-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`}
@@ -339,7 +339,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
                         {dateError && <span className={errorText}>{String(dateError.message || "Required")}</span>}
                       </div>
                       <div>
-                        <label className="mb-1 text-xs text-slate-700 font-medium block dark:text-gray-100">Start Time</label>
+                        <label className="mb-1 text-xs text-gray-700 font-medium block dark:text-gray-100">Start Time</label>
                         <input 
                           type="time" 
                           className={`${inputBase} text-sm py-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`}
@@ -352,7 +352,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
                       </div>
                       <div className="flex items-end gap-2">
                         <div className="flex-1">
-                          <label className="mb-1 text-xs text-slate-700 font-medium block dark:text-gray-100">End Time</label>
+                          <label className="mb-1 text-xs text-gray-700 font-medium block dark:text-gray-100">End Time</label>
                           <input 
                             type="time" 
                             className={`${inputBase} text-sm py-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`}
@@ -373,7 +373,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
                           <button
                             type="button"
                             onClick={() => remove(index)}
-                            className="px-3 py-2 text-sm text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 rounded-md transition-colors"
+                            className="px-3 py-2 text-sm text-error-600 hover:text-error-700 hover:bg-error-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 rounded-md transition-colors"
                             title="Remove this date"
                           >
                             ×
@@ -388,7 +388,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
                 <button
                   type="button"
                   onClick={() => append({ date: "", startTime: "", endTime: "" })}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#007bff] hover:text-[#006bff] hover:bg-blue-50 rounded-md transition-colors border border-blue-200"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-600 hover:text-brand-700 hover:bg-blue-50 rounded-md transition-colors border border-blue-200"
                 >
                   <span className="text-lg">+</span>
                   <span>Add More Availability</span>
@@ -422,12 +422,12 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
             <label className="flex items-center gap-3 cursor-pointer dark:text-gray-100">
               <input 
                 type="checkbox" 
-                className="w-5 h-5 text-[#007bff] border-gray-300 rounded focus:ring-[#007bff] dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"
+                className="w-5 h-5 text-brand-600 border-gray-300 rounded focus:ring-brand-500/30 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"
                 {...register("confirmed", { 
                   required: "You must confirm that all information is correct"
                 })} 
               />
-              <span className="text-sm text-slate-900 font-medium dark:text-gray-100">
+              <span className="text-sm text-gray-900 font-medium dark:text-gray-100">
                 I confirm that all above information is correct
               </span>
             </label>
@@ -439,7 +439,7 @@ export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }
           <button 
             type="submit" 
             disabled={!canSubmit || submitting} 
-            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             title={!canSubmit ? "Please fill in all required fields correctly and confirm the information" : ""}
           >
             {submitting ? "Submitting..." : "Submit"}

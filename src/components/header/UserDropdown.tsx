@@ -49,8 +49,8 @@ export default function UserDropdown() {
     }
     if (isAlumni) {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold leading-none text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-success-100 px-2 py-0.5 text-[10px] font-semibold leading-none text-success-700 dark:bg-success-900/30 dark:text-success-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-success-500"></span>
           Alumni
         </span>
       );
@@ -120,7 +120,7 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
       <button
         ref={buttonRef}
         onClick={toggleDropdown}
-        className="dropdown-toggle flex  items-center rounded-xl px-2 py-1.5 text-[#183D32] transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 dark:text-emerald-200 dark:hover:bg-gray-800 dark:focus-visible:ring-emerald-400/30 "
+        className="dropdown-toggle flex  items-center rounded-xl px-2 py-1.5 text-accent-600 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[accent-500]/20 dark:text-success-200 dark:hover:bg-gray-800 dark:focus-visible:ring-success-400/30 "
       >
         <span className="mr-3 h-11 w-11 overflow-hidden rounded-full border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -140,14 +140,14 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
         </span>
 
         <span className="mr-1 flex flex-col items-start">
-          <span className="block text-theme-sm font-medium text-[#183D32] dark:text-emerald-200">
+          <span className="block text-theme-sm font-medium text-accent-600 dark:text-success-200">
             {status === "loading" ? "Loading" : session?.user?.name || "User"}
           </span>
           {roleBadge}
         </span>
 
         <svg
-          className={`text-[#183D32] transition-transform duration-200 dark:text-emerald-200 ${
+          className={`text-accent-600 transition-transform duration-200 dark:text-success-200 ${
             isOpen ? "rotate-180" : ""
           }`}
           width="18"

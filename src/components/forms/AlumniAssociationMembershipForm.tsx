@@ -19,8 +19,8 @@ type Association = {
   address: string | null;
 };
 
-const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
-const errorText = "mt-1 text-xs text-rose-600";
+const labelBase = "mb-2 text-sm text-gray-900 font-medium block";
+const errorText = "mt-1 text-xs text-error-600";
 
 type Props = {
   alumniId: string;
@@ -192,7 +192,7 @@ export default function AlumniAssociationMembershipForm({ alumniId }: Props) {
           {/* Association Selection - Radio Buttons */}
           <div>
             <label className={`${labelBase} text-base font-semibold dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`}>
-              Select an Association <span className="text-rose-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">*</span>
+              Select an Association <span className="text-error-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">*</span>
             </label>
             <div className="space-y-3 mt-3 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
               {associations.map((association) => (
@@ -271,7 +271,7 @@ export default function AlumniAssociationMembershipForm({ alumniId }: Props) {
           <button
             type="submit"
             disabled={isSubmitting || !selectedAssociation}
-            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Joining..." : "Join Association"}
           </button>

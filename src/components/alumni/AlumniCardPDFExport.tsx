@@ -142,7 +142,7 @@ export default function AlumniCardPDFExport({ cardRef, studentName, disabled = f
       type="button"
       onClick={handleExportPDF}
       disabled={disabled || isGenerating}
-      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#007bff] hover:bg-[#006bff] rounded-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
       aria-label="Export card as PDF"
     >
       <DownloadIcon className="w-4 h-4" />

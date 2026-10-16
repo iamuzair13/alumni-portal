@@ -497,7 +497,7 @@ export default function MerchantsComponent() {
   }, [search, statusFilter]);
 
   const thClass =
-    "px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap hover:bg-gray-50 dark:hover:bg-gray-800/60";
+    "px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap hover:bg-gray-50 dark:hover:bg-gray-800/60";
 
   return (
     <div>
@@ -626,7 +626,7 @@ export default function MerchantsComponent() {
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300 whitespace-nowrap"
+                    className="px-4 py-3 text-right text-[13px] font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap"
                   >
                     Actions
                   </th>
@@ -638,19 +638,19 @@ export default function MerchantsComponent() {
                     key={m.id}
                     className="odd:bg-gray-50 dark:odd:bg-gray-800/70 dark:text-gray-300 dark:bg-gray-900"
                   >
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-slate-900 dark:text-gray-100 font-medium">
+                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-900 dark:text-gray-100 font-medium">
                       {m.business_name}
                     </td>
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-slate-700 dark:text-gray-300">
+                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-700 dark:text-gray-300">
                       {m.discount_type}
                     </td>
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-slate-700 dark:text-gray-300">
+                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-700 dark:text-gray-300">
                       {formatDate(m.start_date)}
                     </td>
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-slate-700 dark:text-gray-300">
+                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-700 dark:text-gray-300">
                       {formatDate(m.end_date)}
                     </td>
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-slate-700 dark:text-gray-300 text-center">
+                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-700 dark:text-gray-300 text-center">
                       <span className="font-semibold">{m.discount_pct}%</span>
                     </td>
                     <td className="px-4 py-3 border-r border-gray-200 text-[13px]">

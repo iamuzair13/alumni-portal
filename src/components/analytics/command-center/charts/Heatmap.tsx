@@ -41,7 +41,7 @@ export function Heatmap({
             <span className="text-[9px] font-semibold uppercase tracking-wide text-violet-700/80 dark:text-violet-300/90">
               {d.label}
             </span>
-            <span className="text-[11px] font-bold leading-tight tabular-nums text-slate-900 dark:text-white">
+            <span className="text-[11px] font-bold leading-tight tabular-nums text-gray-900 dark:text-white">
               {d.value.toLocaleString()}
             </span>
           </motion.div>

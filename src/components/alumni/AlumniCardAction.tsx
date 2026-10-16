@@ -150,8 +150,8 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
         <dialog open aria-modal="true"  role="dialog" className="fixed inset-0 mt-20 flex items-start justify-center p-0 bg-black/40">
           <div className="w-full h-full max-w-none bg-white shadow-xl transition-all duration-300 ease-out">
             <div className="flex items-center justify-between border-b p-4">
-              <h2 className="text-lg font-semibold text-slate-900">Apply for Alumni Card</h2>
-              <button ref={closeFormBtnRef} aria-label="Close" className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100" onClick={() => setOpenForm(false)}>Close</button>
+              <h2 className="text-lg font-semibold text-gray-900">Apply for Alumni Card</h2>
+              <button ref={closeFormBtnRef} aria-label="Close" className="rounded-md px-2 py-1 text-gray-700 hover:bg-gray-100" onClick={() => setOpenForm(false)}>Close</button>
             </div>
             <div className="p-4 m overflow-y-auto h-[calc(100vh-56px)]">
               <AlumniCardForm alumniId={alumniId} name={name} sapId={sapId} faculty={faculty} department={department} />

@@ -65,7 +65,7 @@ export default function ChartTableToggle({
             onClick={() => setAndStore("table")}
             className={`rounded px-2 py-1 text-[10px] font-semibold transition-colors ${
               view === "table"
-                ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-300"
+                ? "bg-white text-brand-700 shadow-sm dark:bg-gray-800 dark:text-brand-300"
                 : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
             }`}
           >
@@ -77,7 +77,7 @@ export default function ChartTableToggle({
             onClick={() => setAndStore("chart")}
             className={`rounded px-2 py-1 text-[10px] font-semibold transition-colors ${
               view === "chart"
-                ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-300"
+                ? "bg-white text-brand-700 shadow-sm dark:bg-gray-800 dark:text-brand-300"
                 : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
             }`}
           >

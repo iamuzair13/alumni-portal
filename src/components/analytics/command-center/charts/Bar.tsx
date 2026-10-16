@@ -137,7 +137,7 @@ export function BarChartMini({
     const yAxisWidth = Math.min(80, Math.max(48, maxLabelLen * 5.5));
 
     return (
-      <div className="w-full overflow-hidden text-slate-600 dark:text-slate-300" style={{ height }}>
+      <div className="w-full overflow-hidden text-gray-600 dark:text-gray-300" style={{ height }}>
         <ResponsiveContainer width="100%" height={height} key={`bar-h-${replayKey}`}>
           <BarChart
             data={chartData}

@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
 import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
-import { Toaster } from "react-hot-toast";
+
 import PageBanner from "@/components/ui/PageBanner";
 import AlumniCardForm from "@/components/forms/alumni-card";
 
@@ -103,7 +103,7 @@ function CardApplicationContent() {
           </div>
         </div>
       </div>
-      <Toaster position="top-right" />
+
     </>
   );
 }

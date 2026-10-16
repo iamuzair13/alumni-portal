@@ -78,11 +78,11 @@ const Toast: React.FC<{ message: string; type: "success" | "error"; onClose: () 
     <div className="fixed top-6 right-6 z-50 animate-slide-in-right">
       <div className={`flex items-center gap-3 rounded-2xl px-5 py-4 shadow-2xl backdrop-blur-xl border ${
         type === "success" 
-          ? "bg-emerald-50/95 border-emerald-200/50 text-emerald-800 dark:bg-emerald-900/90 dark:border-emerald-700/30 dark:text-emerald-200" 
-          : "bg-rose-50/95 border-rose-200/50 text-rose-800 dark:bg-rose-900/90 dark:border-rose-700/30 dark:text-rose-200"
+          ? "bg-success-50/95 border-success-200/50 text-success-800 dark:bg-success-900/90 dark:border-success-700/30 dark:text-success-200" 
+          : "bg-error-50/95 border-error-200/50 text-error-800 dark:bg-error-900/90 dark:border-error-700/30 dark:text-error-200"
       }`}>
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-          type === "success" ? "bg-emerald-100 dark:bg-emerald-800/50" : "bg-rose-100 dark:bg-rose-800/50"
+          type === "success" ? "bg-success-100 dark:bg-success-800/50" : "bg-error-100 dark:bg-error-800/50"
         }`}>
           {type === "success" ? (
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -241,10 +241,10 @@ function StoryActionsDropdown({
                         onApprove(story);
                         onClose();
                       }}
-                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-success-50 dark:hover:bg-success-900/20 transition-colors"
                     >
-                      <CheckLineIcon className="h-4 w-4 shrink-0 text-emerald-500/80 group-hover:text-emerald-600 dark:group-hover:text-emerald-400" />
-                      <span className="group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Approve</span>
+                      <CheckLineIcon className="h-4 w-4 shrink-0 text-success-500/80 group-hover:text-success-600 dark:group-hover:text-success-400" />
+                      <span className="group-hover:text-success-700 dark:group-hover:text-success-300">Approve</span>
                     </button>
                   )}
                   {canReject && (
@@ -255,10 +255,10 @@ function StoryActionsDropdown({
                         onReject(story);
                         onClose();
                       }}
-                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-error-50 dark:hover:bg-error-900/20 transition-colors"
                     >
-                      <CloseLineIcon className="h-4 w-4 shrink-0 text-rose-500/80 group-hover:text-rose-600 dark:group-hover:text-rose-400" />
-                      <span className="group-hover:text-rose-700 dark:group-hover:text-rose-300">Reject</span>
+                      <CloseLineIcon className="h-4 w-4 shrink-0 text-error-500/80 group-hover:text-error-600 dark:group-hover:text-error-400" />
+                      <span className="group-hover:text-error-700 dark:group-hover:text-error-300">Reject</span>
                     </button>
                   )}
                 </>
@@ -500,7 +500,7 @@ const StoryTable: React.FC<StoryListProps> = ({
 
                 <TableCell className="px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-blue-500/30">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-brand-600 text-sm font-bold text-white shadow-lg shadow-blue-500/30">
                       {story.name?.charAt(0).toUpperCase() || "?"}
                     </div>
                     <div className="min-w-0">
@@ -516,7 +516,7 @@ const StoryTable: React.FC<StoryListProps> = ({
                   <div className="flex flex-col gap-0.5">
                     <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{story.program || "-"}</span>
                     {story.session && (
-                      <span className="inline-flex w-fit items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                      <span className="inline-flex w-fit items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
                         {story.session}
                       </span>
                     )}
@@ -532,7 +532,7 @@ const StoryTable: React.FC<StoryListProps> = ({
                 <TableCell className="px-5 py-4">
                   <StoryStatusBadge status={story.status} size="sm" />
                   {normalizeStoryStatus(story.status) === "not-approved" && story.rejectionReason && (
-                    <p className="mt-1 line-clamp-2 text-xs text-rose-600 dark:text-rose-400">{story.rejectionReason}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-error-600 dark:text-error-400">{story.rejectionReason}</p>
                   )}
                 </TableCell>
 
@@ -655,7 +655,7 @@ const StoryTable: React.FC<StoryListProps> = ({
               approveModal.closeModal();
               setApproveTargetId(null);
             }}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+            className="rounded-lg bg-success-600 px-4 py-2 text-sm font-medium text-white hover:bg-success-700"
           >
             Confirm Approval
           </button>
@@ -712,7 +712,7 @@ const StoryTable: React.FC<StoryListProps> = ({
               setRejectionReason("");
             }}
             disabled={!rejectionReason.trim()}
-            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+            className="rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white hover:bg-error-700 disabled:opacity-50"
           >
             Confirm Rejection
           </button>
@@ -763,7 +763,7 @@ const StoryTable: React.FC<StoryListProps> = ({
               setDeleteTargetId(null);
             }}
             disabled={Boolean(deleteTargetId && deletingIds?.has(deleteTargetId))}
-            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+            className="rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white hover:bg-error-700 disabled:opacity-50"
           >
             {deleteTargetId && deletingIds?.has(deleteTargetId) ? "Deleting..." : "Confirm Delete"}
           </button>
@@ -914,7 +914,7 @@ function AlumniPageInner() {
         {/* Header Section */}
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-lg shadow-blue-600/25">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-brand-700 shadow-lg shadow-blue-600/25">
               <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>

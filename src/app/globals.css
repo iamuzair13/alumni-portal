@@ -40,18 +40,19 @@
   --color-white: #ffffff;
   --color-black: #101828;
 
-  --color-brand-25: #f2f7ff;
-  --color-brand-50: #ecf3ff;
-  --color-brand-100: #dde9ff;
-  --color-brand-200: #c2d6ff;
-  --color-brand-300: #9cb9ff;
-  --color-brand-400: #7592ff;
-  --color-brand-500: #465fff;
-  --color-brand-600: #3641f5;
-  --color-brand-700: #2a31d8;
-  --color-brand-800: #252dae;
-  --color-brand-900: #262e89;
-  --color-brand-950: #161950;
+  /* Brand: UOL institutional green (re-based from template blue) */
+  --color-brand-25: #f4faf6;
+  --color-brand-50: #e7f4ec;
+  --color-brand-100: #cde8d7;
+  --color-brand-200: #9ed4b6;
+  --color-brand-300: #68bb90;
+  --color-brand-400: #3a9d6c;
+  --color-brand-500: #1c8353;
+  --color-brand-600: #146f45;
+  --color-brand-700: #115a39;
+  --color-brand-800: #0e472e;
+  --color-brand-900: #0b3825;
+  --color-brand-950: #062417;
 
   /* Brand accent: UOL deep green */
   --color-accent-25: #f2f8f6;
@@ -164,7 +165,7 @@
     0px 20px 24px -4px rgba(16, 24, 40, 0.08),
     0px 8px 8px -4px rgba(16, 24, 40, 0.03);
   --shadow-datepicker: -5px 0 0 #262d3c, 5px 0 0 #262d3c;
-  --shadow-focus-ring: 0px 0px 0px 4px rgba(70, 95, 255, 0.12);
+  --shadow-focus-ring: 0px 0px 0px 4px rgba(28, 131, 83, 0.14);
   --shadow-slider-navigation:
     0px 1px 2px 0px rgba(16, 24, 40, 0.1), 0px 1px 3px 0px rgba(16, 24, 40, 0.1);
   --shadow-tooltip:
@@ -210,6 +211,31 @@
     max-width: 100%;
     height: auto;
   }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* ── Shared surface primitives ─────────────────────────────────────────── */
+@utility card {
+  @apply rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900;
+}
+@utility field-input {
+  @apply h-11 w-full rounded-lg border border-gray-300 bg-white px-3.5 text-sm text-gray-900 shadow-xs placeholder:text-gray-400 transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:disabled:bg-gray-950;
+}
+@utility field-input-error {
+  @apply border-error-500 focus:border-error-500 focus:ring-error-500/15 dark:border-error-500;
+}
+@utility field-label {
+  @apply mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300;
+}
+@utility field-hint {
+  @apply mt-1.5 text-xs text-gray-500 dark:text-gray-400;
+}
+@utility field-error {
+  @apply mt-1.5 flex items-center gap-1.5 text-xs text-error-600 dark:text-error-400;
 }
 
 @utility menu-item {

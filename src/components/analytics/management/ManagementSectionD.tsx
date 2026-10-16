@@ -57,7 +57,7 @@ export default function ManagementSectionD({ data, isLoading }: Props) {
     >
       <AnalyticsGrid>
         <AnalyticsGridItem span={4}>
-          <AnalyticsSubheading dotColor="bg-emerald-500">Memberships & perks</AnalyticsSubheading>
+          <AnalyticsSubheading dotColor="bg-success-500">Memberships & perks</AnalyticsSubheading>
           <ChartTableToggle
             widgetId="mgmt-memberships"
             defaultView="table"
@@ -102,7 +102,7 @@ export default function ManagementSectionD({ data, isLoading }: Props) {
         </AnalyticsGridItem>
 
         <AnalyticsGridItem span={4}>
-          <AnalyticsSubheading dotColor="bg-indigo-500">Merchant details</AnalyticsSubheading>
+          <AnalyticsSubheading dotColor="bg-brand-500">Merchant details</AnalyticsSubheading>
           <AnalyticsDataTable
             isLoading={isLoading}
             columns={[

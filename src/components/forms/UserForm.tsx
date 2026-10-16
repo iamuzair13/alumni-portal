@@ -590,7 +590,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
 
           {/* Access Control Section - Only for Admin and Viewer roles, and only superadmin can edit */}
           {showAccessControl && isSuperAdmin && (
-            <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 dark:border-blue-800 dark:from-gray-800/50 dark:to-gray-900/50">
+            <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-brand-50 p-6 dark:border-blue-800 dark:from-gray-800/50 dark:to-gray-900/50">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                   <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1882,7 +1882,7 @@ export default function LeadershipPage() {
   };
 
   return (
-    <div className="min-h-screen w-full min-w-0 overflow-x-hidden bg-slate-100 dark:bg-gray-950">
+    <div className="min-h-screen w-full min-w-0 overflow-x-hidden bg-gray-100 dark:bg-gray-950">
       <div className="mx-auto flex w-full min-w-0 max-w-[1300px] flex-col bg-white dark:bg-gray-900 shadow-sm border-x border-b border-gray-200 dark:border-gray-800">
         <div className="border-b border-gray-200 px-4 py-4 dark:border-gray-700">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Leadership Applications</h1>
@@ -2000,7 +2000,7 @@ export default function LeadershipPage() {
             <button
               type="button"
               onClick={() => setScorecardModeModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50 dark:bg-gray-950 dark:text-emerald-300 dark:hover:bg-emerald-950/30 text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-success-600 bg-white text-success-700 hover:bg-success-50 dark:bg-gray-950 dark:text-success-300 dark:hover:bg-success-950/30 text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
             >
               <DownloadIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Get ScoreCard</span>
@@ -2010,7 +2010,7 @@ export default function LeadershipPage() {
           <button
             onClick={handleExport}
             disabled={isExporting}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-success-600 hover:bg-success-700 active:bg-success-800 text-white text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
           >
             <DownloadIcon className={`w-4 h-4 ${isExporting ? 'animate-bounce' : ''}`} />
             <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export'}</span>
@@ -2304,11 +2304,11 @@ export default function LeadershipPage() {
                     setScorecardModeModalOpen(false);
                     setScorecardModalOpen(true);
                   }}
-                  className="flex flex-col items-center gap-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 p-5 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                  className="flex flex-col items-center gap-2 rounded-xl border-2 border-success-500 bg-success-50 dark:bg-success-950/30 p-5 text-success-700 dark:text-success-300 hover:bg-success-100 dark:hover:bg-success-900/40 transition-colors"
                 >
                   <DownloadIcon className="w-7 h-7" />
                   <span className="text-sm font-semibold">Get ScoreCard</span>
-                  <span className="text-xs text-center text-emerald-600/70 dark:text-emerald-400/70">Full criteria & marks breakdown</span>
+                  <span className="text-xs text-center text-success-600/70 dark:text-success-400/70">Full criteria & marks breakdown</span>
                 </button>
                 <button
                   type="button"
@@ -2538,7 +2538,7 @@ export default function LeadershipPage() {
                   type="button"
                   onClick={() => void handleGenerateBulkScorecard()}
                   disabled={!scorecardFormReady || scorecardGenerating || scorecardPreviewing}
-                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-success-600 hover:bg-success-700 disabled:opacity-50"
                 >
                   <DownloadIcon className={`h-4 w-4 ${scorecardGenerating ? "animate-bounce" : ""}`} />
                   {scorecardGenerating ? "Generating…" : scorecardMode === "summary" ? "Download Summary" : "Download ScoreCard"}
@@ -3531,7 +3531,7 @@ export default function LeadershipPage() {
                       type="button"
                       disabled={assignProcessing}
                       onClick={() => void handleAssignRole()}
-                      className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-success-600 hover:bg-success-700 disabled:opacity-50"
                     >
                       {assignProcessing && (
                         <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -3713,11 +3713,11 @@ export default function LeadershipPage() {
                       const statusLower = statusText.toLowerCase();
                       const statusBadge =
                         statusLower === "approved"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          ? "bg-success-50 text-success-700 border-success-200"
                           : statusLower === "assessed"
                             ? "bg-blue-50 text-blue-700 border-blue-200"
                           : statusLower === "rejected"
-                            ? "bg-rose-50 text-rose-700 border-rose-200"
+                            ? "bg-error-50 text-error-700 border-error-200"
                             : "bg-amber-50 text-amber-700 border-amber-200";
 
                       const docs = documentsFromItem(item);
@@ -3952,7 +3952,7 @@ export default function LeadershipPage() {
                                 Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role
                               </div>
                               {showAssessmentMarks ? (
-                                <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                <span className="shrink-0 inline-flex items-center rounded-full border border-success-200 bg-success-50 px-2.5 py-1 text-xs font-semibold text-success-800 tabular-nums dark:border-success-800 dark:bg-success-950/40 dark:text-success-200">
                                   {formatObtainedMarkDisplay(strategyMarks)} / 15
                                 </span>
                               ) : null}
@@ -3968,7 +3968,7 @@ export default function LeadershipPage() {
                                 Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
                               </div>
                               {showAssessmentMarks ? (
-                                <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                <span className="shrink-0 inline-flex items-center rounded-full border border-success-200 bg-success-50 px-2.5 py-1 text-xs font-semibold text-success-800 tabular-nums dark:border-success-800 dark:bg-success-950/40 dark:text-success-200">
                                   {formatObtainedMarkDisplay(achievementMarks)} / 10
                                 </span>
                               ) : null}
@@ -4015,7 +4015,7 @@ export default function LeadershipPage() {
                     
 
                           {showAssessmentMarks ? (
-                            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/80 dark:bg-emerald-950/20 p-6 shadow-sm">
+                            <div className="rounded-xl border border-success-200 dark:border-success-800 bg-success-50/80 dark:bg-success-950/20 p-6 shadow-sm">
                               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Assessment Summary</div>
                               <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700 dark:text-gray-300">
                                 <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 px-3 py-2">
@@ -4030,9 +4030,9 @@ export default function LeadershipPage() {
                                     {formatObtainedMarkDisplay(bonusMarks)} / 25
                                   </div>
                                 </div>
-                                <div className="rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-100/50 dark:bg-emerald-900/30 px-3 py-2">
-                                  <div className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">Grand Total</div>
-                                  <div className="mt-1 text-base font-bold text-emerald-900 dark:text-emerald-100 tabular-nums">
+                                <div className="rounded-lg border border-success-300 dark:border-success-700 bg-success-100/50 dark:bg-success-900/30 px-3 py-2">
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-success-800 dark:text-success-300">Grand Total</div>
+                                  <div className="mt-1 text-base font-bold text-success-900 dark:text-success-100 tabular-nums">
                                     {formatObtainedMarkDisplay(grandObtained)} / {formatObtainedMarkDisplay(grandMaximum)}
                                   </div>
                                 </div>
@@ -4251,10 +4251,10 @@ function ApplicationActionsDropdown({
                       void onAction("approve", app.id, app.type);
                       onClose();
                     }}
-                    className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                    className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-success-50 dark:hover:bg-success-900/20 transition-colors"
                   >
-                    <CheckLineIcon className="h-4 w-4 shrink-0 text-emerald-500/80 group-hover:text-emerald-600 dark:group-hover:text-emerald-400" />
-                    <span className="group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Approve</span>
+                    <CheckLineIcon className="h-4 w-4 shrink-0 text-success-500/80 group-hover:text-success-600 dark:group-hover:text-success-400" />
+                    <span className="group-hover:text-success-700 dark:group-hover:text-success-300">Approve</span>
                   </button>
                   <button
                     type="button"
@@ -4519,7 +4519,7 @@ function ApplicationsTable({
                     <button
                       type="button"
                       onClick={() => onViewAdditionalAchievements(app)}
-                      className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 hover:bg-emerald-100"
+                      className="inline-flex items-center gap-1 rounded-full border border-success-200 bg-success-50 px-2 py-0.5 text-[10px] font-semibold text-success-800 hover:bg-success-100"
                       title="View additional achievements"
                     >
                       <EyeIcon className="h-3.5 w-3.5" />
@@ -4574,11 +4574,11 @@ function ApplicationsTable({
               <span
                 className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
                   String(app.status || "").toLowerCase() === "approved"
-                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                    ? "bg-success-50 text-success-800 border-success-200"
                     : String(app.status || "").toLowerCase() === "assessed"
                       ? "bg-blue-50 text-blue-800 border-blue-200"
                       : String(app.status || "").toLowerCase() === "rejected"
-                        ? "bg-rose-50 text-rose-800 border-rose-200"
+                        ? "bg-error-50 text-error-800 border-error-200"
                         : String(app.status || "").toLowerCase() === "invalid"
                           ? "bg-red-50 text-red-800 border-red-200"
                           : "bg-amber-50 text-amber-800 border-amber-200"
@@ -4768,7 +4768,7 @@ function MembersTable({
                     <button
                       onClick={() => onDelete(member.id, type)}
                       disabled={processingIds.has(member.id)}
-                      className="p-1.5 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
+                      className="p-1.5 rounded hover:bg-error-50 text-error-600 disabled:opacity-50"
                       title="Delete"
                     >
                       <TrashBinIcon className="h-4 w-4" />

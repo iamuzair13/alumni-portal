@@ -132,9 +132,9 @@ export default function AlumniVerificationPage() {
               <div
                 className={`rounded-lg border px-4 py-3 text-sm ${
                   status.type === "error"
-                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                    ? "border-error-200 bg-error-50 text-error-700"
                     : status.type === "success"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      ? "border-success-200 bg-success-50 text-success-700"
                       : "border-gray-200 bg-gray-50 text-gray-700"
                 }`}
                 role="status"

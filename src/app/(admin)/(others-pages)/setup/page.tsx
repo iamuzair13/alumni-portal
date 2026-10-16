@@ -943,27 +943,27 @@ function SetupPageContent() {
                   <table className="min-w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800" role="table" aria-label="Users with dashboard access">
                     <thead className="whitespace-nowrap border-b border-gray-200 bg-white dark:border-white/[0.06] dark:bg-gray-900/80 dark:text-gray-300 dark:bg-gray-900">
                       <tr className="border-b border-gray-200 dark:border-white/[0.06]">
-                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
-                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Role</th>
-                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Status</th>
-                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Last Access</th>
-                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Permissions</th>
-                        <th scope="col" className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">User</th>
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Role</th>
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Status</th>
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Last Access</th>
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Permissions</th>
+                        <th scope="col" className="px-4 py-3 text-right text-[13px] font-medium text-gray-600 dark:text-gray-300">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
                       {paginatedUsers.map((u) => (
                         <tr key={u.id} className="odd:bg-gray-50 dark:odd:bg-gray-800/70 dark:text-gray-300 dark:bg-gray-900">
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">
+                          <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">
                             <div className="flex flex-col">
-                              <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{u.name}</span>
+                              <span className="block font-medium text-gray-900 text-[13px] dark:text-white/90">{u.name}</span>
                               <span className="text-xs text-gray-600 dark:text-gray-300">{u.email}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">{u.role}</td>
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">{u.status}</td>
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">{formatDateTime(u.lastAccess)}</td>
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">
+                          <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">{u.role}</td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">{u.status}</td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">{formatDateTime(u.lastAccess)}</td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">
                             {Object.entries(u.permissions)
                               .filter(([, v]) => v)
                               .map(([k]) => k.replace(/([A-Z])/g, " $1").toLowerCase())
@@ -1456,7 +1456,7 @@ function UsersCounter({
   const totalCount = realTimeCount + localStorageCount;
 
   return (
-    <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+    <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-brand-50 dark:from-blue-900/20 dark:to-brand-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</h3>
@@ -1473,7 +1473,7 @@ function UsersCounter({
           </div>
           <div className="text-center">
             <p className="text-gray-500 dark:text-gray-400">Local</p>
-            <p className="text-lg font-semibold text-indigo-700 dark:text-indigo-300">
+            <p className="text-lg font-semibold text-brand-700 dark:text-brand-300">
               {localStorageCount.toLocaleString()}
             </p>
           </div>
@@ -1535,7 +1535,7 @@ function RealTimeUsers(props: {
       <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] text-slate-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
           aria-haspopup="menu"
           aria-expanded={open}
           title={items.join(", ")}
@@ -1555,7 +1555,7 @@ function RealTimeUsers(props: {
                 <div
                   key={it}
                   role="menuitem"
-                  className="px-3 py-2 text-[12px] text-slate-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                  className="px-3 py-2 text-[12px] text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   {it}
                 </div>
@@ -1650,26 +1650,26 @@ function RealTimeUsers(props: {
         <table className="min-w-full border border-gray-200 dark:border-gray-800" role="table" aria-label="Real-time users list">
           <thead className="whitespace-nowrap border-b border-gray-200 bg-white dark:border-white/[0.06] dark:bg-gray-900/80">
             <tr className="border-b border-gray-200 dark:border-white/[0.06]">
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Email</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Password</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Department</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Type</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Assigned Faculties</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Assigned Departments</th>
-              <th scope="col" className="px-4 py-3 text-center text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">User</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Email</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Password</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Department</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Type</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Assigned Faculties</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300">Assigned Departments</th>
+              <th scope="col" className="px-4 py-3 text-center text-[13px] font-medium text-gray-600 dark:text-gray-300">Actions</th>
             </tr>
           </thead>
           <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
             {pageItems.map((u) => (
               <tr key={u.userid} className="odd:bg-gray-50 dark:odd:bg-gray-800/70">
-                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300">
                   <div className="flex flex-col">
-                    <span className={`block font-medium  ${u.blocked ? "text-red-600" : "text-slate-900"} text-[13px] dark:text-white/90`}>{`${u.firstname ?? ""} ${u.lastname ?? ""}`.trim() || u.email || `User #${u.userid}`}</span>
+                    <span className={`block font-medium  ${u.blocked ? "text-red-600" : "text-gray-900"} text-[13px] dark:text-white/90`}>{`${u.firstname ?? ""} ${u.lastname ?? ""}`.trim() || u.email || `User #${u.userid}`}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.email ?? "-"}</td>
-                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 font-mono text-xs">
+                <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300">{u.email ?? "-"}</td>
+                <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300 font-mono text-xs">
                   {(() => {
                     // Super Admin can see all passwords
                     if (isSuperAdmin) {
@@ -1690,12 +1690,12 @@ function RealTimeUsers(props: {
                     );
                   })()}
                 </td>
-                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.department ?? "-"}</td>
-                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.type ?? "-"}</td>
-                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300">{u.department ?? "-"}</td>
+                <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300">{u.type ?? "-"}</td>
+                <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300">
                   <AssignedItemsCell items={u.accessAssignments?.faculties ?? []} allowDropdown={isSuperAdmin} />
                 </td>
-                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                <td className="px-4 py-3 border-r border-gray-200 text-gray-900 text-[13px] text-start dark:text-gray-300">
                   <AssignedItemsCell items={u.accessAssignments?.departments ?? []} allowDropdown={isSuperAdmin} />
                 </td>
                 <td className="px-4 py-3 text-right">

@@ -8,8 +8,8 @@ type Props = {
 
 const STYLES: Record<StoryStatus, string> = {
   pending: "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/50",
-  approved: "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800/50",
-  "not-approved": "bg-rose-50 text-rose-800 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-200 dark:ring-rose-800/50",
+  approved: "bg-success-50 text-success-800 ring-success-200 dark:bg-success-900/30 dark:text-success-200 dark:ring-success-800/50",
+  "not-approved": "bg-error-50 text-error-800 ring-error-200 dark:bg-error-900/30 dark:text-error-200 dark:ring-error-800/50",
 };
 
 const LABELS: Record<StoryStatus, string> = {

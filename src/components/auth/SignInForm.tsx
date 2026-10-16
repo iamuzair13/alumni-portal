@@ -275,21 +275,21 @@ export default function SignInForm() {
                 <Image src="/images/logo/UOL-Rebrand-ID_Final-02.png" alt="Logo" width={40} height={40} className="rounded" sizes="40px" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Welcome !</h1>
-                <p className="text-xs sm:text-sm text-slate-600">Please Sign in to your portal</p>
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Welcome !</h1>
+                <p className="text-xs sm:text-sm text-gray-600">Please Sign in to your portal</p>
               </div>
             </div>
 
             <form className="mt-4 space-y-4" onSubmit={handleCredentials} aria-label="SAP ID, Registration Number, or Email sign in form">
               <div>
-                <label htmlFor="identifier" className="block text-sm font-medium text-slate-700">SAP ID or Registration Number</label>
+                <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">SAP ID or Registration Number</label>
                 <input
                   id="identifier"
                   type="text"
                   autoComplete="username"
                   placeholder="Enter SAP ID or Registration Number"
                   required
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   aria-invalid={!!errors.identifier}
@@ -299,7 +299,7 @@ export default function SignInForm() {
 
               <div>
                 <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password</label>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
                   <button
                     type="button"
                     onClick={openForgotPassword}
@@ -314,7 +314,7 @@ export default function SignInForm() {
                     type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     required
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 pr-10 text-sm text-gray-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     aria-invalid={!!errors.password}
@@ -323,7 +323,7 @@ export default function SignInForm() {
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute inset-y-0 right-2 my-auto rounded-md px-2 text-sm text-slate-600 hover:text-slate-800"
+                    className="absolute inset-y-0 right-2 my-auto rounded-md px-2 text-sm text-gray-600 hover:text-gray-800"
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
@@ -359,7 +359,7 @@ export default function SignInForm() {
               </div>
             )}
 
-            <div className="mt-1 text-xs text-slate-600" aria-live="polite">
+            <div className="mt-1 text-xs text-gray-600" aria-live="polite">
               {status === "authenticated" ? "Signed in" : status === "loading" ? "Checking session..." : "Not signed in"}
             </div>
           </div>
@@ -370,15 +370,15 @@ export default function SignInForm() {
       <Modal isOpen={isForgotPasswordOpen} onClose={closeForgotPassword} isFullscreen={false} showCloseButton={true}>
         <div className="w-full lg:w-1/2 max-w-md mx-auto bg-white rounded-2xl p-6">
           <div className="mb-4">
-            <h2 className="text-xl font-semibold text-slate-900">Reset Your Password</h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <h2 className="text-xl font-semibold text-gray-900">Reset Your Password</h2>
+            <p className="mt-2 text-sm text-gray-600">
               Enter your registered email and we&apos;ll send you a new password.
             </p>
           </div>
 
           <form onSubmit={handleForgotPassword} className="space-y-4">
             <div>
-              <label htmlFor="forgot-password-email" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="forgot-password-email" className="block text-sm font-medium text-gray-700">
                 Email Address
               </label>
               <input
@@ -386,12 +386,12 @@ export default function SignInForm() {
                 type="email"
                 placeholder="Enter your registered email"
                 required
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                 value={forgotPasswordEmail}
                 onChange={(e) => setForgotPasswordEmail(e.target.value)}
                 disabled={forgotPasswordLoading}
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-gray-500">
                 Alumni: use your personal email. Staff: use your admin portal email.
               </p>
             </div>
@@ -413,7 +413,7 @@ export default function SignInForm() {
                 type="button"
                 onClick={closeForgotPassword}
                 disabled={forgotPasswordLoading}
-                className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:opacity-60"
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 disabled:opacity-60"
               >
                 Cancel
               </button>

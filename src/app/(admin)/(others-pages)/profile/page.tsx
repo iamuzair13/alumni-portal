@@ -71,7 +71,7 @@ export default async function Profile({ searchParams }: ProfilePageProps) {
 
         {/* Error state */}
         {error && (
-          <div role="alert" className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-200">
+          <div role="alert" className="mt-6 rounded-xl border border-error-200 bg-error-50 p-4 text-sm text-error-800 dark:border-error-800 dark:bg-error-900/20 dark:text-error-200">
             {error}
           </div>
         )}
