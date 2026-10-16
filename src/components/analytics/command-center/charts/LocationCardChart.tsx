@@ -47,13 +47,13 @@ function RegionBarRow({
     <div
       className={`group relative flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-colors ${
         isLeader && bar.count > 0
-          ? "bg-emerald-50/80 dark:bg-emerald-500/[0.08]"
-          : "hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
+          ? "bg-success-50/80 dark:bg-success-500/[0.08]"
+          : "hover:bg-gray-50/50 dark:hover:bg-gray-800/30"
       }`}
       title={`${bar.label}: ${bar.count.toLocaleString()} (${percentage}%)`}
     >
       {/* Bar track */}
-      <div className="relative flex-1 min-w-0 h-5 rounded-md overflow-hidden bg-slate-100/90 dark:bg-slate-800/70">
+      <div className="relative flex-1 min-w-0 h-5 rounded-md overflow-hidden bg-gray-100/90 dark:bg-gray-800/70">
         {/* Animated bar fill */}
         <motion.div
           initial={{ width: reduced ? `${width}%` : 0 }}
@@ -95,7 +95,7 @@ function RegionBarRow({
               delay: reduced ? 0 : stagger + 0.3,
               duration: 0.4,
             }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 ml-2 text-[11px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap"
+            className="absolute left-0 top-1/2 -translate-y-1/2 ml-2 text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
           >
             {bar.label} ({bar.count.toLocaleString()})
           </motion.span>
@@ -103,7 +103,7 @@ function RegionBarRow({
       </div>
 
       {/* Percentage */}
-      <span className="shrink-0 w-8 text-right text-[10px] font-bold tabular-nums text-slate-700 dark:text-slate-300">
+      <span className="shrink-0 w-8 text-right text-[10px] font-bold tabular-nums text-gray-700 dark:text-gray-300">
         {percentage}%
       </span>
     </div>

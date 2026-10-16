@@ -17,8 +17,8 @@ export function TrendBadge({
         compact ? "px-1 py-0 text-[9px]" : "rounded-full px-1.5 py-0.5 text-[10px]"
       } ${
         positive
-          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-          : "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+          ? "bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400"
+          : "bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-400"
       }`}
     >
       {positive ? "↑" : "↓"}

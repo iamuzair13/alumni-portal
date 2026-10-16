@@ -55,18 +55,18 @@ export function OccupationCardChart({
             <div
               key={bar.label}
               className={`flex min-h-0 flex-col items-center gap-0.5 rounded-md px-0.5 pt-1 ${
-                isLeader ? "bg-emerald-50/60 dark:bg-emerald-500/[0.06]" : ""
+                isLeader ? "bg-success-50/60 dark:bg-success-500/[0.06]" : ""
               }`}
               title={`${bar.label}: ${bar.value.toLocaleString()} (${percentage}%)`}
             >
-              <span className="text-[10px] font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+              <span className="text-[10px] font-semibold tabular-nums text-gray-700 dark:text-gray-200">
                 {bar.value > 0 ? bar.value.toLocaleString() : "0"}
               </span>
 
               <div className="flex w-full min-h-0 flex-1 items-end">
-                <div className="relative h-full w-full overflow-hidden rounded-t-md bg-slate-100/90 dark:bg-slate-800/70">
+                <div className="relative h-full w-full overflow-hidden rounded-t-md bg-gray-100/90 dark:bg-gray-800/70">
                   {!fitsInside && percentage > 0 ? (
-                    <span className="pointer-events-none absolute left-1/2 bottom-4 z-10 -translate-x-1/2 text-[12px] font-bold text-slate-700 dark:text-slate-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
+                    <span className="pointer-events-none absolute left-1/2 bottom-4 z-10 -translate-x-1/2 text-[12px] font-bold text-gray-700 dark:text-gray-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
                       {percentage}%
                     </span>
                   ) : null}

@@ -9,6 +9,7 @@ import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
 import { ErpDataDetails } from "@/components/alumni/ErpDataDetails";
 import { Modal } from "@/components/ui/modal";
+import StatusBadge from "@/components/ui/StatusBadge";
 import { useModal } from "@/hooks/useModal";
 import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
@@ -471,7 +472,7 @@ export const AlumniMembershipsTab: React.FC = () => {
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Alumni Memberships
           </h3>
           <div className="flex items-center gap-2">
@@ -548,10 +549,10 @@ export const AlumniMembershipsTab: React.FC = () => {
       <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1200} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 dark:bg-gray-900">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 dark:bg-gray-900">
               <TableRow>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("sapid")}
                 >
                   <div className="flex items-center gap-2">
@@ -575,7 +576,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("name")}
                 >
                   <div className="flex items-center gap-2">
@@ -598,26 +599,26 @@ export const AlumniMembershipsTab: React.FC = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                   Faculty
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                   Department
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                   Program
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                   Facility
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                   Membership Type
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                   Start Date
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("createdAt")}
                 >
                   <div className="flex items-center gap-2">
@@ -640,10 +641,10 @@ export const AlumniMembershipsTab: React.FC = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                   Status
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 sticky right-0 z-10 bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 sticky right-0 z-10 bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800">
                   Actions
                 </TableCell>
               </TableRow>
@@ -679,7 +680,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                 sortedItems.map((item) => (
                   <React.Fragment key={item.id}>
                     <TableRow className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20">
-                      <TableCell className="px-6 py-4 text-sm font-mono text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 text-sm font-mono text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
@@ -708,19 +709,19 @@ export const AlumniMembershipsTab: React.FC = () => {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-300 dark:bg-gray-900">
                         {item.name}
                       </TableCell>
-                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.faculty || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.department || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.program || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.facilityType
                           ? item.facilityType.charAt(0).toUpperCase() + item.facilityType.slice(1)
                           : item.gymMembershipMonth
@@ -731,15 +732,15 @@ export const AlumniMembershipsTab: React.FC = () => {
                           ? "Cricket"
                           : "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.membershipType || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.membershipStartDate
                           ? new Date(item.membershipStartDate).toLocaleDateString("en-PK")
                           : item.gymMembershipMonth || item.swimmingPoolMembershipMonth || item.cricketMembershipMonth || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.createdAt
                           ? new Date(item.createdAt).toLocaleDateString("en-PK", {
                               year: "numeric",
@@ -748,27 +749,9 @@ export const AlumniMembershipsTab: React.FC = () => {
                             })
                           : "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                      <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                         <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                              item.status === "approved"
-                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                : item.status === "not-approved"
-                                ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
-                                : item.status === "withdrawn"
-                                ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
-                                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                            }`}
-                          >
-                            {item.status === "approved"
-                              ? "Approved"
-                              : item.status === "not-approved"
-                              ? "Not Approved"
-                              : item.status === "withdrawn"
-                              ? "Withdrawn"
-                              : "Pending"}
-                          </span>
+                          <StatusBadge status={item.status || "pending"} />
                           {item.status === "not-approved" && item.rejectionReason && (
                             <div className="mt-1 text-xs text-gray-600 dark:text-gray-400 max-w-xs">
                               <span className="font-medium">Reason: </span>
@@ -783,7 +766,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="sticky right-0 z-10 min-w-[180px] bg-gray-100 px-2 py-4 text-sm text-slate-700 dark:bg-gray-900 dark:text-gray-300 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <TableCell className="sticky right-0 z-10 min-w-[180px] bg-gray-100 px-2 py-4 text-sm text-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800">
                         {isAdmin && (
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             <button
@@ -804,7 +787,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                                   confirmModal.openModal();
                                 }}
                                 disabled={mutatingIds.has(item.id)}
-                                className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-success-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
                                 aria-label="Approve"
                                 title="Approve"
                               >
@@ -820,7 +803,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                                   confirmModal.openModal();
                                 }}
                                 disabled={mutatingIds.has(item.id)}
-                                className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-rose-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-error-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
                                 aria-label="Not Approve"
                                 title="Not Approve"
                               >
@@ -938,7 +921,7 @@ export const AlumniMembershipsTab: React.FC = () => {
           <div className="p-6">
             <div className="flex items-center gap-4 mb-4">
               {pendingAction.type === "approve" ? (
-                <CheckLineIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                <CheckLineIcon className="h-6 w-6 text-success-600 dark:text-success-400" />
               ) : pendingAction.type === "delete" ? (
                 <TrashBinIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
               ) : pendingAction.type === "withdraw" ? (
@@ -947,7 +930,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6" />
                 </svg>
               ) : (
-                <CloseLineIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+                <CloseLineIcon className="h-6 w-6 text-error-600 dark:text-error-400" />
               )}
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                 {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : pendingAction.type === "withdraw" ? "Withdraw Application" : "Not Approve Application"}
@@ -975,7 +958,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                   onChange={(e) => setRejectionReason(e.target.value)}
                   placeholder="Please provide a reason for rejecting this application..."
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-error-500 focus:border-error-500 resize-none"
                   required
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900">
@@ -1081,12 +1064,12 @@ export const AlumniMembershipsTab: React.FC = () => {
                 disabled={mutatingIds.has(pendingAction.membershipId) || (pendingAction.type === "unapprove" && !rejectionReason.trim()) || (pendingAction.type === "withdraw" && !withdrawalReason.trim())}
                 className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300 dark:bg-gray-900 dark:hover:bg-gray-800 ${
                   pendingAction.type === "approve"
-                    ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
+                    ? "bg-success-600 hover:bg-success-700 focus:ring-success-500"
                     : pendingAction.type === "delete"
                     ? "bg-red-600 hover:bg-red-700 focus:ring-red-500"
                     : pendingAction.type === "withdraw"
                     ? "bg-orange-600 hover:bg-orange-700 focus:ring-orange-500"
-                    : "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
+                    : "bg-error-600 hover:bg-error-700 focus:ring-error-500"
                 }`}
               >
                 {mutatingIds.has(pendingAction.membershipId) ? (

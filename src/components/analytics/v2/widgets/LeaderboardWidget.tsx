@@ -44,7 +44,7 @@ export function LeaderboardWidget({
                 </div>
                 <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                   <div
-                    className="h-full rounded-full bg-indigo-500 transition-all dark:bg-indigo-400"
+                    className="h-full rounded-full bg-brand-500 transition-all dark:bg-brand-400"
                     style={{ width: `${(item.value / max) * 100}%` }}
                   />
                 </div>

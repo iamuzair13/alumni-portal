@@ -107,6 +107,9 @@ ALTER TABLE IF EXISTS public.alumni_scholarships
 ALTER TABLE IF EXISTS public.alumni_scholarships
     ADD COLUMN IF NOT EXISTS scholarship_disclosure text COLLATE pg_catalog."default";
 
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS discount_terms_accepted boolean;
+
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.alumni_scholarships

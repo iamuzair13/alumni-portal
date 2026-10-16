@@ -256,7 +256,7 @@ export const NewsletterTab: React.FC = () => {
             type="button"
             onClick={handleCreate}
             disabled={createNewsletterMutation.isPending || !title.trim()}
-            className="w-full rounded-lg bg-[#183D32] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0f2b23] disabled:opacity-60"
+            className="w-full rounded-lg bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-700 disabled:opacity-60"
           >
             {createNewsletterMutation.isPending ? "Publishing..." : "Publish"}
           </button>

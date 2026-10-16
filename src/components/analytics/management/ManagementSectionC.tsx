@@ -103,8 +103,8 @@ export default function ManagementSectionC({ data, isLoading }: Props) {
         </AnalyticsGridItem>
 
         <AnalyticsGridItem span={12}>
-          <AnalyticsSubheading dotColor="bg-rose-500">Alumni give back</AnalyticsSubheading>
-          <div className="rounded-lg border border-rose-100 bg-gradient-to-br from-rose-50 to-transparent p-3 dark:border-rose-900/30 dark:from-rose-900/10">
+          <AnalyticsSubheading dotColor="bg-error-500">Alumni give back</AnalyticsSubheading>
+          <div className="rounded-lg border border-error-100 bg-gradient-to-br from-error-50 to-transparent p-3 dark:border-error-900/30 dark:from-error-900/10">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Financial assistance to students</p>
             <p className="mt-1 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
               {typeof giveBack === "number" ? `Rs. ${giveBack.toLocaleString()}` : "—"}

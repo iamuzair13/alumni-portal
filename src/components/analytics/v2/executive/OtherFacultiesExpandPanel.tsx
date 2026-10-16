@@ -11,7 +11,7 @@ export function OtherFacultiesExpandPanel({ faculties }: { faculties: KpiFaculty
 
   return (
     <div
-      className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-900/40"
+      className="rounded-lg border border-gray-200/80 bg-gray-50/80 px-2 py-1.5 dark:border-gray-800 dark:bg-gray-900/40"
       role="region"
       aria-label="Other faculties breakdown"
     >
@@ -22,7 +22,7 @@ export function OtherFacultiesExpandPanel({ faculties }: { faculties: KpiFaculty
         {faculties.map((row) => (
           <li
             key={`${row.faculty}-${row.facultyId ?? "na"}`}
-            className="flex items-center justify-between gap-2 border-b border-slate-100 py-0.5 last:border-0 dark:border-slate-800/60"
+            className="flex items-center justify-between gap-2 border-b border-gray-100 py-0.5 last:border-0 dark:border-gray-800/60"
           >
             <span className="min-w-0 truncate text-[10px] font-medium text-gray-700 dark:text-gray-300" title={row.faculty}>
               {row.faculty}

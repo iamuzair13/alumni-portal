@@ -8,6 +8,18 @@ import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
+import Alert from "@/components/ui/alert/Alert";
+import {
+  Field,
+  FileInput,
+  Input,
+  Select,
+  Textarea,
+  ReadOnlyField,
+  FormSection,
+  AcknowledgmentCheckbox,
+  FormActions,
+} from "@/components/ui/form";
 import { ALUMNI_CARD_VALIDITY_ISO } from "@/lib/cardValidity";
 import { composeCardDeliveryAddress } from "@/lib/cardDeliveryAddress";
 
@@ -63,9 +75,7 @@ const schema = z.object({
 
 type FormVals = z.infer<typeof schema>;
 
-const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all";
-const labelBase = "my-2 text-sm text-slate-900 font-medium block";
-const buttonPrimary = "mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] mx-auto block bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60";
+
 
 export function validateImage(file: File | undefined): { ok: boolean; error?: string } {
   if (!file) return { ok: false, error: "Select an image file" };
@@ -277,26 +287,12 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         const errorMsg = j?.error || `Failed to submit application (${res.status})`;
-        toast.error(errorMsg, {
-          duration: 5000,
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
-            borderRadius: '8px',
-          },
-        });
+        toast.error(errorMsg, { duration: 5000 });
         throw new Error(errorMsg);
       }
-      
+
       toast.success("Alumni card application submitted successfully!", {
         duration: 4000,
-        style: {
-          background: '#d1fae5',
-          color: '#065f46',
-          padding: '16px',
-          borderRadius: '8px',
-        },
       });
       
       reset();
@@ -347,258 +343,203 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       }}
       title="Edit Passport Photo"
     />
-    <form className="max-w-4xl mx-auto  " onSubmit={handleSubmit(onSubmit)} aria-label="Alumni card form">
+    <form className="mx-auto max-w-4xl space-y-6" onSubmit={handleSubmit(onSubmit)} aria-label="Alumni card form">
       {contactDetailsMissing && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-medium text-amber-900">Email and primary contact required</p>
-          <p className="mt-1 text-sm text-amber-800">
-            Add your email and primary contact in your alumni profile before applying for the alumni card.
-          </p>
-          <a
-            href="/alumni-profile/more-details"
-            className="mt-2 inline-block text-sm font-semibold text-blue-700 hover:underline"
+        <Alert
+          variant="warning"
+          title="Email and primary contact required"
+          message="Add your email and primary contact in your alumni profile before applying for the alumni card."
+          showLink
+          linkHref="/alumni-profile/more-details"
+          linkText="Update profile"
+        />
+      )}
+
+      <FormSection
+        title="Your details"
+        description="Fetched from your alumni profile. If anything looks wrong, mention it in the comment box below."
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          <ReadOnlyField label="Name" value={fetchedName || name} />
+          <ReadOnlyField label="Faculty" value={fetchedFaculty || faculty} />
+          <ReadOnlyField label="Department" value={fetchedDepartment || department} />
+          <ReadOnlyField
+            label="Validity"
+            value={validityDateStr}
+            hint={`Card will be valid through ${validityDateStr} (standard validity through May 2029)`}
+          />
+          <ReadOnlyField
+            label="CNIC / Passport"
+            value={cnicDisplayValue}
+            hint="Please make sure that your CNIC/Passport is correct. It will be used for verification and alumni card issuance."
+          />
+          <ReadOnlyField label="Email" value={emailDisplayValue} />
+          <ReadOnlyField label="Primary Contact" value={contactDisplayValue} />
+        </div>
+      </FormSection>
+
+      <FormSection title="Application">
+        <div className="space-y-5">
+          <Field
+            label="Profile photo"
+            htmlFor="picture"
+            required
+            hint="Passport-size headshot with a blue or white background. Casual pictures are not accepted. High resolution, minimum 50KB (JPG, PNG or GIF)."
+            error={fileError ?? errors.pictureName?.message}
           >
-            Update profile →
-          </a>
-        </div>
-      )}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label className={labelBase} htmlFor="name">Name</label>
-          <div className="relative flex items-center">
-            <input id="name" className={inputBase} value={fetchedName || name} readOnly aria-label="Name" />
-          </div>
-        </div>
-        <div>
-          <label className={labelBase} htmlFor="faculty">Faculty</label>
-          <div className="relative flex items-center">
-            <input id="faculty" className={inputBase} value={fetchedFaculty || faculty} readOnly aria-label="Faculty" />
-          </div>
-        </div>
-        <div>
-          <label className={labelBase} htmlFor="department">Department</label>
-          <div className="relative flex items-center">
-            <input id="department" className={inputBase} value={fetchedDepartment || department} readOnly aria-label="Department" />
-          </div>
-        </div>
-        <div>
-          <label className={labelBase} htmlFor="validity">Validity</label>
-          <div className="relative flex items-center">
-            <input id="validity" type="date" className={inputBase} value={validityDateISO} readOnly aria-label="Validity" />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">Card will be valid through {validityDateStr} (standard validity through May 2029)</p>
-        </div>
-        <div>
-          <label className={labelBase} htmlFor="cnic">CNIC/Passport</label>
-          <div className="relative flex items-center">
-            <input id="cnic" className={inputBase} value={cnicDisplayValue} readOnly aria-label="CNIC/Passport" />
-          </div>
-          <p className="text-xs text-blue-700 mt-1">Please make sure that your CNIC/Passport is correct. It will be used for verification and Alumni card issuance.</p>
-        </div>
-        <div>
-          <label className={labelBase} htmlFor="email">Email</label>
-          <div className="relative flex items-center">
-            <input id="email" className={inputBase} value={emailDisplayValue} readOnly aria-label="Email" />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">Auto-fetched from your profile</p>
-        </div>
-        <div>
-          <label className={labelBase} htmlFor="primaryContact">Primary Contact</label>
-          <div className="relative flex items-center">
-            <input id="primaryContact" className={inputBase} value={contactDisplayValue} readOnly aria-label="Primary contact" />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">Auto-fetched from your profile</p>
-        </div>
-      </div>
+            <FileInput
+              id="picture"
+              accept="image/jpeg,image/png,image/gif"
+              aria-label="Profile picture"
+              error={!!(fileError || errors.pictureName)}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                const v = validateImage(file);
+                if (!v.ok) {
+                  setFileError(v.error || "Invalid file");
+                  setPreviewUrl(null);
+                  setValue("pictureName", "");
+                  setSelectedFile(null);
+                  return;
+                }
 
-      <div>
-        <label className={labelBase} htmlFor="picture">
-          Image
-          <span className="text-red-600 ml-1">*</span>
-          <span className="ml-2 text-xs text-red-500">Casual pictures are not accepted. Image must be passport size and headshot with blue or white background. Image size must be high resolution and 50kb minimum </span>
-        </label>
-        <div className="relative flex items-center">
-          <input
-            id="picture"
-            type="file"
-            accept="image/jpeg,image/png,image/gif"
-            className={inputBase}
-            aria-label="Profile picture"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              const v = validateImage(file);
-              if (!v.ok) {
-                setFileError(v.error || "Invalid file");
-                setPreviewUrl(null);
-                setValue("pictureName", "");
-                setSelectedFile(null);
-                return;
-              }
+                if (file) {
+                  setPendingCropFile(file);
+                  setShowCropModal(true);
+                }
+              }}
+              disabled={isSubmitting}
+            />
+          </Field>
+          <input type="hidden" {...register("pictureName")} name="pictureName" />
+          {previewUrl && (
+            <Image
+              src={previewUrl}
+              alt="Profile preview"
+              width={112}
+              height={112}
+              className="h-28 w-28 rounded-lg border border-gray-200 object-cover dark:border-gray-700"
+            />
+          )}
 
-              if (file) {
-                setPendingCropFile(file);
-                setShowCropModal(true);
-              }
-            }}
-            disabled={isSubmitting}
-          />
-        </div>
-        <input type="hidden" {...register("pictureName")} name="pictureName" />
-        {fileError && <p className="text-xs text-red-600 mt-1">{fileError}</p>}
-        {errors.pictureName && <p className="text-xs text-red-600 mt-1">{errors.pictureName.message}</p>}
-        {previewUrl && (
-          <div className="mt-3">
-            <Image src={previewUrl} alt="Profile preview" width={112} height={112} className="w-28 h-28 rounded-md object-cover border border-gray-200" />
-          </div>
-        )}
-      </div>
+          <Field
+            label="Delivery preference"
+            htmlFor="addressPreference"
+            required
+            error={errors.addressPreference?.message}
+          >
+            <Select
+              id="addressPreference"
+              {...register("addressPreference")}
+              aria-label="Address preference"
+            >
+              <option value="Collect">Collect from Campus</option>
+              <option value="Deliver">Deliver to my below address</option>
+            </Select>
+          </Field>
 
-      <div>
-        <label className={labelBase} htmlFor="addressPreference">Delivery Preference</label>
-        <div className="relative flex items-center">
-          <select id="addressPreference" {...register("addressPreference")} className={inputBase} aria-label="Address preference">
-            <option value="Collect">Collect from Campus</option>
-            <option value="Deliver">Deliver to my below address</option>
-          </select>
-        </div>
-        {errors.addressPreference && <p className="text-xs text-red-600 mt-1">{errors.addressPreference.message}</p>}
-      </div>
-
-      {addressPreference === "Deliver" && (
-        <div className="">
-          
-          <div>
-            <div className={`${labelBase} w-full`}>Delivery Address</div>
-            <p className="text-xs text-gray-600 mb-2">Where the physical card should be sent (city, society, street, house).</p>
-           
-            <div className="flex flex-col sm:flex-row gap-4 w-full flex-wrap">
-              
-              
-              
-              <div className="flex-1 min-w-[140px]">
-                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryHouseNo">
-                  House Number<span className="text-red-600 ml-0.5">*</span>
-                </label>
-                <input
-                  id="deliveryHouseNo"
-                  type="text"
-                  {...register("deliveryHouseNo")}
-                  className={`${inputBase} mt-1`}
-                  placeholder="House number"
-                  aria-label="House number"
-                />
-              </div>
-              <div className="flex-1 min-w-[140px]">
-                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryStreetNo">
-                  Street No.<span className="text-red-600 ml-0.5">*</span>
-                </label>
-                <input
-                  id="deliveryStreetNo"
-                  type="text"
-                  {...register("deliveryStreetNo")}
-                  className={`${inputBase} mt-1`}
-                  placeholder="Street number"
-                  aria-label="Street number"
-                />
-              </div>
-              <div className="flex-1 min-w-[140px]">
-                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliverySocietyName">
-                  Society name<span className="text-red-600 ml-0.5">*</span>
-                </label>
-                <input
-                  id="deliverySocietyName"
-                  type="text"
-                  {...register("deliverySocietyName")}
-                  className={`${inputBase} mt-1`}
-                  placeholder="Society name"
-                  aria-label="Society name"
-                />
-              </div>
-              <div className="flex-1 min-w-[140px]">
-                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryCity">
-                  City<span className="text-red-600 ml-0.5">*</span>
-                </label>
-                <input
-                  id="deliveryCity"
-                  type="text"
-                  {...register("deliveryCity")}
-                  className={`${inputBase} mt-1`}
-                  placeholder="City"
-                  aria-label="Delivery city"
-                />
-              </div>
-            </div>
-            {(errors.deliveryCity || errors.deliverySocietyName || errors.deliveryStreetNo || errors.deliveryHouseNo) && (
-              <p className="text-xs text-red-600 mt-1">
-                {errors.deliveryCity?.message ||
-                  errors.deliverySocietyName?.message ||
-                  errors.deliveryStreetNo?.message ||
-                  errors.deliveryHouseNo?.message ||
-                  "City, society name, street number, and house number are required."}
+          {addressPreference === "Deliver" && (
+            <fieldset>
+              <legend className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Delivery address <span className="text-error-500">*</span>
+              </legend>
+              <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                Where the physical card should be sent (city, society, street, house).
               </p>
-            )}
-          </div>
-        </div>
-      )}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Field label="House number" htmlFor="deliveryHouseNo" required>
+                  <Input
+                    id="deliveryHouseNo"
+                    {...register("deliveryHouseNo")}
+                    placeholder="House number"
+                    aria-label="House number"
+                  />
+                </Field>
+                <Field label="Street No." htmlFor="deliveryStreetNo" required>
+                  <Input
+                    id="deliveryStreetNo"
+                    {...register("deliveryStreetNo")}
+                    placeholder="Street number"
+                    aria-label="Street number"
+                  />
+                </Field>
+                <Field label="Society name" htmlFor="deliverySocietyName" required>
+                  <Input
+                    id="deliverySocietyName"
+                    {...register("deliverySocietyName")}
+                    placeholder="Society name"
+                    aria-label="Society name"
+                  />
+                </Field>
+                <Field label="City" htmlFor="deliveryCity" required>
+                  <Input
+                    id="deliveryCity"
+                    {...register("deliveryCity")}
+                    placeholder="City"
+                    aria-label="Delivery city"
+                  />
+                </Field>
+              </div>
+              {(errors.deliveryCity || errors.deliverySocietyName || errors.deliveryStreetNo || errors.deliveryHouseNo) && (
+                <p className="field-error" role="alert">
+                  <span>
+                    {errors.deliveryCity?.message ||
+                      errors.deliverySocietyName?.message ||
+                      errors.deliveryStreetNo?.message ||
+                      errors.deliveryHouseNo?.message ||
+                      "City, society name, street number, and house number are required."}
+                  </span>
+                </p>
+              )}
+            </fieldset>
+          )}
 
-      <div>
-        <label className={labelBase} htmlFor="comment">Please mention if there is any mistake in data</label>
-        <div className="relative flex items-center mt-4">
-          <textarea
-            id="comment"
-            {...register("comment")}
-            className={inputBase}
-            rows={4}
-            placeholder="If you notice any mistakes in your information, please mention them here..."
-            aria-label="Comments about data mistakes"
-          />
-        </div>
-        {errors.comment && <p className="text-xs text-red-600 mt-1">{errors.comment.message}</p>}
-      </div>
-
-      {addressPreference === "Collect" ? (
-        <div className="mt-6">
-          <div className="text-sm font-medium text-slate-900 mb-1">Collect from campus</div>
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              {...register("collectAcknowledgment")}
-              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              aria-label="Acknowledge campus collection terms"
+          <Field
+            label="Please mention if there is any mistake in data"
+            htmlFor="comment"
+            error={errors.comment?.message}
+          >
+            <Textarea
+              id="comment"
+              {...register("comment")}
+              rows={4}
+              placeholder="If you notice any mistakes in your information, please mention them here..."
+              aria-label="Comments about data mistakes"
             />
-            <span className="text-sm text-slate-900">
-              I hereby acknowledge that my information is correct and undertake to collect my Alumni Card within 15 days of receiving a call from the authorized Alumni Office; otherwise, my card may be discarded and I will not be eligible to apply for an Alumni Card again.
-              <span className="text-red-600 ml-1">*</span>
-            </span>
-          </label> 
-          {errors.collectAcknowledgment && <p className="text-xs text-red-600 mt-1 ml-7">{errors.collectAcknowledgment.message}</p>}
+          </Field>
         </div>
-      ) : (
-        <div className="mt-6">
-          <div className="text-sm font-medium text-slate-900 mb-1">Postal Address</div>
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              {...register("postalAcknowledgment")}
-              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              aria-label="Confirm postal delivery terms"
-            />
-            <span className="text-sm text-slate-900">
-              I hereby confirm that the postal address and mobile number provided are correct and up to date, and I acknowledge that if the Alumni Card is returned by the courier due to an incorrect or incomplete address, unavailability, or any other issue, my card will be discarded and I will not be eligible to apply for an Alumni Card again.
-              <span className="text-red-600 ml-1">*</span>
-            </span>
-          </label>
-          {errors.postalAcknowledgment && <p className="text-xs text-red-600 mt-1 ml-7">{errors.postalAcknowledgment.message}</p>}
-        </div>
-      )}
+      </FormSection>
 
-      <div className="flex items-center justify-end gap-2 mt-6">
-        <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting} aria-label="Submit application">
-          {isSubmitting ? "Submitting..." : "Submit"}
-        </button>
-      </div>
+      <FormSection
+        title={addressPreference === "Collect" ? "Collection terms" : "Delivery terms"}
+      >
+        {addressPreference === "Collect" ? (
+          <AcknowledgmentCheckbox
+            {...register("collectAcknowledgment")}
+            aria-label="Acknowledge campus collection terms"
+            error={errors.collectAcknowledgment?.message}
+          >
+            I hereby acknowledge that my information is correct and undertake to collect my Alumni Card within 15 days of receiving a call from the authorized Alumni Office; otherwise, my card may be discarded and I will not be eligible to apply for an Alumni Card again.
+            <span className="text-error-500 ml-1">*</span>
+          </AcknowledgmentCheckbox>
+        ) : (
+          <AcknowledgmentCheckbox
+            {...register("postalAcknowledgment")}
+            aria-label="Confirm postal delivery terms"
+            error={errors.postalAcknowledgment?.message}
+          >
+            I hereby confirm that the postal address and mobile number provided are correct and up to date, and I acknowledge that if the Alumni Card is returned by the courier due to an incorrect or incomplete address, unavailability, or any other issue, my card will be discarded and I will not be eligible to apply for an Alumni Card again.
+            <span className="text-error-500 ml-1">*</span>
+          </AcknowledgmentCheckbox>
+        )}
+      </FormSection>
+
+      <FormActions
+        submitLabel="Submit application"
+        submittingLabel="Submitting…"
+        loading={isSubmitting}
+      />
     </form>
-    
 </>
   );
 }

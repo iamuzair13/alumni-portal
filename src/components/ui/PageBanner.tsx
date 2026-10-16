@@ -1,22 +1,31 @@
 import React from "react";
+import PageHeader from "./PageHeader";
 
 type PageBannerProps = {
   title: string;
+  description?: string;
+  breadcrumbs?: Array<{ label: string; href?: string }>;
+  actions?: React.ReactNode;
 };
 
-export default function PageBanner({ title }: PageBannerProps) {
+/**
+ * Backward-compatible wrapper: renders the flat PageHeader instead of the
+ * old full-bleed gradient banner. Existing `<PageBanner title="..." />`
+ * call sites keep working unchanged.
+ */
+export default function PageBanner({
+  title,
+  description,
+  breadcrumbs,
+  actions,
+}: PageBannerProps) {
   return (
-    <div className="w-full">
-      <div className="-mx-4 sm:-mx-6 lg:-mx-8  dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:outline-gray-700">
-        <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white dark:bg-gray-900 dark:text-gray-100 dark:border-y dark:border-gray-700 dark:outline-gray-700">
-          <div className="max-w-screen-xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-            <h1 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
-              {title}
-            </h1>
-          </div>
-        </div>
-      </div>
-    </div>
+    <PageHeader
+      title={title}
+      description={description}
+      breadcrumbs={breadcrumbs}
+      actions={actions}
+      className="-mx-4 sm:-mx-6 lg:-mx-8 mb-6 bg-white dark:bg-gray-900"
+    />
   );
 }
-

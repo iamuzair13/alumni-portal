@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
-import { Toaster } from "react-hot-toast";
+
 import { discountCategoryLabel } from "@/lib/scholarshipLetter";
 
 type ScholarshipApplication = {
@@ -79,13 +79,13 @@ function ViewApplicationsContent() {
     switch (status) {
       case "approved":
         return (
-          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-300">
             Approved
           </span>
         );
       case "not-approved":
         return (
-          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
+          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-error-100 text-error-700 dark:bg-error-900/30 dark:text-error-300">
             Not Approved
           </span>
         );
@@ -326,8 +326,8 @@ function ViewApplicationsContent() {
                       <label className="block text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide mb-2">
                         Rejection Reason
                       </label>
-                      <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-3 sm:p-4">
-                        <p className="text-sm text-rose-800 dark:text-rose-200">
+                      <div className="bg-error-50 dark:bg-error-900/20 border border-error-200 dark:border-error-800 rounded-lg p-3 sm:p-4">
+                        <p className="text-sm text-error-800 dark:text-error-200">
                           {app.rejectionReason}
                         </p>
                       </div>
@@ -371,7 +371,7 @@ function ViewApplicationsContent() {
           )}
         </div>
       </div>
-      <Toaster position="top-right" />
+
     </>
   );
 }

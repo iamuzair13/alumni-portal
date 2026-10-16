@@ -237,9 +237,9 @@ export const AlumniTalksTab: React.FC = () => {
         className="max-w-md"
       >
         <div className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Delete alumni talk</h3>
-          <p className="text-sm text-slate-600">This action cannot be undone.</p>
-          {pendingDelete?.alumniName ? <p className="text-sm text-slate-700 dark:text-slate-300">Alumni: {pendingDelete.alumniName}</p> : null}
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Delete alumni talk</h3>
+          <p className="text-sm text-gray-600">This action cannot be undone.</p>
+          {pendingDelete?.alumniName ? <p className="text-sm text-gray-700 dark:text-gray-300">Alumni: {pendingDelete.alumniName}</p> : null}
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
@@ -260,7 +260,7 @@ export const AlumniTalksTab: React.FC = () => {
                 deleteModal.closeModal();
                 setPendingDelete(null);
               }}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-60"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-error-600 hover:bg-error-700 disabled:opacity-60"
               disabled={busyId !== null || !pendingDelete}
             >
               Delete
@@ -270,7 +270,7 @@ export const AlumniTalksTab: React.FC = () => {
       </Modal>
 
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Alumni Talks</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Alumni Talks</h3>
         <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400" htmlFor="talks-search">Search:</label>
           <input
@@ -287,19 +287,19 @@ export const AlumniTalksTab: React.FC = () => {
       <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1300} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
-                <TableCell isHeader className="px-4 py-3 text-left text-xs font-semibold text-slate-700 w-12 dark:text-gray-300">{null}</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[120px]">SAP/Reg.</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Full Name</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Email</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Faculty</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Department</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Status</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300">Topic</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Mode</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300">Availability</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Actions</TableCell>
+                <TableCell isHeader className="px-4 py-3 text-left text-xs font-semibold text-gray-700 w-12 dark:text-gray-300">{null}</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 w-[120px]">SAP/Reg.</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 w-[200px]">Full Name</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 w-[200px]">Email</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 w-[200px]">Faculty</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 w-[200px]">Department</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 w-[200px]">Status</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Topic</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 w-[200px]">Mode</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Availability</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 w-[200px]">Actions</TableCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -381,20 +381,20 @@ export const AlumniTalksTab: React.FC = () => {
                           </svg>
                         </button>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-xs font-mono text-slate-700 dark:text-gray-300">
+                      <TableCell className="px-4 py-3 text-xs font-mono text-gray-700 dark:text-gray-300">
                         {item.sapid || item.registrationNo || "-"}
                         {item.sapid && item.registrationNo && (
                           <span className="block text-xs text-gray-500 dark:text-gray-400">{item.registrationNo}</span>
                         )}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-xs font-semibold text-slate-900 dark:text-gray-100">{item.name}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs font-semibold text-gray-900 dark:text-gray-100">{item.name}</TableCell>
                       <TableCell className="px-4 py-3 text-xs">
                         <a href={item.email ? `mailto:${item.email}` : "#"} className="text-blue-600 hover:underline truncate block max-w-[200px] dark:text-blue-400">
                           {item.email || "-"}
                         </a>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-xs text-slate-700 dark:text-gray-300">{item.faculty || "Null"}</TableCell>
-                      <TableCell className="px-4 py-3 text-xs text-slate-700 dark:text-gray-300">{item.department || "Null"}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">{item.faculty || "Null"}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">{item.department || "Null"}</TableCell>
                       <TableCell className="px-4 py-3 text-xs">
                         <Badge size="sm" color={statusBadgeColor(item.status)}>
                           {prettyStatus(item.status)}
@@ -410,7 +410,7 @@ export const AlumniTalksTab: React.FC = () => {
                           </div>
                         ) : "-"}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-xs text-slate-700 dark:text-gray-300">{item.mode || "Null"}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">{item.mode || "Null"}</TableCell>
                       <TableCell className="px-4 py-3 text-xs">
                         {availabilityOptions.length > 0 ? (
                           <select className="text-xs border border-gray-300 rounded px-2 py-1 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
@@ -446,7 +446,7 @@ export const AlumniTalksTab: React.FC = () => {
                                   emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_CONFIRM,
                                 })
                               }
-                              className="rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-700"
+                              className="rounded-md bg-success-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-success-700 disabled:opacity-60 dark:bg-success-600 dark:text-white dark:hover:bg-success-700"
                             >
                               Confirm
                             </button>
@@ -479,7 +479,7 @@ export const AlumniTalksTab: React.FC = () => {
                                   emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_CANCEL,
                                 })
                               }
-                              className="rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60 dark:border-rose-600 dark:bg-rose-800 dark:text-rose-100 dark:hover:bg-rose-100 dark:hover:text-rose-700"
+                              className="rounded-md border border-error-300 bg-error-50 px-2.5 py-1 text-[11px] font-semibold text-error-700 hover:bg-error-100 disabled:opacity-60 dark:border-error-600 dark:bg-error-800 dark:text-error-100 dark:hover:bg-error-100 dark:hover:text-error-700"
                             >
                               Cancel
                             </button>
@@ -487,7 +487,7 @@ export const AlumniTalksTab: React.FC = () => {
                               type="button"
                               disabled={isBusy}
                               onClick={() => openDelete(item)}
-                              className="rounded-md border border-rose-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:border-rose-600 dark:bg-rose-800 dark:text-rose-100 dark:hover:bg-rose-50 dark:hover:text-rose-700"
+                              className="rounded-md border border-error-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-error-700 hover:bg-error-50 disabled:opacity-60 dark:border-error-600 dark:bg-error-800 dark:text-error-100 dark:hover:bg-error-50 dark:hover:text-error-700"
                             > 
                               Delete
                             </button>
@@ -501,7 +501,7 @@ export const AlumniTalksTab: React.FC = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                             {/* Basic Info */}
                             <div className="space-y-2">
-                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-gray-300">Basic Information</h4>
+                              <h4 className="mb-2 font-semibold text-gray-700 dark:text-gray-300">Basic Information</h4>
                               <div><span className="font-medium">Status:</span> {prettyStatus(item.status)}</div>
                               {item.alumniNote ? (
                                 <div className="mt-2">
@@ -519,7 +519,7 @@ export const AlumniTalksTab: React.FC = () => {
                             
                             {/* Availability Dates */}
                             <div className="space-y-2">
-                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-gray-300">Availability Dates</h4>
+                              <h4 className="mb-2 font-semibold text-gray-700 dark:text-gray-300">Availability Dates</h4>
                               {availabilityOptions.length > 0 ? (
                                 availabilityOptions.map((opt, i) => (
                                   <div key={i} className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
@@ -535,10 +535,10 @@ export const AlumniTalksTab: React.FC = () => {
                             
                             {/* Variations */}
                             <div className="space-y-2">
-                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-gray-300">Schedule</h4>
+                              <h4 className="mb-2 font-semibold text-gray-700 dark:text-gray-300">Schedule</h4>
                               {(item.confirmedDate || item.confirmedTimings) ? (
-                                <div className="p-2 bg-white rounded border border-emerald-200">
-                                  <div className="font-medium text-emerald-800">Confirmed</div>
+                                <div className="p-2 bg-white rounded border border-success-200">
+                                  <div className="font-medium text-success-800">Confirmed</div>
                                   <div className="text-gray-700">{item.confirmedDate || "-"} {item.confirmedTimings ? `(${item.confirmedTimings})` : ""}</div>
                                 </div>
                               ) : (
@@ -553,7 +553,7 @@ export const AlumniTalksTab: React.FC = () => {
                               ) : null}
 
                                 <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                                <div className="mb-2 font-medium text-slate-700 dark:text-slate-200 dark:text-gray-100">Propose new slot</div>
+                                <div className="mb-2 font-medium text-gray-700 dark:text-gray-200 dark:text-gray-100">Propose new slot</div>
                                 <div className="grid grid-cols-1 gap-2">
                                   <input
                                     type="date"
@@ -608,7 +608,7 @@ export const AlumniTalksTab: React.FC = () => {
                             {/* Areas */}
                             {item.areas.length > 0 && (
                               <div className="space-y-2">
-                                <h4 className="font-semibold text-slate-700 mb-2 dark:text-gray-300">Areas</h4>
+                                <h4 className="font-semibold text-gray-700 mb-2 dark:text-gray-300">Areas</h4>
                                 <div className="flex flex-wrap gap-1">
                                   {item.areas.map((area, i) => (
                                     <Badge key={i} size="sm" color="success">{area}</Badge>
@@ -619,7 +619,7 @@ export const AlumniTalksTab: React.FC = () => {
 
                             {/* Alumni Profile & ERP */}
                             <div className="space-y-2 md:col-span-3">
-                              <h4 className="font-semibold text-slate-700 mb-2 dark:text-gray-300">Alumni Profile & ERP</h4>
+                              <h4 className="font-semibold text-gray-700 mb-2 dark:text-gray-300">Alumni Profile & ERP</h4>
                               <div className="flex flex-row justify-start">
                                 <AlumniExpandableDetails
                                   sapId={item.sapid || item.registrationNo || ""}

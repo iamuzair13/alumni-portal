@@ -24,33 +24,33 @@ const cardBaseClasses =
 
 const cardVariantClasses: Record<CardVariant, string> = {
   default: [
-    "bg-white dark:bg-slate-950",
-    "border-slate-200/80 dark:border-slate-800",
-    "shadow-sm shadow-slate-200/30 dark:shadow-none",
-    "hover:shadow-md hover:shadow-slate-200/40 dark:hover:shadow-slate-950/20",
+    "bg-white dark:bg-gray-950",
+    "border-gray-200/80 dark:border-gray-800",
+    "shadow-sm shadow-gray-200/30 dark:shadow-none",
+    "hover:shadow-md hover:shadow-gray-200/40 dark:hover:shadow-gray-950/20",
   ].join(" "),
   elevated: [
-    "bg-white dark:bg-slate-950",
-    "border-slate-200/60 dark:border-slate-800",
-    "shadow-lg shadow-slate-200/50 dark:shadow-slate-950/40",
-    "hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-950/50",
+    "bg-white dark:bg-gray-950",
+    "border-gray-200/60 dark:border-gray-800",
+    "shadow-lg shadow-gray-200/50 dark:shadow-gray-950/40",
+    "hover:shadow-xl hover:shadow-gray-200/60 dark:hover:shadow-gray-950/50",
     "hover:-translate-y-0.5",
   ].join(" "),
   flat: [
-    "bg-slate-50/80 dark:bg-slate-900/40",
-    "border-slate-200/40 dark:border-slate-800/60",
-    "hover:bg-slate-50 dark:hover:bg-slate-900/60",
+    "bg-gray-50/80 dark:bg-gray-900/40",
+    "border-gray-200/40 dark:border-gray-800/60",
+    "hover:bg-gray-50 dark:hover:bg-gray-900/60",
   ].join(" "),
   gradient: [
-    "bg-gradient-to-br from-white via-slate-50/60 to-white",
-    "dark:from-slate-950 dark:via-slate-900/90 dark:to-slate-900/70",
-    "border-slate-200/60 dark:border-slate-800",
-    "shadow-md shadow-slate-200/30 dark:shadow-none",
+    "bg-gradient-to-br from-white via-gray-50/60 to-white",
+    "dark:from-gray-950 dark:via-gray-900/90 dark:to-gray-900/70",
+    "border-gray-200/60 dark:border-gray-800",
+    "shadow-md shadow-gray-200/30 dark:shadow-none",
   ].join(" "),
   outline: [
     "bg-transparent dark:bg-transparent",
-    "border-slate-200 dark:border-slate-800",
-    "hover:border-slate-300 dark:hover:border-slate-700",
+    "border-gray-200 dark:border-gray-800",
+    "hover:border-gray-300 dark:hover:border-gray-700",
   ].join(" "),
 };
 
@@ -132,12 +132,12 @@ const ComponentCard = forwardRef<HTMLDivElement, ComponentCardProps>(
         {...props}
       >
         {variant === "gradient" && (
-          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 opacity-80" />
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-blue-500 via-brand-500 to-violet-500 opacity-80" />
         )}
 
         {loading && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-white/60 backdrop-blur-[2px] dark:bg-slate-950/60">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400" />
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-white/60 backdrop-blur-[2px] dark:bg-gray-950/60">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 dark:border-gray-700 dark:border-t-blue-400" />
           </div>
         )}
 
@@ -147,7 +147,7 @@ const ComponentCard = forwardRef<HTMLDivElement, ComponentCardProps>(
               "flex items-start justify-between gap-4",
               !noPadding && paddingClasses[size],
               !noPadding && compact && "pb-0",
-              showDivider && "border-b border-slate-100 dark:border-slate-800/80 pb-4 sm:pb-5",
+              showDivider && "border-b border-gray-100 dark:border-gray-800/80 pb-4 sm:pb-5",
               !showDivider && !compact && "pb-0"
             )}
           >
@@ -156,9 +156,9 @@ const ComponentCard = forwardRef<HTMLDivElement, ComponentCardProps>(
                 <div
                   className={twMerge(
                     "flex flex-shrink-0 items-center justify-center rounded-xl",
-                    "bg-slate-100 dark:bg-slate-800/60",
-                    "text-slate-600 dark:text-slate-300",
-                    "ring-1 ring-slate-200/60 dark:ring-slate-700/50",
+                    "bg-gray-100 dark:bg-gray-800/60",
+                    "text-gray-600 dark:text-gray-300",
+                    "ring-1 ring-gray-200/60 dark:ring-gray-700/50",
                     iconSizeClasses[size]
                   )}
                 >
@@ -170,7 +170,7 @@ const ComponentCard = forwardRef<HTMLDivElement, ComponentCardProps>(
                 {title && (
                   <h2
                     className={twMerge(
-                      "font-semibold tracking-tight text-slate-900 dark:text-slate-100",
+                      "font-semibold tracking-tight text-gray-900 dark:text-gray-100",
                       titleClasses[size]
                     )}
                   >
@@ -180,7 +180,7 @@ const ComponentCard = forwardRef<HTMLDivElement, ComponentCardProps>(
                 {description && (
                   <p
                     className={twMerge(
-                      "leading-relaxed text-slate-500 dark:text-slate-400",
+                      "leading-relaxed text-gray-500 dark:text-gray-400",
                       descriptionClasses[size],
                       title ? "mt-1" : "mt-0"
                     )}
@@ -211,7 +211,7 @@ const ComponentCard = forwardRef<HTMLDivElement, ComponentCardProps>(
             className={twMerge(
               "flex items-center justify-between gap-4",
               !noPadding && paddingClasses[size],
-              "border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30"
+              "border-t border-gray-100 dark:border-gray-800/80 bg-gray-50/50 dark:bg-gray-900/30"
             )}
           >
             {footer}

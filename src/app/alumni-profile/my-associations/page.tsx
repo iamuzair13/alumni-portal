@@ -126,7 +126,7 @@ export default async function MyAssociationsPage({ searchParams }: { searchParam
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
+      <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
         <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
           <AppHeader />
         </div>
@@ -149,7 +149,7 @@ export default async function MyAssociationsPage({ searchParams }: { searchParam
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
                 <BackButton />
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-gray-100">My Association</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">My Association</h1>
               </div>
             </div>
 

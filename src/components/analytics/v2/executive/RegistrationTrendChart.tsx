@@ -129,7 +129,7 @@ export function RegistrationTrendChart({
                     dataKey="total"
                     position="top"
                     formatter={(value: number) => formatChartLabel(value)}
-                    className="fill-indigo-600 dark:fill-indigo-400"
+                    className="fill-brand-600 dark:fill-brand-400"
                     style={labelStyle(compact)}
                   />
                 ) : null}
@@ -146,7 +146,7 @@ export function RegistrationTrendChart({
                     dataKey="verified"
                     position="top"
                     formatter={(value: number) => formatChartLabel(value)}
-                    className="fill-emerald-600 dark:fill-emerald-400"
+                    className="fill-success-600 dark:fill-success-400"
                     style={labelStyle(compact)}
                   />
                 ) : null}

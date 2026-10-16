@@ -187,7 +187,7 @@ export default function LeadershipCriteriaManager(props: {
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{c.label}</div>
                         {c.is_mandatory ? (
-                          <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:border-rose-800/50 dark:bg-rose-900/20 dark:text-rose-300">Mandatory</span>
+                          <span className="rounded-full border border-error-200 bg-error-50 px-2 py-0.5 text-[10px] font-semibold text-error-700 dark:border-error-800/50 dark:bg-error-900/20 dark:text-error-300">Mandatory</span>
                         ) : (
                           <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Optional</span>
                         )}
@@ -250,7 +250,7 @@ export default function LeadershipCriteriaManager(props: {
                           setCriterionToDelete({ id: Number(c.id), label: String(c.label ?? "") });
                           setDeleteConfirmOpen(true);
                         }}
-                        className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700"
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-error-600 text-white hover:bg-error-700"
                       >
                         Delete
                       </button>
@@ -286,7 +286,7 @@ export default function LeadershipCriteriaManager(props: {
                           <span className="text-xs text-gray-500 dark:text-gray-400">Sort: {c.sort_order}</span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">Marks: {Number.isFinite(Number(c.criterion_score)) ? String(Number(c.criterion_score)) : "N/A"}</span>
                           {c.is_mandatory ? (
-                            <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:border-rose-800/50 dark:bg-rose-900/20 dark:text-rose-300">Mandatory</span>
+                            <span className="rounded-full border border-error-200 bg-error-50 px-2 py-0.5 text-[10px] font-semibold text-error-700 dark:border-error-800/50 dark:bg-error-900/20 dark:text-error-300">Mandatory</span>
                           ) : (
                             <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Optional</span>
                           )}
@@ -360,7 +360,7 @@ export default function LeadershipCriteriaManager(props: {
             </button>
             <button
               type="button"
-              className="rounded-lg px-4 py-2 text-sm font-semibold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60"
+              className="rounded-lg px-4 py-2 text-sm font-semibold bg-error-600 text-white hover:bg-error-700 disabled:opacity-60"
               disabled={deleting || !criterionToDelete}
               onClick={async () => {
                 if (!criterionToDelete) return;

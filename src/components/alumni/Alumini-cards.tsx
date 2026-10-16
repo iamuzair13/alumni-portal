@@ -158,16 +158,16 @@ const STATUS_THEME: Record<string, {
     inactive: { border: "border-gray-200", bg: "bg-white", text: "text-gray-600", badge: "bg-gray-100", badgeText: "text-gray-600", hover: "hover:border-purple-300 hover:bg-purple-50/50" },
   },
   active: {
-    active: { border: "border-emerald-500", bg: "bg-emerald-50", text: "text-emerald-800", badge: "bg-emerald-500", badgeText: "text-white", shadow: "shadow-emerald-500/20", icon: "text-emerald-500" },
-    inactive: { border: "border-gray-200", bg: "bg-white", text: "text-gray-600", badge: "bg-gray-100", badgeText: "text-gray-600", hover: "hover:border-emerald-300 hover:bg-emerald-50/50" },
+    active: { border: "border-success-500", bg: "bg-success-50", text: "text-success-800", badge: "bg-success-500", badgeText: "text-white", shadow: "shadow-success-500/20", icon: "text-success-500" },
+    inactive: { border: "border-gray-200", bg: "bg-white", text: "text-gray-600", badge: "bg-gray-100", badgeText: "text-gray-600", hover: "hover:border-success-300 hover:bg-success-50/50" },
   },
   delivered: {
     active: { border: "border-green-500", bg: "bg-green-50", text: "text-green-800", badge: "bg-green-500", badgeText: "text-white", shadow: "shadow-green-500/20", icon: "text-green-500" },
     inactive: { border: "border-gray-200", bg: "bg-white", text: "text-gray-600", badge: "bg-gray-100", badgeText: "text-gray-600", hover: "hover:border-green-300 hover:bg-green-50/50" },
   },
   onhold: {
-    active: { border: "border-rose-500", bg: "bg-rose-50", text: "text-rose-800", badge: "bg-rose-500", badgeText: "text-white", shadow: "shadow-rose-500/20", icon: "text-rose-500" },
-    inactive: { border: "border-gray-200", bg: "bg-white", text: "text-gray-600", badge: "bg-gray-100", badgeText: "text-gray-600", hover: "hover:border-rose-300 hover:bg-rose-50/50" },
+    active: { border: "border-error-500", bg: "bg-error-50", text: "text-error-800", badge: "bg-error-500", badgeText: "text-white", shadow: "shadow-error-500/20", icon: "text-error-500" },
+    inactive: { border: "border-gray-200", bg: "bg-white", text: "text-gray-600", badge: "bg-gray-100", badgeText: "text-gray-600", hover: "hover:border-error-300 hover:bg-error-50/50" },
   },
   overdue: {
     active: { border: "border-red-500", bg: "bg-red-50", text: "text-red-800", badge: "bg-red-500", badgeText: "text-white", shadow: "shadow-red-500/20", icon: "text-red-500" },
@@ -633,44 +633,30 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
   return (
     <ComponentCard className="p-0 overflow-hidden border-0 shadow-xl shadow-gray-200/50 dark:shadow-none dark:bg-gray-900">
       {/* ─── Header Section ─── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 px-6 pt-8 pb-6">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-100/40 via-transparent to-transparent dark:from-blue-900/10" />
-        
-        <div className="relative">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <GroupIcon className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Alumni Cards</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Manage and track alumni card applications</p>
-            </div>
+      {/* <div className="border-b border-gray-200 px-6 py-5 dark:border-gray-700 dark:bg-gray-900">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600">
+            <GroupIcon className="h-5 w-5 text-white" />
           </div>
-          
-          {/* Quick Stats Bar */}
-          <div className="mt-6 flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                {countsLoading ? "Loading..." : `${(counts.all || 0).toLocaleString()} total cards`}
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white">Alumni Cards</h1>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Manage and track alumni card applications</p>
+          </div>
+          {(counts["overdue-under-review"] || 0) + (counts["overdue-under-printing"] || 0) > 0 && (
+            <div className="ml-auto flex items-center gap-2 rounded-lg border border-error-200 bg-error-50 px-3 py-1.5 dark:border-error-800/50 dark:bg-error-900/20">
+              <AlertIcon className="h-3.5 w-3.5 text-error-500" />
+              <span className="text-xs font-semibold text-error-700 dark:text-error-400">
+                {((counts["overdue-under-review"] || 0) + (counts["overdue-under-printing"] || 0)).toLocaleString()} overdue
               </span>
             </div>
-            {(counts["overdue-under-review"] || 0) + (counts["overdue-under-printing"] || 0) > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
-                <AlertIcon className="h-3.5 w-3.5 text-red-500" />
-                <span className="text-xs font-semibold text-red-700 dark:text-red-400">
-                  {((counts["overdue-under-review"] || 0) + (counts["overdue-under-printing"] || 0)).toLocaleString()} overdue
-                </span>
-              </div>
-            )}
-          </div>
+          )}
         </div>
-      </div>
+      </div> */}
 
       {/* ─── Tabs Navigation ─── */}
-      <div className="px-6 -mt-3 relative py-2 z-10">
+      <div className="px-6 pt-4">
         <div 
-          className="flex gap-2 overflow-x-auto pb-3 py-2 px-2 scrollbar-hide"
+          className="scrollbar-hide flex gap-2 overflow-x-auto p-2"
           role="tablist" 
           aria-label="Card status tabs"
         >
@@ -716,7 +702,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
       )}
 
       {/* ─── Data Issues Filter ─── */}
-      <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-6 py-2 dark:border-gray-800">
         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
           <span className="font-medium">Need Correction:</span>
           {selectedDataIssues.length > 0 && (
@@ -734,7 +720,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
       </div>
 
       {/* ─── Content Area ─── */}
-      <div className="px-6 py-6">
+      <div className="px-6 py-4">
         {isError && (
           <div role="alert" className="mb-4 rounded-xl border border-red-200/80 bg-red-50/80 dark:bg-red-900/20 dark:border-red-800/50 px-4 py-3 text-sm font-medium text-red-800 dark:text-red-200 shadow-sm flex items-center gap-2">
             <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -803,7 +789,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
             )}
           </span>
           <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
             Last updated just now
           </div>
         </div>

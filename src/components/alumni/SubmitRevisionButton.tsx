@@ -92,7 +92,7 @@ export default function SubmitRevisionButton({ sapId }: Props) {
       className={`inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium transition-colors ${
         !hasChanges || submitting
           ? "bg-gray-300 cursor-not-allowed"
-          : "bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
+          : "bg-error-600 hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
       }`}
     >
       {submitting ? "Submitting..." : "Submit Revision"}

@@ -73,13 +73,13 @@ export default function StarRating({
                 aria-label={`Rate ${starValue} star${starValue === 1 ? "" : "s"}`}
               >
                 <FaStar
-                  className={`${sizeClassName} transition-colors ${isActive ? "text-amber-400" : "text-slate-300"}`}
+                  className={`${sizeClassName} transition-colors ${isActive ? "text-amber-400" : "text-gray-300"}`}
                 />
               </button>
             );
           })}
         </div>
-        <div className="text-sm font-semibold text-slate-700 min-w-[86px]">{label}</div>
+        <div className="text-sm font-semibold text-gray-700 min-w-[86px]">{label}</div>
       </div>
     </div>
   );

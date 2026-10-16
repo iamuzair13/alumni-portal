@@ -104,12 +104,10 @@ const occupationTransitionTimingRegisterOptions: RegisterOptions<
     if (!needsAnswer) return true;
     const ok = value != null && String(value).trim() !== "";
     return ok ? true : "This field is required";
-  },
-};
+  } };
 
-const inputBase =
-  "mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-neutral-50 dark:border-neutral-700 dark:bg-gray-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:disabled:bg-gray-900 dark:[color-scheme:dark]";
-const labelBase = "block text-sm font-medium text-neutral-800 dark:text-neutral-200";
+const inputBase = "field-input mt-1 dark:[color-scheme:dark]";
+const labelBase = "field-label";
 const occupationTransitionTimingOptions = [
   "Before graduation",
   "Immediately after graduation",
@@ -432,8 +430,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     clearErrors,
     setValue,
     control,
-    formState: { errors },
-  } = useForm<TblAlumniForm>({
+    formState: { errors } } = useForm<TblAlumniForm>({
     defaultValues: {
       alumniemail: null,
       password: null,
@@ -506,9 +503,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       chapters: null,
       alumni_consent_info: null,
       medal: null,
-      medal_document: null,
-    },
-  });
+      medal_document: null } });
 
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
@@ -571,16 +566,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           .map((d) => ({
             id: Number(d.id),
             name: String((d as any).department_name ?? "").trim(),
-            facultyId: Number((d as any).faculty_id),
-          }))
+            facultyId: Number((d as any).faculty_id) }))
           .filter((d) => Number.isFinite(d.id) && d.id > 0 && d.name && Number.isFinite(d.facultyId) && d.facultyId > 0);
 
         const mappedPrograms = (j.programs ?? [])
           .map((p) => ({
             id: Number(p.id),
             name: String((p as any).program_name ?? "").trim(),
-            departmentId: Number((p as any).department_id),
-          }))
+            departmentId: Number((p as any).department_id) }))
           .filter((p) => Number.isFinite(p.id) && p.id > 0 && p.name && Number.isFinite(p.departmentId) && p.departmentId > 0);
 
         if (cancelled) return;
@@ -634,8 +627,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     queryFn: async ({ signal }) => {
       const res = await fetch("/api/users/current/access-assignments", {
         signal,
-        headers: { accept: "application/json" },
-      });
+        headers: { accept: "application/json" } });
       if (!res.ok) {
         return { isSuperAdmin: true, faculties: [], departments: [], programs: [] };
       }
@@ -645,8 +637,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: false,
-  });
+    refetchOnMount: false });
 
   useEffect(() => {
     if (excludeAdminStep) {
@@ -670,8 +661,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: false,
-  });
+    refetchOnMount: false });
 
   useEffect(() => {
     setIsLoadingChapters(chaptersQuery.isLoading);
@@ -1070,16 +1060,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           : undefined;
 
       const checkRes = await fetch(`/api/alumni/check-registration?${checkParams.toString()}`, {
-        signal: fetchSignal,
-      });
+        signal: fetchSignal });
       const checkRaw = await checkRes.text();
       let checkData: Record<string, unknown> = {};
       try {
         checkData = checkRaw ? (JSON.parse(checkRaw) as Record<string, unknown>) : {};
       } catch {
         checkData = {
-          error: checkRaw ? `Server returned non-JSON (${checkRes.status})` : "Empty response from server",
-        };
+          error: checkRaw ? `Server returned non-JSON (${checkRes.status})` : "Empty response from server" };
       }
 
       toast.dismiss(loadingToast);
@@ -1101,14 +1089,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         }
         
         toast.error(errorMsg, {
-          duration: 6000,
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
-            borderRadius: '8px',
-          },
-        });
+          duration: 6000 });
         
         setSubmitError(errorMsg);
         return;
@@ -1118,14 +1099,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       if (checkRes.ok && checkData.exists && checkData.canRegister) {
         toast("Updating existing registration. Your status will be set to 'Under Approval'.", {
           duration: 4000,
-          icon: 'ℹ️',
-          style: {
-            background: '#dbeafe',
-            color: '#1e40af',
-            padding: '16px',
-            borderRadius: '8px',
-          },
-        });
+          icon: 'ℹ️' });
       }
       
       if (!checkRes.ok) {
@@ -1133,8 +1107,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           (typeof checkData.error === "string" && checkData.error) ||
           "Failed to verify existing user. Please try again.";
         toast.error(errorMsg, {
-          duration: 5000,
-        });
+          duration: 5000 });
         setSubmitError(errorMsg);
         return;
       }
@@ -1155,8 +1128,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         signal:
           typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
             ? (AbortSignal as typeof AbortSignal & { timeout: (ms: number) => AbortSignal }).timeout(120_000)
-            : undefined,
-      });
+            : undefined });
       
       const rawText = await res.text();
       const json = rawText ? (() => {
@@ -1176,8 +1148,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           rawText ||
           "Failed to save record. Please check all fields and try again.";
         toast.error(errorMsg, {
-          duration: 6000,
-        });
+          duration: 6000 });
         setSubmitError(errorMsg);
         return;
       }
@@ -1185,8 +1156,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       if (!json || typeof json !== "object") {
         const errorMsg = "Unexpected server response. Please try again.";
         toast.error(errorMsg, {
-          duration: 6000,
-        });
+          duration: 6000 });
         setSubmitError(errorMsg);
         return;
       }
@@ -1203,18 +1173,15 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           medalFd.set("medalDocument", medalFile);
           const medalRes = await fetch("/api/alumni/medal-document", {
             method: "POST",
-            body: medalFd,
-          });
+            body: medalFd });
           if (!medalRes.ok) {
             const errJson = await medalRes.json().catch(() => null);
             toast.error(errJson?.error || "Failed to upload medal document. You can retry later from your profile.", {
-              duration: 6000,
-            });
+              duration: 6000 });
           }
         } catch {
           toast.error("Failed to upload medal document. You can retry later from your profile.", {
-            duration: 6000,
-          });
+            duration: 6000 });
         }
       }
 
@@ -1222,24 +1189,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       if (generatedPassword) {
         successMessage += ` A password has been generated and sent to your email. Please check your inbox for login credentials.`;
         toast.success(successMessage, {
-          duration: 6000,
-          style: {
-            background: '#d1fae5',
-            color: '#065f46',
-            padding: '16px',
-            borderRadius: '8px',
-          },
-        });
+          duration: 6000 });
       } else {
         toast.success(successMessage, {
-          duration: 4000,
-          style: {
-            background: '#d1fae5',
-            color: '#065f46',
-            padding: '16px',
-            borderRadius: '8px',
-          },
-        });
+          duration: 4000 });
       }
       
       setSubmitMsg(generatedPassword 
@@ -1272,8 +1225,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       const errorMsg = msg || "An unexpected error occurred. Please try again later.";
       
       toast.error(errorMsg, {
-        duration: 6000,
-      });
+        duration: 6000 });
       
       setSubmitError(errorMsg);
     } finally {
@@ -1304,24 +1256,24 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-gray-900" aria-live="polite" aria-atomic="true">
           {submitting && (
             <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-gray-300 dark:bg-gray-900">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
-              <span className="dark:text-gray-300 dark:bg-gray-900">Submitting your registration...</span>
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-brand-600"></div>
+              <span>Submitting your registration...</span>
             </div>
           )}
           {submitMsg && (
-            <div role="status" className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800 dark:text-gray-300 dark:bg-gray-900">
-              <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+            <div role="status" className="flex items-center gap-2 rounded-lg border border-success-200 bg-success-50 p-3 text-sm text-success-800 dark:border-success-500/30 dark:bg-success-500/15 dark:text-success-300">
+              <svg className="h-5 w-5 text-success-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              <span className="dark:text-gray-300 dark:bg-gray-900">{submitMsg}</span>
+              <span>{submitMsg}</span>
             </div>
           )}
           {submitError && (
-            <div role="alert" className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800 dark:text-gray-300 dark:bg-gray-900">
-              <svg className="h-5 w-5 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <div role="alert" className="flex items-center gap-2 rounded-lg border border-error-200 bg-error-50 p-3 text-sm text-error-800 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-300">
+              <svg className="h-5 w-5 shrink-0 text-error-600 dark:text-error-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
-              <span className="dark:text-gray-300 dark:bg-gray-900">{submitError}</span>
+              <span>{submitError}</span>
             </div>
           )}
         </div>
@@ -1360,7 +1312,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   }
                 })}
               />
-              {errors.registrationno && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.registrationno.message}</p>}
+              {errors.registrationno && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.registrationno.message}</p>}
             </div>
             <div>
               <label className={labelBase}>SAP ID </label>
@@ -1382,17 +1334,17 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   }
                 })}
               />
-              {errors.sapid && <p className="mt-1 text-xs text-red-600">{errors.sapid.message}</p>}
+              {errors.sapid && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.sapid.message}</p>}
             </div>
             <div>
               <label className={labelBase}>Full Name (as in CNIC) *</label>
               <input type="text" className={inputBase} {...register("alumniname", { required: true, maxLength: 200 })} />
-              {errors.alumniname && <p className="mt-1 text-xs text-red-600">Name is required</p>}
+              {errors.alumniname && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Name is required</p>}
             </div>
             <div>
               <label className={labelBase}>Father Name *</label>
               <input type="text" className={inputBase} {...register("fathername", { required: true, maxLength: 200 })} />
-              {errors.fathername && <p className="mt-1 text-xs text-red-600">Father name is required</p>}
+              {errors.fathername && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Father name is required</p>}
             </div>
             <div>
               <label className={labelBase}>Gender *</label>
@@ -1401,7 +1353,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
               </select>
-              {errors.gender && <p className="mt-1 text-xs text-red-600">Gender is required</p>}
+              {errors.gender && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Gender is required</p>}
             </div>
             <div>
               <label className={labelBase}>Date of Birth</label>
@@ -1425,10 +1377,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             </div>
             
             <div>
-          <p className="text-xs text-blue-700 mt-1 dark:text-gray-300 dark:bg-gray-900">Please ensure to enter correct CNIC. It will be used for verification and Alumni card issuance. Make sure it matches your official documents.</p>
+          <p className="field-hint">Please ensure to enter correct CNIC. It will be used for verification and Alumni card issuance. Make sure it matches your official documents.</p>
               <label className={labelBase}>CNIC/Passport * </label>
               <input type="text" className={inputBase} {...register("cnicpassport", { required: true, maxLength: 50 })} />
-              {errors.cnicpassport && <p className="mt-1 text-xs text-red-600">CNIC/Passport is required</p>}
+              {errors.cnicpassport && <p className="mt-1 text-xs text-error-600 dark:text-error-400">CNIC/Passport is required</p>}
             </div>
             <div>
               <label className={labelBase}>Primary Contact No.*</label>
@@ -1455,7 +1407,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   );
                 }}
               />
-              {errors.contactno && <p className="mt-1 text-xs text-red-600">Mobile number is required</p>}
+              {errors.contactno && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Mobile number is required</p>}
             </div>
             <div>
               <label className={labelBase}>Secondary Contact No. (Optional)</label>
@@ -1482,12 +1434,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   );
                 }}
               />
-              {errors.contactno1 && <p className="mt-1 text-xs text-red-600">Secondary contact number is not valid</p>}
+              {errors.contactno1 && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Secondary contact number is not valid</p>}
             </div>
             <div>
               <label className={labelBase}>Personal Email *</label>
               <input type="email" className={inputBase} placeholder="eg. example@gmail.com" {...register("personalemail", { required: true, maxLength: 100 })} />
-              {errors.personalemail && <p className="mt-1 text-xs text-red-600">Valid email is required</p>}
+              {errors.personalemail && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Valid email is required</p>}
             </div>
             <div>
               <label className={labelBase}>Marital Status</label>
@@ -1496,7 +1448,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 <option value="Married">Married</option>
                 <option value="Un-Married">Un-Married</option>
               </select>
-              {errors.maritalstatus && <p className="mt-1 text-xs text-red-600">Marital status is required</p>}
+              {errors.maritalstatus && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Marital status is required</p>}
             </div>
             <div className="lg:col-span-3">
               <label className={labelBase}>Home Address</label>
@@ -1720,7 +1672,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   </select>
                 )}
               />
-              {errors.country && <p className="mt-1 text-xs text-red-600">Country is required</p>}
+              {errors.country && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Country is required</p>}
             </div>
             {selectedHomeCountry === "Pakistan" && (
               <div>
@@ -1738,7 +1690,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   ))}
                 </select>
                 {errors.province && (
-                  <p className="mt-1 text-xs text-red-600">Province is required</p>
+                  <p className="mt-1 text-xs text-error-600 dark:text-error-400">Province is required</p>
                 )}
               </div>
             )}
@@ -1796,7 +1748,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 </>
               )}
               {errors.homeCity && (
-                <p className="mt-1 text-xs text-red-600">
+                <p className="mt-1 text-xs text-error-600 dark:text-error-400">
                   {errors.homeCity.message || "City is required"}
                 </p>
               )}
@@ -1822,7 +1774,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 <option value="Islamabad">Islamabad</option>
                 <option value="Pakpattan">Pakpattan</option>
               </select>
-              {errors.campusname && <p className="mt-1 text-xs text-red-600">Campus is required</p>}
+              {errors.campusname && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Campus is required</p>}
             </div>
             <div>
               <label className={labelBase}>Faculty *</label>
@@ -1905,14 +1857,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       setFacultyOtherSelected(false);
                       setValue("facultyname", "");
                     }}
-                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                    className="mt-2 text-xs font-medium text-brand-600 underline hover:text-brand-700"
                   >
                     ← Back to faculty list
                   </button>
                 </>
               )}
               {errors.faculty && (
-                <p className="mt-1 text-xs text-red-600">{errors.faculty.message || "Faculty is required"}</p>
+                <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.faculty.message || "Faculty is required"}</p>
               )}
             </div>
             <div>
@@ -1999,14 +1951,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       setDepartmentOtherSelected(false);
                       setValue("departmentname", "");
                     }}
-                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                    className="mt-2 text-xs font-medium text-brand-600 underline hover:text-brand-700"
                   >
                     ← Back to department list
                   </button>
                 </>
               )}
               {errors.department && (
-                <p className="mt-1 text-xs text-red-600">{errors.department.message || "Department is required"}</p>
+                <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.department.message || "Department is required"}</p>
               )}
             </div>
             <div>
@@ -2020,7 +1972,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("degreetitle", { required: true, maxLength: 200 })} 
                   />
                   <p className="mt-1 text-xs text-neutral-500">Enter program name manually when using custom department</p>
-                  {errors.degreetitle && <p className="mt-1 text-xs text-red-600">Program is required</p>}
+                  {errors.degreetitle && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Program is required</p>}
                 </>
               ) : (
                 <select 
@@ -2054,7 +2006,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 </select>
               )}
               {!departmentOtherSelected && errors.program && (
-                <p className="mt-1 text-xs text-red-600">{errors.program.message || "Program is required"}</p>
+                <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.program.message || "Program is required"}</p>
               )}
             </div>
             <div>
@@ -2065,7 +2017,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
-              {errors.yearofstarting && <p className="mt-1 text-xs text-red-600">Admission year is required</p>}
+              {errors.yearofstarting && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Admission year is required</p>}
             </div>
              <div>
               <label className={labelBase}>Passing Out Year *</label>
@@ -2075,7 +2027,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
-              {errors.yearofending && <p className="mt-1 text-xs text-red-600">Passing out year is required</p>}
+              {errors.yearofending && <p className="mt-1 text-xs text-error-600 dark:text-error-400">Passing out year is required</p>}
             </div>
             <div>
               <label className={labelBase}>CGPA (Optional)</label>
@@ -2092,7 +2044,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   max: { value: 4, message: "CGPA must be 4 or less" }
                 })} 
               />
-              {errors.cgpa && <p className="mt-1 text-xs text-red-600">{errors.cgpa.message}</p>}
+              {errors.cgpa && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.cgpa.message}</p>}
             </div>
             <div>
               <label className={labelBase}>Major Subject (Optional)</label>
@@ -2102,7 +2054,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 placeholder="Enter major subject"
                 {...register("majorsubject", { maxLength: 200 })} 
               />
-              {errors.majorsubject && <p className="mt-1 text-xs text-red-600">{errors.majorsubject.message}</p>}
+              {errors.majorsubject && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.majorsubject.message}</p>}
             </div>
             <div>
               <label className={labelBase}>Medal (Optional)</label>
@@ -2114,8 +2066,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       setMedalFile(null);
                       setValue("medal_document", null);
                     }
-                  },
-                })}
+                  } })}
               >
                 <option value="">None</option>
                 <option value="Gold Medalist">Gold Medalist</option>
@@ -2168,7 +2119,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     type="radio"
                     value="Employed"
                     defaultChecked
-                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    className="h-4 w-4 border-neutral-300 text-brand-600 focus:ring-brand-500/30"
                     {...register("employeed")}
                   />
                   Employed
@@ -2177,7 +2128,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input
                     type="radio"
                     value="Self-Employed/Enterpreneur"
-                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    className="h-4 w-4 border-neutral-300 text-brand-600 focus:ring-brand-500/30"
                     {...register("employeed")}
                   />
                   Self-Employed/Enterpreneur
@@ -2186,7 +2137,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input
                     type="radio"
                     value="Pursuing Higher Education"
-                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    className="h-4 w-4 border-neutral-300 text-brand-600 focus:ring-brand-500/30"
                     {...register("employeed")}
                   />
                   Pursuing Higher Education
@@ -2195,7 +2146,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input
                     type="radio"
                     value="Unemployed(By Choice)"
-                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    className="h-4 w-4 border-neutral-300 text-brand-600 focus:ring-brand-500/30"
                     {...register("employeed")}
                   />
                   Unemployed(By Choice)
@@ -2204,7 +2155,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input
                     type="radio"
                     value="Unemployed(Searching for job)"
-                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    className="h-4 w-4 border-neutral-300 text-brand-600 focus:ring-brand-500/30"
                     {...register("employeed")}
                   />
                   Unemployed(Searching for job)
@@ -2233,7 +2184,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     ))}
                   </select>
                   {errors.occupation_transition_timing && (
-                    <p className="mt-1 text-xs text-red-600">This field is required</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">This field is required</p>
                   )}
                 </div>
                 {/* Sector = industry */}
@@ -2267,7 +2218,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       <option value="Construction & Real Estate">Construction & Real Estate</option>
                   </datalist>
                   {errors.industry && (
-                    <p className="mt-1 text-xs text-red-600">{errors.industry.message || "Sector is required"}</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.industry.message || "Sector is required"}</p>
                   )}
                 </div>
 
@@ -2282,7 +2233,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("startOfCareer", { required: true })} 
                   />
                   {errors.startOfCareer && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">Start of career date is required</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">Start of career date is required</p>
                   )}
                 </div>
 
@@ -2298,7 +2249,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("nameoforganization", { required: true, maxLength: 100 })} 
                   />
                   {errors.nameoforganization && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">
                       {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business name is required" : "Current organization is required"}
                     </p>
                   )}
@@ -2309,7 +2260,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <label className={labelBase}>Current Designation *</label>
                   <input type="text" className={inputBase} placeholder="Enter your designation" {...register("designation", { required: true, maxLength: 100 })} />
                   {errors.designation && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">Current designation is required</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">Current designation is required</p>
                   )}
                 </div>
 
@@ -2332,7 +2283,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     })} 
                   />
                   {errors.officialemail && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">
                       {errors.officialemail.message || ((employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business email is required" : "Work email is required")}
                     </p>
                   )}
@@ -2350,7 +2301,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("officialnumber", { required: true, maxLength: 50 })} 
                   />
                   {errors.officialnumber && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">
                       {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business phone is required" : "Work phone is required"}
                     </p>
                   )}
@@ -2368,7 +2319,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("organization_address", { required: true, maxLength: 500 })} 
                   />
                   {errors.organization_address && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">
                       {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business address is required" : "Work address is required"}
                     </p>
                   )}
@@ -2426,7 +2377,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     )}
                   />
                   {errors.workCity && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">
                       {errors.workCity.message ||
                         ((employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
                           ? "Business city is required"
@@ -2461,7 +2412,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     ))}
                   </datalist>
                   {errors.workCountry && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.workCountry.message || "Work country is required"}</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.workCountry.message || "Work country is required"}</p>
                   )}
                 </div>
               </>
@@ -2484,14 +2435,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     ))}
                   </select>
                   {errors.occupation_transition_timing && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">This field is required</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">This field is required</p>
                   )}
                 </div>
                 <div>
                   <label className={labelBase}>Institution Name *</label>
                   <input type="text" className={inputBase} placeholder="e.g. University Name" {...register("highereducationinstitute", { required: true, maxLength: 200 })} />
                   {errors.highereducationinstitute && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">Institution name is required</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">Institution name is required</p>
                   )}
                 </div>
 
@@ -2504,7 +2455,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("highereducationprogram", { required: "Program enrolled is required", maxLength: 100 })}
                   />
                   {errors.highereducationprogram && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.highereducationprogram.message || "Program enrolled is required"}</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.highereducationprogram.message || "Program enrolled is required"}</p>
                   )}
                 </div>
 
@@ -2517,7 +2468,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     <option value="Self Paid">Self Paid</option>
                   </select>
                   {errors.scholarship && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">Funding source is required</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">Funding source is required</p>
                   )}
                 </div>
 
@@ -2539,7 +2490,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     placeholder="e.g. Lahore"
                   />
                   {errors.highereducationinstituteCity && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.highereducationinstituteCity.message || "Institution city is required"}</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.highereducationinstituteCity.message || "Institution city is required"}</p>
                   )}
                 </div>
 
@@ -2561,7 +2512,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     ))}
                   </datalist>
                   {errors.highereducationinstituteCountry && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.highereducationinstituteCountry.message || "Institution country is required"}</p>
+                    <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.highereducationinstituteCountry.message || "Institution country is required"}</p>
                   )}
                 </div>
 
@@ -2595,7 +2546,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 placeholder="https://facebook.com/yourprofile"
                 {...register("facebook", { maxLength: 200 })}
               />
-              {errors.facebook && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.facebook.message}</p>}
+              {errors.facebook && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.facebook.message}</p>}
             </div>
             <div>
               <label className={labelBase}>Instagram</label>
@@ -2605,7 +2556,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 placeholder="https://instagram.com/yourprofile"
                 {...register("instagram", { maxLength: 200 })}
               />
-              {errors.instagram && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.instagram.message}</p>}
+              {errors.instagram && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.instagram.message}</p>}
             </div>
             <div>
               <label className={labelBase}>YouTube</label>
@@ -2615,7 +2566,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 placeholder="https://youtube.com/@yourchannel"
                 {...register("youtube", { maxLength: 200 })}
               />
-              {errors.youtube && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.youtube.message}</p>}
+              {errors.youtube && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.youtube.message}</p>}
             </div>
             <div>
               <label className={labelBase}>LinkedIn</label>
@@ -2625,7 +2576,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 placeholder="https://linkedin.com/in/yourprofile"
                 {...register("linkedin", { maxLength: 200 })}
               />
-              {errors.linkedin && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.linkedin.message}</p>}
+              {errors.linkedin && <p className="mt-1 text-xs text-error-600 dark:text-error-400">{errors.linkedin.message}</p>}
             </div>
           </div>
         </div>
@@ -2642,7 +2593,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           <div className="space-y-4">
           {isLoadingChapters ? (
             <div className="flex items-center justify-center py-4">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-brand-600"></div>
               <span className="ml-2 text-sm text-neutral-600 dark:text-gray-300 dark:bg-gray-900">Loading chapters...</span>
             </div>
           ) : (
@@ -2661,8 +2612,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                           setSelectedChapters([...selectedChapters, chapterId]);
                         } else {
                           toast.error("You can select up to 3 chapters only.", {
-                            duration: 3000,
-                          });
+                            duration: 3000 });
                         }
                       }
                     }}
@@ -2693,8 +2643,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                           setSelectedChapters([...selectedChapters, chapterId]);
                         } else {
                           toast.error("You can select up to 3 chapters only.", {
-                            duration: 3000,
-                          });
+                            duration: 3000 });
                         }
                       }
                     }}
@@ -2724,7 +2673,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       return (
                         <span
                           key={chapterId}
-                          className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800"
+                          className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:ring-brand-500/30"
                         >
                           {chapter.name}
                           <button
@@ -2732,7 +2681,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                             onClick={() => {
                               setSelectedChapters(selectedChapters.filter(id => id !== chapterId));
                             }}
-                            className="rounded px-1 text-blue-700 hover:text-blue-900"
+                            className="rounded px-1 text-brand-700 hover:text-brand-800 dark:text-brand-400"
                             aria-label={`Remove ${chapter.name}`}
                           >
                             ×
@@ -2768,7 +2717,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" className="h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500" {...register("verify")} />
+              <input type="checkbox" className="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500/30" {...register("verify")} />
               <label className={labelBase}>Verify</label>
               <p className="ml-2 text-xs text-neutral-600">Stored as a string flag on server (Yes/No).</p>
             </div>
@@ -2814,9 +2763,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     value === 1 ||
                     value === "1";
                   return ok ? true : "You must confirm the declaration to proceed";
-                },
-              })}
-              className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                } })}
+              className="mt-1 h-4 w-4 text-brand-600 focus:ring-brand-500/30 border-gray-300 rounded"
             />
             <label htmlFor="alumni_consent_info" className="text-sm text-neutral-800 cursor-pointer dark:text-gray-300 dark:bg-gray-900">
               <span className="font-semibold">Declaration</span>
@@ -2827,7 +2775,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             </label>
           </div>
           {errors.alumni_consent_info && (
-            <p className="mt-2 text-xs text-red-600 ml-7 dark:text-gray-300 dark:bg-gray-900">{errors.alumni_consent_info.message}</p>
+            <p className="mt-2 text-xs text-error-600 dark:text-error-400 ml-7 dark:text-gray-300 dark:bg-gray-900">{errors.alumni_consent_info.message}</p>
           )}
         </div>
       </section>
@@ -2848,11 +2796,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   : "Please complete all required fields (including the declaration).";
                 toast.error(detail, {
                   id: "alumni-reg-validation",
-                  duration: 6000,
-                });
+                  duration: 6000 });
               })();
             }}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:opacity-60 sm:w-auto"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 text-sm font-medium text-white shadow-xs transition hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Submit
           </button>

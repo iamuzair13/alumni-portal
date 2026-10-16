@@ -210,7 +210,7 @@ export default function StoriesCriteriaManager({
                       <div className="flex items-center gap-2 flex-wrap">
                         <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{c.label}</div>
                         {c.is_required ? (
-                          <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:border-rose-800/50 dark:bg-rose-900/20 dark:text-rose-300">
+                          <span className="rounded-full border border-error-200 bg-error-50 px-2 py-0.5 text-[10px] font-semibold text-error-700 dark:border-error-800/50 dark:bg-error-900/20 dark:text-error-300">
                             Required
                           </span>
                         ) : (
@@ -242,7 +242,7 @@ export default function StoriesCriteriaManager({
                         type="button"
                         onClick={() => confirmDelete(c)}
                         disabled={processing}
-                        className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60"
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-error-600 text-white hover:bg-error-700 disabled:opacity-60"
                       >
                         Delete
                       </button>
@@ -308,7 +308,7 @@ export default function StoriesCriteriaManager({
                   setProcessing(false);
                 }
               }}
-              className="rounded-lg px-4 py-2 text-sm font-semibold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60"
+              className="rounded-lg px-4 py-2 text-sm font-semibold bg-error-600 text-white hover:bg-error-700 disabled:opacity-60"
             >
               {processing ? "Deleting..." : "Delete"}
             </button>

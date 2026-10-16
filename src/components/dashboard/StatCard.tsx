@@ -105,7 +105,7 @@ export function StatCard({
         shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.25)]
         transition-all duration-300 ease-out
         hover:-translate-y-0.5 hover:shadow-lg
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:ring-offset-2
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/50 focus-visible:ring-offset-2
         dark:focus-visible:ring-offset-gray-900
         ${isSelected ? `ring-2 ring-accent-500/20 ${theme.iconChip}` : ``}
       `}
@@ -117,7 +117,7 @@ export function StatCard({
       />
 
       <div className="flex items-start justify-between gap-2 pr-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           {label}
         </p>
         {(trend || badge) && (
@@ -126,8 +126,8 @@ export function StatCard({
               <span
                 className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                   trend.positive
-                    ? "bg-emerald-100/90 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-                    : "bg-rose-100/90 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300"
+                    ? "bg-success-100/90 text-success-700 dark:bg-success-900/50 dark:text-success-300"
+                    : "bg-error-100/90 text-error-700 dark:bg-error-900/50 dark:text-error-300"
                 }`}
               >
                 {trend.positive ? (
@@ -152,11 +152,11 @@ export function StatCard({
           children
         ) : isLoading ? (
           <div
-            className="mt-1 h-9 w-28 animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-700/80"
+            className="mt-1 h-9 w-28 animate-pulse rounded-lg bg-gray-200/80 dark:bg-gray-700/80"
             aria-label="Loading count"
           />
         ) : (
-          <p className="text-4xl font-bold tracking-tight tabular-nums text-slate-900 dark:text-white">
+          <p className="text-4xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">
             {animated.toLocaleString()}
           </p>
         )}
@@ -188,16 +188,16 @@ export function UnderApprovalMetricContent({
   if (isLoadingNew && isLoadingChange) {
     return (
       <div
-        className="mt-1 h-9 w-40 animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-700/80"
+        className="mt-1 h-9 w-40 animate-pulse rounded-lg bg-gray-200/80 dark:bg-gray-700/80"
         aria-label="Loading approval counts"
       />
     );
   }
 
   return (
-    <p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900 dark:text-white sm:text-3xl">
+    <p className="text-2xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white sm:text-3xl">
       <span className="inline-flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center rounded-lg border border-white/80 bg-white/80 px-2 py-0.5 text-slate-900 shadow-sm dark:border-gray-600/60 dark:bg-white/[0.06] dark:text-white">
+        <span className="inline-flex items-center rounded-lg border border-white/80 bg-white/80 px-2 py-0.5 text-gray-900 shadow-sm dark:border-gray-600/60 dark:bg-white/[0.06] dark:text-white">
           {isLoadingNew ? (
             <span className="inline-flex h-6 w-8 items-center justify-center">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current opacity-60" />
@@ -206,10 +206,10 @@ export function UnderApprovalMetricContent({
             animatedNew.toLocaleString()
           )}
         </span>
-        <span className="text-slate-400 dark:text-slate-500" aria-hidden>
+        <span className="text-gray-400 dark:text-gray-500" aria-hidden>
           |
         </span>
-        <span className="inline-flex items-center rounded-lg border border-white/80 bg-white/80 px-2 py-0.5 text-slate-900 shadow-sm dark:border-gray-600/60 dark:bg-white/[0.06] dark:text-white">
+        <span className="inline-flex items-center rounded-lg border border-white/80 bg-white/80 px-2 py-0.5 text-gray-900 shadow-sm dark:border-gray-600/60 dark:bg-white/[0.06] dark:text-white">
           {isLoadingChange ? (
             <span className="inline-flex h-6 w-8 items-center justify-center">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current opacity-60" />

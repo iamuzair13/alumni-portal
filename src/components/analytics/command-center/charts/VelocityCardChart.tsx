@@ -37,7 +37,7 @@ export function VelocityCardChart({
               key={bar.label}
               className={`flex min-h-0 flex-col items-center rounded-lg px-0.5 pb-0.5 pt-1 ${
                 isLeader
-                  ? "bg-gradient-to-b from-emerald-50/80 to-transparent dark:from-emerald-500/[0.08] dark:to-transparent"
+                  ? "bg-gradient-to-b from-success-50/80 to-transparent dark:from-success-500/[0.08] dark:to-transparent"
                   : ""
               }`}
               title={`${bar.label}: ${bar.count.toLocaleString()} (${percentage}%)`}
@@ -45,19 +45,19 @@ export function VelocityCardChart({
               <span
                 className={`mb-0.5 text-[10px] font-semibold tabular-nums leading-none ${
                   bar.count > 0
-                    ? "text-slate-800 dark:text-slate-100"
-                    : "text-slate-300 dark:text-slate-600"
+                    ? "text-gray-800 dark:text-gray-100"
+                    : "text-gray-300 dark:text-gray-600"
                 }`}
               >
                 {bar.count.toLocaleString()}
               </span>
 
               <div className="flex w-full min-h-0 flex-1 items-end">
-                <div className="relative h-full w-full overflow-hidden rounded-md bg-slate-100/80 ring-1 ring-inset ring-slate-200/60 dark:bg-slate-800/50 dark:ring-slate-700/50">
+                <div className="relative h-full w-full overflow-hidden rounded-md bg-gray-100/80 ring-1 ring-inset ring-gray-200/60 dark:bg-gray-800/50 dark:ring-gray-700/50">
                   {bar.count > 0 ? (
                     <>
                       {!fitsInside && percentage > 0 ? (
-                        <span className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 text-[12px] font-bold text-slate-700 dark:text-slate-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
+                        <span className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 text-[12px] font-bold text-gray-700 dark:text-gray-200 [text-shadow:0_0_2px_#fff,0_0_2px_#fff]">
                           {percentage}%
                         </span>
                       ) : null}
@@ -83,14 +83,14 @@ export function VelocityCardChart({
                       </motion.div>
                     </>
                   ) : (
-                    <div className="absolute bottom-0 left-1/2 h-0.5 w-1.5 -translate-x-1/2 rounded-full bg-slate-200 dark:bg-slate-700" />
+                    <div className="absolute bottom-0 left-1/2 h-0.5 w-1.5 -translate-x-1/2 rounded-full bg-gray-200 dark:bg-gray-700" />
                   )}
                 </div>
               </div>
 
               <span
                 className={`mt-1 max-w-full truncate text-center text-[10px] font-medium leading-none ${
-                  bar.count > 0 ? "text-slate-600 dark:text-slate-300" : "text-slate-400 dark:text-slate-600"
+                  bar.count > 0 ? "text-gray-600 dark:text-gray-300" : "text-gray-400 dark:text-gray-600"
                 }`}
               >
                 {bar.short}

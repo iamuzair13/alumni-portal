@@ -71,11 +71,11 @@ export default function RenewCardButton({ alumniId, name, sapId, faculty, depart
         >
           <div className="w-full h-full bg-white shadow-xl transition-all duration-300 ease-out flex flex-col">
             <div className="flex items-center justify-between border-b p-4 flex-shrink-0">
-              <h2 className="text-lg font-semibold text-slate-900">Renew Alumni Card</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Renew Alumni Card</h2>
               <button 
                 ref={closeFormBtnRef} 
                 aria-label="Close" 
-                className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100" 
+                className="rounded-md px-2 py-1 text-gray-700 hover:bg-gray-100" 
                 onClick={() => setOpenForm(false)}
               >
                 Close

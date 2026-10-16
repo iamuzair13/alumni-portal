@@ -65,6 +65,7 @@ export interface ScholarshipApplicationData {
   kinshipName?: string | null;
   semester?: string | null;
   scholarshipDisclosure?: string | null;
+  discountTermsAccepted?: boolean | null;
 }
 
 export interface ScholarshipLetterPDFData {
@@ -92,6 +93,7 @@ export interface ScholarshipLetterPDFData {
   applicationTerm?: string | null;
   semester?: string | null;
   scholarshipDisclosure?: string | null;
+  discountTermsAccepted?: boolean | null;
   scholarshipApplicationPdfId?: string | null;
   discountType?: string | null;
   requestedProgramDegree?: string;
@@ -1199,9 +1201,15 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       form.drawFullRow(
         "Declaration",
         `I hereby disclose all scholarships / financial assistance currently availed by me ${
-          String(data.scholarshipDisclosure || "").trim() || "__________________________"
+          String(data.scholarshipDisclosure || "").trim() || "None"
         }. I understand that if awarded the Alumni Scholarship, all others shall stand cancelled. If any concealment is discovered later, all scholarships shall be cancelled/recovered and disciplinary action including cancellation of admission may be taken.`,
       );
+      if (data.discountTermsAccepted === true) {
+        form.drawFullRow(
+          "Discount Terms",
+          "The approved discount is applicable to the new or current semester, as applicable, and shall continue in subsequent semesters subject to the maintenance of the required CGPA. No fee adjustment, compensation, or refund shall be provided for any previous semesters.",
+        );
+      }
 
       form.drawSignatureBlock("Reviewed By (ARO)", "Approved By (Refer to attached approval from competent authority)");
       form.drawFooter();
@@ -1316,11 +1324,18 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
       }
       addParagraph(
         `I hereby disclose all scholarships / financial assistance currently availed by me ${
-          String(data.scholarshipDisclosure || "").trim() || "__________________________"
+          String(data.scholarshipDisclosure || "").trim() || "None"
         }. I understand that if awarded the Alumni Scholarship, all others shall stand cancelled. If any concealment is discovered later, all scholarships shall be cancelled/recovered and disciplinary action including cancellation of admission may be taken.`,
         false,
         10,
       );
+      if (data.discountTermsAccepted === true) {
+        addParagraph(
+          "The approved discount is applicable to the new or current semester, as applicable, and shall continue in subsequent semesters subject to the maintenance of the required CGPA. No fee adjustment, compensation, or refund shall be provided for any previous semesters.",
+          false,
+          10,
+        );
+      }
       addParagraph("Please approve so that the applicant can proceed with the admission process.", false, 14);
 
       addParagraph("Regards,", false, 8);

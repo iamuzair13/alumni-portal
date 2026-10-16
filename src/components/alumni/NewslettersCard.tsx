@@ -75,7 +75,7 @@ export default function NewslettersCard() {
 
     if (error) {
       return (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+        <div className="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-900 dark:bg-error-950/40 dark:text-error-300">
           {error}
         </div>
       );
@@ -119,13 +119,13 @@ export default function NewslettersCard() {
     <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 md:p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h4 className="text-lg font-bold text-slate-900 dark:text-gray-100">Newsletters</h4>
-          <p className="text-xs text-slate-600 dark:text-gray-400">Read-only. Tap View to see all newsletters.</p>
+          <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100">Newsletters</h4>
+          <p className="text-xs text-gray-600 dark:text-gray-400">Read-only. Tap View to see all newsletters.</p>
         </div>
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center justify-center rounded-lg bg-[#183D32] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0e241d]"
+          className="inline-flex items-center justify-center rounded-lg bg-accent-500 px-4 py-2 text-xs font-semibold text-white hover:bg-accent-800"
         >
           View
         </button>

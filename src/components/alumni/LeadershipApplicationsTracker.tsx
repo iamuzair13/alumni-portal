@@ -171,11 +171,11 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
 
   return (
     <div className={className}>
-      <div className="rounded-2xl border border-slate-200 bg-yellow-600 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 py-4 border-b border-slate-200 bg-white/50">
+      <div className="rounded-2xl border border-gray-200 bg-yellow-600 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 py-4 border-b border-gray-200 bg-white/50">
           <div className="min-w-0">
-            <h5 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">Leadership Applications</h5>
-            <div className="mt-1 text-sm text-slate-700">Track your submitted applications and their statuses</div>
+            <h5 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900">Leadership Applications</h5>
+            <div className="mt-1 text-sm text-gray-700">Track your submitted applications and their statuses</div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -185,7 +185,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                 setAppsSortKey("createdAt");
                 setAppsSortDir(nextDir);
               }}
-              className="text-xs sm:text-sm px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-[#fbf7ee] hover:border-[#caa24a] focus:outline-none focus:ring-2 focus:ring-[#caa24a]/40"
+              className="text-xs sm:text-sm px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-800 shadow-sm hover:bg-warning-50 hover:border-warning-400 focus:outline-none focus:ring-2 focus:ring-warning-400/40"
             >
               Sort by Date
             </button>
@@ -196,7 +196,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                 setAppsSortKey("status");
                 setAppsSortDir(nextDir);
               }}
-              className="text-xs sm:text-sm px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-[#fbf7ee] hover:border-[#caa24a] focus:outline-none focus:ring-2 focus:ring-[#caa24a]/40"
+              className="text-xs sm:text-sm px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-800 shadow-sm hover:bg-warning-50 hover:border-warning-400 focus:outline-none focus:ring-2 focus:ring-warning-400/40"
             >
               Sort by Status
             </button>
@@ -208,19 +208,19 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
         </div>
 
         <div className="px-4 sm:px-5 pb-4">
-          <div className="mt-3 rounded-xl border border-slate-200 bg-white/90 overflow-hidden">
+          <div className="mt-3 rounded-xl border border-gray-200 bg-white/90 overflow-hidden">
             {leadershipAppsLoading ? (
-              <div className="p-4 text-sm text-slate-600">Loading leadership applications...</div>
+              <div className="p-4 text-sm text-gray-600">Loading leadership applications...</div>
             ) : leadershipApplicationsSorted.length === 0 ? (
               <div className="p-4">
-                <div className="rounded-lg border border-slate-200 bg-[#fbf7ee] px-4 py-4 text-sm text-slate-700">
+                <div className="rounded-lg border border-gray-200 bg-warning-50 px-4 py-4 text-sm text-gray-700">
                   No leadership applications submitted yet.
                 </div>
               </div>
             ) : (
               <div className="max-h-[280px] overflow-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
+                  <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">SAP / Reg No</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">Type</th>
@@ -230,20 +230,20 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">Actions</th>
                 </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-gray-100">
                 {leadershipApplicationsSorted.map((app) => {
                   const statusText = String(app.status || "pending");
                   const statusLower = statusText.toLowerCase();
                   const badgeClass =
                     statusLower === "approved"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      ? "bg-success-50 text-success-700 border-success-200"
                       : statusLower === "assessed"
                         ? "bg-blue-50 text-blue-700 border-blue-200"
                       : statusLower === "rejected"
-                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        ? "bg-error-50 text-error-700 border-error-200"
                         : "bg-amber-50 text-amber-700 border-amber-200";
                   return (
-                    <tr key={`${app.type}-${app.id}`} className="hover:bg-[#fbf7ee]/60">
+                    <tr key={`${app.type}-${app.id}`} className="hover:bg-warning-50/60">
                       <td className="px-4 py-3 text-gray-900 whitespace-nowrap">{identifierText(app)}</td>
                       <td className="px-4 py-3 text-gray-900">{typeLabel(app.type)}</td>
                       <td className="px-4 py-3 text-gray-900">
@@ -268,7 +268,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                             setSelectedViewApp({ type: app.type, applicationId: app.id });
                             viewModal.openModal();
                           }}
-                          className="text-xs font-semibold rounded-md border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:bg-[#fbf7ee] hover:border-[#caa24a]"
+                          className="text-xs font-semibold rounded-md border border-gray-300 bg-white px-3 py-1.5 text-gray-700 hover:bg-warning-50 hover:border-warning-400"
                         >
                           View Application
                         </button>
@@ -308,11 +308,11 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                 const statusLower = statusText.toLowerCase();
                 const statusBadge =
                   statusLower === "approved"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    ? "bg-success-50 text-success-700 border-success-200"
                     : statusLower === "assessed"
                       ? "bg-blue-50 text-blue-700 border-blue-200"
                     : statusLower === "rejected"
-                      ? "bg-rose-50 text-rose-700 border-rose-200"
+                      ? "bg-error-50 text-error-700 border-error-200"
                       : "bg-amber-50 text-amber-700 border-amber-200";
 
                 const docs = documentsFromItem(item);
@@ -347,7 +347,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                         <AlumniProfilePhoto
                           src={photoSrc}
                           alt={`${item.name || "Alumni"} profile`}
-                          className="h-20 w-20 shrink-0 rounded-lg border border-slate-200 object-cover bg-slate-100"
+                          className="h-20 w-20 shrink-0 rounded-lg border border-gray-200 object-cover bg-gray-100"
                         />
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-gray-900">Leadership Application Details</div>
@@ -456,7 +456,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                             Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role
                           </div>
                           {showAssessmentMarks ? (
-                            <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+                            <span className="shrink-0 inline-flex items-center rounded-full border border-success-200 bg-success-50 px-2.5 py-1 text-xs font-semibold text-success-800 tabular-nums">
                               {formatObtainedMarkDisplay(strategyMarks)} / 15
                             </span>
                           ) : null}
@@ -472,7 +472,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                             Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
                           </div>
                           {showAssessmentMarks ? (
-                            <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 tabular-nums">
+                            <span className="shrink-0 inline-flex items-center rounded-full border border-success-200 bg-success-50 px-2.5 py-1 text-xs font-semibold text-success-800 tabular-nums">
                               {formatObtainedMarkDisplay(achievementMarks)} / 10
                             </span>
                           ) : null}
@@ -483,7 +483,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                       </div>
 
                       {showAssessmentMarks ? (
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm">
+                        <div className="rounded-xl border border-success-200 bg-success-50/80 p-6 shadow-sm">
                           <div className="text-sm font-semibold text-gray-900">Assessment Summary</div>
                           <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700">
                             <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
@@ -498,9 +498,9 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                                 {formatObtainedMarkDisplay(bonusMarks)} / 25
                               </div>
                             </div>
-                            <div className="rounded-lg border border-emerald-300 bg-emerald-100/50 px-3 py-2">
-                              <div className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Grand Total</div>
-                              <div className="mt-1 text-base font-bold text-emerald-900 tabular-nums">
+                            <div className="rounded-lg border border-success-300 bg-success-100/50 px-3 py-2">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-success-800">Grand Total</div>
+                              <div className="mt-1 text-base font-bold text-success-900 tabular-nums">
                                 {formatObtainedMarkDisplay(grandObtained)} / {formatObtainedMarkDisplay(grandMaximum)}
                               </div>
                             </div>

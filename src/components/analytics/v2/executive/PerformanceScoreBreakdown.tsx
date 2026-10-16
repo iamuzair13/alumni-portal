@@ -32,15 +32,15 @@ const FACTOR_META: Record<
   },
   active: {
     icon: Users,
-    accent: "text-indigo-600 dark:text-indigo-400",
-    bg: "bg-indigo-50 dark:bg-indigo-500/10",
-    ring: "ring-indigo-200/80 dark:ring-indigo-500/20",
+    accent: "text-brand-600 dark:text-brand-400",
+    bg: "bg-brand-50 dark:bg-brand-500/10",
+    ring: "ring-brand-200/80 dark:ring-brand-500/20",
   },
   placement: {
     icon: Briefcase,
-    accent: "text-emerald-600 dark:text-emerald-400",
-    bg: "bg-emerald-50 dark:bg-emerald-500/10",
-    ring: "ring-emerald-200/80 dark:ring-emerald-500/20",
+    accent: "text-success-600 dark:text-success-400",
+    bg: "bg-success-50 dark:bg-success-500/10",
+    ring: "ring-success-200/80 dark:ring-success-500/20",
   },
   engagement: {
     icon: TrendingUp,
@@ -65,13 +65,13 @@ const FACTOR_META: Record<
 function statusTheme(label: PerformanceResult["label"]) {
   if (label === "Strong") {
     return {
-      gradient: "from-emerald-500/10 via-emerald-500/5 to-transparent dark:from-emerald-500/15 dark:via-emerald-500/5",
-      border: "border-emerald-200/70 dark:border-emerald-500/25",
-      badge: "bg-emerald-100 text-emerald-800 ring-emerald-200/80 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30",
-      score: "text-emerald-700 dark:text-emerald-300",
-      bar: "from-emerald-500 to-emerald-400",
-      insight: "bg-emerald-50/80 ring-emerald-100 dark:bg-emerald-500/10 dark:ring-emerald-500/20",
-      dot: "bg-emerald-500",
+      gradient: "from-success-500/10 via-success-500/5 to-transparent dark:from-success-500/15 dark:via-success-500/5",
+      border: "border-success-200/70 dark:border-success-500/25",
+      badge: "bg-success-100 text-success-800 ring-success-200/80 dark:bg-success-500/15 dark:text-success-300 dark:ring-success-500/30",
+      score: "text-success-700 dark:text-success-300",
+      bar: "from-success-500 to-success-400",
+      insight: "bg-success-50/80 ring-success-100 dark:bg-success-500/10 dark:ring-success-500/20",
+      dot: "bg-success-500",
     };
   }
   if (label === "Stable") {
@@ -86,20 +86,20 @@ function statusTheme(label: PerformanceResult["label"]) {
     };
   }
   return {
-    gradient: "from-rose-500/10 via-rose-500/5 to-transparent dark:from-rose-500/15 dark:via-rose-500/5",
-    border: "border-rose-200/70 dark:border-rose-500/25",
-    badge: "bg-rose-100 text-rose-800 ring-rose-200/80 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/30",
-    score: "text-rose-700 dark:text-rose-300",
-    bar: "from-rose-500 to-rose-400",
-    insight: "bg-rose-50/80 ring-rose-100 dark:bg-rose-500/10 dark:ring-rose-500/20",
-    dot: "bg-rose-500",
+    gradient: "from-error-500/10 via-error-500/5 to-transparent dark:from-error-500/15 dark:via-error-500/5",
+    border: "border-error-200/70 dark:border-error-500/25",
+    badge: "bg-error-100 text-error-800 ring-error-200/80 dark:bg-error-500/15 dark:text-error-300 dark:ring-error-500/30",
+    score: "text-error-700 dark:text-error-300",
+    bar: "from-error-500 to-error-400",
+    insight: "bg-error-50/80 ring-error-100 dark:bg-error-500/10 dark:ring-error-500/20",
+    dot: "bg-error-500",
   };
 }
 
 function factorBarTone(score: number) {
-  if (score >= 65) return "from-emerald-500 to-teal-400";
+  if (score >= 65) return "from-success-500 to-teal-400";
   if (score >= 45) return "from-amber-500 to-orange-400";
-  return "from-rose-500 to-pink-400";
+  return "from-error-500 to-pink-400";
 }
 
 function parseWeight(weight: string): number {
@@ -323,10 +323,10 @@ export function PerformanceScoreBreakdown({
                 {PERFORMANCE_SCORE_METHODOLOGY.ratings.map((rating) => {
                   const pillTheme =
                     rating.label === "Strong"
-                      ? "bg-emerald-50 text-emerald-700 ring-emerald-200/80 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
+                      ? "bg-success-50 text-success-700 ring-success-200/80 dark:bg-success-500/10 dark:text-success-300 dark:ring-success-500/25"
                       : rating.label === "Stable"
                         ? "bg-amber-50 text-amber-700 ring-amber-200/80 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25"
-                        : "bg-rose-50 text-rose-700 ring-rose-200/80 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/25";
+                        : "bg-error-50 text-error-700 ring-error-200/80 dark:bg-error-500/10 dark:text-error-300 dark:ring-error-500/25";
                   return (
                     <span
                       key={rating.label}

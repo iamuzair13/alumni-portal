@@ -383,7 +383,7 @@ export default function OrganizationComponent() {
             </div>
           </div>
         </div>
-        <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
+        <div className="p-4 bg-gradient-to-r from-green-50 to-success-50 dark:from-green-900/20 dark:to-success-900/20 rounded-xl border border-green-200 dark:border-green-800">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Programs</p>

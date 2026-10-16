@@ -22,19 +22,19 @@ type DropdownPosition = {
 };
 
 function gaugeStrokeClass(label: PerformanceResult["label"]) {
-  if (label === "Strong") return "text-emerald-500 dark:text-emerald-400";
+  if (label === "Strong") return "text-success-500 dark:text-success-400";
   if (label === "Stable") return "text-amber-500 dark:text-amber-400";
-  return "text-rose-500 dark:text-rose-400";
+  return "text-error-500 dark:text-error-400";
 }
 
 function statusPillClass(label: PerformanceResult["label"]) {
   if (label === "Strong") {
-    return "bg-emerald-50 text-emerald-700 ring-emerald-200/80 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25";
+    return "bg-success-50 text-success-700 ring-success-200/80 dark:bg-success-500/10 dark:text-success-300 dark:ring-success-500/25";
   }
   if (label === "Stable") {
     return "bg-amber-50 text-amber-700 ring-amber-200/80 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25";
   }
-  return "bg-rose-50 text-rose-700 ring-rose-200/80 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/25";
+  return "bg-error-50 text-error-700 ring-error-200/80 dark:bg-error-500/10 dark:text-error-300 dark:ring-error-500/25";
 }
 
 export function PerformanceScore({
@@ -139,10 +139,10 @@ export function PerformanceScore({
 
   const labelColor =
     label === "Strong"
-      ? "text-emerald-600 dark:text-emerald-400"
+      ? "text-success-600 dark:text-success-400"
       : label === "Stable"
         ? "text-amber-600 dark:text-amber-400"
-        : "text-rose-600 dark:text-rose-400";
+        : "text-error-600 dark:text-error-400";
 
   const titleClass = isCommand
     ? "text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
@@ -214,9 +214,9 @@ export function PerformanceScore({
     ? `group inline-flex h-8 w-full min-w-[10.5rem] items-center gap-2 rounded-lg border border-gray-200/80 bg-gray-50/80 px-2 text-left transition-colors hover:border-gray-300 hover:bg-white dark:border-gray-700/80 dark:bg-gray-800/60 dark:hover:border-gray-600 dark:hover:bg-gray-800/90 ${
         expanded ? "border-gray-300 bg-white ring-1 ring-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:ring-gray-700/80" : ""
       } ${needsAttention && !reduced ? "cc-attention-border" : ""}`
-    : `flex w-full items-center gap-2.5 rounded-xl border border-gray-200/60 bg-white/80 text-left shadow-sm backdrop-blur-sm transition-colors hover:border-indigo-300/60 hover:bg-white dark:border-gray-800 dark:bg-gray-900/50 dark:hover:border-indigo-500/40 dark:hover:bg-gray-900/70 ${
+    : `flex w-full items-center gap-2.5 rounded-xl border border-gray-200/60 bg-white/80 text-left shadow-sm backdrop-blur-sm transition-colors hover:border-brand-300/60 hover:bg-white dark:border-gray-800 dark:bg-gray-900/50 dark:hover:border-brand-500/40 dark:hover:bg-gray-900/70 ${
         compact ? "px-2.5 py-2" : "gap-3 p-3"
-      } ${expanded ? "ring-2 ring-indigo-500/20 dark:ring-indigo-400/20" : ""}`;
+      } ${expanded ? "ring-2 ring-brand-500/20 dark:ring-brand-400/20" : ""}`;
 
   const commandDropdown =
     isCommand && expanded && dropdownPos && typeof document !== "undefined"

@@ -125,7 +125,7 @@ export default async function AdminStoryEditPage({ params }: { params: Promise<{
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Edit Success Story</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Edit Success Story</h1>
         <Link href={`/alumni-stories/${encodeURIComponent(id)}`} className="text-sm text-blue-600 hover:text-blue-700">
           Cancel
         </Link>

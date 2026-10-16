@@ -81,7 +81,7 @@ export default function UpdateAlumniCardPictureButton({ sapId }: Props) {
         className={`inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium transition-colors ${
           uploading
             ? "bg-gray-300 cursor-not-allowed"
-            : "bg-[#183D32] hover:bg-[#0e241d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#183D32]"
+            : "bg-accent-500 hover:bg-accent-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-500"
         }`}
       >
         {uploading ? "Updating..." : "Update Alumni Card Picture"}

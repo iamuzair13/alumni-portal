@@ -79,18 +79,18 @@ const STATUS_CLASS_MAP: Record<
     pillBg: "bg-purple-100",
   },
   active: {
-    color: "text-emerald-700",
-    bgColor: "bg-emerald-50",
-    ringColor: "ring-emerald-200",
-    iconColor: "text-emerald-600",
-    pillBg: "bg-emerald-100",
+    color: "text-success-700",
+    bgColor: "bg-success-50",
+    ringColor: "ring-success-200",
+    iconColor: "text-success-600",
+    pillBg: "bg-success-100",
   },
   onhold: {
-    color: "text-rose-700",
-    bgColor: "bg-rose-50",
-    ringColor: "ring-rose-200",
-    iconColor: "text-rose-600",
-    pillBg: "bg-rose-100",
+    color: "text-error-700",
+    bgColor: "bg-error-50",
+    ringColor: "ring-error-200",
+    iconColor: "text-error-600",
+    pillBg: "bg-error-100",
   },
   delivered: {
     color: "text-green-700",
@@ -999,7 +999,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 handleEditPicture();
               }}
               disabled={isSavingPicture || isDeleting}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-success-500 focus-visible:ring-offset-1 hover:text-success-600 hover:bg-success-50 dark:hover:bg-success-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Edit Picture"
               title="Edit Picture"
             >
@@ -1078,8 +1078,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   return (
     <section aria-labelledby="alumni-table-title" className="w-full">
       {/* ─── Enhanced Toolbar ─── */}
-      <div className="mb-6 flex flex-col gap-4  py-2 px-2 	 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex-1 w-full lg:max-w-xl">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex-1 w-full lg:max-w-xl p-4">
           <label 
             htmlFor="alumni-card-table-search" 
             className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-[0.15em]"
@@ -1103,7 +1103,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by name, degree, company, contact..."
-              className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-600 dark:hover:border-gray-600"
+              className="field-input h-11 py-0 pl-12 pr-4"
               aria-label="Search alumni"
             />
             {query && (
@@ -1120,16 +1120,12 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 dark:bg-gray-900 dark:border-gray-800">
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total:</span>
-            <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">{total.toLocaleString()}</span>
-          </div>
+        <div className="flex items-center gap-3 pr-2">
           <button
             type="button"
             onClick={handleExportToExcel}
             disabled={isExporting || effectiveLoading || filtered.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-500/20 hover:bg-emerald-700 hover:shadow-md hover:shadow-emerald-500/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200 active:scale-[0.98]"
+            className="inline-flex items-center gap-2 rounded-xl bg-success-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-success-500/20 hover:bg-success-700 hover:shadow-md hover:shadow-success-500/30 focus:outline-none focus:ring-2 focus:ring-success-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200 active:scale-[0.98]"
           >
             {isExporting ? (
               <>
@@ -1160,7 +1156,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           style={{
             height: "24px",
             scrollbarWidth: "auto",
-            scrollbarColor: "#3b82f6 #e5e7eb",
+            scrollbarColor: "#1c8353 #e5e7eb",
           }}
         >
           <div className="table-scrollbar-content h-full" style={{ minWidth: "800px" }} />
@@ -1676,7 +1672,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           
           <td className="px-4 py-4">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-xs font-bold text-blue-700 dark:from-blue-900/30 dark:to-indigo-900/30 dark:text-blue-400">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-100 to-brand-100 flex items-center justify-center text-xs font-bold text-blue-700 dark:from-blue-900/30 dark:to-brand-900/30 dark:text-blue-400">
                 {alum.name.charAt(0).toUpperCase()}
               </div>
               <div>

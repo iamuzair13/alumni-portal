@@ -16,9 +16,9 @@ function InsightColumn({
 }) {
   const accent =
     variant === "strength"
-      ? "border-emerald-200/80 dark:border-emerald-900/40"
+      ? "border-success-200/80 dark:border-success-900/40"
       : "border-amber-200/80 dark:border-amber-900/40";
-  const dot = variant === "strength" ? "bg-emerald-500" : "bg-amber-500";
+  const dot = variant === "strength" ? "bg-success-500" : "bg-amber-500";
 
   return (
     <div

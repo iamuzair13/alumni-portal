@@ -38,7 +38,7 @@ export default function Page() {
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900">
+      <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900">
         <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700">
           <AppHeader />
         </div>
@@ -47,7 +47,7 @@ export default function Page() {
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
                 <BackButton />
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-gray-900">Alumni Success Stories</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-900">Alumni Success Stories</h1>
               </div>
               <Link 
                 href="/alumni-success/new" 
@@ -113,7 +113,7 @@ export default function Page() {
                     href={`/alumni-success/${encodeURIComponent(story.id)}`}
                     className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 group"
                   >
-                    <div className="relative h-48 bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden">
+                    <div className="relative h-48 bg-gradient-to-br from-blue-50 to-brand-100 overflow-hidden">
                       {story.imageUrl && story.imageUrl.trim() !== "" && story.imageUrl !== "null" ? (
                         <Image
                           src={(() => {
@@ -141,22 +141,22 @@ export default function Page() {
                     </div>
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="text-lg font-semibold text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors flex-1">
                           {story.title}
                         </h3>
                         {normalizeStoryStatus(story.status) !== "approved" && (
                           <StoryStatusBadge status={story.status} size="sm" />
                         )}
                       </div>
-                      <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 mb-3">
+                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-3 mb-3">
                         {story.short}
                       </p>
                       {normalizeStoryStatus(story.status) === "not-approved" && story.rejectionReason && (
-                        <p className="text-xs text-rose-600 mb-3 line-clamp-2">
+                        <p className="text-xs text-error-600 mb-3 line-clamp-2">
                           <span className="font-medium">Reason:</span> {story.rejectionReason}
                         </p>
                       )}
-                      <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
                         <span>{story.program || "N/A"}</span>
                         <span>{story.date ? new Date(story.date).toLocaleDateString() : ""}</span>
                       </div>

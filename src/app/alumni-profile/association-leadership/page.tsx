@@ -100,7 +100,7 @@ export default async function AssociationLeadershipPage({ searchParams }: { sear
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
+      <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
         <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
           <AppHeader />
         </div>
@@ -121,7 +121,7 @@ export default async function AssociationLeadershipPage({ searchParams }: { sear
         <div className="min-w-screen mx-auto flex justify-center  px-4 sm:px-6 md:px-8 lg:px-10 py-8">
           <div className="bg-white max-w-4xl rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">Apply for Association Leadership</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Apply for Association Leadership</h1>
               <BackButton />
             </div>
             <div className="mb-7 max-w-4xl mx-auto">

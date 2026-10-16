@@ -59,11 +59,11 @@ export function SectionWrapper({
       id={id}
       className="scroll-mt-28 group relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm backdrop-blur-sm transition-all duration-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900/50"
     >
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-500 via-purple-500 to-pink-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <div className="p-6 md:p-8">
         <div className="mb-6 flex items-center gap-3">
           {icon && (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
               {icon}
             </div>
           )}
@@ -94,14 +94,14 @@ export function KpiCard({
   trend?: { value: string; positive: boolean };
 }) {
   const colorMap = {
-    indigo: "from-indigo-500 to-blue-600 text-indigo-600 bg-indigo-50 dark:from-indigo-400 dark:to-blue-500 dark:text-indigo-400 dark:bg-indigo-500/10",
-    emerald: "from-emerald-500 to-teal-600 text-emerald-600 bg-emerald-50 dark:from-emerald-400 dark:to-teal-500 dark:text-emerald-400 dark:bg-emerald-500/10",
+    indigo: "from-brand-500 to-blue-600 text-brand-600 bg-brand-50 dark:from-brand-400 dark:to-blue-500 dark:text-brand-400 dark:bg-brand-500/10",
+    emerald: "from-success-500 to-teal-600 text-success-600 bg-success-50 dark:from-success-400 dark:to-teal-500 dark:text-success-400 dark:bg-success-500/10",
     amber: "from-amber-500 to-orange-600 text-amber-600 bg-amber-50 dark:from-amber-400 dark:to-orange-500 dark:text-amber-400 dark:bg-amber-500/10",
-    rose: "from-rose-500 to-pink-600 text-rose-600 bg-rose-50 dark:from-rose-400 dark:to-pink-500 dark:text-rose-400 dark:bg-rose-500/10",
+    rose: "from-error-500 to-pink-600 text-error-600 bg-error-50 dark:from-error-400 dark:to-pink-500 dark:text-error-400 dark:bg-error-500/10",
     sky: "from-sky-500 to-cyan-600 text-sky-600 bg-sky-50 dark:from-sky-400 dark:to-cyan-500 dark:text-sky-400 dark:bg-sky-500/10",
     violet: "from-violet-500 to-purple-600 text-violet-600 bg-violet-50 dark:from-violet-400 dark:to-purple-500 dark:text-violet-400 dark:bg-violet-500/10",
     orange: "from-orange-500 to-red-600 text-orange-600 bg-orange-50 dark:from-orange-400 dark:to-red-500 dark:text-orange-400 dark:bg-orange-500/10",
-    slate: "from-slate-500 to-gray-600 text-slate-600 bg-slate-50 dark:from-slate-400 dark:to-gray-500 dark:text-slate-400 dark:bg-slate-500/10",
+    slate: "from-gray-500 to-gray-600 text-gray-600 bg-gray-50 dark:from-gray-400 dark:to-gray-500 dark:text-gray-400 dark:bg-gray-500/10",
   };
 
   return (
@@ -114,8 +114,8 @@ export function KpiCard({
             <span
               className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[18px] font-semibold ${
                 trend.positive
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-                  : "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+                  ? "bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400"
+                  : "bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-400"
               }`}
             >
               {trend.positive ? DashboardIcons.arrowUp : DashboardIcons.arrowDown}
@@ -145,11 +145,11 @@ export function StatCard({
   color?: "sky" | "slate" | "indigo" | "emerald" | "amber" | "rose" | "violet";
 }) {
   const borderColors = {
-    slate: "border-l-slate-400 dark:border-l-slate-500",
-    indigo: "border-l-indigo-400 dark:border-l-indigo-500",
-    emerald: "border-l-emerald-400 dark:border-l-emerald-500",
+    slate: "border-l-gray-400 dark:border-l-gray-500",
+    indigo: "border-l-brand-400 dark:border-l-brand-500",
+    emerald: "border-l-success-400 dark:border-l-success-500",
     amber: "border-l-amber-400 dark:border-l-amber-500",
-    rose: "border-l-rose-400 dark:border-l-rose-500",
+    rose: "border-l-error-400 dark:border-l-error-500",
     violet: "border-l-violet-400 dark:border-l-violet-500",
     sky: "border-l-sky-400 dark:border-l-sky-500",
   };
@@ -168,10 +168,10 @@ export function StatCard({
 export function ProgressBar({ value, max, color = "indigo" }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   const colorMap: Record<string, string> = {
-    indigo: "bg-indigo-500",
-    emerald: "bg-emerald-500",
+    indigo: "bg-brand-500",
+    emerald: "bg-success-500",
     amber: "bg-amber-500",
-    rose: "bg-rose-500",
+    rose: "bg-error-500",
     sky: "bg-sky-500",
   };
   return (
