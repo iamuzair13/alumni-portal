@@ -190,7 +190,7 @@ export default function ManagementSectionA({ data, isLoading, periodLabel }: Pro
           <Card>
             <CardHeader
               title="Faculty registrations"
-              dotColor="bg-indigo-500"
+              dotColor="bg-brand-500"
               insight={
                 topFaculty
                   ? `Top: ${topFaculty.faculty} — ${topShare}% of ${facultyTotal.toLocaleString()} total`
@@ -238,7 +238,7 @@ export default function ManagementSectionA({ data, isLoading, periodLabel }: Pro
           <Card>
             <CardHeader
               title="Current occupation"
-              dotColor="bg-emerald-500"
+              dotColor="bg-success-500"
               insight={
                 typeof oc?.employed === "number"
                   ? `${oc.employed.toLocaleString()} employed alumni`

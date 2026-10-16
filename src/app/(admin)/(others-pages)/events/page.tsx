@@ -1505,8 +1505,8 @@ function EventsPageInner() {
       >
         <div className="p-8" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-              <TrashBinIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-error-100 dark:bg-error-900/30 flex items-center justify-center">
+              <TrashBinIcon className="h-6 w-6 text-error-600 dark:text-error-400" />
             </div>
             <div className="flex-1">
               <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Confirm Deletion</h3>
@@ -1536,7 +1536,7 @@ function EventsPageInner() {
               type="button"
               disabled={deletingIds.has(deletingEventId || "")}
               onClick={confirmDelete}
-              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-error-600 hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
             >
               {deletingIds.has(deletingEventId || "") ? (
                 <span className="flex items-center gap-2">

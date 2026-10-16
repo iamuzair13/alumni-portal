@@ -111,14 +111,14 @@ export function AnalyticsCard({
           {trend ? (
             <span
               className={`inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium ${
-                trend.positive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                trend.positive ? "text-success-600 dark:text-success-400" : "text-error-600 dark:text-error-400"
               }`}
             >
               {trend.positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
               {trend.value}
             </span>
           ) : null}
-          <Maximize2 className="h-3 w-3 shrink-0 text-gray-400 opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:text-slate-500" />
+          <Maximize2 className="h-3 w-3 shrink-0 text-gray-400 opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:text-gray-500" />
         </div>
 
         {secondaryLabel ? (
@@ -154,7 +154,7 @@ export function AnalyticsCard({
         {trend ? (
           <span
             className={`inline-flex shrink-0 items-center gap-0.5 text-[10px]  font-medium  ${
-              trend.positive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+              trend.positive ? "text-success-600 dark:text-success-400" : "text-error-600 dark:text-error-400"
             }`}
           >
             {trend.positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}

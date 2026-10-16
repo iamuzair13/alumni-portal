@@ -25,7 +25,7 @@ export function AnalyticsPanel({
       <div className="border-b border-gray-100 px-3 py-2.5 dark:border-gray-800 md:px-4">
         <div className="flex items-center gap-2">
           {icon && (
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
               {icon}
             </div>
           )}
@@ -42,7 +42,7 @@ export function AnalyticsPanel({
 
 export function AnalyticsSubheading({
   children,
-  dotColor = "bg-indigo-500",
+  dotColor = "bg-brand-500",
 }: {
   children: React.ReactNode;
   dotColor?: string;

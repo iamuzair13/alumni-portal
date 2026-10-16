@@ -293,7 +293,7 @@ export default function ScholarshipDiscountManager(props: {
                         <button
                           type="button"
                           onClick={() => setDeleteCategoryId(c.id)}
-                          className="rounded px-2 py-1 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700"
+                          className="rounded px-2 py-1 text-xs font-semibold bg-error-600 text-white hover:bg-error-700"
                         >
                           Delete
                         </button>
@@ -420,7 +420,7 @@ export default function ScholarshipDiscountManager(props: {
                           <button
                             type="button"
                             onClick={() => setDeleteTierId(t.id)}
-                            className="rounded px-2 py-1 text-xs font-semibold bg-rose-600 text-white"
+                            className="rounded px-2 py-1 text-xs font-semibold bg-error-600 text-white"
                           >
                             Delete
                           </button>
@@ -545,7 +545,7 @@ export default function ScholarshipDiscountManager(props: {
               type="button"
               onClick={confirmDeleteCategory}
               disabled={deletingCategory}
-              className="rounded-lg px-4 py-2 text-sm font-semibold bg-rose-600 text-white disabled:opacity-60"
+              className="rounded-lg px-4 py-2 text-sm font-semibold bg-error-600 text-white disabled:opacity-60"
             >
               {deletingCategory ? "..." : "Confirm"}
             </button>
@@ -564,7 +564,7 @@ export default function ScholarshipDiscountManager(props: {
               type="button"
               onClick={confirmDeleteTier}
               disabled={deletingTier}
-              className="rounded-lg px-4 py-2 text-sm font-semibold bg-rose-600 text-white disabled:opacity-60"
+              className="rounded-lg px-4 py-2 text-sm font-semibold bg-error-600 text-white disabled:opacity-60"
             >
               {deletingTier ? "..." : "Confirm"}
             </button>

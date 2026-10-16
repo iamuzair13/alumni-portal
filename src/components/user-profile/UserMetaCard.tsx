@@ -220,7 +220,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
               {isLoading ? (
                 <div className="h-6 w-48 bg-gray-200 animate-pulse rounded" aria-hidden="true" />
               ) : error ? (
-                <h4 className="mb-2 text-sm font-medium text-rose-600 xl:text-left" role="status">Failed to load</h4>
+                <h4 className="mb-2 text-sm font-medium text-error-600 xl:text-left" role="status">Failed to load</h4>
               ) : (
                 <h4
                   id="user-meta-heading"
@@ -286,7 +286,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
             ))}
           </div>
         ) : error ? (
-          <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800" role="alert">
+          <div className="mt-6 rounded-xl border border-error-200 bg-error-50 p-3 text-sm text-error-800" role="alert">
             Failed to load profile details.
           </div>
         ) : (
@@ -345,13 +345,13 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
               <div className="rounded-xl p-3">
                 <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Email</dt>
                 <Input type="text" value={(draft?.personalEmail ?? "") as string} onChange={(e) => handleInlineChange("personalEmail", e.target.value)} className="focus-visible:ring-primary" />
-                {validationErrors["personalEmail"] && <p className="mt-1 text-sm text-rose-600">{validationErrors["personalEmail"]}</p>}
+                {validationErrors["personalEmail"] && <p className="mt-1 text-sm text-error-600">{validationErrors["personalEmail"]}</p>}
               </div>
               {/* Password */}
               <div className="rounded-xl p-3">
                 <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Password</dt>
                 <Input type="password" value={(draft?.password ?? "") as string} onChange={(e) => handleInlineChange("password", e.target.value)} className="focus-visible:ring-primary" />
-                {validationErrors["password"] && <p className="mt-1 text-sm text-rose-600">{validationErrors["password"]}</p>}
+                {validationErrors["password"] && <p className="mt-1 text-sm text-error-600">{validationErrors["password"]}</p>}
               </div>
               {/* Registration No */}
               <div className="rounded-xl p-3">
@@ -362,7 +362,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
               <div className="rounded-xl p-3">
                 <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Sap-ID</dt>
                 <Input type="text" value={(draft?.sapId ?? "") as string} onChange={(e) => handleInlineChange("sapId", e.target.value)} className="focus-visible:ring-primary" />
-                {validationErrors["sapId"] && <p className="mt-1 text-sm text-rose-600">{validationErrors["sapId"]}</p>}
+                {validationErrors["sapId"] && <p className="mt-1 text-sm text-error-600">{validationErrors["sapId"]}</p>}
               </div>
               {/* Gender */}
               <div className="rounded-xl p-3">
@@ -418,7 +418,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
                   placeholder="e.g. +92 3001234567"
                   aria-label="Contact number"
                 />
-                {validationErrors["phoneNumber"] && <p className="mt-1 text-sm text-rose-600">{validationErrors["phoneNumber"]}</p>}
+                {validationErrors["phoneNumber"] && <p className="mt-1 text-sm text-error-600">{validationErrors["phoneNumber"]}</p>}
               </div>
               {/* Country/Province/City */}
               <div className="rounded-xl p-3">
@@ -457,7 +457,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
               <div className="rounded-xl p-3">
                 <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Passing Year</dt>
                 <Input type="text" value={(draft?.passingYear ?? "") as string} onChange={(e) => handleInlineChange("passingYear", e.target.value)} className="focus-visible:ring-primary" />
-                {validationErrors["passingYear"] && <p className="mt-1 text-sm text-rose-600">{validationErrors["passingYear"]}</p>}
+                {validationErrors["passingYear"] && <p className="mt-1 text-sm text-error-600">{validationErrors["passingYear"]}</p>}
               </div>
               {/* Faculty/Campus/Department */}
               <div className="rounded-xl p-3">
@@ -495,7 +495,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
               <div className="rounded-xl p-3">
                 <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Total Years of Experience</dt>
                 <Input type="text" value={(draft?.totalExperienceYears ?? "") as string} onChange={(e) => handleInlineChange("totalExperienceYears", e.target.value)} className="focus-visible:ring-primary" />
-                {validationErrors["totalExperienceYears"] && <p className="mt-1 text-sm text-rose-600">{validationErrors["totalExperienceYears"]}</p>}
+                {validationErrors["totalExperienceYears"] && <p className="mt-1 text-sm text-error-600">{validationErrors["totalExperienceYears"]}</p>}
               </div>
               {/* Verified */}
               <div className="rounded-xl p-3">

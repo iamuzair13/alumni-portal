@@ -23,7 +23,7 @@ export default async function Page() {
   if (!email) {
     return (
       <>
-        <div className="bg-slate-100 overflow-x-hidden min-h-screen">
+        <div className="bg-gray-100 overflow-x-hidden min-h-screen">
           <div className="border bg-white relative z-50">
             <AppHeader />
           </div>
@@ -138,7 +138,7 @@ export default async function Page() {
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900">
+      <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900">
         <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700">
           <AppHeader />
         </div>
@@ -153,7 +153,7 @@ export default async function Page() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8 dark:bg-gray-900 dark:border-gray-700">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 dark:bg-gray-900 dark:border-gray-700">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-900">Submit Your Success Story</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-900">Submit Your Success Story</h1>
               <BackButton />
             </div>
             <AlumniSuccessForm 

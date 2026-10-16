@@ -31,11 +31,11 @@ function VerticalBar({
   return (
     <div className="flex flex-1 flex-col items-center gap-1.5">
       {/* Value label on top */}
-      <span className="text-sm font-bold tabular-nums text-slate-900 dark:text-white">{total}</span>
+      <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-white">{total}</span>
 
       {/* Bar */}
       <div
-        className="relative w-10 overflow-hidden rounded-t-lg bg-slate-100 dark:bg-slate-800"
+        className="relative w-10 overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800"
         style={{ height: 64 }}
       >
         <motion.div
@@ -48,7 +48,7 @@ function VerticalBar({
       </div>
 
       {/* Label */}
-      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{label}</span>
+      <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">{label}</span>
 
       {/* Quarter badge */}
       <span
@@ -87,7 +87,7 @@ export function MeetupsEventsCardChart({
         maxVal={maxVal}
         delay={0}
       />
-      <div className="mb-8 h-px w-px self-stretch border-l border-dashed border-slate-200 dark:border-slate-700" />
+      <div className="mb-8 h-px w-px self-stretch border-l border-dashed border-gray-200 dark:border-gray-700" />
       <VerticalBar
         label="Meetups"
         total={meetups.total}

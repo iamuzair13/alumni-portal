@@ -281,7 +281,7 @@ export function DiscountsMerchantsExpandPanel({
       {activeFacultyRows.length > 0 ? (
         <div className="flex ">
           <section className="w-full rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">
               Discounts by faculty
             </h3>
             <p className="mb-3 text-[10px] leading-relaxed text-gray-500 dark:text-gray-400">
@@ -298,7 +298,7 @@ export function DiscountsMerchantsExpandPanel({
 
           {facultyChartData.length > 0 && activeCategorySeries.length > 0 ? (
             <section className="w-full rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">
                 Top faculties · discount categories
               </h3>
               <div className="h-[475px] w-full">
@@ -349,7 +349,7 @@ export function DiscountsMerchantsExpandPanel({
 
       {merchantRows.length > 0 ? (
         <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-success-600 dark:text-success-400">
             Business Partners & Merchants
           </h3>
           <AnalyticsDataTable

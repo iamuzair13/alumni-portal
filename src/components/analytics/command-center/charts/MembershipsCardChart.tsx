@@ -11,7 +11,7 @@ type MembershipRow = {
 };
 
 const ROWS_META = [
-  { key: "gym",     label: "Gym",           gradient: "from-indigo-500 to-purple-500" },
+  { key: "gym",     label: "Gym",           gradient: "from-brand-500 to-purple-500" },
   { key: "pool",    label: "Swimming Pool",  gradient: "from-sky-400 to-cyan-500" },
   { key: "qalander",label: "Qalandars Club", gradient: "from-amber-400 to-orange-500" },
 ] as const;
@@ -44,7 +44,7 @@ export function MembershipsCardChart({
   if (totalApplied === 0) {
     return (
       <div className="flex h-full w-full flex-col justify-center gap-2">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
           No applications received yet
         </p>
       </div>
@@ -55,7 +55,7 @@ export function MembershipsCardChart({
   return (
     <div className="flex h-full w-full flex-col justify-center gap-2.5">
       {totalApproved === 0 && (
-        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+        <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500">
           No memberships approved yet
         </p>
       )}
@@ -65,19 +65,19 @@ export function MembershipsCardChart({
         return (
           <div key={row.label} className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+              <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
                 {row.label}
               </span>
               
 
-              <span className="text-[11px] font-bold tabular-nums text-slate-900 dark:text-white">
+              <span className="text-[11px] font-bold tabular-nums text-gray-900 dark:text-white">
                 {row.approved}
                 {hasApplied && (
-                  <span className="font-normal text-slate-400"> / {row.applied}</span>
+                  <span className="font-normal text-gray-400"> / {row.applied}</span>
                 )}
               </span>
             </div>
-            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${approvedPct}%` }}

@@ -4,12 +4,12 @@ import React from "react";
 import { ChartEmpty } from "./ChartEmpty";
 
 const AVATAR_COLORS = [
-  "bg-emerald-100 text-emerald-700",
+  "bg-success-100 text-success-700",
   "bg-sky-100 text-sky-700",
   "bg-amber-100 text-amber-700",
-  "bg-indigo-100 text-indigo-700",
+  "bg-brand-100 text-brand-700",
   "bg-purple-100 text-purple-700",
-  "bg-rose-100 text-rose-700",
+  "bg-error-100 text-error-700",
 ];
 
 function initials(name: string): string {
@@ -57,7 +57,7 @@ export function DiscountsMerchantsCardChart({
         return (
           <div
             key={m.id}
-            className="flex items-center gap-2 overflow-hidden rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800"
+            className="flex items-center gap-2 overflow-hidden rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5 dark:border-gray-700 dark:bg-gray-800"
           >
             <span
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[9px] font-bold ${avatarColor}`}
@@ -66,7 +66,7 @@ export function DiscountsMerchantsCardChart({
               {initials(m.business_name)}
             </span>
 
-            <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+            <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-gray-700 dark:text-gray-300">
               {m.business_name}
             </span>
 
@@ -88,8 +88,8 @@ export function DiscountsMerchantsCardChart({
       })}
 
       {remaining > 0 && (
-        <div className="flex items-center justify-center rounded-lg border border-dashed border-slate-200 px-2 py-1 dark:border-slate-700">
-          <span className="text-[10px] text-slate-400">+{remaining} more</span>
+        <div className="flex items-center justify-center rounded-lg border border-dashed border-gray-200 px-2 py-1 dark:border-gray-700">
+          <span className="text-[10px] text-gray-400">+{remaining} more</span>
         </div>
       )}
     </div>

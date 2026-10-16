@@ -41,8 +41,8 @@ type RoleCriterion = {
   sort_order: number;
 };
 
-const labelBase = "mb-2 text-sm text-slate-900 dark:text-gray-200 font-medium block";
-const errorText = "mt-1 text-xs text-rose-600";
+const labelBase = "mb-2 text-sm text-gray-900 dark:text-gray-200 font-medium block";
+const errorText = "mt-1 text-xs text-error-600";
 
 type Props = {
   alumniId: string;
@@ -676,7 +676,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
           {/* Role Selection - Radio Buttons */}
           <div>
             <label className={`${labelBase} text-[18px] font-semibold`}>
-              Apply for the role <span className="text-rose-600">*</span>
+              Apply for the role <span className="text-error-600">*</span>
             </label>
             <div className="space-y-3 mt-3">
               {[
@@ -709,7 +709,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
 
           <div>
             <label className={labelBase}>
-              Association <span className="text-rose-600">*</span>
+              Association <span className="text-error-600">*</span>
             </label>
             <select
               value={selectedAssociationId ? String(selectedAssociationId) : ""}
@@ -749,7 +749,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     />
                     <span className="text-sm text-gray-800 dark:text-gray-200">
                       I have read and fully understood the information.
-                      <span className="text-rose-600"> *</span>
+                      <span className="text-error-600"> *</span>
                     </span>
                   </label>
                   {errors.roleDescriptionAcknowledged ? (
@@ -771,20 +771,20 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     ) : (
                       <div className="mt-3 space-y-2">
                         {mandatoryCriteriaItems.length ? (
-                          <div className="rounded-lg border border-rose-200 bg-rose-50/40 dark:border-rose-900 dark:bg-rose-950/20 px-3 py-3 space-y-2">
+                          <div className="rounded-lg border border-error-200 bg-error-50/40 dark:border-error-900 dark:bg-error-950/20 px-3 py-3 space-y-2">
                             {mandatoryCriteriaItems.map((c) => {
                               const id = Number(c.id);
                               const value = mandatoryCriteriaResponses[id] ?? "";
                               return (
                                 <div
                                   key={id}
-                                  className="rounded-lg border border-rose-200 bg-white/70 dark:bg-gray-900/30 px-3 py-2"
+                                  className="rounded-lg border border-error-200 bg-white/70 dark:bg-gray-900/30 px-3 py-2"
                                 >
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-2">
                                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
-                                        <span className="rounded-full text-rose-800   text-[15px] font-semibold">*</span>
+                                        <span className="rounded-full text-error-800   text-[15px] font-semibold">*</span>
                                       </div>
                                       {c.description ? (
                                         <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
@@ -792,7 +792,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                                     </div>
                                     <div className="shrink-0">
                                       <div className="inline-flex rounded-lg border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-700 overflow-hidden">
-                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "YES" ? "bg-emerald-600 text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "YES" ? "bg-success-600 text-white" : "text-gray-700 dark:text-gray-300"}`}>
                                           <input
                                             type="radio"
                                             name={`mandatory-criteria-${id}`}
@@ -806,7 +806,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                                           />
                                           YES
                                         </label>
-                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "NO" ? "bg-rose-600 text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "NO" ? "bg-error-600 text-white" : "text-gray-700 dark:text-gray-300"}`}>
                                           <input
                                             type="radio"
                                             name={`mandatory-criteria-${id}`}
@@ -827,7 +827,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                                   <div className="mt-3">
                                     <div className="flex items-center justify-between gap-3">
                                       <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                                        {String(c.textbox_label || "Response")}{c.is_textbox_required ? <span className="text-rose-600"> *</span> : null}
+                                        {String(c.textbox_label || "Response")}{c.is_textbox_required ? <span className="text-error-600"> *</span> : null}
                                       </div>
                                       <div className="text-[11px] text-gray-500 dark:text-gray-400">
                                         {String(textboxResponses[id] || "").length} / {textboxMaxLen}
@@ -866,7 +866,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
-                                      <span className="rounded-full text-rose-800   text-[15px] font-semibold">*</span>
+                                      <span className="rounded-full text-error-800   text-[15px] font-semibold">*</span>
 
                                     </div>
                                     {c.description ? (
@@ -874,7 +874,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                                     ) : null}
 
                                     <div className="mt-2 rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 px-3 py-2">
-                                      <div className="text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">Proficiency</div>
+                                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Proficiency</div>
                                       <StarRating
                                         value={Number(optionalCriteriaProficiency[id] || 0)}
                                         onChange={(val) => {
@@ -889,7 +889,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                                       <div className="mt-3">
                                         <div className="flex items-center justify-between gap-3">
                                           <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                                            {String(c.textbox_label || "Response")}{c.is_textbox_required ? <span className="text-rose-600"> *</span> : null}
+                                            {String(c.textbox_label || "Response")}{c.is_textbox_required ? <span className="text-error-600"> *</span> : null}
                                           </div>
                                           <div className="text-[11px] text-gray-500 dark:text-gray-400">
                                             {String(textboxResponses[id] || "").length} / {textboxMaxLen}
@@ -931,7 +931,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     />
                     <span className="text-sm text-gray-800 dark:text-gray-200">
                       I have read and fully understood the information.
-                      <span className="text-rose-600"> *</span>
+                      <span className="text-error-600"> *</span>
                     </span>
                   </label>
                   {errors.officeGovernanceAcknowledged ? (
@@ -952,7 +952,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     />
                     <span className="text-sm text-gray-800 dark:text-gray-200">
                       I have read and fully understood the information.
-                      <span className="text-rose-600"> *</span>
+                      <span className="text-error-600"> *</span>
                     </span>
                   </label>
                   {errors.codeOfEthicsAcknowledged ? (
@@ -965,9 +965,9 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role
-                      <span className="text-rose-600"> *</span>
+                      <span className="text-error-600"> *</span>
                     </div>
-                    <div className={`text-xs font-semibold ${planLen > PLAN_STRATEGY_MAX_LEN ? "text-rose-600" : "text-gray-500 dark:text-gray-400"}`}>
+                    <div className={`text-xs font-semibold ${planLen > PLAN_STRATEGY_MAX_LEN ? "text-error-600" : "text-gray-500 dark:text-gray-400"}`}>
                       {planLen} / {PLAN_STRATEGY_MAX_LEN}
                     </div>
                   </div>
@@ -993,9 +993,9 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                           <div>
             <label className={labelBase}>
               Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
-              <span className="text-rose-600"> *</span>
+              <span className="text-error-600"> *</span>
             </label>
-            <div className={`mb-1 text-xs font-semibold ${achievementsLen > ADDITIONAL_ACHIEVEMENTS_MAX_LEN ? "text-rose-600" : "text-gray-500 dark:text-gray-400"}`}>
+            <div className={`mb-1 text-xs font-semibold ${achievementsLen > ADDITIONAL_ACHIEVEMENTS_MAX_LEN ? "text-error-600" : "text-gray-500 dark:text-gray-400"}`}>
               {achievementsLen} / {ADDITIONAL_ACHIEVEMENTS_MAX_LEN}
             </div>
             <textarea
@@ -1015,7 +1015,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
             <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className={labelBase}>
-                  Upload CV (required) <span className="text-rose-600">*</span>
+                  Upload CV (required) <span className="text-error-600">*</span>
                 </label>
                 <label
                   htmlFor="association-upload-cv"
@@ -1120,7 +1120,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     />
                     <span className="text-sm text-gray-800 dark:text-gray-200">
                       I have read and agree to the compliance declaration.
-                      <span className="text-rose-600"> *</span>
+                      <span className="text-error-600"> *</span>
                     </span>
                   </label>
                   {errors.complianceAccepted ? (
@@ -1148,7 +1148,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
               !officeGovernanceAcknowledged ||
               !codeOfEthicsAcknowledged
             }
-            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isUploadingFiles ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit Application"}
           </button>

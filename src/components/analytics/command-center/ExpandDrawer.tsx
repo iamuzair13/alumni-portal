@@ -8,7 +8,7 @@ import { ccAccent } from "./theme";
 
 const accentHeaderBg = {
   emerald:
-    "bg-gradient-to-br from-emerald-500/15 to-teal-500/5 dark:from-emerald-500/20 dark:to-teal-500/10",
+    "bg-gradient-to-br from-success-500/15 to-teal-500/5 dark:from-success-500/20 dark:to-teal-500/10",
   violet:
     "bg-gradient-to-br from-violet-500/15 to-purple-500/5 dark:from-violet-500/20 dark:to-purple-500/10",
   amber:
@@ -16,13 +16,13 @@ const accentHeaderBg = {
 } as const;
 
 const accentIconBg = {
-  emerald: "bg-emerald-500 text-white shadow-emerald-500/30",
+  emerald: "bg-success-500 text-white shadow-success-500/30",
   violet: "bg-violet-500 text-white shadow-violet-500/30",
   amber: "bg-amber-500 text-white shadow-amber-500/30",
 } as const;
 
 const accentTopBar = {
-  emerald: "from-emerald-500 via-teal-400 to-emerald-600",
+  emerald: "from-success-500 via-teal-400 to-success-600",
   violet: "from-violet-500 via-purple-400 to-violet-600",
   amber: "from-amber-500 via-orange-400 to-amber-600",
 } as const;
@@ -97,13 +97,13 @@ export function ExpandDrawer({
                 ? { duration: 0.3, ease: [0.32, 0.72, 0, 1] }
                 : { type: "spring", stiffness: 420, damping: 34 }
             }
-            className={`relative z-[710] flex h-full max-h-[100dvh] w-full flex-col overflow-hidden border border-slate-100 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 ${slideRight ? `max-w-[min(100vw,560px)] rounded-none sm:rounded-l-2xl` : `max-h-[min(88vh,820px)] rounded-2xl border-gray-200/80 dark:border-gray-700/60 ring-1 ${ccAccent[accent].ring}`} ${!slideRight ? maxWidthClass : ""}`}
+            className={`relative z-[710] flex h-full max-h-[100dvh] w-full flex-col overflow-hidden border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 ${slideRight ? `max-w-[min(100vw,560px)] rounded-none sm:rounded-l-2xl` : `max-h-[min(88vh,820px)] rounded-2xl border-gray-200/80 dark:border-gray-700/60 ring-1 ${ccAccent[accent].ring}`} ${!slideRight ? maxWidthClass : ""}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={`h-1 w-full bg-gradient-to-r ${accentTopBar[accent]}`} aria-hidden />
 
             <div
-              className={`sticky top-0 z-10 flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95 ${accentHeaderBg[accent]}`}
+              className={`sticky top-0 z-10 flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 bg-white/95 px-5 py-4 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95 ${accentHeaderBg[accent]}`}
             >
               <div className="flex min-w-0 items-start gap-3">
                 <div
@@ -123,7 +123,7 @@ export function ExpandDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />

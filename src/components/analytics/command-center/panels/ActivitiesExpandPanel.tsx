@@ -116,7 +116,7 @@ export function ActivitiesExpandPanel({
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">
             YTD by activity
           </h3>
           {ytdChart.length === 0 ? (

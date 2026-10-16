@@ -81,10 +81,10 @@ type AdminFormVals = z.infer<typeof adminSchema>;
 type AdminEditFormVals = z.input<typeof adminEditSchema>;
 type FormVals = AlumniFormVals | AdminFormVals | AdminEditFormVals;
 
-const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:outline-gray-700";
-const labelBase = "mb-2 text-sm text-slate-900 font-medium block dark:text-gray-100";
-const errorText = "mt-1 text-xs text-rose-600 dark:text-rose-400";
-const buttonPrimary = "px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:outline-gray-700";
+const inputBase = "field-input mt-1";
+const labelBase = "field-label";
+const errorText = "field-error";
+const buttonPrimary = "inline-flex h-11 w-full max-w-[200px] items-center justify-center rounded-lg bg-brand-600 px-6 text-sm font-medium text-white shadow-xs transition hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-60";
 
 async function fetchStoryCriteria(): Promise<StoryCriterion[]> {
   const res = await fetch("/api/stories/criteria", { headers: { accept: "application/json" } });
@@ -542,12 +542,12 @@ export default function AlumniSuccessForm({
           {isAdmin && (
             <>
               <div>
-                <label htmlFor="sapId" className={labelBase}>SAP ID<span className="text-rose-600 ml-1">*</span></label>
+                <label htmlFor="sapId" className={labelBase}>SAP ID<span className="text-error-600 ml-1">*</span></label>
                 <input id="sapId" type="text" {...register("sapId" as keyof AdminFormVals)} className={inputBase} placeholder="SAP ID" aria-label="SAP ID" />
                 {"sapId" in errors && errors.sapId && <span className={errorText}>{String(errors.sapId.message)}</span>}
               </div>
               <div>
-                <label htmlFor="email" className={labelBase}>Email<span className="text-rose-600 ml-1">*</span></label>
+                <label htmlFor="email" className={labelBase}>Email<span className="text-error-600 ml-1">*</span></label>
                 <input id="email" type="email" {...register("email" as keyof AdminFormVals)} className={inputBase} placeholder="Email address" aria-label="Email" />
                 {"email" in errors && errors.email && <span className={errorText}>{String(errors.email.message)}</span>}
               </div>
@@ -706,7 +706,7 @@ export default function AlumniSuccessForm({
                     type="tel"
                     {...field}
                     value={field.value ?? ""}
-                    className={`${inputBase} ${errors.contactNumber ? "border-rose-500 bg-rose-50" : ""}`}
+                    className={`${inputBase} ${errors.contactNumber ? "border-error-500 bg-error-50" : ""}`}
                     placeholder="Enter your contact number"
                     aria-label="Contact Number"
                   />
@@ -738,7 +738,7 @@ export default function AlumniSuccessForm({
                   <div key={c.id} className="md:col-span-2">
                     <label htmlFor={`criteria-${c.id}`} className={labelBase}>
                       {c.label}
-                      {c.is_required ? <span className="text-rose-600 ml-1">*</span> : null}
+                      {c.is_required ? <span className="text-error-600 ml-1">*</span> : null}
                     </label>
                     <input
                       id={`criteria-${c.id}`}
@@ -755,7 +755,7 @@ export default function AlumniSuccessForm({
                           });
                         }
                       }}
-                      className={`${inputBase} ${criteriaErrors[c.id] ? "border-rose-500 bg-rose-50" : ""}`}
+                      className={`${inputBase} ${criteriaErrors[c.id] ? "border-error-500 bg-error-50" : ""}`}
                       placeholder="One line only"
                       aria-label={c.label}
                     />
@@ -794,7 +794,7 @@ export default function AlumniSuccessForm({
           <div className="md:col-span-2">
             <label htmlFor="storyTitle" className={labelBase}>
               Story Title
-              <span className="text-rose-600 ml-1">*</span>
+              <span className="text-error-600 ml-1">*</span>
             </label>
             <div className="relative flex items-center">
               <Controller
@@ -805,7 +805,7 @@ export default function AlumniSuccessForm({
                     id="storyTitle"
                     type="text"
                     {...field}
-                    className={`${inputBase} ${errors.storyTitle ? "border-rose-500 bg-rose-50" : ""}`}
+                    className={`${inputBase} ${errors.storyTitle ? "border-error-500 bg-error-50" : ""}`}
                     placeholder="Enter a title for your success story"
                     aria-label="Story Title"
                     maxLength={200}
@@ -821,7 +821,7 @@ export default function AlumniSuccessForm({
           <div className="md:col-span-2 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
             <label htmlFor="storyHtml" className={labelBase}>
               Your Success Story
-              <span className="text-rose-600 ml-1">*</span>
+              <span className="text-error-600 ml-1">*</span>
             </label>
             <Controller
               name="storyHtml"
@@ -1035,7 +1035,7 @@ export default function AlumniSuccessForm({
                       type="checkbox"
                       id="signatureConfirmed"
                       {...register("signatureConfirmed")}
-                      className="mt-1 h-4 w-4 text-[#007bff] border-gray-300 rounded focus:ring-[#007bff]"
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-600 accent-brand-600 focus:ring-2 focus:ring-brand-500/30 dark:border-gray-600 dark:bg-gray-800"
                     />
                     <label htmlFor="signatureConfirmed" className="text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
                       {watchedName?.trim() ? (
@@ -1045,7 +1045,7 @@ export default function AlumniSuccessForm({
                       ) : (
                         <>I confirm this story is true and authorize its publication.</>
                       )}
-                      <span className="text-rose-600 ml-1">*</span>
+                      <span className="text-error-600 ml-1">*</span>
                     </label>
                   </div>
                   {"signatureConfirmed" in errors && errors.signatureConfirmed && (

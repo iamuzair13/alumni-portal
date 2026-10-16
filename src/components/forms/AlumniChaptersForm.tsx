@@ -24,9 +24,9 @@ type Chapter = {
   description: string | null;
 };
 
-const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all";
-const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
-const errorText = "mt-1 text-xs text-rose-600";
+const inputBase = "field-input";
+const labelBase = "mb-2 text-sm text-gray-900 font-medium block";
+const errorText = "mt-1 text-xs text-error-600";
 
 type Props = {
   contactNumber: string;
@@ -277,7 +277,7 @@ export default function AlumniChaptersForm({
           {/* Chapters Selection - Multi-select up to 3 */}
           <div className="md:col-span-2 ">
             <label className={labelBase + " dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}>
-              Select Chapters <span className="text-rose-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">*</span>
+              Select Chapters <span className="text-error-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">*</span>
               <span className="text-xs text-gray-500 font-normal ml-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 dark:text-gray-100">(Select up to 3 chapters)</span>
             </label>
             {isLoadingChapters ? (
@@ -431,7 +431,7 @@ export default function AlumniChaptersForm({
                     message: "Remarks must be less than 1000 characters",
                   },
                 })}
-                className={`${inputBase} ${errors.remarks ? "border-rose-500 bg-rose-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`}
+                className={`${inputBase} ${errors.remarks ? "border-error-500 bg-error-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`}
                 placeholder="Please provide your reasons for joining these chapters..."
               />
             </div>
@@ -444,7 +444,7 @@ export default function AlumniChaptersForm({
           <button
             type="submit"
             disabled={isSubmitting || selectedChapters.length === 0}
-            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60"
+            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-all cursor-pointer disabled:opacity-60"
           >
             {isSubmitting ? "Submitting..." : "Submit Application"}
           </button>

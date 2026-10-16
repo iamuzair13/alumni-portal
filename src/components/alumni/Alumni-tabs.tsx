@@ -5644,22 +5644,22 @@ export const AlumniTabs: React.FC = () => {
                                   // Verified: can unverify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
-                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-brand-600 dark:text-brand-400", hover: "hover:text-brand-700 dark:hover:text-brand-300" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   // Unverified: can verify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
-                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-brand-600 dark:text-brand-400", hover: "hover:text-brand-700 dark:hover:text-brand-300" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-success-600 dark:text-success-400", hover: "hover:text-success-700 dark:hover:text-success-300" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
-                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-brand-600 dark:text-brand-400", hover: "hover:text-brand-700 dark:hover:text-brand-300" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-success-600 dark:text-success-400", hover: "hover:text-success-700 dark:hover:text-success-300" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 }
@@ -5668,21 +5668,21 @@ export const AlumniTabs: React.FC = () => {
                                 if (alum.verifyStatus === "verified") {
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
-                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-brand-600 dark:text-brand-400", hover: "hover:text-brand-700 dark:hover:text-brand-300" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
-                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-brand-600 dark:text-brand-400", hover: "hover:text-brand-700 dark:hover:text-brand-300" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-success-600 dark:text-success-400", hover: "hover:text-success-700 dark:hover:text-success-300" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.sapId, alum.registrationNo), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
-                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-brand-600 dark:text-brand-400", hover: "hover:text-brand-700 dark:hover:text-brand-300" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-success-600 dark:text-success-400", hover: "hover:text-success-700 dark:hover:text-success-300" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 }
@@ -5763,12 +5763,12 @@ export const AlumniTabs: React.FC = () => {
         {/* Live region for action feedback */}
         <div className="px-6" aria-live="polite" aria-atomic="true">
           {actionMessage && (
-            <div className="mb-4 rounded-xl border border-emerald-200/80 bg-emerald-50/80 dark:bg-emerald-900/20 dark:border-emerald-800/50 px-4 py-3 text-sm font-medium text-emerald-800 dark:text-emerald-200 shadow-sm">
+            <div className="mb-4 rounded-xl border border-success-200/80 bg-success-50/80 dark:bg-success-900/20 dark:border-success-800/50 px-4 py-3 text-sm font-medium text-success-800 dark:text-success-200 shadow-sm">
               {actionMessage}
             </div>
           )}
           {actionError && (
-            <div className="mb-4 rounded-xl border border-rose-200/80 bg-rose-50/80 dark:bg-rose-900/20 dark:border-rose-800/50 px-4 py-3 text-sm font-medium text-rose-800 dark:text-rose-200 shadow-sm">
+            <div className="mb-4 rounded-xl border border-error-200/80 bg-error-50/80 dark:bg-error-900/20 dark:border-error-800/50 px-4 py-3 text-sm font-medium text-error-800 dark:text-error-200 shadow-sm">
               {actionError}
             </div>
           )}
@@ -5884,7 +5884,7 @@ export const AlumniTabs: React.FC = () => {
                   <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                     Duplicate Records Detected
                   </h3>
-                  <p className="text-sm text-rose-700 dark:text-rose-300 font-semibold mt-1">
+                  <p className="text-sm text-error-700 dark:text-error-300 font-semibold mt-1">
                     You can’t proceed with {pendingDuplicateGate.type === "verify" ? "verify" : "unverify"} until you delete duplicates.
                   </p>
                 </div>
@@ -6022,19 +6022,19 @@ export const AlumniTabs: React.FC = () => {
             <div className="flex items-center gap-4 mb-6">
               <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
                 pendingAction.type === "delete"
-                  ? "bg-rose-100 dark:bg-rose-900/30"
+                  ? "bg-error-100 dark:bg-error-900/30"
                   : pendingAction.type === "unverify"
                   ? "bg-amber-100 dark:bg-amber-900/30"
-                  : "bg-emerald-100 dark:bg-emerald-900/30"
+                  : "bg-success-100 dark:bg-success-900/30"
               }`}>
                 {pendingAction.type === "delete" && (
-                  <TrashBinIcon className={`h-6 w-6 text-rose-600 dark:text-rose-400`} />
+                  <TrashBinIcon className={`h-6 w-6 text-error-600 dark:text-error-400`} />
                 )}
                 {pendingAction.type === "unverify" && (
                   <CloseLineIcon className={`h-6 w-6 text-amber-600 dark:text-amber-400`} />
                 )}
                 {pendingAction.type === "verify" && (
-                  <CheckLineIcon className={`h-6 w-6 text-emerald-600 dark:text-emerald-400`} />
+                  <CheckLineIcon className={`h-6 w-6 text-success-600 dark:text-success-400`} />
                 )}
               </div>
               <div className="flex-1">
@@ -6111,10 +6111,10 @@ export const AlumniTabs: React.FC = () => {
                 onClick={handleConfirmClick}
                 className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md ${
                   pendingAction.type === "delete"
-                    ? "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
+                    ? "bg-error-600 hover:bg-error-700 focus:ring-error-500"
                     : pendingAction.type === "unverify"
                     ? "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500"
-                    : "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
+                    : "bg-success-600 hover:bg-success-700 focus:ring-success-500"
                 }`}
               >
                 {mutatingIds.has(pendingAction.sapid) ? (
@@ -6149,8 +6149,8 @@ export const AlumniTabs: React.FC = () => {
         >
           <div className="p-8" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-4 mb-6">
-              <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-rose-100 dark:bg-rose-900/30">
-                <CloseLineIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+              <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-error-100 dark:bg-error-900/30">
+                <CloseLineIcon className="h-6 w-6 text-error-600 dark:text-error-400" />
               </div>
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Incomplete Alumni Profile</h3>
@@ -6160,21 +6160,21 @@ export const AlumniTabs: React.FC = () => {
               </div>
             </div>
 
-            <div className="rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-900/10 p-4">
+            <div className="rounded-xl border border-error-200 dark:border-error-900/40 bg-error-50 dark:bg-error-900/10 p-4">
               <div className="space-y-2">
                 {incompleteFields.length === 0 ? (
-                  <div className="text-sm text-rose-800 dark:text-rose-200">-</div>
+                  <div className="text-sm text-error-800 dark:text-error-200">-</div>
                 ) : (
                   incompleteFields.map((f) => (
-                    <div key={f.key} className="flex items-center justify-between gap-3 rounded-lg bg-white/70 dark:bg-gray-900/20 border border-rose-200 dark:border-rose-900/40 px-3 py-2">
-                      <div className="text-sm font-semibold text-rose-700 dark:text-rose-300">{f.label}</div>
-                      <div className="text-xs font-semibold text-rose-700 dark:text-rose-300">Missing</div>
+                    <div key={f.key} className="flex items-center justify-between gap-3 rounded-lg bg-white/70 dark:bg-gray-900/20 border border-error-200 dark:border-error-900/40 px-3 py-2">
+                      <div className="text-sm font-semibold text-error-700 dark:text-error-300">{f.label}</div>
+                      <div className="text-xs font-semibold text-error-700 dark:text-error-300">Missing</div>
                     </div>
                   ))
                 )}
               </div>
               {incompleteFields.length > 0 ? (
-                <div className="mt-3 text-sm text-rose-800 dark:text-rose-200">
+                <div className="mt-3 text-sm text-error-800 dark:text-error-200">
                   Open <span className="font-semibold">Go to Edit</span> to expand the row, then in Alumni Details set <span className="font-semibold">Pre Sap Registration</span> and fill any missing fields. With Pre Sap Registration on, a <span className="font-semibold">Registration No</span> is required to verify; save the profile before verifying.
                 </div>
               ) : null}
@@ -6209,7 +6209,7 @@ export const AlumniTabs: React.FC = () => {
 
                   incompleteProfileModal.closeModal();
                 }}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-error-600 hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
               >
                 Go to Edit
               </button>

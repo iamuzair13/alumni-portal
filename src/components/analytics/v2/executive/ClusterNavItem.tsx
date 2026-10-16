@@ -41,13 +41,13 @@ export function ClusterNavItem({
       aria-pressed={selected}
       className={`${analyticsNavClusterCard} rounded-xl border p-2.5 text-left transition-colors ${
         selected
-          ? "border-indigo-400 bg-indigo-50/70 ring-2 ring-indigo-400/25 dark:border-indigo-500/60 dark:bg-indigo-950/40 dark:ring-indigo-400/20"
+          ? "border-brand-400 bg-brand-50/70 ring-2 ring-brand-400/25 dark:border-brand-500/60 dark:bg-brand-950/40 dark:ring-brand-400/20"
           : "border-gray-200/80 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900/80 dark:hover:border-gray-700 dark:hover:bg-gray-800/60"
       }`}
     >
       <div className="mb-1.5 flex items-center gap-1.5">
         <svg
-          className={`h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform ${selected ? "rotate-90 text-indigo-500" : ""}`}
+          className={`h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform ${selected ? "rotate-90 text-brand-500" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

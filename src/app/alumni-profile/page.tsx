@@ -667,7 +667,7 @@ let cardImageFile: string | null = null;
 
   return (
     <>
-    <div className="bg-slate-100 overflow-x-hidden dark:bg-gray-950">
+    <div className="bg-gray-100 overflow-x-hidden dark:bg-gray-950">
       <div className="border bg-white relative z-50 dark:border-gray-800 dark:bg-gray-900">
         <AppHeader />
       </div>
@@ -693,7 +693,7 @@ let cardImageFile: string | null = null;
 
         {/* 2. Main Content Container (Max-width and Padding) */}
         {/* This container centers and holds the profile details and ID card. */}
-        <div className="w-full bg-slate-100 mx-auto mt-8 sm:mt-12 md:mt-16 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 dark:bg-gray-950">
+        <div className="w-full bg-gray-100 mx-auto mt-8 sm:mt-12 md:mt-16 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 dark:bg-gray-950">
           <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row mt-8 sm:mt-10 md:-mt-16 gap-4 sm:gap-6 md:gap-8 p-3 sm:p-4 md:p-6 lg:p-8 dark:bg-gray-900">
 
             <div className="w-full flex min-w-0 order-1">
@@ -742,13 +742,13 @@ let cardImageFile: string | null = null;
                       cardStatus === "received" 
                         ? "bg-green-100 border-green-200 dark:bg-green-950/30 dark:border-green-900" 
                         : cardStatus === "active" 
-                        ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900" 
+                        ? "bg-success-50 border-success-200 dark:bg-success-950/30 dark:border-success-900" 
                         : cardStatus === "under-review" 
                         ? "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900" 
                         : cardStatus === "inprocess"
                         ? "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900"
                         : cardStatus === "onhold" 
-                        ? "bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-900" 
+                        ? "bg-error-50 border-error-200 dark:bg-error-950/30 dark:border-error-900" 
                         : cardStatus === "full" 
                         ? "bg-sky-50 border-sky-200 dark:bg-sky-950/30 dark:border-sky-900" 
                         : "bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-700"
@@ -759,21 +759,21 @@ let cardImageFile: string | null = null;
                             cardStatus === "received" 
                               ? "text-green-700" 
                               : cardStatus === "active" 
-                              ? "text-emerald-700" 
+                              ? "text-success-700" 
                               : cardStatus === "under-review" 
                               ? "text-amber-700" 
                               : cardStatus === "inprocess"
                               ? "text-blue-700"
                               : cardStatus === "onhold" 
-                              ? "text-rose-700" 
+                              ? "text-error-700" 
                               : cardStatus === "full" 
                               ? "text-sky-700" 
                               : "text-gray-700 dark:text-gray-300"
                           }`}>Alumni Card</h3>
                           <div role="status" aria-live="polite">
                             {cardStatusError ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-700 px-2 py-0.5 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-900">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600 dark:text-rose-300"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
+                              <div className="inline-flex items-center gap-1 rounded-md bg-error-50 text-error-700 px-2 py-0.5 border border-error-200 dark:bg-error-950/40 dark:text-error-200 dark:border-error-900">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-error-600 dark:text-error-300"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
                                 <span className="text-xs">{cardStatusError}</span>
                               </div>
                             ) : cardStatus === "received" ? (
@@ -782,8 +782,8 @@ let cardImageFile: string | null = null;
                                 <span className="text-xs">Received</span>
                               </div>
                             ) : cardStatus === "active" ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 border border-emerald-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
+                              <div className="inline-flex items-center gap-1 rounded-md bg-success-50 text-success-700 px-2 py-0.5 border border-success-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-success-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
                                 <span className="text-xs">Active</span>
                               </div>
                             ) : cardStatus === "inprocess" ? (
@@ -792,8 +792,8 @@ let cardImageFile: string | null = null;
                                 <span className="text-xs">In-Process</span>
                               </div>
                             ) : cardStatus === "onhold" ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-700 px-2 py-0.5 border border-rose-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
+                              <div className="inline-flex items-center gap-1 rounded-md bg-error-50 text-error-700 px-2 py-0.5 border border-error-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-error-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
                                 <span className="text-xs">On Hold</span>
                               </div>
                             ) : cardStatus === "under-review" ? (
@@ -820,7 +820,7 @@ let cardImageFile: string | null = null;
                               href={sapId ? `/alumni-profile/card-print?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card-print`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-[#183D32] hover:bg-[#0e241d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#183D32] transition-colors"
+                              className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-accent-500 hover:bg-accent-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-500 transition-colors"
                               aria-label="Download alumni card as PDF"
                             >
                               Download Card (PDF)
@@ -863,17 +863,17 @@ let cardImageFile: string | null = null;
                               ) : cardStatus === "inprocess" ? (
                                 <p className="text-xs text-blue-700 dark:text-blue-300">Your application is in process.</p>
                               ) : cardStatus === "onhold" ? (
-                                <div className="text-xs text-rose-700 dark:text-rose-300">
+                                <div className="text-xs text-error-700 dark:text-error-300">
                                   <p className="font-medium mb-1">Your application is on hold.</p>
                                   {reasonOnhold && (
-                                    <p className="text-[10px] mt-1 italic bg-rose-50 border border-rose-200 rounded px-2 py-1 dark:bg-rose-950/40 dark:border-rose-900">
+                                    <p className="text-[10px] mt-1 italic bg-error-50 border border-error-200 rounded px-2 py-1 dark:bg-error-950/40 dark:border-error-900">
                                       Reason: {reasonOnhold}
                                     </p>
                                   )}
                                   {cardComment && (
-                                    <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-md dark:bg-rose-950/40 dark:border-rose-900">
-                                      <p className="font-medium text-rose-800 mb-1 dark:text-rose-200">Note:</p>
-                                      <p className="text-rose-700 dark:text-rose-300">{cardComment}</p>
+                                    <div className="mt-2 p-2 bg-error-50 border border-error-200 rounded-md dark:bg-error-950/40 dark:border-error-900">
+                                      <p className="font-medium text-error-800 mb-1 dark:text-error-200">Note:</p>
+                                      <p className="text-error-700 dark:text-error-300">{cardComment}</p>
                                     </div>
                                   )}
                                   {!cardComment && <p className="mt-1">Please contact us for more information.</p>}
@@ -940,7 +940,7 @@ let cardImageFile: string | null = null;
                             !isViewer && (
                             <Link
                               href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
-                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-[#183D32] hover:bg-[#0e241d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 motion-safe:animate-pulse"
+                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-accent-500 hover:bg-accent-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 motion-safe:animate-pulse"
                             >
                               <span className="motion-safe:animate-pulse motion-safe:animate-infinite motion-safe:animate-duration-1000">Apply now</span>
                             </Link>
@@ -955,8 +955,8 @@ let cardImageFile: string | null = null;
           {/* B. Alumni ID Card (Fixed width on larger screens) */}
         </div>
       </div>
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 text-slate-900 bg-slate-100 dark:bg-gray-950 dark:text-gray-100">
-        <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-4 sm:mb-5 md:mb-6 dark:text-gray-100">Networking & Engagement</h4>
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 text-gray-900 bg-gray-100 dark:bg-gray-950 dark:text-gray-100">
+        <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-6 dark:text-gray-100">Networking & Engagement</h4>
         <NetworkingEngagementSection
           sapId={sapId}
           mentorshipStatus={mentorshipStatus}
@@ -968,32 +968,32 @@ let cardImageFile: string | null = null;
         />
       </div>
 
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100 dark:bg-gray-950">
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-gray-100 dark:bg-gray-950">
         <NewslettersCard />
       </div>
 
 
 
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100 dark:bg-gray-950">
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-gray-100 dark:bg-gray-950">
         <div className="mb-4 sm:mb-6 md:mb-8">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-2 sm:mb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 dark:text-gray-100">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 dark:text-gray-100">
           Perks &amp; Benefits
             <span className="px-3 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 font-semibold border-2 border-yellow-300 shadow-sm dark:from-yellow-950/50 dark:to-amber-950/50 dark:text-yellow-200 dark:border-yellow-900">
             Alumni card is required to avail these benefits
           </span>
         </h2>
-          <p className="text-sm sm:text-base md:text-lg text-slate-600 mt-2 dark:text-gray-400">Explore exclusive benefits and opportunities available to UOL alumni members.</p>
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 mt-2 dark:text-gray-400">Explore exclusive benefits and opportunities available to UOL alumni members.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
           <BenefitCard
             title="Academic Benefits"
             description="Avail special tuition and admission discounts offered to UOL alumni."
             slug="academic-benefits"
-            gradient="from-indigo-50 to-indigo-100"
-            borderColor="border-indigo-200"
-            iconBg="bg-indigo-100"
+            gradient="from-brand-50 to-brand-100"
+            borderColor="border-brand-200"
+            iconBg="bg-brand-100"
             icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-indigo-600" viewBox="0 0 24 24">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-brand-600" viewBox="0 0 24 24">
                 <path d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12z"/>
                 <path d="M7 8h10v2H7zm0 4h7v2H7z"/>
               </svg>
@@ -1003,11 +1003,11 @@ let cardImageFile: string | null = null;
             title="Healthcare Benefits"
             description="Avail comprehensive health insurance and wellness programs as an alumni member."
             slug="healthcare-benefits"
-            gradient="from-emerald-50 to-emerald-100"
-            borderColor="border-emerald-200"
-            iconBg="bg-emerald-100"
+            gradient="from-success-50 to-success-100"
+            borderColor="border-success-200"
+            iconBg="bg-success-100"
             icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-emerald-600" viewBox="0 0 24 24">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-success-600" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
               </svg>
             }
@@ -1055,11 +1055,11 @@ let cardImageFile: string | null = null;
             title="Chapters & Engagement Events"
             description="You can join chapters based on their city or country to connect locally and globally."
             slug="chapters-events"
-            gradient="from-rose-50 to-rose-100"
-            borderColor="border-rose-200"
-            iconBg="bg-rose-100"
+            gradient="from-error-50 to-error-100"
+            borderColor="border-error-200"
+            iconBg="bg-error-100"
             icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-rose-600" viewBox="0 0 24 24">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-error-600" viewBox="0 0 24 24">
                 <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
               </svg>
             }

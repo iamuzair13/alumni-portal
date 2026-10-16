@@ -31,14 +31,14 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
 type KpiColor = "indigo" | "emerald" | "amber" | "rose" | "sky" | "violet" | "orange" | "slate" | "blue";
 
 const COLOR_MAP: Record<KpiColor, { spark: string; accent: string; label: string }> = {
-  indigo: { spark: "#6366f1", accent: "border-l-indigo-500", label: "text-indigo-600 dark:text-indigo-400" },
-  emerald: { spark: "#10b981", accent: "border-l-emerald-500", label: "text-emerald-600 dark:text-emerald-400" },
+  indigo: { spark: "#6366f1", accent: "border-l-brand-500", label: "text-brand-600 dark:text-brand-400" },
+  emerald: { spark: "#10b981", accent: "border-l-success-500", label: "text-success-600 dark:text-success-400" },
   amber: { spark: "#f59e0b", accent: "border-l-amber-500", label: "text-amber-600 dark:text-amber-400" },
-  rose: { spark: "#f43f5e", accent: "border-l-rose-500", label: "text-rose-600 dark:text-rose-400" },
+  rose: { spark: "#f43f5e", accent: "border-l-error-500", label: "text-error-600 dark:text-error-400" },
   sky: { spark: "#0ea5e9", accent: "border-l-sky-500", label: "text-sky-600 dark:text-sky-400" },
   violet: { spark: "#8b5cf6", accent: "border-l-violet-500", label: "text-violet-600 dark:text-violet-400" },
   orange: { spark: "#f97316", accent: "border-l-orange-500", label: "text-orange-600 dark:text-orange-400" },
-  slate: { spark: "#64748b", accent: "border-l-slate-400", label: "text-slate-600 dark:text-slate-400" },
+  slate: { spark: "#64748b", accent: "border-l-gray-400", label: "text-gray-600 dark:text-gray-400" },
   blue: { spark: "#3b82f6", accent: "border-l-blue-500", label: "text-blue-600 dark:text-blue-400" },
 };
 

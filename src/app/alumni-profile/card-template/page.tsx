@@ -248,7 +248,7 @@ export default function Home() {
   return (
     <div className={`${roboto.className} min-h-screen bg-[#f2f8f4] pb-16 pt-12 text-[#0f7a3a]`}>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 lg:flex-row">
-        <section className="w-full rounded-3xl bg-white/90 p-8 shadow-lg shadow-emerald-900/5 lg:max-w-sm">
+        <section className="w-full rounded-3xl bg-white/90 p-8 shadow-lg shadow-success-900/5 lg:max-w-sm">
           <header className="mb-6">
             <h1 className="text-3xl font-semibold tracking-tight">
               Alumni Card Generator
@@ -351,7 +351,7 @@ export default function Home() {
         </section>
 
         <section className="flex w-full flex-1 flex-col items-center gap-8">
-          <div className="w-full rounded-3xl bg-white/80 p-8 shadow-xl shadow-emerald-900/10">
+          <div className="w-full rounded-3xl bg-white/80 p-8 shadow-xl shadow-success-900/10">
             <h2 className="text-2xl font-semibold tracking-tight">
               Live Preview
             </h2>
@@ -363,7 +363,7 @@ export default function Home() {
 
           <div
             ref={previewRef}
-            className="flex w-full flex-col items-center gap-10 rounded-3xl bg-white/70 p-10 shadow-xl shadow-emerald-900/10"
+            className="flex w-full flex-col items-center gap-10 rounded-3xl bg-white/70 p-10 shadow-xl shadow-success-900/10"
           >
             <div 
               className="relative overflow-hidden rounded-lg"

@@ -20,7 +20,7 @@ const benefitsData: Record<string, { title: string; description: string; content
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div class="lg:col-span-2">
           <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-            <div class="bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-4">
+            <div class="bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-4">
               <h4 class="text-xl font-bold text-white dark:text-gray-100">Available Scholarships & Discounts</h4>
             </div>
             <div class="p-6">
@@ -72,9 +72,9 @@ const benefitsData: Record<string, { title: string; description: string; content
           </div>
         </div>
         <div class="space-y-6">
-          <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 shadow-sm">
+          <div class="bg-gradient-to-br from-blue-50 to-brand-50 border-2 border-blue-200 rounded-xl p-6 shadow-sm">
             <div class="flex items-center gap-3 mb-4">
-              <div class="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center">
+              <div class="w-12 h-12 bg-brand-600 rounded-lg flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -84,7 +84,7 @@ const benefitsData: Record<string, { title: string; description: string; content
             <p class="text-gray-700 mb-4 text-sm leading-relaxed">
               To avail any of these scholarships or discounts (Kinship Scholarship, MS and PhD Discounts, Masters Scholarships via UOL International Collaborations), please fill the application form below.
             </p>
-            <a href="/alumni-profile/scholarship-application" class="inline-flex items-center justify-center w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+            <a href="/alumni-profile/scholarship-application" class="inline-flex items-center justify-center w-full px-6 py-3 bg-brand-600 text-white font-semibold rounded-lg hover:bg-brand-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -95,7 +95,7 @@ const benefitsData: Record<string, { title: string; description: string; content
       </div>
     `,
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-indigo-700" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-brand-700" viewBox="0 0 24 24">
         <path d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12z"/>
         <path d="M7 8h10v2H7zm0 4h7v2H7z"/>
       </svg>
@@ -111,7 +111,7 @@ const benefitsData: Record<string, { title: string; description: string; content
       </div>
       
       <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div class="bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-4">
+        <div class="bg-gradient-to-r from-success-600 to-success-500 px-6 py-4">
           <h4 class="text-xl font-bold text-white">Healthcare Services</h4>
         </div>
         <div class="p-6">
@@ -140,7 +140,7 @@ const benefitsData: Record<string, { title: string; description: string; content
       </div>
     `,
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-emerald-700" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-success-700" viewBox="0 0 24 24">
         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
       </svg>
     ),
@@ -451,7 +451,7 @@ const benefitsData: Record<string, { title: string; description: string; content
       </div>
       
       <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div class="bg-gradient-to-r from-rose-600 to-rose-500 px-6 py-4">
+        <div class="bg-gradient-to-r from-error-600 to-error-500 px-6 py-4">
           <h4 class="text-xl font-bold text-white">Chapters & Networking Opportunities</h4>
         </div>
         <div class="p-6">
@@ -502,12 +502,12 @@ const benefitsData: Record<string, { title: string; description: string; content
           </div>
         </div>
       </div>
-      <div class="mt-6 p-4 bg-rose-50 border border-rose-200 rounded-lg">
+      <div class="mt-6 p-4 bg-error-50 border border-error-200 rounded-lg">
         <p class="text-sm text-gray-700 italic"><span class="font-semibold">*</span> Alumni Chapter is a local, regional or international professional network of UOL alumni established under approval of the UOL Alumni Office</p>
       </div>
     `,
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-rose-700" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-error-700" viewBox="0 0 24 24">
         <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
       </svg>
     ),
@@ -583,13 +583,13 @@ function applyDarkThemeToContent(html: string): string {
     [/\btext-gray-700\b/g, "text-gray-700 dark:text-gray-300"],
     [/\btext-gray-600\b/g, "text-gray-600 dark:text-gray-400"],
     [/\bfrom-blue-50\b/g, "from-blue-50 dark:from-blue-950/40"],
-    [/\bto-indigo-50\b/g, "to-indigo-50 dark:to-indigo-950/40"],
+    [/\bto-brand-50\b/g, "to-brand-50 dark:to-brand-950/40"],
     [/\bfrom-purple-50\b/g, "from-purple-50 dark:from-purple-950/40"],
     [/\bto-purple-100\b/g, "to-purple-100 dark:to-purple-950/40"],
     [/\bborder-blue-200\b/g, "border-blue-200 dark:border-blue-900"],
     [/\bborder-purple-200\b/g, "border-purple-200 dark:border-purple-900"],
-    [/\bbg-rose-50\b/g, "bg-rose-50 dark:bg-rose-950/30"],
-    [/\bborder-rose-200\b/g, "border-rose-200 dark:border-rose-900"],
+    [/\bbg-error-50\b/g, "bg-error-50 dark:bg-error-950/30"],
+    [/\bborder-error-200\b/g, "border-error-200 dark:border-error-900"],
   ];
 
   replacements.forEach(([pattern, value]) => {
@@ -666,7 +666,7 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
     content = content.replace(/<a[^>]*href="[^"]*alumni-profile\/(scholarship-application|gym-membership|swimming-pool-membership|cricket-membership|mentorship|upskill-application)"[^>]*>[\s\S]*?<\/a>/gi, '');
     // Remove the entire "Apply for Scholarships" section for academic-benefits
     if (slug === "academic-benefits") {
-      content = content.replace(/<div class="bg-gradient-to-br from-blue-50 to-indigo-50[^>]*>[\s\S]*?Apply Now[\s\S]*?<\/a>[\s\S]*?<\/div>[\s\S]*?<\/div>/gi, '');
+      content = content.replace(/<div class="bg-gradient-to-br from-blue-50 to-brand-50[^>]*>[\s\S]*?Apply Now[\s\S]*?<\/a>[\s\S]*?<\/div>[\s\S]*?<\/div>/gi, '');
     }
     // Remove Apply buttons from campus-facilities table cells
     if (slug === "campus-facilities") {
@@ -682,7 +682,7 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden dark:bg-gray-950">
+      <div className="bg-gray-100 overflow-x-hidden dark:bg-gray-950">
         <div className="border bg-white relative z-50 dark:border-gray-800 dark:bg-gray-900">
           <AppHeader />
         </div>
@@ -703,8 +703,8 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
 
               <div className="flex items-center gap-4 mb-6">
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-gray-100">{benefit.title}</h2>
-                  <p className="text-slate-600 mt-2 dark:text-gray-400">{benefit.description}</p>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{benefit.title}</h2>
+                  <p className="text-gray-600 mt-2 dark:text-gray-400">{benefit.description}</p>
                 </div>
               </div>
 

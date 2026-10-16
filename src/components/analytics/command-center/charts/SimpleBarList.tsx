@@ -32,18 +32,18 @@ function SimpleBarRow({
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium leading-5 text-slate-700 dark:text-slate-200">{item.label}</p>
+          <p className="text-sm font-medium leading-5 text-gray-700 dark:text-gray-200">{item.label}</p>
           {item.detail ? (
-            <p className="text-xs leading-4 text-slate-500 dark:text-slate-400">{item.detail}</p>
+            <p className="text-xs leading-4 text-gray-500 dark:text-gray-400">{item.detail}</p>
           ) : null}
         </div>
-        <span className="shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+        <span className="shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums text-gray-900 dark:text-white">
           {item.value.toLocaleString()}
         </span>
       </div>
 
       <div
-        className={`relative min-w-0 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800/70 ${
+        className={`relative min-w-0 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800/70 ${
           compact ? "h-2" : "h-2.5"
         }`}
       >

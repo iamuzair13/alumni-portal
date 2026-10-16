@@ -36,7 +36,7 @@ export default function LeadershipRoleBadge(props: {
     if (role === "president") {
       return type === "chapter"
         ? "bg-purple-50 text-purple-800 border-purple-200"
-        : "bg-indigo-50 text-indigo-800 border-indigo-200";
+        : "bg-brand-50 text-brand-800 border-brand-200";
     }
     if (role === "vice_president") {
       return type === "chapter"
@@ -44,7 +44,7 @@ export default function LeadershipRoleBadge(props: {
         : "bg-cyan-50 text-cyan-800 border-cyan-200";
     }
     return type === "chapter"
-      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+      ? "bg-success-50 text-success-800 border-success-200"
       : "bg-teal-50 text-teal-800 border-teal-200";
   }, [role, type]);
 

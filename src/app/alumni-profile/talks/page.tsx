@@ -24,7 +24,7 @@ export default async function AlumniTalksPage({ searchParams }: { searchParams: 
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
+      <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
         <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
           <AppHeader />
         </div>
@@ -45,7 +45,7 @@ export default async function AlumniTalksPage({ searchParams }: { searchParams: 
               <div className="flex items-center justify-between gap-4 mb-6 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                 <div className="flex items-center gap-4">
                   <BackButton />
-                  <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-gray-100">Alumni Talks</h1>
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">Alumni Talks</h1>
                 </div>
 
                 <AlumniTalksApplyButton />

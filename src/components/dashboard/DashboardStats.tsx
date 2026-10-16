@@ -178,9 +178,9 @@ export function DashboardStats({
   const categoryDotColors: Record<string, string> = {
     aPlus: "bg-violet-500",
     a: "bg-blue-500",
-    b: "bg-emerald-500",
+    b: "bg-success-500",
     c: "bg-amber-500",
-    d: "bg-slate-500",
+    d: "bg-gray-500",
   };
 
   const medalDotColors: Record<string, string> = {

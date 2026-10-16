@@ -18,8 +18,8 @@ function deriveStatus(endDate: string): "active" | "expired" {
 function StatusBadge({ status }: { status: "active" | "expired" }) {
   if (status === "active") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-success-50 px-2.5 py-1 text-xs font-semibold text-success-700 ring-1 ring-inset ring-success-600/20 dark:bg-success-500/10 dark:text-success-400 dark:ring-success-500/20">
+        <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
         Active
       </span>
     );

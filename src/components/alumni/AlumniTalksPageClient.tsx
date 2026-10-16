@@ -109,7 +109,7 @@ export default function AlumniTalksPageClient() {
               onClick={() => setTab(t.key)}
               className={`rounded-full border px-4 py-2 text-xs font-semibold ${
                 tab === t.key
-                  ? "border-[#183D32] bg-[#183D32] text-white"
+                  ? "border-accent-500 bg-accent-500 text-white"
                   : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
               }`}
             >
@@ -160,7 +160,7 @@ export default function AlumniTalksPageClient() {
               <div key={t.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-900 truncate">{t.topic || "Untitled Talk"}</div>
+                    <div className="text-sm font-semibold text-gray-900 truncate">{t.topic || "Untitled Talk"}</div>
                     <div className="mt-1 text-xs text-gray-600">Submitted: {formatDate(t.created_at)}</div>
                   </div>
                   <span className="shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-semibold text-gray-700">
@@ -173,9 +173,9 @@ export default function AlumniTalksPageClient() {
                   <div><span className="font-semibold">Area:</span> {t.activity || "-"}</div>
 
                   {(t.confirmed_date || t.confirmed_timings) && (
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                      <div className="font-semibold text-emerald-800">Confirmed Schedule</div>
-                      <div className="text-emerald-800">{formatDate(t.confirmed_date)} {t.confirmed_timings ? `(${t.confirmed_timings})` : ""}</div>
+                    <div className="rounded-lg border border-success-200 bg-success-50 p-3">
+                      <div className="font-semibold text-success-800">Confirmed Schedule</div>
+                      <div className="text-success-800">{formatDate(t.confirmed_date)} {t.confirmed_timings ? `(${t.confirmed_timings})` : ""}</div>
                     </div>
                   )}
 

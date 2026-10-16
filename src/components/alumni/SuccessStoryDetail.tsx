@@ -147,7 +147,7 @@ export default function SuccessStoryDetail({
     >
       {/* Hero banner */}
       <div className="relative min-h-[280px] overflow-hidden md:min-h-[320px]">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-blue-900 to-indigo-950" />
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-blue-900 to-brand-950" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
 
         <div className="relative z-10 flex min-h-[280px] flex-col p-6 md:min-h-[320px] md:p-10">
@@ -181,7 +181,7 @@ export default function SuccessStoryDetail({
           className={`border-b px-6 py-4 md:px-10 ${
             status === "pending"
               ? "border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20"
-              : "border-rose-200 bg-rose-50 dark:border-rose-800/50 dark:bg-rose-900/20"
+              : "border-error-200 bg-error-50 dark:border-error-800/50 dark:bg-error-900/20"
           }`}
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -190,7 +190,7 @@ export default function SuccessStoryDetail({
                 className={`text-sm font-semibold ${
                   status === "pending"
                     ? "text-amber-900 dark:text-amber-200"
-                    : "text-rose-900 dark:text-rose-200"
+                    : "text-error-900 dark:text-error-200"
                 }`}
               >
                 {status === "pending"
@@ -201,7 +201,7 @@ export default function SuccessStoryDetail({
                 className={`mt-1 text-sm ${
                   status === "pending"
                     ? "text-amber-800/80 dark:text-amber-300/80"
-                    : "text-rose-800/80 dark:text-rose-300/80"
+                    : "text-error-800/80 dark:text-error-300/80"
                 }`}
               >
                 {status === "pending"
@@ -212,7 +212,7 @@ export default function SuccessStoryDetail({
             {editHref && status === "not-approved" && (
               <Link
                 href={editHref}
-                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white hover:bg-error-700"
               >
                 Revise Story
               </Link>
@@ -225,7 +225,7 @@ export default function SuccessStoryDetail({
       {adminActions && <div className="border-b border-gray-200 px-6 py-4 md:px-10 dark:border-gray-700">{adminActions}</div>}
 
       {showSubmissionCriteria && (
-        <div className="border-b border-gray-200 bg-slate-50 px-6 py-6 md:px-10 dark:border-gray-700 dark:bg-gray-800/40">
+        <div className="border-b border-gray-200 bg-gray-50 px-6 py-6 md:px-10 dark:border-gray-700 dark:bg-gray-800/40">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">Submission Criteria</h2>
           {!hasCriteria ? (
             <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
@@ -306,7 +306,7 @@ export default function SuccessStoryDetail({
         <div className="mx-auto max-w-3xl">
           <div className="mb-8 flex items-center justify-between gap-4 border-b border-gray-100 pb-6 dark:border-gray-800">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-lg font-bold text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-brand-700 text-lg font-bold text-white">
                 {story.name?.charAt(0).toUpperCase() || "A"}
               </div>
               <div>

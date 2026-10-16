@@ -35,7 +35,7 @@ export function ChaptersCardChart({
   return (
     <div className="flex h-full min-h-0 w-full flex-col justify-center gap-2">
       {/* Stacked bar */}
-      <div className="relative h-7 w-full overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
+      <div className="relative h-7 w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${nationalPct}%` }}
@@ -69,8 +69,8 @@ export function ChaptersCardChart({
         <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: NATIONAL_COLOR }} />
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">National</p>
-            <p className="text-[12px] text-slate-800">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">National</p>
+            <p className="text-[12px] text-gray-800">
                {nationalMembers.toLocaleString()} Members
             </p>
           </div>
@@ -78,8 +78,8 @@ export function ChaptersCardChart({
         <div className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: INTL_COLOR }} />
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">International</p>
-            <p className="text-[12px] text-slate-800">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">International</p>
+            <p className="text-[12px] text-gray-800">
              {internationalMembers.toLocaleString()} Members
             </p>
           </div>

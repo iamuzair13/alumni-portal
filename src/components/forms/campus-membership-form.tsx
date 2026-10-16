@@ -17,6 +17,7 @@ import {
   type CampusFacilityType,
 } from "@/lib/campusMembership";
 import { membershipFacilityNote } from "@/lib/membershipSettingsShared";
+import { AcknowledgmentCheckbox, FileInput, FormActions } from "@/components/ui/form";
 
 
 type Props = {
@@ -25,13 +26,10 @@ type Props = {
   sapId: string;
 };
 
-const inputBase =
-  "px-4 py-3 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all";
+const inputBase = "field-input";
 const inputReadOnly =
-  "px-4 py-3 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed";
-const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
-const buttonPrimary =
-  "mt-6 px-5 py-2.5 text-[15px] font-medium w-full max-w-[200px] mx-auto block bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60";
+  "field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300";
+const labelBase = "field-label";
 
 function missing(v: unknown): string {
   const s = String(v ?? "").trim();
@@ -241,7 +239,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
   if (resolvingId || (identifier && isLoading)) {
     return (
       <div className="flex items-center justify-center py-12">
-        <svg className="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <svg className="animate-spin h-10 w-10 text-brand-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
@@ -251,7 +249,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
 
   if (!identifier) {
     return (
-      <p className="text-sm text-red-600 text-center py-8">
+      <p className="py-8 text-center text-sm text-error-600 dark:text-error-400">
         Unable to identify your alumni account. Please sign in and try again.
       </p>
     );
@@ -259,7 +257,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
 
   if (isError || !data) {
     return (
-      <p className="text-sm text-red-600 text-center py-8">
+      <p className="py-8 text-center text-sm text-error-600 dark:text-error-400">
         {error instanceof Error ? error.message : "Failed to load profile data."}
       </p>
     );
@@ -267,12 +265,12 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
 
   return (
     <form onSubmit={onSubmit} className="max-w-4xl mx-auto" aria-label={`${config.applyingFor} membership application form`}>
-      <div className="mb-6 pb-4 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-slate-900 mb-1">{config.formHeading}</h2>
-        <p className="text-sm text-gray-600">{config.formDescription}</p>
+      <div className="mb-6 border-b border-gray-200 pb-4 dark:border-gray-700">
+        <h2 className="mb-1 text-xl font-semibold text-gray-900 dark:text-gray-100">{config.formHeading}</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">{config.formDescription}</p>
         <div className="mt-4 text-sm">
-          <span className="font-medium text-slate-700">Application Date: </span>
-          <span className="text-slate-900">{applicationDate}</span>
+          <span className="font-medium text-gray-700 dark:text-gray-300">Application Date: </span>
+          <span className="text-gray-900 dark:text-gray-100">{applicationDate}</span>
         </div>
       </div>
 
@@ -550,14 +548,16 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
               />
             </Section>
             <Section title="(g) Declaration">
-              <CheckboxField
-                id="declarationAccepted"
-                checked={declarationAccepted}
-                onChange={setDeclarationAccepted}
-                label={config.declarationText}
-                required
-                fullWidth
-              />
+              <div className="sm:col-span-2">
+                <AcknowledgmentCheckbox
+                  id="declarationAccepted"
+                  checked={declarationAccepted}
+                  onChange={(e) => setDeclarationAccepted(e.target.checked)}
+                  required
+                >
+                  {config.declarationText}
+                </AcknowledgmentCheckbox>
+              </div>
               <Field label="E-Signature" value={missing(data.alumniname)} readOnly fullWidth />
             </Section>
           </>
@@ -576,15 +576,20 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
           </p>
         </div>
       </div>
-      <button type="submit" disabled={isSubmitting} className={buttonPrimary}>{isSubmitting ? "Submitting..." : "Submit Application"}</button>
+      <FormActions
+        submitLabel="Submit Application"
+        submittingLabel="Submitting…"
+        loading={isSubmitting}
+        className="sm:justify-center"
+      />
     </form>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="sm:col-span-2 border border-gray-200 rounded-lg p-4 sm:p-5">
-      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <div className="sm:col-span-2 card p-5 sm:p-6">
+      <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
       <div className="grid sm:grid-cols-2 gap-4">{children}</div>
     </div>
   );
@@ -596,7 +601,7 @@ function Field({ label, value, readOnly, fullWidth, hint }: { label: string; val
       <label className={labelBase}>{label}</label>
       <input type="text" value={value} readOnly={readOnly} className={readOnly ? inputReadOnly : inputBase} />
       {readOnly && <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>}
-      {hint && <p className="mt-1 text-xs text-amber-700">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-warning-700 dark:text-warning-400">{hint}</p>}
     </div>
   );
 }
@@ -604,7 +609,7 @@ function Field({ label, value, readOnly, fullWidth, hint }: { label: string; val
 function EditableField({ id, label, value, onChange, placeholder, required, fullWidth, type = "text" }: { id: string; label: string; value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean; fullWidth?: boolean; type?: string }) {
   return (
     <div className={fullWidth ? "sm:col-span-2" : undefined}>
-      <label htmlFor={id} className={labelBase}>{label} {required && <span className="text-red-500">*</span>}</label>
+      <label htmlFor={id} className={labelBase}>{label} {required && <span className="text-error-500">*</span>}</label>
       <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} className={inputBase} placeholder={placeholder} required={required} />
     </div>
   );
@@ -630,7 +635,7 @@ function SelectField({
   return (
     <div className={fullWidth ? "sm:col-span-2" : undefined}>
       <label htmlFor={id} className={labelBase}>
-        {label} {required && <span className="text-red-500">*</span>}
+        {label} {required && <span className="text-error-500">*</span>}
       </label>
       <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={inputBase} required={required}>
         <option value="">Select {label.toLowerCase()}</option>
@@ -661,14 +666,14 @@ function CheckboxField({
 }) {
   return (
     <div className={fullWidth ? "sm:col-span-2" : undefined}>
-      <label htmlFor={id} className="flex items-start gap-3 text-sm text-slate-900">
+      <label htmlFor={id} className="flex items-start gap-3 text-sm text-gray-800 dark:text-gray-200">
         <input
           id={id}
           type="checkbox"
           checked={checked}
           onChange={(e) => onChange(e.target.checked)}
           required={required}
-          className="mt-1 h-4 w-4 rounded border-gray-300"
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-600 accent-brand-600 focus:ring-2 focus:ring-brand-500/30 dark:border-gray-600 dark:bg-gray-800"
         />
         <span>{label}</span>
       </label>
@@ -678,8 +683,8 @@ function CheckboxField({
 
 function ReadOnlyBox({ label }: { label: string }) {
   return (
-    <div className="min-h-24 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
-      <span className="font-medium text-slate-900">{label}</span>
+    <div className="min-h-24 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+      <span className="font-medium text-gray-900 dark:text-gray-100">{label}</span>
     </div>
   );
 }
@@ -702,14 +707,12 @@ function DocumentUploadField({
   return (
     <div>
       <label htmlFor={id} className={labelBase}>
-        {label} {required && <span className="text-red-500">*</span>}
+        {label} {required && <span className="text-error-500">*</span>}
       </label>
-      <input
+      <FileInput
         id={id}
-        type="file"
         accept={accept}
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-        className={inputBase}
         required={required}
       />
       {file && (

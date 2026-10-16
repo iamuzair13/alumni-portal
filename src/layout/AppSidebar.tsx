@@ -287,7 +287,7 @@ const AppSidebarContent: React.FC = () => {
 
                   : "bg-transparent"
 
-              } cursor-pointer rounded-xl px-3 py-2.5 transition-colors hover:bg-white/10 dark:hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 dark:focus-visible:ring-emerald-400/25 ${
+              } cursor-pointer rounded-xl px-3 py-2.5 transition-colors hover:bg-white/10 dark:hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 dark:focus-visible:ring-success-400/25 ${
 
                 !isExpanded && !isHovered
 
@@ -393,7 +393,7 @@ const AppSidebarContent: React.FC = () => {
 
                 href={nav.path}
 
-                className={`menu-item group rounded-xl px-3 py-2.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 dark:focus-visible:ring-emerald-400/25 ${
+                className={`menu-item group rounded-xl px-3 py-2.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 dark:focus-visible:ring-success-400/25 ${
 
                   isActive(nav.path) ? "bg-white/10 dark:bg-white/[0.08]" : "bg-transparent hover:bg-white/10 dark:hover:bg-white/[0.06]"
 
@@ -761,7 +761,7 @@ const AppSidebarContent: React.FC = () => {
 
     <aside
 
-      className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/10 bg-[#183D32] text-white shadow-lg transition-all duration-300 ease-in-out dark:border-emerald-950/40 dark:bg-[#0c1a17] dark:shadow-2xl dark:shadow-black/50 lg:mt-0
+      className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-white/10 bg-accent-500 text-white shadow-lg transition-all duration-300 ease-in-out dark:border-accent-900/40 dark:bg-accent-950 dark:shadow-2xl dark:shadow-black/50 lg:mt-0
 
         ${
 
@@ -896,7 +896,7 @@ const AppSidebarContent: React.FC = () => {
 
               <h2
 
-                className={`mb-4 flex text-xs uppercase leading-[20px] tracking-wider text-white/70 dark:text-emerald-200/45 ${
+                className={`mb-4 flex text-xs uppercase leading-[20px] tracking-wider text-white/70 dark:text-accent-200/50 ${
 
                   !isExpanded && !isHovered
 
@@ -946,7 +946,7 @@ const AppSidebar: React.FC = () => {
 
     <Suspense fallback={
 
-      <aside className="fixed left-0 top-0 z-50 mt-16 flex h-screen w-[90px] flex-col border-r border-white/10 bg-[#183D32] dark:border-emerald-950/40 dark:bg-[#0c1a17] px-5 shadow-lg transition-all duration-300 ease-in-out dark:shadow-2xl dark:shadow-black/50 lg:mt-0 lg:translate-x-0">
+      <aside className="fixed left-0 top-0 z-50 mt-16 flex h-screen w-[90px] flex-col border-r border-white/10 bg-accent-500 dark:border-accent-900/40 dark:bg-accent-950 px-5 shadow-lg transition-all duration-300 ease-in-out dark:shadow-2xl dark:shadow-black/50 lg:mt-0 lg:translate-x-0">
 
         <div className="py-8 lg:justify-center"></div>
 

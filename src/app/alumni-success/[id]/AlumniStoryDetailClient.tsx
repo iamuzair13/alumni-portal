@@ -56,7 +56,7 @@ export default function AlumniStoryDetailClient({
   if (loading) {
     return (
       <>
-        <div className="bg-slate-100 overflow-x-hidden min-h-screen">
+        <div className="bg-gray-100 overflow-x-hidden min-h-screen">
           <div className="border bg-white relative z-50">
             <AppHeader />
           </div>
@@ -71,7 +71,7 @@ export default function AlumniStoryDetailClient({
   if (error || !story) {
     return (
       <>
-        <div className="bg-slate-100 overflow-x-hidden min-h-screen">
+        <div className="bg-gray-100 overflow-x-hidden min-h-screen">
           <div className="border bg-white relative z-50">
             <AppHeader />
           </div>
@@ -98,7 +98,7 @@ export default function AlumniStoryDetailClient({
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900">
+      <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900">
         <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700">
           <AppHeader />
         </div>

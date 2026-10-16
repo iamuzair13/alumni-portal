@@ -56,11 +56,11 @@ function getStatusSelectStyles(status: string | null): string {
     case "UnderPrinting":
       return `${base} bg-purple-50 text-purple-800 hover:bg-purple-100 focus:border-purple-500 dark:bg-purple-900/20 dark:text-purple-300`;
     case "Active":
-      return `${base} bg-emerald-50 text-emerald-800 hover:bg-emerald-100 focus:border-emerald-500 dark:bg-emerald-900/20 dark:text-emerald-300`;
+      return `${base} bg-success-50 text-success-800 hover:bg-success-100 focus:border-success-500 dark:bg-success-900/20 dark:text-success-300`;
     case "Delivered":
       return `${base} bg-blue-50 text-blue-800 hover:bg-blue-100 focus:border-blue-500 dark:bg-blue-900/20 dark:text-blue-300`;
     case "Onhold":
-      return `${base} bg-rose-50 text-rose-800 hover:bg-rose-100 focus:border-rose-500 dark:bg-rose-900/20 dark:text-rose-300`;
+      return `${base} bg-error-50 text-error-800 hover:bg-error-100 focus:border-error-500 dark:bg-error-900/20 dark:text-error-300`;
     default:
       return `${base} bg-gray-50 text-gray-700 hover:bg-gray-100 focus:border-gray-500 dark:bg-gray-800 dark:text-gray-300`;
   }
@@ -75,11 +75,11 @@ function getStatusDotColor(status: string | null): string {
     case "UnderPrinting":
       return "bg-purple-400";
     case "Active":
-      return "bg-emerald-400";
+      return "bg-success-400";
     case "Delivered":
       return "bg-blue-400";
     case "Onhold":
-      return "bg-rose-400";
+      return "bg-error-400";
     default:
       return "bg-gray-400";
   }
@@ -467,7 +467,7 @@ export const CardStatusConfirmModal: React.FC<CardStatusConfirmModalProps> = ({
             });
 
             return (
-              <div className="rounded-xl border border-blue-200/60 bg-gradient-to-br from-blue-50/80 to-indigo-50/40 p-4">
+              <div className="rounded-xl border border-blue-200/60 bg-gradient-to-br from-blue-50/80 to-brand-50/40 p-4">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex items-start gap-3">
                     <div className="h-9 w-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">

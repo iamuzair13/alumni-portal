@@ -5,8 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
 import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
-import { Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import PageBanner from "@/components/ui/PageBanner";
+import Alert from "@/components/ui/alert/Alert";
+import { AcknowledgmentCheckbox, FormActions } from "@/components/ui/form";
 import {
   SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY,
   SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS,
@@ -17,8 +19,7 @@ import {
   getMergedFeeComponentSlugs,
   isHighAchieverMedalist,
   resolveHighAchieverPercent,
-  HIGH_ACHIEVER_DISCOUNT_PERCENT,
-} from "@/lib/scholarshipLetter";
+  HIGH_ACHIEVER_DISCOUNT_PERCENT } from "@/lib/scholarshipLetter";
 import {
   findCategoryBySlug,
   formatDiscountPercentDisplay,
@@ -26,8 +27,7 @@ import {
   resolveCategoryFlowType,
   resolveDiscountPercent,
   resolveMergedFeeDiscount,
-  type ScholarshipCategoryWithTiers,
-} from "@/lib/scholarshipDiscount";
+  type ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
 import Link from "next/link";
 
 async function fetchScholarshipFormSettings() {
@@ -66,8 +66,7 @@ function ScholarshipApplicationContent() {
   const { data: formSettings, isLoading: settingsLoading } = useQuery({
     queryKey: ["scholarship-settings"],
     queryFn: fetchScholarshipFormSettings,
-    staleTime: 60 * 1000,
-  });
+    staleTime: 60 * 1000 });
 
   const isFormEnabled = formSettings?.scholarship_application ?? true;
 
@@ -87,8 +86,7 @@ function ScholarshipApplicationContent() {
     kinshipCnic: "",
     kinshipGradeType: "",
     kinshipGradeValue: "",
-    fatherCnic: "",
-  });
+    fatherCnic: "" });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [applyAdmissionFeeDiscount, setApplyAdmissionFeeDiscount] = useState(false);
@@ -158,8 +156,7 @@ function ScholarshipApplicationContent() {
 
   const categoryFlow = resolveCategoryFlowType(formData.discountType, scholarshipCategories, {
     isFee: isScholarshipFeeDiscountFlow,
-    isKinship: isScholarshipKinshipCategory,
-  });
+    isKinship: isScholarshipKinshipCategory });
   const isFeeFlow = categoryFlow === "fee_discount";
   const isKinshipFlow = categoryFlow === "kinship";
   const needsKinshipApplyingFor =
@@ -219,9 +216,11 @@ function ScholarshipApplicationContent() {
 
   // Declaration
   const [mastersDeclarationAccepted, setMastersDeclarationAccepted] = useState(false);
-  // Scholarship disclosure declaration (required for all flows)
-  const [scholarshipDisclosure, setScholarshipDisclosure] = useState("");
+  // Scholarship disclosure declaration (required for all flows).
+  // Defaults to "None" — applicants with active scholarships must replace it.
+  const [scholarshipDisclosure, setScholarshipDisclosure] = useState("None");
   const [disclosureAccepted, setDisclosureAccepted] = useState(false);
+  const [discountTermsAccepted, setDiscountTermsAccepted] = useState(false);
 
   // Load organization datasets when needed (fee discount and kinship flow)
   useEffect(() => {
@@ -238,8 +237,7 @@ function ScholarshipApplicationContent() {
       setOrgError(null);
       try {
         const res = await fetch("/api/public/org-datasets", {
-          headers: { accept: "application/json" },
-        });
+          headers: { accept: "application/json" } });
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(txt || `Failed to load faculties/departments/programs (${res.status})`);
@@ -254,20 +252,17 @@ function ScholarshipApplicationContent() {
         const mappedFaculties =
           j.faculties?.map((f) => ({
             id: Number(f.id),
-            name: String((f as any).faculty_name ?? "").trim(),
-          })) ?? [];
+            name: String((f as any).faculty_name ?? "").trim() })) ?? [];
         const mappedDepartments =
           j.departments?.map((d) => ({
             id: Number(d.id),
             name: String((d as any).department_name ?? "").trim(),
-            facultyId: Number((d as any).faculty_id),
-          })) ?? [];
+            facultyId: Number((d as any).faculty_id) })) ?? [];
         const mappedPrograms =
           j.programs?.map((p) => ({
             id: Number(p.id),
             name: String((p as any).program_name ?? "").trim(),
-            departmentId: Number((p as any).department_id),
-          })) ?? [];
+            departmentId: Number((p as any).department_id) })) ?? [];
 
         setFaculties(
           mappedFaculties.filter(
@@ -398,33 +393,25 @@ function ScholarshipApplicationContent() {
     
     if (profileCgpa == null) {
       toast.error("Please add your CGPA in your alumni profile before applying.", {
-        duration: 5000,
-        style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
-      });
+        duration: 5000 });
       return;
     }
 
     if (!applicationYear) {
       toast.error("Please select the application Year.", {
-        duration: 4000,
-        style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
-      });
+        duration: 4000 });
       return;
     }
 
     if (!applicationTerm) {
       toast.error("Please select the application Term.", {
-        duration: 4000,
-        style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
-      });
+        duration: 4000 });
       return;
     }
 
     if (!formData.discountType) {
       toast.error("Please select a discount category.", {
-        duration: 4000,
-        style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
-      });
+        duration: 4000 });
       return;
     }
 
@@ -432,9 +419,7 @@ function ScholarshipApplicationContent() {
       toast.error(
         "No discount tier applies to your CGPA for this category. Contact the alumni office or choose another category.",
         {
-          duration: 5000,
-          style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
-        },
+          duration: 5000 },
       );
       return;
     }
@@ -450,14 +435,7 @@ function ScholarshipApplicationContent() {
           ? "Please select Applying For (BS / Masters / PhD)."
           : "Please complete Applying For / program level where required.",
         {
-        duration: 4000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '12px',
-          borderRadius: '8px',
-        },
-        }
+        duration: 4000 }
       );
       return;
     }
@@ -467,14 +445,7 @@ function ScholarshipApplicationContent() {
       // Ensure org data is ready
       if (orgLoading || faculties.length === 0) {
         toast.error("Please wait while options are loading. Try again in a moment.", {
-          duration: 4000,
-          style: {
-            background: "#fee2e2",
-            color: "#991b1b",
-            padding: "12px",
-            borderRadius: "8px",
-          },
-        });
+          duration: 4000 });
         return;
       }
 
@@ -487,53 +458,25 @@ function ScholarshipApplicationContent() {
         !admissionSemester
       ) {
         toast.error("Please complete all admission and document sections before submitting.", {
-          duration: 5000,
-          style: {
-            background: "#fee2e2",
-            color: "#991b1b",
-            padding: "12px",
-            borderRadius: "8px",
-          },
-        });
+          duration: 5000 });
         return;
       }
 
       if (!docAdmissionLetterFile || !docAlumniProofFile || !docCnicFile) {
         toast.error("Please upload all required documents before submitting.", {
-          duration: 5000,
-          style: {
-            background: "#fee2e2",
-            color: "#991b1b",
-            padding: "12px",
-            borderRadius: "8px",
-          },
-        });
+          duration: 5000 });
         return;
       }
 
       if (docOtherFile && !docOtherText.trim()) {
         toast.error("Please specify 'Other' document name/description.", {
-          duration: 4000,
-          style: {
-            background: "#fee2e2",
-            color: "#991b1b",
-            padding: "12px",
-            borderRadius: "8px",
-          },
-        });
+          duration: 4000 });
         return;
       }
 
       if (!mastersDeclarationAccepted) {
         toast.error("You must accept the declaration to proceed.", {
-          duration: 4000,
-          style: {
-            background: "#fee2e2",
-            color: "#991b1b",
-            padding: "12px",
-            borderRadius: "8px",
-          },
-        });
+          duration: 4000 });
         return;
       }
     }
@@ -554,14 +497,7 @@ function ScholarshipApplicationContent() {
         !formData.kinshipGradeValue)
     ) {
       toast.error("Please complete all required kinship details.", {
-        duration: 4000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '12px',
-          borderRadius: '8px',
-        },
-      });
+        duration: 4000 });
       return;
     }
 
@@ -569,38 +505,17 @@ function ScholarshipApplicationContent() {
       const gradeNum = Number(formData.kinshipGradeValue);
       if (!Number.isFinite(gradeNum) || gradeNum < 0) {
         toast.error("Please enter a valid grade value.", {
-          duration: 4000,
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '12px',
-            borderRadius: '8px',
-          },
-        });
+          duration: 4000 });
         return;
       }
       if (formData.kinshipGradeType === "CGPA" && gradeNum > 4) {
         toast.error("CGPA cannot exceed 4.00.", {
-          duration: 4000,
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '12px',
-            borderRadius: '8px',
-          },
-        });
+          duration: 4000 });
         return;
       }
       if (formData.kinshipGradeType === "Percentage" && gradeNum > 100) {
         toast.error("Percentage cannot exceed 100.0%.", {
-          duration: 4000,
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '12px',
-            borderRadius: '8px',
-          },
-        });
+          duration: 4000 });
         return;
       }
     }
@@ -614,14 +529,7 @@ function ScholarshipApplicationContent() {
         !docKinshipAcademicCertificatesFile)
     ) {
       toast.error("Please complete all required kinship document checklist fields.", {
-        duration: 4000,
-        style: {
-          background: "#fee2e2",
-          color: "#991b1b",
-          padding: "12px",
-          borderRadius: "8px",
-        },
-      });
+        duration: 4000 });
       return;
     }
 
@@ -629,14 +537,16 @@ function ScholarshipApplicationContent() {
       toast.error(
         "Please disclose all scholarships / financial assistance currently availed and accept the declaration.",
         {
-          duration: 5000,
-          style: {
-            background: "#fee2e2",
-            color: "#991b1b",
-            padding: "12px",
-            borderRadius: "8px",
-          },
-        },
+          duration: 5000 },
+      );
+      return;
+    }
+
+    if (!discountTermsAccepted) {
+      toast.error(
+        "Please accept the discount terms and conditions to proceed.",
+        {
+          duration: 5000 },
       );
       return;
     }
@@ -654,27 +564,13 @@ function ScholarshipApplicationContent() {
       degreeTitleToSend = (formData.kinshipProgram || "").trim();
     } else if (!degreeTitleToSend) {
       toast.error("Degree title is required.", {
-        duration: 4000,
-        style: {
-          background: "#fee2e2",
-          color: "#991b1b",
-          padding: "12px",
-          borderRadius: "8px",
-        },
-      });
+        duration: 4000 });
       return;
     }
 
     if (!sapId) {
       toast.error("SAP ID not found. Please ensure you are logged in.", {
-        duration: 4000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '12px',
-          borderRadius: '8px',
-        },
-      });
+        duration: 4000 });
       return;
     }
 
@@ -724,6 +620,7 @@ function ScholarshipApplicationContent() {
               fd.set("applicationTerm", applicationTerm);
               fd.set("scholarshipDisclosure", scholarshipDisclosure.trim());
               fd.set("disclosureDeclaration", "true");
+              fd.set("discountTermsAccepted", "true");
 
               return fetch(url, { method: "POST", body: fd });
             })()
@@ -772,6 +669,7 @@ function ScholarshipApplicationContent() {
               fd.set("applicationTerm", applicationTerm);
               fd.set("scholarshipDisclosure", scholarshipDisclosure.trim());
               fd.set("disclosureDeclaration", "true");
+              fd.set("discountTermsAccepted", "true");
               return fetch(url, { method: "POST", body: fd });
             })()
           : await fetch(url, {
@@ -797,8 +695,7 @@ function ScholarshipApplicationContent() {
                 applicationTerm: applicationTerm || null,
                 scholarshipDisclosure: scholarshipDisclosure.trim(),
                 disclosureDeclaration: true,
-              }),
-            });
+                discountTermsAccepted: true }) });
 
       const result = await response.json();
 
@@ -818,26 +715,12 @@ function ScholarshipApplicationContent() {
             )}
           </div>,
           {
-            duration: 8000,
-            style: {
-              background: '#fef3c7',
-              color: '#92400e',
-              padding: '12px',
-              borderRadius: '8px',
-            },
-          }
+            duration: 8000 }
         );
       } else if (result.emailSent === true) {
         // Email sent successfully
         toast.success("Application submitted successfully! Please check your email for the confirmation document.", {
-          duration: 6000,
-          style: {
-            background: '#d1fae5',
-            color: '#065f46',
-            padding: '12px',
-            borderRadius: '8px',
-          },
-        });
+          duration: 6000 });
       } else {
         // Email status unknown (might be SMTP not configured)
         toast.success(
@@ -848,14 +731,7 @@ function ScholarshipApplicationContent() {
             )}
           </div>,
           {
-            duration: 6000,
-            style: {
-              background: '#dbeafe',
-              color: '#1e40af',
-              padding: '12px',
-              borderRadius: '8px',
-            },
-          }
+            duration: 6000 }
         );
       }
 
@@ -876,8 +752,7 @@ function ScholarshipApplicationContent() {
         kinshipCnic: "",
         kinshipGradeType: "",
         kinshipGradeValue: "",
-        fatherCnic: data?.father_cnic || "",
-      });
+        fatherCnic: data?.father_cnic || "" });
 
       // Reset Masters/PhD uploads & declaration
       setAdmissionFacultyId("");
@@ -901,18 +776,12 @@ function ScholarshipApplicationContent() {
       setDocOtherText("");
       setGradePercent("");
       setMastersDeclarationAccepted(false);
-      setScholarshipDisclosure("");
+      setScholarshipDisclosure("None");
       setDisclosureAccepted(false);
+      setDiscountTermsAccepted(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit application. Please try again.", {
-        duration: 4000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '12px',
-          borderRadius: '8px',
-        },
-      });
+        duration: 4000 });
     } finally {
       setIsSubmitting(false);
     }
@@ -927,7 +796,7 @@ function ScholarshipApplicationContent() {
             <div className="bg-white rounded-lg shadow-sm p-8">
               <div className="flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-4">
-                  <svg className="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-12 w-12 text-brand-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -979,7 +848,7 @@ function ScholarshipApplicationContent() {
             <div className="bg-white rounded-lg shadow-sm p-8">
               <div className="flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-4">
-                  <p className="text-sm text-red-600">Failed to load profile data</p>
+                  <p className="text-sm text-error-600 dark:text-error-400">Failed to load profile data</p>
                   <BackButton />
                 </div>
               </div>
@@ -997,7 +866,7 @@ function ScholarshipApplicationContent() {
   return (
     <>
       <AppHeader />
-      <Toaster position="top-right" />
+
       <PageBanner title="Scholarship Application" />
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1007,35 +876,33 @@ function ScholarshipApplicationContent() {
 
           <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Scholarship</h1>
-            <span className="text-red-500 text-[16px]"> (Applicable if your Admission in University is confirmed and not applicable for Faculty of Medicine and Dentistry)</span>
+            <span className="text-error-500 text-base"> (Applicable if your Admission in University is confirmed and not applicable for Faculty of Medicine and Dentistry)</span>
             <p className="text-gray-600 mb-8">Fill out the form below to apply for UOL Alumni Scholarship or Fee Discount.</p>
 
             <form onSubmit={handleSubmit} className="max-w-4xl mx-auto mt-4" aria-label="Scholarship application form">
               <div className="grid sm:grid-cols-2 gap-6">
                 {profileCgpa == null && (
-                  <div className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                    <p className="text-sm font-medium text-amber-900">CGPA required</p>
-                    <p className="mt-1 text-sm text-amber-800">
-                      Add your CGPA in your alumni profile before you can submit a scholarship application.
-                    </p>
-                    <Link
-                      href="/alumni-profile/more-details"
-                      className="mt-2 inline-block text-sm font-semibold text-blue-700 hover:underline"
-                    >
-                      Update profile →
-                    </Link>
+                  <div className="sm:col-span-2">
+                    <Alert
+                      variant="warning"
+                      title="CGPA required"
+                      message="Add your CGPA in your alumni profile before you can submit a scholarship application."
+                      showLink
+                      linkHref="/alumni-profile/more-details"
+                      linkText="Update profile"
+                    />
                   </div>
                 )}
 
                 {categoriesError && (
-                  <div className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                  <div className="sm:col-span-2 rounded-xl border border-error-200 bg-error-50 p-3 text-sm text-error-800 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-300">
                     {categoriesError}
                   </div>
                 )}
 
                 <div className="sm:col-span-2">
-                  <label htmlFor="discountType" className="mb-2 text-sm text-slate-900 font-medium block">
-                    Discount Category <span className="text-red-500">*</span>
+                  <label htmlFor="discountType" className="field-label">
+                    Discount Category <span className="text-error-500">*</span>
                   </label>
                   <select
                     id="discountType"
@@ -1048,10 +915,9 @@ function ScholarshipApplicationContent() {
                       setFormData({
                         ...formData,
                         discountType: v,
-                        applyingFor: derived !== null ? derived : "",
-                      });
+                        applyingFor: derived !== null ? derived : "" });
                     }}
-                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                    className="field-input"
                     required
                     disabled={categoriesLoading || profileCgpa == null}
                   >
@@ -1067,14 +933,14 @@ function ScholarshipApplicationContent() {
                 </div>
 
                 <div>
-                  <label htmlFor="applicationYear" className="mb-2 text-sm text-slate-900 font-medium block">
-                    Year <span className="text-red-500">*</span>
+                  <label htmlFor="applicationYear" className="field-label">
+                    Year <span className="text-error-500">*</span>
                   </label>
                   <select
                     id="applicationYear"
                     value={applicationYear}
                     onChange={(e) => setApplicationYear(e.target.value)}
-                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                    className="field-input"
                     required
                   >
                     <option value="">Select year</option>
@@ -1087,14 +953,14 @@ function ScholarshipApplicationContent() {
                 </div>
 
                 <div>
-                  <label htmlFor="applicationTerm" className="mb-2 text-sm text-slate-900 font-medium block">
-                    Term <span className="text-red-500">*</span>
+                  <label htmlFor="applicationTerm" className="field-label">
+                    Term <span className="text-error-500">*</span>
                   </label>
                   <select
                     id="applicationTerm"
                     value={applicationTerm}
                     onChange={(e) => setApplicationTerm(e.target.value)}
-                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                    className="field-input"
                     required
                   >
                     <option value="">Select term</option>
@@ -1118,7 +984,7 @@ function ScholarshipApplicationContent() {
                           {applyAdmissionFeeDiscount && (
                             <div>
                               <span className="text-gray-600">Admission Fee Discount (Standalone)</span>
-                              <p className="font-semibold text-green-700">
+                              <p className="font-semibold text-brand-700 dark:text-brand-400">
                                 {mergedFeeResult.admissionFeePercent != null
                                   ? formatDiscountPercentDisplay(mergedFeeResult.admissionFeePercent)
                                   : "No tier matches your CGPA"}
@@ -1127,7 +993,7 @@ function ScholarshipApplicationContent() {
                           )}
                           <div>
                             <span className="text-gray-600">Tuition Fee Discount</span>
-                            <p className="font-semibold text-green-700">
+                            <p className="font-semibold text-brand-700 dark:text-brand-400">
                               {mergedFeeResult.tuitionFeePercent != null
                                 ? formatDiscountPercentDisplay(mergedFeeResult.tuitionFeePercent)
                                 : "No tier matches your CGPA"}
@@ -1135,32 +1001,32 @@ function ScholarshipApplicationContent() {
                           </div>
                           <div>
                             <span className="text-gray-600">High Achiever Discount{alumniMedal ? ` (${alumniMedal})` : ""}</span>
-                            <p className={`font-semibold ${isHighAchiever ? "text-green-700" : "text-gray-500"}`}>
+                            <p className={`font-semibold ${isHighAchiever ? "text-brand-700 dark:text-brand-400" : "text-gray-500"}`}>
                               {isHighAchiever ? formatDiscountPercentDisplay(highAchieverPercent!) : "0%"}
                             </p>
                           </div>
                           {applicableDiscountPercent != null && (
                             <div>
                               <span className="text-gray-600">Total Tuition Fee Discount</span>
-                              <p className="font-semibold text-green-700">
+                              <p className="font-semibold text-brand-700 dark:text-brand-400">
                                 {formatDiscountPercentDisplay(applicableDiscountPercent)}
                               </p>
                             </div>
                           )}
                         </div>
                         {mergedFeeResult.admissionFeePercent != null && (
-                          <label className="mt-3 flex items-center gap-2 text-sm text-slate-800 cursor-pointer select-none">
+                          <label className="mt-3 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer select-none">
                             <input
                               type="checkbox"
                               checked={applyAdmissionFeeDiscount}
                               onChange={(e) => setApplyAdmissionFeeDiscount(e.target.checked)}
-                              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              className="h-4 w-4 rounded border-gray-300 text-brand-600 accent-brand-600 focus:ring-2 focus:ring-brand-500/30 dark:border-gray-600 dark:bg-gray-800"
                             />
                             Apply Admission Fee Discount
                           </label>
                         )}
                         {mergedFeeResult.tuitionFeePercent == null && !isHighAchiever && (
-                          <p className="mt-2 text-xs text-amber-800">
+                          <p className="mt-2 text-xs text-warning-700 dark:text-warning-400">
                             Your CGPA does not fall within any configured range for this category. Choose another
                             category or contact the alumni office.
                           </p>
@@ -1175,7 +1041,7 @@ function ScholarshipApplicationContent() {
                           </div>
                           <div>
                             <span className="text-gray-600">Applicable discount</span>
-                            <p className="font-semibold text-green-700">
+                            <p className="font-semibold text-brand-700 dark:text-brand-400">
                               {baseDiscountPercent != null
                                 ? formatDiscountPercentDisplay(baseDiscountPercent)
                                 : "No tier matches your CGPA"}
@@ -1183,21 +1049,21 @@ function ScholarshipApplicationContent() {
                           </div>
                           <div>
                             <span className="text-gray-600">High Achiever Discount{alumniMedal ? ` (${alumniMedal})` : ""}</span>
-                            <p className={`font-semibold ${isHighAchiever ? "text-green-700" : "text-gray-500"}`}>
+                            <p className={`font-semibold ${isHighAchiever ? "text-brand-700 dark:text-brand-400" : "text-gray-500"}`}>
                               {isHighAchiever ? formatDiscountPercentDisplay(highAchieverPercent!) : "0%"}
                             </p>
                           </div>
                           {applicableDiscountPercent != null && (
                             <div>
                               <span className="text-gray-600">Total Tution Fee Discount</span>
-                              <p className="font-semibold text-green-700">
+                              <p className="font-semibold text-brand-700 dark:text-brand-400">
                                 {formatDiscountPercentDisplay(applicableDiscountPercent)}
                               </p>
                             </div>
                           )}
                         </div>
                         {baseDiscountPercent == null && !isHighAchiever && (
-                          <p className="mt-2 text-xs text-amber-800">
+                          <p className="mt-2 text-xs text-warning-700 dark:text-warning-400">
                             Your CGPA does not fall within any configured range for this category. Choose another
                             category or contact the alumni office.
                           </p>
@@ -1209,14 +1075,14 @@ function ScholarshipApplicationContent() {
 
                 {needsKinshipApplyingFor && (
                   <div className="sm:col-span-2">
-                    <label htmlFor="applyingForKinship" className="mb-2 text-sm text-slate-900 font-medium block">
-                      Applying For <span className="text-red-500">*</span>
+                    <label htmlFor="applyingForKinship" className="field-label">
+                      Applying For <span className="text-error-500">*</span>
                     </label>
                     <select
                       id="applyingForKinship"
                       value={formData.applyingFor}
                       onChange={(e) => setFormData({ ...formData, applyingFor: e.target.value })}
-                      className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                      className="field-input"
                       required
                     >
                       <option value="">Select program level</option>
@@ -1226,7 +1092,7 @@ function ScholarshipApplicationContent() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="field-hint">
                       Level of study for the beneficiary (kin) applying for the discount.
                     </p>
                   </div>
@@ -1236,85 +1102,85 @@ function ScholarshipApplicationContent() {
                 {isFeeFlow && (
                   <div className="sm:col-span-2 space-y-6 mt-4">
                     {/* 1. Applicant Information */}
-                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                    <div className="card p-5 sm:p-6">
+                      <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
                         1. Applicant Information
                       </h2>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Name of Candidate
                           </label>
                           <input
                             type="text"
                             value={missing(data?.alumniname)}
                             readOnly
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
-                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          <p className="field-hint">Auto-fetched from your profile</p>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Father&apos;s / Guardian&apos;s Name
                           </label>
                           <input
                             type="text"
                             value={missing((data as any)?.fathername)}
                             readOnly
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
-                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          <p className="field-hint">Auto-fetched from your profile</p>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             SAP Code
                           </label>
                           <input
                             type="text"
                             value={missing(data?.sapid)}
                             readOnly
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
-                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          <p className="field-hint">Auto-fetched from your profile</p>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Registration No.
                           </label>
                           <input
                             type="text"
                             value={missing(data?.registrationno)}
                             readOnly
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
-                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          <p className="field-hint">Auto-fetched from your profile</p>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Year of Graduation
                           </label>
                           <input
                             type="text"
                             value={missing((data as any)?.yearofending)}
                             readOnly
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
-                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          <p className="field-hint">Auto-fetched from your profile</p>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Contact Number
                           </label>
                           <input
                             type="text"
                             value={missing((data as any)?.contactno)}
                             readOnly
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
-                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          <p className="field-hint">Auto-fetched from your profile</p>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Email Address
                           </label>
                           <input
@@ -1328,75 +1194,75 @@ function ScholarshipApplicationContent() {
                               )
                             }
                             readOnly
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
-                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          <p className="field-hint">Auto-fetched from your profile</p>
                         </div>
                       </div>
 
                       <div className="mt-4">
-                        <p className="mb-2 text-sm text-slate-900 font-medium">
+                        <p className="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                           Program Completed at UOL
                         </p>
                         <div className="grid sm:grid-cols-3 gap-4">
                           <div>
-                            <label className="mb-1 text-xs font-medium text-slate-900 block">
+                            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                               Faculty
                             </label>
                             <input
                               type="text"
                               value={missing((data as any)?.facultyname)}
                               readOnly
-                              className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                              className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             />
-                            <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                            <p className="field-hint">Auto-fetched from your profile</p>
                           </div>
                           <div>
-                            <label className="mb-1 text-xs font-medium text-slate-900 block">
+                            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                               Department
                             </label>
                             <input
                               type="text"
                               value={missing((data as any)?.departmentname)}
                               readOnly
-                              className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                              className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             />
-                            <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                            <p className="field-hint">Auto-fetched from your profile</p>
                           </div>
                           <div>
-                            <label className="mb-1 text-xs font-medium text-slate-900 block">
+                            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                               Program
                             </label>
                             <input
                               type="text"
                               value={missing((data as any)?.degreetitle)}
                               readOnly
-                              className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                              className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             />
-                            <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                            <p className="field-hint">Auto-fetched from your profile</p>
                           </div>
                         </div>
                       </div>
 
                       <div className="mt-4">
-                        <p className="mb-2 text-sm text-slate-900 font-medium">
+                        <p className="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                           Educational Record (UOL)
                         </p>
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div>
-                            <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            <label className="field-label">
                               CGPA
                             </label>
                             <input
                               type="text"
                               value={missing((data as any)?.cgpa)}
                               readOnly
-                              className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                              className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             />
-                            <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                            <p className="field-hint">Auto-fetched from your profile</p>
                           </div>
                           <div>
-                            <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            <label className="field-label">
                               Grade (%)
                             </label>
                             <input
@@ -1405,39 +1271,39 @@ function ScholarshipApplicationContent() {
                               placeholder="e.g. 95"
                               value={gradePercent}
                               onChange={(e) => setGradePercent(e.target.value)}
-                              className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                              className="field-input"
                             />
-                            <p className="mt-1 text-xs text-gray-500">Optional — enter your marks percentage</p>
+                            <p className="field-hint">Optional — enter your marks percentage</p>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* 2. Admission Details */}
-                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                    <div className="card p-5 sm:p-6">
+                      <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
                         2. Admission Details
                       </h2>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="sm:col-span-2">
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Program level <span className="text-red-500">*</span>
+                          <label className="field-label">
+                            Program level <span className="text-error-500">*</span>
                           </label>
-                          <div className="px-4 py-3 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md">
+                          <div className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300">
                             {formData.applyingFor || "—"} (from your selected discount category)
                           </div>
-                          <p className="mt-1 text-xs text-gray-500">
+                          <p className="field-hint">
                             Masters or PhD is determined by the discount category you chose above.
                           </p>
                         </div>
                         <div className="sm:col-span-2">
                           <div className="grid sm:grid-cols-3 gap-4">
                             <div>
-                              <label className="mb-1 text-xs font-medium text-slate-900 block">
+                              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                                 Faculty
                               </label>
                               <select
-                                className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md"
+                                className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                                 value={admissionFacultyId || ""}
                                 onChange={(e) => {
                                   const v = e.target.value ? Number(e.target.value) : "";
@@ -1458,11 +1324,11 @@ function ScholarshipApplicationContent() {
                               </select>
                             </div>
                             <div>
-                              <label className="mb-1 text-xs font-medium text-slate-900 block">
+                              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                                 Department
                               </label>
                               <select
-                                className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md"
+                                className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                                 value={admissionDepartmentId || ""}
                                 onChange={(e) => {
                                   const v = e.target.value ? Number(e.target.value) : "";
@@ -1490,11 +1356,11 @@ function ScholarshipApplicationContent() {
                               </select>
                             </div>
                             <div>
-                              <label className="mb-1 text-xs font-medium text-slate-900 block">
+                              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                                 Program Applied For
                               </label>
                               <select
-                                className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md"
+                                className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                                 value={admissionProgramId || ""}
                                 onChange={(e) => {
                                   const v = e.target.value ? Number(e.target.value) : "";
@@ -1536,11 +1402,11 @@ function ScholarshipApplicationContent() {
                         </div>
 
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Campus (if applicable)
                           </label>
                           <select
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             value={admissionCampus}
                             onChange={(e) => setAdmissionCampus(e.target.value)}
                           >
@@ -1553,11 +1419,11 @@ function ScholarshipApplicationContent() {
                         </div>
 
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Session / Intake
                           </label>
                           <select
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             value={admissionSession}
                             onChange={(e) => setAdmissionSession(e.target.value)}
                           >
@@ -1571,12 +1437,12 @@ function ScholarshipApplicationContent() {
                         </div>
 
                         <div>
-                          <label htmlFor="admissionSemester" className="mb-2 text-sm text-slate-900 font-medium block">
-                            Semester <span className="text-red-500">*</span>
+                          <label htmlFor="admissionSemester" className="field-label">
+                            Semester <span className="text-error-500">*</span>
                           </label>
                           <select
                             id="admissionSemester"
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            className="field-input"
                             value={admissionSemester}
                             onChange={(e) => setAdmissionSemester(e.target.value)}
                             required
@@ -1595,14 +1461,14 @@ function ScholarshipApplicationContent() {
                     </div>
 
                     {/* 3. List of Attached Documents */}
-                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                    <div className="card p-5 sm:p-6">
+                      <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
                         3. List of Attached Documents (PDF Files Only)
                       </h2>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Copy of Admission Letter<span className="text-red-500">*</span>
+                          <label className="field-label">
+                            Copy of Admission Letter<span className="text-error-500">*</span>
                           </label>
                           <input
                             type="file"
@@ -1617,12 +1483,12 @@ function ScholarshipApplicationContent() {
                               }
                               setDocAdmissionLetterFile(f);
                             }}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             required
                           />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Academic Transcripts and Certificates <span className="text-gray-500">(Optional)</span>
                           </label>
                           <input
@@ -1638,12 +1504,12 @@ function ScholarshipApplicationContent() {
                               }
                               setDocTranscriptsFile(f);
                             }}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Alumni Card <span className="text-red-500">*</span>
+                          <label className="field-label">
+                            Alumni Card <span className="text-error-500">*</span>
                           </label>
                           <input
                             type="file"
@@ -1658,12 +1524,12 @@ function ScholarshipApplicationContent() {
                               }
                               setDocAlumniProofFile(f);
                             }}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             required
                           />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             Curriculum Vitae (CV) <span className="text-gray-500">(Optional)</span>
                           </label>
                           <input
@@ -1679,12 +1545,12 @@ function ScholarshipApplicationContent() {
                               }
                               setDocCvFile(f);
                             }}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            CNIC Copy <span className="text-red-500">*</span>
+                          <label className="field-label">
+                            CNIC Copy <span className="text-error-500">*</span>
                           </label>
                           <input
                             type="file"
@@ -1699,7 +1565,7 @@ function ScholarshipApplicationContent() {
                               }
                               setDocCnicFile(f);
                             }}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             required
                           />
                         </div>
@@ -1707,97 +1573,92 @@ function ScholarshipApplicationContent() {
                     </div>
 
                     {/* 4. Declaration */}
-                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+                    <div className="card p-5 sm:p-6">
+                      <h2 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
                         4. Declaration
                       </h2>
-                      <p className="text-sm text-slate-900 mb-3">
+                      <AcknowledgmentCheckbox
+                        checked={mastersDeclarationAccepted}
+                        onChange={(e) => setMastersDeclarationAccepted(e.target.checked)}
+                        checkboxLabel="I have read and agree to the above declaration."
+                      >
                         I hereby declare that all information provided is true and correct.
                         I understand that the discount is subject to approval and institutional
                         policies of The University of Lahore.
-                      </p>
-                      <label className="flex items-start gap-3 text-sm text-slate-900 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                          checked={mastersDeclarationAccepted}
-                          onChange={(e) => setMastersDeclarationAccepted(e.target.checked)}
-                        />
-                        <span>I have read and agree to the above declaration.</span>
-                      </label>
+                      </AcknowledgmentCheckbox>
                     </div>
                   </div>
                 )}
 
                 {isKinshipFlow && (
                   <div className="sm:col-span-2 space-y-6 mt-4">
-                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                    <div className="card p-5 sm:p-6">
+                      <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
                         (a) Alumni Details
                       </h2>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Name</label>
-                          <input type="text" value={missing(data?.alumniname)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" />
+                          <label className="field-label">Name</label>
+                          <input type="text" value={missing(data?.alumniname)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Father&apos;s Name</label>
-                          <input type="text" value={missing((data as any)?.fathername)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" />
+                          <label className="field-label">Father&apos;s Name</label>
+                          <input type="text" value={missing((data as any)?.fathername)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">DOB</label>
-                          <input type="text" value={missing((data as any)?.dateofbirth || (data as any)?.dob)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" />
+                          <label className="field-label">DOB</label>
+                          <input type="text" value={missing((data as any)?.dateofbirth || (data as any)?.dob)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">CNIC</label>
-                          <input type="text" value={missing(data?.cnicpassport)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" />
+                          <label className="field-label">CNIC</label>
+                          <input type="text" value={missing(data?.cnicpassport)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" />
                         </div>
                       </div>
                     </div>
 
-                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                    <div className="card p-5 sm:p-6">
+                      <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
                         (b) Alumni Educational Record
                       </h2>
                       <div className="grid sm:grid-cols-2 gap-4">
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Campus</label><input type="text" value={missing((data as any)?.campusname || (data as any)?.campus)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Faculty</label><input type="text" value={missing((data as any)?.facultyname)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Department</label><input type="text" value={missing((data as any)?.departmentname)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Program</label><input type="text" value={missing((data as any)?.degreetitle)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">SAP ID</label><input type="text" value={missing(data?.sapid)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">CGPA</label><input type="text" value={missing((data as any)?.cgpa)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /><p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p></div>
+                        <div><label className="field-label">Campus</label><input type="text" value={missing((data as any)?.campusname || (data as any)?.campus)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /></div>
+                        <div><label className="field-label">Faculty</label><input type="text" value={missing((data as any)?.facultyname)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /></div>
+                        <div><label className="field-label">Department</label><input type="text" value={missing((data as any)?.departmentname)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /></div>
+                        <div><label className="field-label">Program</label><input type="text" value={missing((data as any)?.degreetitle)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /></div>
+                        <div><label className="field-label">SAP ID</label><input type="text" value={missing(data?.sapid)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /></div>
+                        <div><label className="field-label">CGPA</label><input type="text" value={missing((data as any)?.cgpa)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /><p className="field-hint">Auto-fetched from your profile</p></div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Grade (%)</label>
+                          <label className="field-label">Grade (%)</label>
                           <input
                             type="text"
                             inputMode="decimal"
                             placeholder="e.g. 95"
                             value={gradePercent}
                             onChange={(e) => setGradePercent(e.target.value)}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            className="field-input"
                           />
-                          <p className="mt-1 text-xs text-gray-500">Optional — enter your marks percentage</p>
+                          <p className="field-hint">Optional — enter your marks percentage</p>
                         </div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Passing Out Year</label><input type="text" value={missing((data as any)?.yearofending)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Discount Category</label><input type="text" value={missing(selectedCategory?.label)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Applicable Discount</label><input type="text" value={formatDiscountPercentDisplay(applicableDiscountPercent)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div className="sm:col-span-2"><label className="mb-2 text-sm text-slate-900 font-medium block">Applying For</label><input type="text" value={missing(formData.applyingFor)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="field-label">Passing Out Year</label><input type="text" value={missing((data as any)?.yearofending)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /></div>
+                        <div><label className="field-label">Discount Category</label><input type="text" value={missing(selectedCategory?.label)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /></div>
+                        <div><label className="field-label">Applicable Discount</label><input type="text" value={formatDiscountPercentDisplay(applicableDiscountPercent)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /></div>
+                        <div className="sm:col-span-2"><label className="field-label">Applying For</label><input type="text" value={missing(formData.applyingFor)} readOnly className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" /></div>
                       </div>
                     </div>
 
-                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                    <div className="card p-5 sm:p-6">
+                      <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
                         (c) Kin Details - Previous Educational Record & Program Applied For
                       </h2>
                       <div className="grid sm:grid-cols-2 gap-4">
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Name <span className="text-red-500">*</span></label><input type="text" value={formData.kinshipName} onChange={(e) => setFormData({ ...formData, kinshipName: e.target.value })} className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all" required /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Father&apos;s Name <span className="text-red-500">*</span></label><input type="text" value={formData.kinshipFatherName} onChange={(e) => setFormData({ ...formData, kinshipFatherName: e.target.value })} className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all" required /></div>
+                        <div><label className="field-label">Name <span className="text-error-500">*</span></label><input type="text" value={formData.kinshipName} onChange={(e) => setFormData({ ...formData, kinshipName: e.target.value })} className="field-input" required /></div>
+                        <div><label className="field-label">Father&apos;s Name <span className="text-error-500">*</span></label><input type="text" value={formData.kinshipFatherName} onChange={(e) => setFormData({ ...formData, kinshipFatherName: e.target.value })} className="field-input" required /></div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Campus <span className="text-red-500">*</span></label>
+                          <label className="field-label">Campus <span className="text-error-500">*</span></label>
                           <select
                             value={formData.kinshipCampus}
                             onChange={(e) => setFormData({ ...formData, kinshipCampus: e.target.value })}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            className="field-input"
                             required
                           >
                             <option value="">Select campus</option>
@@ -1808,7 +1669,7 @@ function ScholarshipApplicationContent() {
                           </select>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Faculty <span className="text-red-500">*</span></label>
+                          <label className="field-label">Faculty <span className="text-error-500">*</span></label>
                           <select
                             value={formData.kinshipFaculty}
                             onChange={(e) =>
@@ -1816,10 +1677,9 @@ function ScholarshipApplicationContent() {
                                 ...formData,
                                 kinshipFaculty: e.target.value,
                                 kinshipDepartment: "",
-                                kinshipProgram: "",
-                              })
+                                kinshipProgram: "" })
                             }
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            className="field-input"
                             required
                           >
                             <option value="">{orgLoading ? "Loading..." : "Select faculty"}</option>
@@ -1831,17 +1691,16 @@ function ScholarshipApplicationContent() {
                           </select>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Department <span className="text-red-500">*</span></label>
+                          <label className="field-label">Department <span className="text-error-500">*</span></label>
                           <select
                             value={formData.kinshipDepartment}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
                                 kinshipDepartment: e.target.value,
-                                kinshipProgram: "",
-                              })
+                                kinshipProgram: "" })
                             }
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            className="field-input"
                             disabled={!formData.kinshipFaculty || kinshipDepartmentsForFaculty.length === 0}
                             required
                           >
@@ -1860,16 +1719,15 @@ function ScholarshipApplicationContent() {
                           </select>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Program <span className="text-red-500">*</span></label>
+                          <label className="field-label">Program <span className="text-error-500">*</span></label>
                           <select
                             value={formData.kinshipProgram}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                kinshipProgram: e.target.value,
-                              })
+                                kinshipProgram: e.target.value })
                             }
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            className="field-input"
                             disabled={!formData.kinshipDepartment || kinshipProgramsForDepartment.length === 0}
                             required
                           >
@@ -1887,13 +1745,13 @@ function ScholarshipApplicationContent() {
                             ))}
                           </select>
                         </div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Admission Ref No <span className="text-red-500">*</span></label><input type="text" value={formData.kinshipAdmissionRefNo} onChange={(e) => setFormData({ ...formData, kinshipAdmissionRefNo: e.target.value })} className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all" required /></div>
+                        <div><label className="field-label">Admission Ref No <span className="text-error-500">*</span></label><input type="text" value={formData.kinshipAdmissionRefNo} onChange={(e) => setFormData({ ...formData, kinshipAdmissionRefNo: e.target.value })} className="field-input" required /></div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Last Degree/Certificate <span className="text-red-500">*</span></label>
+                          <label className="field-label">Last Degree/Certificate <span className="text-error-500">*</span></label>
                           <select
                             value={formData.kinshipLastDegreeCertificate}
                             onChange={(e) => setFormData({ ...formData, kinshipLastDegreeCertificate: e.target.value })}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            className="field-input"
                             required
                           >
                             <option value="">Select</option>
@@ -1905,16 +1763,15 @@ function ScholarshipApplicationContent() {
                           </select>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Passing Out Year <span className="text-red-500">*</span></label>
+                          <label className="field-label">Passing Out Year <span className="text-error-500">*</span></label>
                           <select
                             value={formData.kinshipPassingOutYear}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                kinshipPassingOutYear: e.target.value,
-                              })
+                                kinshipPassingOutYear: e.target.value })
                             }
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            className="field-input"
                             required
                           >
                             <option value="">Select passing out year</option>
@@ -1927,19 +1784,18 @@ function ScholarshipApplicationContent() {
                             )}
                           </select>
                         </div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">CNIC (Kinship) <span className="text-red-500">*</span></label><input type="text" value={formData.kinshipCnic} onChange={(e) => setFormData({ ...formData, kinshipCnic: e.target.value })} className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all" required /></div>
+                        <div><label className="field-label">CNIC (Kinship) <span className="text-error-500">*</span></label><input type="text" value={formData.kinshipCnic} onChange={(e) => setFormData({ ...formData, kinshipCnic: e.target.value })} className="field-input" required /></div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Grade Type <span className="text-red-500">*</span></label>
+                          <label className="field-label">Grade Type <span className="text-error-500">*</span></label>
                           <select
                             value={formData.kinshipGradeType}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
                                 kinshipGradeType: e.target.value,
-                                kinshipGradeValue: "",
-                              })
+                                kinshipGradeValue: "" })
                             }
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            className="field-input"
                             required
                           >
                             <option value="">Select grade type</option>
@@ -1948,13 +1804,13 @@ function ScholarshipApplicationContent() {
                           </select>
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                          <label className="field-label">
                             {formData.kinshipGradeType === "Percentage"
                               ? "Percentage (%)"
                               : formData.kinshipGradeType === "CGPA"
                                 ? "CGPA"
                                 : "Grade Value"}{" "}
-                            <span className="text-red-500">*</span>
+                            <span className="text-error-500">*</span>
                           </label>
                           <input
                             type="number"
@@ -1974,41 +1830,41 @@ function ScholarshipApplicationContent() {
                                   : "Select grade type first"
                             }
                             disabled={!formData.kinshipGradeType}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="field-input disabled:opacity-60"
                             required
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                    <div className="card p-5 sm:p-6">
+                      <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
                         (d) Documents Checklist (all are required)
                       </h2>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Copy of Admission Letter <span className="text-red-500">*</span></label>
-                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAdmissionLetterFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                          <label className="field-label">Copy of Admission Letter <span className="text-error-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAdmissionLetterFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Academic Certificates/Transcripts (Kin) <span className="text-red-500">*</span></label>
-                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAcademicCertificatesFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                          <label className="field-label">Academic Certificates/Transcripts (Kin) <span className="text-error-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAcademicCertificatesFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">Alumni Card <span className="text-red-500">*</span></label>
-                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAlumniCardFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                          <label className="field-label">Alumni Card <span className="text-error-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAlumniCardFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">FRC <span className="text-red-500">*</span></label>
-                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipFrcFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                          <label className="field-label">FRC <span className="text-error-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipFrcFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">CNIC Copy (Kinship) <span className="text-red-500">*</span></label>
-                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipCnicKinFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                          <label className="field-label">CNIC Copy (Kinship) <span className="text-error-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipCnicKinFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
                         </div>
                         <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">CNIC Copy (Alumni) <span className="text-red-500">*</span></label>
-                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipCnicAlumniFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                          <label className="field-label">CNIC Copy (Alumni) <span className="text-error-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipCnicAlumniFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
                         </div>
                       </div>
                     </div>
@@ -2017,55 +1873,63 @@ function ScholarshipApplicationContent() {
               </div>
 
               {/* Declaration — required for all scholarship applications */}
-              <div className="border border-gray-200 rounded-lg p-4 sm:p-5 mt-6">
-                <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
-                  Declaration <span className="text-red-500">*</span>
+              <div className="card p-5 sm:p-6 mt-6">
+                <h2 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
+                  Declaration <span className="text-error-500">*</span>
                 </h2>
                 <div className="mb-3">
-                  <label className="mb-2 text-sm text-slate-900 font-medium block">
+                  <label className="field-label" htmlFor="scholarshipDisclosure">
                     Scholarships / financial assistance currently availed by you{" "}
-                    <span className="text-red-500">*</span>
+                    <span className="text-error-500">*</span>
                   </label>
                   <input
+                    id="scholarshipDisclosure"
                     type="text"
                     value={scholarshipDisclosure}
                     onChange={(e) => setScholarshipDisclosure(e.target.value)}
                     placeholder='e.g. None, or list scholarship names'
-                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                    className="field-input"
                     required
                   />
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="field-hint">
                     Write &quot;None&quot; if you are not availing any scholarship or financial assistance.
                   </p>
                 </div>
-                <p className="text-sm text-slate-900 mb-3">
+                <AcknowledgmentCheckbox
+                  checked={disclosureAccepted}
+                  onChange={(e) => setDisclosureAccepted(e.target.checked)}
+                  checkboxLabel="I have read and agree to the above declaration."
+                >
                   I hereby disclose all scholarships / financial assistance currently availed by me{" "}
                   <span className="font-semibold underline decoration-dotted">
-                    {scholarshipDisclosure.trim() || "__________________________"}
+                    {scholarshipDisclosure.trim() || "None"}
                   </span>
                   . I understand that if awarded the Alumni Scholarship, all others shall stand
                   cancelled. If any concealment is discovered later, all scholarships shall be
                   cancelled/recovered and disciplinary action including cancellation of admission
                   may be taken.
-                </p>
-                <label className="flex items-start gap-3 text-sm text-slate-900 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                    checked={disclosureAccepted}
-                    onChange={(e) => setDisclosureAccepted(e.target.checked)}
-                  />
-                  <span>I have read and agree to the above declaration.</span>
-                </label>
+                </AcknowledgmentCheckbox>
+                <div className="mt-3 border-t border-gray-200 pt-4 dark:border-gray-700">
+                  <AcknowledgmentCheckbox
+                    checked={discountTermsAccepted}
+                    onChange={(e) => setDiscountTermsAccepted(e.target.checked)}
+                    checkboxLabel="I have read and agree to the discount terms and conditions."
+                  >
+                    The approved discount is applicable to the new or current semester, as
+                    applicable, and shall continue in subsequent semesters subject to the
+                    maintenance of the required CGPA. No fee adjustment, compensation, or refund
+                    shall be provided for any previous semesters.
+                  </AcknowledgmentCheckbox>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting || !canSubmitScholarship}
-                className="mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] mx-auto block bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60"
-              >
-                {isSubmitting ? "Submitting..." : "Submit Application"}
-              </button>
+              <FormActions
+                submitLabel="Submit Application"
+                submittingLabel="Submitting…"
+                loading={isSubmitting}
+                disabled={!canSubmitScholarship}
+                className="mt-12 sm:justify-center"
+              />
             </form>
           </div>
         </div>

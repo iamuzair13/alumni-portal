@@ -7,6 +7,7 @@ import Pagination from "@/components/tables/Pagination";
 import { ArrowUpIcon, ArrowDownIcon, EyeIcon, TrashBinIcon, PlusIcon } from "@/icons";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { Modal } from "@/components/ui/modal";
+import StatusBadge from "@/components/ui/StatusBadge";
 import { useModal } from "@/hooks/useModal";
 import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
@@ -320,7 +321,7 @@ export const JobsTab: React.FC = () => {
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Jobs
           </h3>
           <div className="flex items-center gap-2">
@@ -337,7 +338,7 @@ export const JobsTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleExport}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors"
                 >
                   Export
                 </button>
@@ -364,10 +365,10 @@ export const JobsTab: React.FC = () => {
       <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1200} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("title")}
                 >
                   <div className="flex items-center gap-2">
@@ -391,7 +392,7 @@ export const JobsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("company")}
                 >
                   <div className="flex items-center gap-2">
@@ -415,7 +416,7 @@ export const JobsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("category")}
                 >
                   <div className="flex items-center gap-2">
@@ -438,11 +439,11 @@ export const JobsTab: React.FC = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                   Location
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("deadline")}
                 >
                   <div className="flex items-center gap-2">
@@ -466,7 +467,7 @@ export const JobsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("status")}
                 >
                   <div className="flex items-center gap-2">
@@ -490,7 +491,7 @@ export const JobsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("createdAt")}
                 >
                   <div className="flex items-center gap-2">
@@ -513,7 +514,7 @@ export const JobsTab: React.FC = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                   Actions
                 </TableCell>
               </TableRow>
@@ -548,42 +549,29 @@ export const JobsTab: React.FC = () => {
                 !error &&
                 sortedItems.map((item) => (
                   <TableRow key={item.id} className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20 dark:text-gray-300 dark:bg-gray-900">
-                    <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-gray-300 dark:bg-gray-900">
+                    <TableCell className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-300 dark:bg-gray-900">
                       {item.title || "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                    <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                       {item.company || "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                    <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                       {item.category || "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                    <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                       {item.location || "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                    <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                       {formatDateString(item.deadline, {
                         year: "numeric",
                         month: "short",
                         day: "numeric",
                       })}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
-                      {(() => {
-                        const status = getJobStatus(item.deadline);
-                        return (
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                              status === "Active"
-                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                            }`}
-                          >
-                            {status}
-                          </span>
-                        );
-                      })()}
+                    <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
+                      <StatusBadge status={getJobStatus(item.deadline)} />
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                    <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                       {item.createdAt
                         ? new Date(item.createdAt).toLocaleDateString("en-PK", {
                             year: "numeric",
@@ -592,7 +580,7 @@ export const JobsTab: React.FC = () => {
                           })
                         : "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                    <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 dark:bg-gray-900">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -623,7 +611,7 @@ export const JobsTab: React.FC = () => {
                                 deleteModal.openModal();
                               }}
                               disabled={mutatingIds.has(item.id)}
-                              className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-rose-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-error-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
                               aria-label="Delete"
                               title="Delete"
                             >
@@ -744,20 +732,7 @@ export const JobsTab: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-300 dark:bg-gray-900">
                   Status
                 </label>
-                {(() => {
-                  const status = getJobStatus(selectedJob.deadline);
-                  return (
-                    <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-                        status === "Active"
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                          : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                      }`}
-                    >
-                      {status}
-                    </span>
-                  );
-                })()}
+                <StatusBadge status={getJobStatus(selectedJob.deadline)} />
               </div>
               {selectedJob.jobLink && (
                 <div>
@@ -778,7 +753,7 @@ export const JobsTab: React.FC = () => {
                 <div>
                   <a
                     href={buildMailtoHref(selectedJob)}
-                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-success-600 rounded-lg hover:bg-success-700 focus:outline-none focus:ring-2 focus:ring-success-500"
                   >
                     Apply via Email
                   </a>
@@ -831,7 +806,7 @@ export const JobsTab: React.FC = () => {
         >
           <div className="p-6">
             <div className="flex items-center gap-4 mb-4">
-              <TrashBinIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+              <TrashBinIcon className="h-6 w-6 text-error-600 dark:text-error-400" />
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                 Delete Job
               </h3>
@@ -857,7 +832,7 @@ export const JobsTab: React.FC = () => {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={mutatingIds.has(selectedJobId)}
-                className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-error-600 rounded-lg hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-error-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {mutatingIds.has(selectedJobId) ? (
                   <span className="flex items-center gap-2">

@@ -56,11 +56,11 @@ const MEMBERSHIP_STATUS_CLASS_MAP: Record<
   },
   members: {
     selectedContainer:
-      "border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-900/20",
-    hoverBorder: "hover:border-emerald-400",
-    iconBg: "bg-emerald-100 dark:bg-emerald-800",
-    iconColor: "text-emerald-700 dark:text-emerald-200",
-    labelText: "text-emerald-600 dark:text-emerald-300",
+      "border-success-500 bg-success-50 dark:border-success-500 dark:bg-success-900/20",
+    hoverBorder: "hover:border-success-400",
+    iconBg: "bg-success-100 dark:bg-success-800",
+    iconColor: "text-success-700 dark:text-success-200",
+    labelText: "text-success-600 dark:text-success-300",
   },
   "non-members": {
     selectedContainer:
@@ -715,7 +715,7 @@ export const AlumniChaptersTab: React.FC = () => {
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Alumni Chapters</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Alumni Chapters</h3>
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400" htmlFor="chapters-search">Search:</label>
             <input
@@ -780,7 +780,7 @@ export const AlumniChaptersTab: React.FC = () => {
                 className={`
                   relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50
                   ${isSelected 
-                    ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
+                    ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-success-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
                     : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
                   }
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
@@ -1222,10 +1222,10 @@ export const AlumniChaptersTab: React.FC = () => {
       <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1100} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("sapId")}
                 >
                   <div className="flex items-center gap-2">
@@ -1237,7 +1237,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("name")}
                 >
                   <div className="flex items-center gap-2">
@@ -1249,7 +1249,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("email")}
                 >
                   <div className="flex items-center gap-2">
@@ -1261,7 +1261,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("faculty")}
                 >
                   <div className="flex items-center gap-2">
@@ -1273,7 +1273,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("department")}
                 >
                   <div className="flex items-center gap-2">
@@ -1285,7 +1285,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("chapters")}
                 >
                   <div className="flex items-center gap-2">
@@ -1338,20 +1338,20 @@ export const AlumniChaptersTab: React.FC = () => {
                       onClick={() => setExpandedRowId(isExpanded ? null : rowId)}
                       aria-selected={isExpanded}
                     >
-                      <TableCell className="px-6 py-4 text-sm font-mono text-slate-700 dark:text-gray-300">
+                      <TableCell className="px-6 py-4 text-sm font-mono text-gray-700 dark:text-gray-300">
                         {item.sapid || item.registrationNo || "-"}
                         {item.sapid && item.registrationNo && item.sapid !== item.registrationNo && (
                           <span className="text-gray-500"> / {item.registrationNo}</span>
                         )}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-gray-100">{item.name}</TableCell>
+                      <TableCell className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{item.name}</TableCell>
                       <TableCell className="px-6 py-4 text-sm">
                         <a href={item.email ? `mailto:${item.email}` : "#"} className="text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-600">
                           {item.email || "-"}
                         </a>
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300">{item.faculty || "-"}</TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300">{item.department || "-"}</TableCell>
+                      <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.faculty || "-"}</TableCell>
+                      <TableCell className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.department || "-"}</TableCell>
                       <TableCell className="px-6 py-4 text-sm">
                         {item.chapters.length > 0 ? (
                           <div className="flex flex-wrap gap-1">

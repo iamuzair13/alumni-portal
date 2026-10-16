@@ -1,6 +1,7 @@
 "use client";
 
 import type { MembershipApplicationPreview } from "@/lib/membershipApplicationPreview";
+import StatusBadge from "@/components/ui/StatusBadge";
 
 type Props = {
   membershipId: number;
@@ -66,17 +67,17 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
         <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 text-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 border-b border-gray-200 pb-4 mb-6 dark:border-gray-700">
             <div className="min-w-0">
-              <h4 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100">
+              <h4 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
                 {application.title}
               </h4>
-              <div className="mt-1 text-sm text-slate-600 dark:text-gray-300">
+              <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                 Applicant:{" "}
-                <span className="font-semibold text-slate-800 dark:text-gray-100">
+                <span className="font-semibold text-gray-800 dark:text-gray-100">
                   {application.studentName || "-"}
                 </span>
               </div>
             </div>
-            <div className="text-sm text-slate-700 whitespace-nowrap dark:text-gray-300">
+            <div className="text-sm text-gray-700 whitespace-nowrap dark:text-gray-300">
               Date: <span className="font-semibold">{application.dateFormatted}</span>
             </div>
           </div>
@@ -85,20 +86,20 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
             {detailSections.map((section) => (
               <div
                 key={section.title}
-                className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700"
+                className="rounded-xl border border-gray-200 overflow-hidden dark:border-gray-700"
               >
-                <div className="bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 dark:bg-gray-800 dark:text-gray-100">
+                <div className="bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100">
                   {section.title}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
-                    <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                       {section.rows.map(([k, v]) => (
                         <tr key={k} className="bg-white dark:bg-gray-900">
-                          <td className="w-[260px] px-4 py-3 font-semibold text-slate-800 bg-slate-50/60 dark:bg-gray-800 dark:text-gray-100">
+                          <td className="w-[260px] px-4 py-3 font-semibold text-gray-800 bg-gray-50/60 dark:bg-gray-800 dark:text-gray-100">
                             {k}
                           </td>
-                          <td className="px-4 py-3 text-slate-900 dark:text-gray-100">{String(v || "-")}</td>
+                          <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{String(v || "-")}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -107,26 +108,26 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
               </div>
             ))}
 
-            <div className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700">
-              <div className="bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 dark:bg-gray-800 dark:text-gray-100">
+            <div className="rounded-xl border border-gray-200 overflow-hidden dark:border-gray-700">
+              <div className="bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100">
                 (f) Documents Checklist
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-[520px] w-full text-sm">
-                  <thead className="bg-white border-b border-slate-200 dark:bg-gray-800 dark:border-gray-700">
+                  <thead className="bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                     <tr>
-                      <th className="text-left px-4 py-3 font-semibold text-slate-700 dark:text-gray-100">
+                      <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-100">
                         Document
                       </th>
-                      <th className="text-left px-4 py-3 font-semibold text-slate-700 w-[100px] dark:text-gray-100">
+                      <th className="text-left px-4 py-3 font-semibold text-gray-700 w-[100px] dark:text-gray-100">
                         Submitted
                       </th>
-                      <th className="text-left px-4 py-3 font-semibold text-slate-700 w-[120px] dark:text-gray-100">
+                      <th className="text-left px-4 py-3 font-semibold text-gray-700 w-[120px] dark:text-gray-100">
                         View
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white dark:divide-gray-700 dark:bg-gray-900">
+                  <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-700 dark:bg-gray-900">
                     {(application.uploadedDocuments?.length
                       ? application.uploadedDocuments
                       : application.documentsChecklist.map((doc) => ({
@@ -141,26 +142,28 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
                       return (
                         <tr key={doc.label} className="bg-white dark:bg-gray-900">
                           <td className="px-4 py-3">
-                            <div className="font-semibold text-slate-900 dark:text-gray-100">{doc.label}</div>
+                            <div className="font-semibold text-gray-900 dark:text-gray-100">{doc.label}</div>
                             {doc.filename ? (
-                              <div className="mt-0.5 text-xs text-slate-600 break-all dark:text-gray-400">
+                              <div className="mt-0.5 text-xs text-gray-600 break-all dark:text-gray-400">
                                 {doc.filename}
                               </div>
                             ) : null}
                           </td>
-                          <td className="px-4 py-3 text-slate-800 dark:text-gray-100">{submitted}</td>
+                          <td className="px-4 py-3">
+                            <StatusBadge status={String(submitted)} />
+                          </td>
                           <td className="px-4 py-3">
                             {doc.url ? (
                               <a
                                 href={doc.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                                className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                               >
                                 Open
                               </a>
                             ) : (
-                              <span className="text-xs text-slate-500 dark:text-gray-400">—</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">—</span>
                             )}
                           </td>
                         </tr>
@@ -171,11 +174,11 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
               </div>
             </div>
             {application.withdrawnAt && (
-              <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-800 dark:bg-orange-900/20">
-                <div className="text-sm font-bold text-orange-800 dark:text-orange-300">
+              <div className="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 dark:border-warning-800 dark:bg-warning-900/20">
+                <div className="text-sm font-bold text-warning-800 dark:text-warning-300">
                   This application has been WITHDRAWN
                 </div>
-                <div className="mt-1 text-xs text-orange-700 dark:text-orange-400 space-y-0.5">
+                <div className="mt-1 text-xs text-warning-700 dark:text-warning-400 space-y-0.5">
                   {application.withdrawnAt && (
                     <div>Withdrawal Date: {application.withdrawnAt}</div>
                   )}
@@ -189,25 +192,25 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
               </div>
             )}
             {application.declarationText ? (
-              <div className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700">
-                <div className="bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 dark:bg-gray-800 dark:text-gray-100">
+              <div className="rounded-xl border border-gray-200 overflow-hidden dark:border-gray-700">
+                <div className="bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100">
                   (e) Declaration
                 </div>
-                <div className="px-4 py-3 text-sm text-slate-900 dark:text-gray-100">
+                <div className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
                   {application.declarationText}
                 </div>
               </div>
             ) : null}
             {application.facilityType !== "gym" ? (
-              <div className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700">
-                <div className="bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 dark:bg-gray-800 dark:text-gray-100">
+              <div className="rounded-xl border border-gray-200 overflow-hidden dark:border-gray-700">
+                <div className="bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100">
                   Review and Approval
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4 p-4">
-                  <div className="min-h-20 rounded-lg border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                  <div className="min-h-20 rounded-lg border border-gray-200 bg-white p-3 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                     Reviewed By (ARO)
                   </div>
-                  <div className="min-h-20 rounded-lg border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                  <div className="min-h-20 rounded-lg border border-gray-200 bg-white p-3 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                     Approved By (Competent Authority)
                   </div>
                 </div>

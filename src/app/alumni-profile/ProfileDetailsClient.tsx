@@ -45,14 +45,12 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
     if (isError && error) {
 
       toast.error(`Failed to load profile: ${error instanceof Error ? error.message : String(error)}`, {
-        duration: 5000,
-      });
+        duration: 5000 });
     }
     if (isFullDetailsError && fullDetailsError) {
 
       toast.error(`Failed to load full details: ${fullDetailsError instanceof Error ? fullDetailsError.message : String(fullDetailsError)}`, {
-        duration: 5000,
-      });
+        duration: 5000 });
     }
   }, [isError, error, isFullDetailsError, fullDetailsError]);
   const queryClient = useQueryClient();
@@ -175,9 +173,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const linkedin = String(fullDetails?.linkedin ?? (data as unknown as { linkedin?: string })?.linkedin ?? "").trim() || null;
 
   // Debug: Log data to console for troubleshooting
-  useEffect(() => {
-
-  }, [sapId, fullDetails, data, isLoading, isLoadingFullDetails, isError, error, name, faculty, dept, program, contact]);
+  useEffect(() => {}, [sapId, fullDetails, data, isLoading, isLoadingFullDetails, isError, error, name, faculty, dept, program, contact]);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
@@ -191,14 +187,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       toast.error("Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.", {
-        duration: 5000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '16px',
-          borderRadius: '8px',
-        },
-      });
+        duration: 5000 });
       return;
     }
 
@@ -206,14 +195,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
       toast.error("File size exceeds 5MB limit. Please choose a smaller image.", {
-        duration: 5000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '16px',
-          borderRadius: '8px',
-        },
-      });
+        duration: 5000 });
       return;
     }
 
@@ -224,14 +206,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const handleUploadWithConsent = async () => {
     if (!selectedFile || photoConsent === null) {
       toast.error("Please select a photo usage option.", {
-        duration: 5000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '16px',
-          borderRadius: '8px',
-        },
-      });
+        duration: 5000 });
       return;
     }
 
@@ -246,8 +221,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
 
       const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/profile-picture`, {
         method: "POST",
-        body: formData,
-      });
+        body: formData });
 
       const result = await res.json();
       toast.dismiss(loadingToast);
@@ -255,26 +229,12 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
       if (!res.ok) {
         const errorMsg = result?.error || "Failed to upload profile picture. Please try again.";
         toast.error(errorMsg, {
-          duration: 5000,
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
-            borderRadius: '8px',
-          },
-        });
+          duration: 5000 });
         return;
       }
 
       toast.success("Profile picture updated successfully!", {
-        duration: 4000,
-        style: {
-          background: '#d1fae5',
-          color: '#065f46',
-          padding: '16px',
-          borderRadius: '8px',
-        },
-      });
+        duration: 4000 });
 
       // Immediately swap the displayed image to the returned path/filename.
       // Add cache busting to avoid stale browser/Next.js image cache.
@@ -299,8 +259,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
       try {
         window.dispatchEvent(
           new CustomEvent("alumni-card-revision-changed", {
-            detail: { sapId },
-          })
+            detail: { sapId } })
         );
       } catch {
         // ignore
@@ -314,14 +273,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
       toast.dismiss(loadingToast);
       const errorMsg = err instanceof Error ? err.message : "An unexpected error occurred. Please try again.";
       toast.error(errorMsg, {
-        duration: 5000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '16px',
-          borderRadius: '8px',
-        },
-      });
+        duration: 5000 });
     } finally {
       setUploading(false);
       setSelectedFile(null);
@@ -482,7 +434,7 @@ return (
             </div>
             <div className="pt-3 sm:pt-4 md:pt-0 sm:ml-4 md:ml-6 flex-grow">
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 md:gap-3 gap-2">
-                <h4 className="text-slate-900 text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold break-words dark:text-gray-100">{name}</h4>
+                <h4 className="text-gray-900 text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold break-words dark:text-gray-100">{name}</h4>
 
                 {medal && medal !== "None" && (
                   <span
@@ -507,8 +459,8 @@ return (
                
                 
                 {leadershipError && (
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg">
-                    <span className="text-xs text-rose-700">{leadershipError}</span>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-error-50 border border-error-200 rounded-lg">
+                    <span className="text-xs text-error-700">{leadershipError}</span>
                   </div>
                 )}
               </div>
@@ -528,8 +480,8 @@ return (
               <div className="mt-2 sm:mt-3 mb-3 sm:mb-4">
                 {/* Error Messages */}
                 {(chaptersError || associationError) && (
-                  <div className="p-2.5 sm:p-3 bg-rose-50 border border-rose-200 rounded-lg mb-2 sm:mb-3">
-                    <p className="text-xs sm:text-sm text-rose-700">{chaptersError || associationError}</p>
+                  <div className="p-2.5 sm:p-3 bg-error-50 border border-error-200 rounded-lg mb-2 sm:mb-3">
+                    <p className="text-xs sm:text-sm text-error-700">{chaptersError || associationError}</p>
                   </div>
                 )}
 
@@ -617,14 +569,7 @@ return (
                       if (s.href === "#") {
                         e.preventDefault();
                         toast.error(`${s.label} link not available. No profile link has been added yet.`, {
-                          duration: 3000,
-                          style: {
-                            background: '#fef2f2',
-                            color: '#991b1b',
-                            padding: '12px',
-                            borderRadius: '8px',
-                          },
-                        });
+                          duration: 3000 });
                       }
                     }}
                     className={`w-8 h-8 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-full transition-colors ${
@@ -668,8 +613,8 @@ return (
           </div>
 
           <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100 dark:border-gray-800">
-            <h5 className="text-base sm:text-lg font-semibold text-slate-800 mb-2 sm:mb-3 dark:text-gray-200">Profile Details</h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 text-xs sm:text-sm text-slate-700 dark:text-gray-300">
+            <h5 className="text-base sm:text-lg font-semibold text-gray-800 mb-2 sm:mb-3 dark:text-gray-200">Profile Details</h5>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               {hasSapId && (
                 <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {sapIdValue}</div>
               )}
@@ -715,12 +660,12 @@ return (
               )}
 
               {changeApproval === "accepted" && !dismissedChangeApproval && (
-                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-semibold text-emerald-800">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-success-200 bg-success-50 px-3 py-1.5 text-xs sm:text-sm font-semibold text-success-800">
+                  <span className="inline-block h-2 w-2 rounded-full bg-success-500" />
                   Change Approved
                   <button
                     type="button"
-                    className="ml-1 rounded-full border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50"
+                    className="ml-1 rounded-full border border-success-200 bg-white px-2 py-0.5 text-[11px] font-bold text-success-700 hover:bg-success-100 dark:border-success-900 dark:bg-success-950/40 dark:text-success-300 dark:hover:bg-success-900/50"
                     onClick={() => {
                       setDismissedChangeApproval(true);
                       const storageKey = `change-approval-dismissed:${sapId}`;
@@ -737,12 +682,12 @@ return (
               )}
 
               {changeApproval === "rejected" && !dismissedChangeApproval && (
-                <span className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs sm:text-sm font-semibold text-rose-800">
-                  <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-error-200 bg-error-50 px-3 py-1.5 text-xs sm:text-sm font-semibold text-error-800">
+                  <span className="inline-block h-2 w-2 rounded-full bg-error-500" />
                   Change Rejected
                   <button
                     type="button"
-                    className="ml-1 rounded-full border border-rose-200 bg-white px-2 py-0.5 text-[11px] font-bold text-rose-700 hover:bg-rose-100 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50"
+                    className="ml-1 rounded-full border border-error-200 bg-white px-2 py-0.5 text-[11px] font-bold text-error-700 hover:bg-error-100 dark:border-error-900 dark:bg-error-950/40 dark:text-error-300 dark:hover:bg-error-900/50"
                     onClick={() => {
                       setDismissedChangeApproval(true);
                       const storageKey = `change-approval-dismissed:${sapId}`;

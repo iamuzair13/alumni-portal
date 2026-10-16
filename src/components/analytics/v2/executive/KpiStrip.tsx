@@ -18,14 +18,14 @@ const SPARK_COLORS: Record<KpiConfigItem["color"], string> = {
 };
 
 const COLUMN_ACCENT: Record<KpiConfigItem["color"], string> = {
-  indigo: "border-t-indigo-500",
-  emerald: "border-t-emerald-500",
+  indigo: "border-t-brand-500",
+  emerald: "border-t-success-500",
   amber: "border-t-amber-500",
-  rose: "border-t-rose-500",
+  rose: "border-t-error-500",
   sky: "border-t-sky-500",
   violet: "border-t-violet-500",
   orange: "border-t-orange-500",
-  slate: "border-t-slate-400",
+  slate: "border-t-gray-400",
   blue: "border-t-blue-500",
 };
 
@@ -136,8 +136,8 @@ function KpiTableSection({ group }: { group: KpiConfigGroup }) {
                 <tr
                   className={`border-b border-gray-50 last:border-0 dark:border-gray-800/60 ${
                     kpi.expandable
-                      ? `cursor-pointer hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10 ${isExpanded ? "bg-indigo-50/30 ring-1 ring-inset ring-indigo-500/20 dark:bg-indigo-500/5 dark:ring-indigo-400/20" : ""}`
-                      : "hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5"
+                      ? `cursor-pointer hover:bg-brand-50/40 dark:hover:bg-brand-500/10 ${isExpanded ? "bg-brand-50/30 ring-1 ring-inset ring-brand-500/20 dark:bg-brand-500/5 dark:ring-brand-400/20" : ""}`
+                      : "hover:bg-brand-50/30 dark:hover:bg-brand-500/5"
                   }`}
                   onClick={kpi.expandable ? () => toggleExpand(kpi.title) : undefined}
                   onKeyDown={

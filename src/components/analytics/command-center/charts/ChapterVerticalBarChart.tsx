@@ -117,7 +117,7 @@ export function ChapterVerticalBarChart({
               <stop offset="100%" stopColor={gradient.to} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200/80 dark:stroke-slate-700/60" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-gray-200/80 dark:stroke-gray-700/60" />
           <XAxis
             dataKey="axisLabel"
             interval={0}

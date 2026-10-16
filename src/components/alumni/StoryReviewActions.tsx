@@ -121,7 +121,7 @@ export default function StoryReviewActions({
           type="button"
           onClick={() => approveModal.openModal()}
           disabled={loading !== null}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-success-600 px-4 py-2 text-sm font-medium text-white hover:bg-success-700 disabled:opacity-50"
         >
           <CheckLineIcon className="h-4 w-4" />
           Approve
@@ -132,7 +132,7 @@ export default function StoryReviewActions({
           type="button"
           onClick={() => rejectModal.openModal()}
           disabled={loading !== null}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-medium text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50 disabled:opacity-50 dark:bg-gray-800 dark:text-rose-300 dark:ring-rose-800"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-medium text-error-700 ring-1 ring-error-200 hover:bg-error-50 disabled:opacity-50 dark:bg-gray-800 dark:text-error-300 dark:ring-error-800"
         >
           <CloseLineIcon className="h-4 w-4" />
           Reject
@@ -171,7 +171,7 @@ export default function StoryReviewActions({
             type="button"
             onClick={handleApprove}
             disabled={loading === "approve"}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="rounded-lg bg-success-600 px-4 py-2 text-sm font-medium text-white hover:bg-success-700 disabled:opacity-50"
           >
             {loading === "approve" ? "Approving..." : "Confirm Approval"}
           </button>
@@ -213,7 +213,7 @@ export default function StoryReviewActions({
             type="button"
             onClick={handleReject}
             disabled={loading === "reject"}
-            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+            className="rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white hover:bg-error-700 disabled:opacity-50"
           >
             {loading === "reject" ? "Rejecting..." : "Confirm Rejection"}
           </button>
@@ -241,7 +241,7 @@ export default function StoryReviewActions({
               <StoryStatusBadge status={status} />
             </div>
             {isRejected && rejectionReason && (
-              <p className="text-sm text-rose-700 dark:text-rose-300">
+              <p className="text-sm text-error-700 dark:text-error-300">
                 <span className="font-medium">Rejection reason:</span> {rejectionReason}
               </p>
             )}

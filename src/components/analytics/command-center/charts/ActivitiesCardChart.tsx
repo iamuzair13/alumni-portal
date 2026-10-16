@@ -60,10 +60,10 @@ export function ActivitiesCardChart({
         className="flex h-full w-full flex-col items-center justify-center gap-2 px-3 text-center"
       >
         <FlatSparkline />
-        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+        <p className="text-xs font-semibold text-gray-400 dark:text-gray-500">
           No activities yet
         </p>
-        <p className="text-[10px] text-slate-300 dark:text-slate-600">
+        <p className="text-[10px] text-gray-300 dark:text-gray-600">
           Start an activity to see data here
         </p>
       </motion.div>

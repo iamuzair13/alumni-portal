@@ -34,7 +34,7 @@ export function Gauge({ score, size = 48 }: { score: number; size?: number }) {
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-emerald-500 dark:text-emerald-400"
+          className="text-success-500 dark:text-success-400"
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">

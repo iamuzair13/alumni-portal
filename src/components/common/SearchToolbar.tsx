@@ -64,19 +64,19 @@ export default function SearchToolbar({
   const [showFilters, setShowFilters] = useState(false);
 
   const iconBtnBase =
-    "inline-flex items-center justify-center h-8 w-8 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent";
+    "inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent";
 
   return (
     <div
       className={twMerge(
-        "rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950",
+        "rounded-2xl border border-gray-200/80 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950",
         className
       )}
     >
       <div className="flex flex-col gap-2.5 p-3 sm:p-3.5">
         {/* Row 1: Title + Actions */}
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             {title}
           </h3>
           <div className="flex items-center gap-1.5">
@@ -85,7 +85,7 @@ export default function SearchToolbar({
               <button
                 type="button"
                 onClick={() => setShowFilters((prev) => !prev)}
-                className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-semibold transition-all ${showFilters ? "border-blue-500 text-blue-600 bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:bg-blue-950/30" : "border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:border-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/30"}`}
+                className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-semibold transition-all ${showFilters ? "border-blue-500 text-blue-600 bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:bg-blue-950/30" : "border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:border-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/30"}`}
                 aria-label="Toggle filters"
                 title="Toggle filters"
               >
@@ -104,7 +104,7 @@ export default function SearchToolbar({
               <button
                 type="button"
                 onClick={onResetSort}
-                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:border-amber-500 dark:hover:text-amber-400 dark:hover:bg-amber-950/30 focus:outline-none focus:ring-2 focus:ring-amber-300 dark:focus:ring-amber-600 transition-all"
+                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:border-amber-500 dark:hover:text-amber-400 dark:hover:bg-amber-950/30 focus:outline-none focus:ring-2 focus:ring-amber-300 dark:focus:ring-amber-600 transition-all"
                 aria-label="Reset sort"
                 title="Reset sort"
               >
@@ -119,7 +119,7 @@ export default function SearchToolbar({
                 type="button"
                 onClick={onClearFilters}
                 disabled={!filtersActive}
-                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:border-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:border-red-500 dark:hover:text-red-400 dark:hover:bg-red-950/30 focus:outline-none focus:ring-2 focus:ring-red-300 dark:focus:ring-red-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-slate-300 disabled:hover:text-slate-600 disabled:hover:bg-transparent dark:disabled:hover:border-slate-600 dark:disabled:hover:text-slate-300 dark:disabled:hover:bg-transparent"
+                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:border-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:border-red-500 dark:hover:text-red-400 dark:hover:bg-red-950/30 focus:outline-none focus:ring-2 focus:ring-red-300 dark:focus:ring-red-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-600 disabled:hover:bg-transparent dark:disabled:hover:border-gray-600 dark:disabled:hover:text-gray-300 dark:disabled:hover:bg-transparent"
                 aria-label="Clear filters"
                 title="Clear filters"
               >
@@ -174,7 +174,7 @@ export default function SearchToolbar({
 
             {/* Background refetch indicator */}
             {isFetching && (
-              <div className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+              <div className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
                 <div className="h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 <span className="text-[11px] font-medium hidden sm:inline">Updating...</span>
               </div>
@@ -185,7 +185,7 @@ export default function SearchToolbar({
         {/* Row 2: Search Input */}
         <div className="relative">
           <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500"
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -198,7 +198,7 @@ export default function SearchToolbar({
             value={searchValue}
             onChange={(e) => searchOnChange?.(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full pl-10 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 dark:bg-slate-900 dark:border-slate-700 text-sm font-medium text-slate-900 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-slate-100 transition-all duration-200"
+            className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 bg-gray-50/50 dark:bg-gray-900 dark:border-gray-700 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-gray-100 transition-all duration-200"
           />
         </div>
 

@@ -334,7 +334,7 @@ export default function ActivityLogsPage() {
                   onClick={() => setMainTab("activity")}
                   className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
                     mainTab === "activity"
-                      ? "bg-white text-slate-900 shadow-sm dark:bg-gray-900 dark:text-white"
+                      ? "bg-white text-gray-900 shadow-sm dark:bg-gray-900 dark:text-white"
                       : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white dark:text-gray-300 dark:bg-gray-900"
                   }`}
                 >
@@ -345,7 +345,7 @@ export default function ActivityLogsPage() {
                   onClick={() => setMainTab("login")}
                   className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
                     mainTab === "login"
-                      ? "bg-white text-slate-900 shadow-sm dark:bg-gray-900 dark:text-white"
+                      ? "bg-white text-gray-900 shadow-sm dark:bg-gray-900 dark:text-white"
                       : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white dark:text-gray-300 dark:bg-gray-900"
                   }`}
                 >
@@ -359,9 +359,9 @@ export default function ActivityLogsPage() {
                 <button
                   type="button"
                   onClick={() => setSubTab("alumni")}
-                  className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/25 ${
+                  className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-success-500/25 ${
                     subTab === "alumni"
-                      ? "bg-emerald-50 text-emerald-800 shadow-sm dark:bg-emerald-900/20 dark:text-emerald-200"
+                      ? "bg-success-50 text-success-800 shadow-sm dark:bg-success-900/20 dark:text-success-200"
                       : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white dark:text-gray-300 dark:bg-gray-900"
                   }`}
                 >
@@ -370,9 +370,9 @@ export default function ActivityLogsPage() {
                 <button
                   type="button"
                   onClick={() => setSubTab("admin")}
-                  className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/25 ${
+                  className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-success-500/25 ${
                     subTab === "admin"
-                      ? "bg-emerald-50 text-emerald-800 shadow-sm dark:bg-emerald-900/20 dark:text-emerald-200"
+                      ? "bg-success-50 text-success-800 shadow-sm dark:bg-success-900/20 dark:text-success-200"
                       : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white dark:text-gray-300 dark:bg-gray-900"
                   }`}
                 >
@@ -634,11 +634,11 @@ export default function ActivityLogsPage() {
                       <span className="text-xs text-gray-500 dark:text-gray-400">{row.entity_id ? ` • ${row.entity_id}` : ""}</span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-sm dark:text-gray-300 dark:bg-gray-900">
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${row.success ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${row.success ? "bg-success-100 text-success-700" : "bg-error-100 text-error-700"}`}>
                         {row.success ? "Yes" : "No"}
                       </span>
                       {!row.success && row.error_message && (
-                        <div className="text-xs text-rose-700 mt-1">{row.error_message}</div>
+                        <div className="text-xs text-error-700 mt-1">{row.error_message}</div>
                       )}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-sm font-mono text-xs dark:text-gray-300 dark:bg-gray-900">
@@ -677,11 +677,11 @@ export default function ActivityLogsPage() {
                       {row.identifier || "-"}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-sm dark:text-gray-300 dark:bg-gray-900">
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${row.success ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${row.success ? "bg-success-100 text-success-700" : "bg-error-100 text-error-700"}`}>
                         {row.success ? "Yes" : "No"}
                       </span>
                       {!row.success && row.error_message && (
-                        <div className="text-xs text-rose-700 mt-1">{row.error_message}</div>
+                        <div className="text-xs text-error-700 mt-1">{row.error_message}</div>
                       )}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-sm font-mono text-xs dark:text-gray-300 dark:bg-gray-900">

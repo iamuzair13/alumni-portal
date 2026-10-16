@@ -14,7 +14,7 @@ import PageBanner from "@/components/ui/PageBanner";
 import EditableField from "@/components/ui/EditableField";
 import EditableCountryProvinceCity from "@/components/ui/EditableCountryProvinceCity";
 import EditableEmploymentStatus from "@/components/ui/EditableEmploymentStatus";
-import { Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { canModify, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { viewStoredUploadUrl } from "@/lib/uploadsImageUrl";
 
@@ -213,7 +213,7 @@ function MoreDetailsContent() {
             View Document
           </a>
         ) : (
-          <span className="text-sm text-slate-500 dark:text-slate-400 italic">No document uploaded</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400 italic">No document uploaded</span>
         )}
         {!isViewer && data?.alumniid && (
           <>
@@ -221,7 +221,7 @@ function MoreDetailsContent() {
               type="button"
               disabled={isUploadingMedalDoc}
               onClick={() => medalDocFileRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-success-600 px-4 py-2 text-sm font-medium text-white hover:bg-success-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isUploadingMedalDoc ? "Uploading..." : medalDoc ? "Replace Document" : "Upload Document"}
             </button>
@@ -577,17 +577,17 @@ function MoreDetailsContent() {
     return (
       <>
         <AppHeader />
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="animate-pulse space-y-8">
-              <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-800 rounded-lg" />
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 <div className="lg:col-span-1">
-                  <div className="h-80 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
+                  <div className="h-80 bg-gray-200 dark:bg-gray-800 rounded-2xl" />
                 </div>
                 <div className="lg:col-span-3 space-y-6">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-64 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
+                    <div key={i} className="h-64 bg-gray-200 dark:bg-gray-800 rounded-2xl" />
                   ))}
                 </div>
               </div>
@@ -603,13 +603,13 @@ function MoreDetailsContent() {
     return (
       <>
         <AppHeader />
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4">
-          <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 text-center">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
+          <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
               <IconExclamationTriangle className="w-8 h-8 text-red-500" />
             </div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Failed to load profile</h2>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{error instanceof Error ? error.message : "Unknown error occurred"}</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Failed to load profile</h2>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{error instanceof Error ? error.message : "Unknown error occurred"}</p>
             <div className="mt-6">
               <BackButton />
             </div>
@@ -622,15 +622,8 @@ function MoreDetailsContent() {
   return (
     <>
       <AppHeader />
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          className: "dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700",
-        }}
-        containerStyle={{ top: 80, zIndex: 100000 }}
-      />
 
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
         <PageBanner title="Profile Details" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -642,11 +635,11 @@ function MoreDetailsContent() {
             {/* ─── Sidebar ─── */}
             <aside className="lg:col-span-4 xl:col-span-3 space-y-6">
               {/* Profile Card */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                <div className="h-24 bg-gradient-to-r from-emerald-800 to-teal-700 dark:from-emerald-900 dark:to-teal-900" />
+              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <div className="h-24 bg-gradient-to-r from-success-800 to-teal-700 dark:from-success-900 dark:to-teal-900" />
                 <div className="px-6 pb-6">
                   <div className="relative -mt-12 mb-4 flex justify-center">
-                    <div className="relative w-24 h-24 rounded-full ring-4 ring-white dark:ring-slate-900 overflow-hidden bg-white dark:bg-slate-800">
+                    <div className="relative w-24 h-24 rounded-full ring-4 ring-white dark:ring-gray-900 overflow-hidden bg-white dark:bg-gray-800">
                       <Image
                         src={normalizeImagePath(data.image1)}
                         alt={data.alumniname || "Profile"}
@@ -656,31 +649,31 @@ function MoreDetailsContent() {
                     </div>
                   </div>
                   <div className="text-center">
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{data.alumniname || "—"}</h2>
-                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{data.sapid || data.registrationno || ""}</p>
-                    <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{data.alumniname || "—"}</h2>
+                    <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">{data.sapid || data.registrationno || ""}</p>
+                    <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-success-50 text-success-700 dark:bg-success-900/30 dark:text-success-400 border border-success-100 dark:border-success-800">
                       <IconShield className="w-3 h-3" />
                       Alumni
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                  <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 space-y-3">
                     {data.personalemail && (
                       <div className="flex items-center gap-3 text-sm">
-                        <IconMail className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
-                        <span className="text-slate-600 dark:text-slate-300 truncate">{String(data.personalemail)}</span>
+                        <IconMail className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                        <span className="text-gray-600 dark:text-gray-300 truncate">{String(data.personalemail)}</span>
                       </div>
                     )}
                     {data.contactno && (
                       <div className="flex items-center gap-3 text-sm">
-                        <IconPhone className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
-                        <span className="text-slate-600 dark:text-slate-300">{String(data.contactno)}</span>
+                        <IconPhone className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                        <span className="text-gray-600 dark:text-gray-300">{String(data.contactno)}</span>
                       </div>
                     )}
                     {(data.city || data.country) && (
                       <div className="flex items-center gap-3 text-sm">
-                        <IconMapPin className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
-                        <span className="text-slate-600 dark:text-slate-300">
+                        <IconMapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                        <span className="text-gray-600 dark:text-gray-300">
                           {[data.city, data.country].filter(Boolean).join(", ")}
                         </span>
                       </div>
@@ -688,12 +681,12 @@ function MoreDetailsContent() {
                   </div>
 
                   {isAdminOrSuperAdmin && data.alumniid && data.alumniid > 0 && (
-                    <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
                       <button
                         type="button"
                         disabled={isSendingCredentials}
                         onClick={handleSendCredentials}
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium bg-emerald-900 text-white hover:bg-emerald-800 dark:bg-emerald-800 dark:hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium bg-success-900 text-white hover:bg-success-800 dark:bg-success-800 dark:hover:bg-success-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <IconPaperAirplane className="w-4 h-4" />
                         {isSendingCredentials ? "Sending..." : "Send Credentials"}
@@ -724,20 +717,20 @@ function MoreDetailsContent() {
               )}
 
               {/* Quick Stats */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Activity</h3>
+              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-5">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Activity</h3>
                 <div className="space-y-4">
                   <div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Last Login</div>
-                    <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{formatDateTimeDisplay(data.lasttimelogin) || "Never"}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Last Login</div>
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{formatDateTimeDisplay(data.lasttimelogin) || "Never"}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Total Logins</div>
-                    <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{data.logincount ?? 0}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Logins</div>
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{data.logincount ?? 0}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Member Since</div>
-                    <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{formatDateDisplay(data.createddatetime)}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Member Since</div>
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{formatDateDisplay(data.createddatetime)}</div>
                   </div>
                 </div>
               </div>
@@ -748,11 +741,11 @@ function MoreDetailsContent() {
               {sections.map((section) => (
                 <section
                   key={section.title}
-                  className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-shadow hover:shadow-md"
+                  className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden transition-shadow hover:shadow-md"
                 >
-                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
-                    <span className="text-emerald-700 dark:text-emerald-400">{section.icon}</span>
-                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">{section.title}</h3>
+                  <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
+                    <span className="text-success-700 dark:text-success-400">{section.icon}</span>
+                    <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wider">{section.title}</h3>
                   </div>
                   <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
@@ -863,14 +856,14 @@ function MoreDetailsContent() {
 
               {/* Password Change Section */}
               {isAlumniUser && (
-                <section className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
-                    <IconLockClosed className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Security</h3>
+                <section className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
+                    <IconLockClosed className="w-4 h-4 text-success-700 dark:text-success-400" />
+                    <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Security</h3>
                   </div>
                   <div className="p-6">
                     <div className="max-w-2xl">
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                         Update your password to keep your account secure. You must enter your current password to confirm your identity.
                       </p>
                       <div className="grid grid-cols-1 gap-5">
@@ -880,19 +873,19 @@ function MoreDetailsContent() {
                           { label: "Confirm New Password", value: confirmPassword, setter: setConfirmPassword, show: showConfirmPassword, toggle: setShowConfirmPassword },
                         ].map((field) => (
                           <div key={field.label}>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{field.label}</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{field.label}</label>
                             <div className="relative">
                               <input
                                 type={field.show ? "text" : "password"}
                                 value={field.value}
                                 onChange={(e) => field.setter(e.target.value)}
                                 disabled={isChangingPassword}
-                                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 dark:focus:ring-emerald-500/20 dark:focus:border-emerald-500 transition-all pr-10"
+                                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-success-600/20 focus:border-success-600 dark:focus:ring-success-500/20 dark:focus:border-success-500 transition-all pr-10"
                               />
                               <button
                                 type="button"
                                 onClick={() => field.toggle((v) => !v)}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                               >
                                 {field.show ? <IconEyeSlash className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
                               </button>
@@ -904,7 +897,7 @@ function MoreDetailsContent() {
                             type="button"
                             onClick={handleChangePassword}
                             disabled={isChangingPassword}
-                            className="inline-flex items-center gap-2 rounded-lg bg-emerald-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 dark:bg-emerald-800 dark:hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+                            className="inline-flex items-center gap-2 rounded-lg bg-success-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-success-800 dark:bg-success-800 dark:hover:bg-success-700 disabled:opacity-60 transition-colors"
                           >
                             <IconKey className="w-4 h-4" />
                             {isChangingPassword ? "Updating..." : "Change Password"}
@@ -924,16 +917,16 @@ function MoreDetailsContent() {
       {hasPendingChanges && (
         <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-4 duration-300">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg rounded-xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg rounded-xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
                   <IconPencilSquare className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {pendingCount} unsaved change{pendingCount !== 1 ? "s" : ""}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Review and save your updates</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Review and save your updates</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -941,7 +934,7 @@ function MoreDetailsContent() {
                   type="button"
                   onClick={handleCancelAll}
                   disabled={isSavingAll}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
                 >
                   <IconXMark className="w-4 h-4" />
                   Cancel
@@ -950,7 +943,7 @@ function MoreDetailsContent() {
                   type="button"
                   onClick={handleSaveAll}
                   disabled={isSavingAll}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white bg-emerald-900 hover:bg-emerald-800 dark:bg-emerald-800 dark:hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white bg-success-900 hover:bg-success-800 dark:bg-success-800 dark:hover:bg-success-700 disabled:opacity-60 transition-colors"
                 >
                   {isSavingAll ? (
                     <IconArrowPath className="w-4 h-4 animate-spin" />

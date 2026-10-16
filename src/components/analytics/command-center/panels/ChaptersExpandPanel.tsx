@@ -157,7 +157,7 @@ export function ChaptersExpandPanel({
       </div>
       <div className="flex ">
       <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40 w-full">
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-success-600 dark:text-success-400">
           International chapters
         </h3>
         <AnalyticsDataTable
@@ -172,7 +172,7 @@ export function ChaptersExpandPanel({
       </section>
 
       <section className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40 w-full">
-        <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+        <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-success-600 dark:text-success-400">
           Top international chapters by alumni
         </h3>
         {internationalChart.length === 0 ? (

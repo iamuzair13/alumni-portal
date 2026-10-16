@@ -70,35 +70,35 @@ const cardHover = {
 /** Light-first tokens; dark mode via `dark:` (system / header theme toggle). */
 const profileTheme = {
   page:
-    "relative w-full bg-slate-50 font-sans text-slate-900 antialiased selection:bg-slate-900/10 selection:text-slate-900 dark:bg-slate-950 dark:text-slate-200 dark:selection:bg-white/10 dark:selection:text-white",
+    "relative w-full bg-gray-50 font-sans text-gray-900 antialiased selection:bg-gray-900/10 selection:text-gray-900 dark:bg-gray-950 dark:text-gray-200 dark:selection:bg-white/10 dark:selection:text-white",
   glassCard:
-    "border-slate-200/80 bg-white/80 backdrop-blur-xl backdrop-saturate-150 dark:border-white/[0.08] dark:bg-slate-900/40",
-  skeleton: "bg-slate-200/70 dark:bg-white/[0.04]",
-  skeletonCard: "border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-white/[0.06] dark:bg-slate-900/40",
-  heading: "text-slate-900 dark:text-white",
-  subheading: "text-slate-700 dark:text-slate-300",
-  body: "text-slate-600 dark:text-slate-400",
-  muted: "text-slate-500 dark:text-slate-500",
-  faint: "text-slate-400 dark:text-slate-600",
-  divider: "bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-white/10",
-  label: "text-slate-600 dark:text-slate-400",
+    "border-gray-200/80 bg-white/80 backdrop-blur-xl backdrop-saturate-150 dark:border-white/[0.08] dark:bg-gray-900/40",
+  skeleton: "bg-gray-200/70 dark:bg-white/[0.04]",
+  skeletonCard: "border-gray-200/80 bg-white/80 backdrop-blur-xl dark:border-white/[0.06] dark:bg-gray-900/40",
+  heading: "text-gray-900 dark:text-white",
+  subheading: "text-gray-700 dark:text-gray-300",
+  body: "text-gray-600 dark:text-gray-400",
+  muted: "text-gray-500 dark:text-gray-500",
+  faint: "text-gray-400 dark:text-gray-600",
+  divider: "bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-white/10",
+  label: "text-gray-600 dark:text-gray-400",
   input:
-    "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all focus:border-slate-400 focus:ring-1 focus:ring-slate-200 dark:border-white/[0.06] dark:bg-white/[0.03] dark:text-slate-200 dark:placeholder-slate-600 dark:focus:border-white/20 dark:focus:bg-white/[0.05] dark:focus:ring-white/10",
+    "w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-gray-400 focus:ring-1 focus:ring-gray-200 dark:border-white/[0.06] dark:bg-white/[0.03] dark:text-gray-200 dark:placeholder-gray-600 dark:focus:border-white/20 dark:focus:bg-white/[0.05] dark:focus:ring-white/10",
   staticField:
-    "rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]",
+    "rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]",
   tabShell:
-    "border-slate-200 bg-slate-100/90 p-1 backdrop-blur-xl dark:border-white/[0.06] dark:bg-white/[0.02]",
-  tabActiveBg: "bg-white border border-slate-200 dark:bg-white/5 dark:border-white/10",
-  tabActiveText: "text-slate-900 dark:text-white",
-  tabInactiveText: "text-slate-500 hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-300",
+    "border-gray-200 bg-gray-100/90 p-1 backdrop-blur-xl dark:border-white/[0.06] dark:bg-white/[0.02]",
+  tabActiveBg: "bg-white border border-gray-200 dark:bg-white/5 dark:border-white/10",
+  tabActiveText: "text-gray-900 dark:text-white",
+  tabInactiveText: "text-gray-500 hover:text-gray-800 dark:text-gray-500 dark:hover:text-gray-300",
   uploadBtn:
-    "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white",
+    "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white",
   avatar:
-    "border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-slate-800/50",
-  avatarFallback: "from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-900",
-  avatarLetter: "text-slate-500 dark:text-slate-400",
+    "border-gray-200 bg-gray-100 dark:border-white/10 dark:bg-gray-800/50",
+  avatarFallback: "from-gray-200 to-gray-100 dark:from-gray-800 dark:to-gray-900",
+  avatarLetter: "text-gray-500 dark:text-gray-400",
   meshBg:
-    "from-slate-100 via-white to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-black",
+    "from-gray-100 via-white to-gray-50 dark:from-gray-900 dark:via-gray-950 dark:to-black",
   meshOrb: "opacity-[0.12] dark:opacity-[0.03]",
   meshGrid: "opacity-[0.035] dark:opacity-[0.02]",
 } as const;
@@ -145,11 +145,11 @@ function MagneticButton({
 
   const variantStyles = {
     primary:
-      "bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:shadow-white/5 dark:hover:bg-white",
+      "bg-gray-900 text-white shadow-lg shadow-gray-900/10 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-950 dark:shadow-white/5 dark:hover:bg-white",
     secondary:
-      "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10",
+      "border border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10",
     ghost:
-      "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200",
+      "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200",
   };
 
   return (
@@ -168,7 +168,7 @@ function MagneticButton({
       <span className="relative z-10">{children}</span>
       {variant === "primary" && (
         <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-slate-200 to-white opacity-0 dark:from-slate-200 dark:to-white"
+          className="absolute inset-0 bg-gradient-to-r from-gray-200 to-white opacity-0 dark:from-gray-200 dark:to-white"
           whileHover={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         />
@@ -231,7 +231,7 @@ function SkeletonPulse({ className = "" }: { className?: string }) {
   return (
     <div className={`relative overflow-hidden rounded-lg ${profileTheme.skeleton} ${className}`}>
       <motion.div
-        className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-slate-300/40 to-transparent dark:via-white/10"
+        className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-gray-300/40 to-transparent dark:via-white/10"
         animate={{ translateX: ["0%", "200%"] }}
         transition={{
           duration: 1.5,
@@ -298,9 +298,9 @@ function StatusBadge({
 }) {
   const variants = {
     default:
-      "border-slate-200 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300",
+      "border-gray-200 bg-gray-100 text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300",
     success:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400",
+      "border-success-200 bg-success-50 text-success-700 dark:border-success-500/20 dark:bg-success-500/10 dark:text-success-400",
     error:
       "border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400",
     warning:
@@ -357,7 +357,7 @@ function AccordionSection({
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="border-t border-slate-200 p-5 dark:border-white/[0.06]">{children}</div>
+            <div className="border-t border-gray-200 p-5 dark:border-white/[0.06]">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -379,10 +379,10 @@ function Tooltip({ content, children }: { content: string; children: React.React
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-800 dark:text-slate-300"
+            className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-gray-800 dark:text-gray-300"
           >
             {content}
-            <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-slate-800" />
+            <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-gray-800" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -728,7 +728,7 @@ export default function AdminProfileForm() {
                   </span>
                 </div>
               )}
-              <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-slate-200 dark:ring-white/10" />
+              <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-gray-200 dark:ring-white/10" />
             </motion.div>
 
             {/* Identity */}
@@ -790,7 +790,7 @@ export default function AdminProfileForm() {
               const isLoading = accessAssignmentsQuery.isLoading;
               const isAll = accessAssignmentsQuery.data?.isSuperAdmin;
               const labels = { faculties: "Faculties", departments: "Departments", programs: "Programs" };
-              const colors = ["from-sky-500/10", "from-violet-500/10", "from-emerald-500/10"] as const;
+              const colors = ["from-sky-500/10", "from-violet-500/10", "from-success-500/10"] as const;
 
               return (
                 <GlassCard key={key} className="p-5" hover>
@@ -809,7 +809,7 @@ export default function AdminProfileForm() {
                           key={item}
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className={`inline-flex items-center rounded-lg border border-slate-200 bg-gradient-to-r ${colors[idx]} to-transparent px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-white/5 dark:text-slate-300`}
+                          className={`inline-flex items-center rounded-lg border border-gray-200 bg-gradient-to-r ${colors[idx]} to-transparent px-2.5 py-1 text-xs font-medium text-gray-700 dark:border-white/5 dark:text-gray-300`}
                         >
                           {item}
                         </motion.span>
@@ -942,7 +942,7 @@ export default function AdminProfileForm() {
                     <div>
                       <label className={`mb-1.5 block text-xs font-medium tracking-tight ${profileTheme.label}`}>Account Status</label>
                       <div className={`flex items-center gap-2 ${profileTheme.staticField}`}>
-                        <span className={`inline-block h-2 w-2 rounded-full ${profileUser.blocked ? "bg-red-500 dark:bg-red-400" : "bg-emerald-500 dark:bg-emerald-400"}`} />
+                        <span className={`inline-block h-2 w-2 rounded-full ${profileUser.blocked ? "bg-red-500 dark:bg-red-400" : "bg-success-500 dark:bg-success-400"}`} />
                         <span className={`text-sm ${profileTheme.body}`}>{profileUser.blocked ? "Blocked" : "Active"}</span>
                       </div>
                     </div>
@@ -1006,21 +1006,21 @@ export default function AdminProfileForm() {
                 {/* Advanced Security */}
                 <AccordionSection title="Advanced Security Settings" defaultOpen={false}>
                   <div className={`space-y-3 text-sm ${profileTheme.body}`}>
-                    <div className={`flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/[0.04] dark:bg-white/[0.02]`}>
+                    <div className={`flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-white/[0.04] dark:bg-white/[0.02]`}>
                       <div>
                         <p className={`font-medium ${profileTheme.subheading}`}>Two-Factor Authentication</p>
                         <p className={`mt-0.5 text-xs ${profileTheme.faint}`}>Add an extra layer of security</p>
                       </div>
                       <StatusBadge variant="warning">Coming Soon</StatusBadge>
                     </div>
-                    <div className={`flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/[0.04] dark:bg-white/[0.02]`}>
+                    <div className={`flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-white/[0.04] dark:bg-white/[0.02]`}>
                       <div>
                         <p className={`font-medium ${profileTheme.subheading}`}>Session Management</p>
                         <p className={`mt-0.5 text-xs ${profileTheme.faint}`}>Manage active sessions</p>
                       </div>
                       <StatusBadge variant="warning">Coming Soon</StatusBadge>
                     </div>
-                    <div className={`flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/[0.04] dark:bg-white/[0.02]`}>
+                    <div className={`flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-white/[0.04] dark:bg-white/[0.02]`}>
                       <div>
                         <p className={`font-medium ${profileTheme.subheading}`}>Login History</p>
                         <p className={`mt-0.5 text-xs ${profileTheme.faint}`}>View recent login activity</p>
@@ -1045,7 +1045,7 @@ export default function AdminProfileForm() {
                 <motion.span
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="inline-block h-3.5 w-3.5 rounded-full border-2 border-slate-500 border-t-transparent dark:border-slate-400"
+                  className="inline-block h-3.5 w-3.5 rounded-full border-2 border-gray-500 border-t-transparent dark:border-gray-400"
                 />
                 Saving...
               </span>

@@ -37,11 +37,11 @@ const STATUS_CLASS_MAP: Record<
 > = {
   talkMentorship: {
     selectedContainer:
-      "border-indigo-500 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-900/20",
-    hoverBorder: "hover:border-indigo-400",
-    iconBg: "bg-indigo-100 dark:bg-indigo-800",
-    iconColor: "text-indigo-700 dark:text-indigo-200",
-    labelText: "text-indigo-600 dark:text-indigo-300",
+      "border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-900/20",
+    hoverBorder: "hover:border-brand-400",
+    iconBg: "bg-brand-100 dark:bg-brand-800",
+    iconColor: "text-brand-700 dark:text-brand-200",
+    labelText: "text-brand-600 dark:text-brand-300",
   },
   alumniChapters: {
     selectedContainer:
@@ -489,12 +489,12 @@ export const AlumniParticipation: React.FC = () => {
         </div>
 
         {deleteSuccess && (
-          <div className="inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-700 px-3 py-2 border border-emerald-200">
+          <div className="inline-flex items-center gap-2 rounded-md bg-success-50 text-success-700 px-3 py-2 border border-success-200">
             <span className="text-sm">{deleteSuccess}</span>
           </div>
         )}
         {deleteError && (
-          <div className="inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-3 py-2 border border-rose-200">
+          <div className="inline-flex items-center gap-2 rounded-md bg-error-50 text-error-700 px-3 py-2 border border-error-200">
             <span className="text-sm">{deleteError}</span>
           </div>
         )}
@@ -563,7 +563,7 @@ export const AlumniParticipation: React.FC = () => {
                       return (
                         <TableCell
                           key={`hdr-${String(key)}`}
-                          className={`px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300 ${align}`}
+                          className={`px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300 ${align}`}
                           aria-sort={ariaSort}
                         >
                           <button
@@ -585,7 +585,7 @@ export const AlumniParticipation: React.FC = () => {
                         </TableCell>
                       );
                     })}
-                    <TableCell className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</TableCell>
+                    <TableCell className="px-4 py-3 text-right text-[13px] font-medium text-gray-600 dark:text-gray-300">Actions</TableCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.06]">
@@ -673,7 +673,7 @@ export const AlumniParticipation: React.FC = () => {
                               
                               const actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }> = [
                                 { label: "View", icon: EyeIcon, onClick: () => { const url = `/alumni-profile?sapid=${encodeURIComponent(alum.id)}`; window.open(url, "_blank", "noopener,noreferrer"); }, hover: "hover:text-blue-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => { setTargetSapId(alum.id); setConfirmOpen(true); setDeleteError(null); setDeleteSuccess(null); }, hover: "hover:text-rose-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => { setTargetSapId(alum.id); setConfirmOpen(true); setDeleteError(null); setDeleteSuccess(null); }, hover: "hover:text-error-600" },
                               ];
                               return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
                                 <button
@@ -728,7 +728,7 @@ export const AlumniParticipation: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Are you sure you want to delete this mentorship session?</h3>
             <div className="mt-4 flex items-center justify-end gap-3">
               <button type="button" disabled={deleting} onClick={() => { setConfirmOpen(false); setTargetSapId(null); }} className="rounded-md px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">Cancel</button>
-              <button type="button" disabled={deleting || !targetSapId} onClick={() => { if (targetSapId) deleteMentorshipBySapId(targetSapId); }} className="rounded-md px-4 py-2 text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500">
+              <button type="button" disabled={deleting || !targetSapId} onClick={() => { if (targetSapId) deleteMentorshipBySapId(targetSapId); }} className="rounded-md px-4 py-2 text-white bg-error-600 hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500">
                 {deleting ? "Deleting…" : "Confirm"}
               </button>
             </div>

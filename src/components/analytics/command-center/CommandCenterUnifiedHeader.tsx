@@ -782,7 +782,7 @@ export function CommandCenterUnifiedHeader({
               ZONE 1: Brand — left, minimal, confident
               ═══════════════════════════════════════════════════════ */}
           <div className="flex shrink-0 items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#183D32] dark:bg-emerald-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-500 dark:bg-success-600">
               <svg
                 className="h-4 w-4 text-white"
                 viewBox="0 0 24 24"
@@ -798,7 +798,7 @@ export function CommandCenterUnifiedHeader({
                 <path d="M8 17v-3" />
               </svg>
             </div>
-            <h1 className="text-sm font-bold tracking-tight text-[#183D32] dark:text-emerald-300 sm:text-base">
+            <h1 className="text-sm font-bold tracking-tight text-accent-600 dark:text-success-300 sm:text-base">
               Portal Analytics
             </h1>
           </div>
@@ -845,7 +845,7 @@ export function CommandCenterUnifiedHeader({
               {status === "unauthenticated" && (
                 <Link
                   href="/signin"
-                  className="inline-flex items-center rounded-lg bg-[#183D32] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#0f2e24] dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                  className="inline-flex items-center rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-700 dark:bg-success-600 dark:hover:bg-success-500"
                 >
                   Sign in
                 </Link>

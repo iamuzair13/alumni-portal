@@ -21,7 +21,7 @@ export function Sparkline({
   if (!series.length) {
     return (
       <div
-        className="w-full rounded-xl bg-slate-100 dark:bg-slate-800/50"
+        className="w-full rounded-xl bg-gray-100 dark:bg-gray-800/50"
         style={{ height }}
       />
     );

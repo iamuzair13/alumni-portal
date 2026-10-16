@@ -5,13 +5,13 @@ import React from "react";
 type ChipColor = "indigo" | "emerald" | "amber" | "rose" | "sky" | "violet" | "slate";
 
 const BORDER_COLORS: Record<ChipColor, string> = {
-  indigo: "border-l-indigo-400 dark:border-l-indigo-500",
-  emerald: "border-l-emerald-400 dark:border-l-emerald-500",
+  indigo: "border-l-brand-400 dark:border-l-brand-500",
+  emerald: "border-l-success-400 dark:border-l-success-500",
   amber: "border-l-amber-400 dark:border-l-amber-500",
-  rose: "border-l-rose-400 dark:border-l-rose-500",
+  rose: "border-l-error-400 dark:border-l-error-500",
   sky: "border-l-sky-400 dark:border-l-sky-500",
   violet: "border-l-violet-400 dark:border-l-violet-500",
-  slate: "border-l-slate-400 dark:border-l-slate-500",
+  slate: "border-l-gray-400 dark:border-l-gray-500",
 };
 
 export function CompactMetricChip({

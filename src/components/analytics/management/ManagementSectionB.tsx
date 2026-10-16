@@ -142,7 +142,7 @@ export default function ManagementSectionB({ data, isLoading }: Props) {
           </AnalyticsGridItem>
 
           <AnalyticsGridItem span={6}>
-            <AnalyticsSubheading dotColor="bg-emerald-500">Engagement activities</AnalyticsSubheading>
+            <AnalyticsSubheading dotColor="bg-success-500">Engagement activities</AnalyticsSubheading>
             <ChartInsight>{topActivity ? `Top in period: ${topActivity.activity} (${topActivity.quarter})` : "—"}</ChartInsight>
             <ChartTableToggle
               widgetId="mgmt-activities"

@@ -63,7 +63,7 @@ function MedalSegment({
         flex h-full w-[120px] flex-1 flex-col items-center justify-center gap-0.5 px-2 py-3
         last:border-r-0
         transition-colors duration-200
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400/40
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gray-400/40
         ${isSelected ? colors.active : ""}
         ${gradient}
       `}
@@ -132,8 +132,8 @@ export function MedalistCategoryCard({
       role="tablist"
       aria-label="Medalists"
     >
-      <div className="border-b border-slate-200/80 px-4 py-2.5 dark:border-slate-700/80">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      <div className="border-b border-gray-200/80 px-4 py-2.5 dark:border-gray-700/80">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Medalists
         </h3>
       </div>

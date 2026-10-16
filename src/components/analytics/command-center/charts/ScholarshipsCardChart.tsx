@@ -129,16 +129,16 @@ export function ScholarshipsCardChart({
       <div className="flex items-center gap-3 px-0.5">
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: APPLIED_COLOR }} />
-          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Applied</span>
+          <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Applied</span>
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: APPROVED_COLOR }} />
-          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Approved</span>
+          <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Approved</span>
         </span>
       </div>
 
       {/* Divider */}
-      <div className="shrink-0 border-t border-slate-100 dark:border-slate-800" />
+      <div className="shrink-0 border-t border-gray-100 dark:border-gray-800" />
 
       {/* Breakdown list */}
       <div className="flex min-w-0 w-full flex-col gap-1.5">
@@ -152,11 +152,11 @@ export function ScholarshipsCardChart({
                 style={{ backgroundColor: hasActivity ? color : "#CBD5E1" }}
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                <p className="truncate text-[11px] font-semibold text-gray-700 dark:text-gray-300">
                   {row.type}
                 </p>
               </div>
-              <span className="shrink-0 text-[11px] font-bold tabular-nums text-slate-900 dark:text-white">
+              <span className="shrink-0 text-[11px] font-bold tabular-nums text-gray-900 dark:text-white">
                 {row.approved}/{row.applied}
               </span>
             </div>

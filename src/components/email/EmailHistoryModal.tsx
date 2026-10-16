@@ -165,7 +165,7 @@ export function EmailHistoryModal(props: {
 
         ) : error ? (
 
-          <div className="text-sm text-rose-600">{error.message || "Failed to load"}</div>
+          <div className="text-sm text-error-600">{error.message || "Failed to load"}</div>
 
         ) : (
 
@@ -255,7 +255,7 @@ export function EmailHistoryModal(props: {
 
                         {item.error_message ? (
 
-                          <div className="text-xs text-rose-600 mt-1 truncate">{item.error_message}</div>
+                          <div className="text-xs text-error-600 mt-1 truncate">{item.error_message}</div>
 
                         ) : null}
 
@@ -301,7 +301,7 @@ export function EmailHistoryModal(props: {
                     {selected.error_message ? (
                       <div>
                         <div className="text-xs font-semibold text-gray-600 dark:text-gray-400">Error</div>
-                        <div className="text-sm text-rose-700 dark:text-rose-300 whitespace-pre-wrap">{selected.error_message}</div>
+                        <div className="text-sm text-error-700 dark:text-error-300 whitespace-pre-wrap">{selected.error_message}</div>
                       </div>
                     ) : null}
 

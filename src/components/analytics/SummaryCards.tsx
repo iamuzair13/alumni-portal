@@ -19,7 +19,7 @@ export default function SummaryCards(props: {
 }) {
   const growth = Number.isFinite(props.growth) ? props.growth : 0;
   const isUp = growth >= 0;
-  const growthClass = isUp ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400";
+  const growthClass = isUp ? "text-success-600 dark:text-success-400" : "text-error-600 dark:text-error-400";
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -44,7 +44,7 @@ export default function SummaryCards(props: {
           <>
             <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white/90">{props.topModule.label}</p>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              {formatNumber(props.topModule.total)} · <span className={props.topModule.growth >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>{formatPercent(props.topModule.growth)}</span>
+              {formatNumber(props.topModule.total)} · <span className={props.topModule.growth >= 0 ? "text-success-600 dark:text-success-400" : "text-error-600 dark:text-error-400"}>{formatPercent(props.topModule.growth)}</span>
             </p>
           </>
         ) : (

@@ -243,7 +243,7 @@ export function ChangeApprovalsTab() {
                     <TableRow key={c.field} className="bg-yellow-50/40 dark:bg-yellow-900/10">
                       <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white/90">{c.field}</TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{c.oldValue || "-"}</TableCell>
-                      <TableCell className="px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300 font-semibold">
+                      <TableCell className="px-4 py-3 text-sm text-success-700 dark:text-success-300 font-semibold">
                         {c.newValue || "-"}
                         {isMedalDocField && medalDocUrl && (
                           <a

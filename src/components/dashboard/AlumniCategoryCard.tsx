@@ -60,7 +60,7 @@ function CategorySegment({
         flex h-full w-[100px] flex-1 flex-col items-center justify-center gap-0.5 px-2 py-3
         last:border-r-0
         transition-colors duration-200
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400/40
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gray-400/40
         ${isSelected ? colors.active : ""}
         ${(() => {
           // Apply a colored background and border based on status key
@@ -76,7 +76,7 @@ function CategorySegment({
             case "d":
               return "bg-gradient-to-br from-gray-200 via-gray-100 to-white border-gray-200 dark:border-gray-400 hover:bg-gray-100/80 dark:hover:bg-gray-700/40";
             default:
-              return "border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40";
+              return "border-gray-200/80 dark:border-gray-700/80 hover:bg-gray-50/80 dark:hover:bg-gray-800/40";
           }
         })()}
       `}
@@ -98,7 +98,7 @@ function CategorySegment({
                   case "d":
                     return "text-gray-700 dark:text-gray-900";
                   default:
-                    return "text-slate-500 dark:text-slate-900";
+                    return "text-gray-500 dark:text-gray-900";
                 }
               })()
         }`}
@@ -123,7 +123,7 @@ function CategorySegment({
                   case "d":
                     return "bg-gray-400";
                   default:
-                    return "bg-slate-400";
+                    return "bg-gray-400";
                 }
               })()}
             `}
@@ -148,7 +148,7 @@ function CategorySegment({
                       case "d":
                         return "text-gray-800 dark:text-gray-900";
                       default:
-                        return "text-slate-900 dark:text-white";
+                        return "text-gray-900 dark:text-white";
                     }
                   })()
                 : (() => {
@@ -164,7 +164,7 @@ function CategorySegment({
                       case "d":
                         return "text-gray-700 dark:text-gray-900";
                       default:
-                        return "text-slate-800 dark:text-slate-900";
+                        return "text-gray-800 dark:text-gray-900";
                     }
                   })()
             }
@@ -229,8 +229,8 @@ export function AlumniCategoryCard({
       role="tablist"
       aria-label="Alumni categories"
     >
-      <div className="border-b border-slate-200/80 px-4 py-2.5 dark:border-slate-700/80">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      <div className="border-b border-gray-200/80 px-4 py-2.5 dark:border-gray-700/80">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Alumni Categories
         </h3>
       </div>
