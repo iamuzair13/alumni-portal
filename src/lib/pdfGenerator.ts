@@ -509,10 +509,17 @@ function createApplicationFormRenderer(
     y += h;
   };
 
-  const drawFullRow = (label: string, value: string | null | undefined) => {
+  const drawFullRow = (
+    label: string,
+    value: string | null | undefined,
+    opts?: { uncapped?: boolean },
+  ) => {
     if (y >= contentBottom) return;
     const v = clamp(value);
-    let h = Math.max(metrics.rowMinH, valueBlockHeight(v, W - 6) + 3.5);
+    const lines = opts?.uncapped
+      ? (doc.setFontSize(metrics.fontBody), doc.splitTextToSize(v, W - 6) as string[])
+      : cappedLines(v, W - 6, metrics.fontBody);
+    let h = Math.max(metrics.rowMinH, lines.length * lineHeight(metrics.fontBody) + 3.5);
     if (y + h > contentBottom) h = Math.max(metrics.rowMinH * 0.85, contentBottom - y);
     if (h <= 0) return;
     drawHRule(y + h);
@@ -525,7 +532,7 @@ function createApplicationFormRenderer(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(metrics.fontBody);
     doc.setTextColor(...THEME.colors.text);
-    doc.text(cappedLines(v, W - 6, metrics.fontBody), m + 2, y + 6.5);
+    doc.text(lines, m + 2, y + 6.5);
     y += h;
   };
 
@@ -876,7 +883,7 @@ function estimateScholarshipFormHeight(
   rows += data.isKinship ? 3 : 3;
   if (!data.isKinship) rows += 1; // admission ref
   rows += data.isKinship ? 5 : 3; // section C
-  rows += 3; // declaration section (long wrapped text)
+  rows += 7; // declaration section (disclosure + discount terms, long wrapped text)
   const sections = 6;
   const checklistItems = data.isKinship ? 6 : 5;
 
@@ -1203,11 +1210,13 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         `I hereby disclose all scholarships / financial assistance currently availed by me ${
           String(data.scholarshipDisclosure || "").trim() || "None"
         }. I understand that if awarded the Alumni Scholarship, all others shall stand cancelled. If any concealment is discovered later, all scholarships shall be cancelled/recovered and disciplinary action including cancellation of admission may be taken.`,
+        { uncapped: true },
       );
       if (data.discountTermsAccepted === true) {
         form.drawFullRow(
           "Discount Terms",
           "The approved discount is applicable to the new or current semester, as applicable, and shall continue in subsequent semesters subject to the maintenance of the required CGPA. No fee adjustment, compensation, or refund shall be provided for any previous semesters.",
+          { uncapped: true },
         );
       }
 
