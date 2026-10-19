@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
 import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+import { toAbsoluteEventImageUrl } from '@/lib/uploadsImageUrl';
 
 /**
  * Handle CORS preflight requests
@@ -25,6 +26,7 @@ type RecipientRow = {
   department: string | null;
   program: string | null;
   campus: string | null;
+  imageUrl: string;
   awardedAt: string | null;
 };
 
@@ -120,6 +122,7 @@ export async function GET(request: NextRequest) {
         d.department_name AS department,
         p.program_name AS program,
         a.campusname AS campus,
+        a.image1,
         s.created_at
       ${baseFrom}
       ${searchCondition}
@@ -130,7 +133,9 @@ export async function GET(request: NextRequest) {
       OFFSET ${offset}
     `;
 
-    const items: RecipientRow[] = (rows as Record<string, unknown>[]).map((r) => ({
+    const items: RecipientRow[] = (rows as Record<string, unknown>[]).map((r) => {
+      const rawImage = String(r.image1 ?? '').trim();
+      return {
       alumniId: Number(r.alumniid),
       name: String(r.alumniname ?? ''),
       sapId: r.sapid != null && String(r.sapid).trim() !== '' ? String(r.sapid).trim() : null,
@@ -150,8 +155,11 @@ export async function GET(request: NextRequest) {
       department: r.department != null ? String(r.department) : null,
       program: r.program != null ? String(r.program) : null,
       campus: r.campus != null ? String(r.campus) : null,
+      imageUrl:
+        rawImage && rawImage !== 'null' ? toAbsoluteEventImageUrl(request, rawImage) : '',
       awardedAt: r.created_at != null ? String(r.created_at) : null,
-    }));
+      };
+    });
 
     const response = NextResponse.json(
       {
