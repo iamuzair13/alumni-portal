@@ -1879,7 +1879,7 @@ function ScholarshipApplicationContent() {
                 </h2>
                 <div className="mb-3">
                   <label className="field-label" htmlFor="scholarshipDisclosure">
-                    E-Signature{" "}
+                    Scholarships / financial assistance currently availed by you{" "}
                     <span className="text-error-500">*</span>
                   </label>
                   <input
@@ -1892,7 +1892,7 @@ function ScholarshipApplicationContent() {
                     required
                   />
                   <p className="field-hint">
-                    Please Write your full name
+                    Write &quot;None&quot; if you are not availing any scholarship or financial assistance.
                   </p>
                 </div>
                 <AcknowledgmentCheckbox
