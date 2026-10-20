@@ -38,30 +38,19 @@ type RecipientRow = {
  * Only a sanitized, non-sensitive shape is exposed — no CNICs, emails,
  * kinship details, uploaded documents, or rejection internals.
  *
+ * Returns ALL approved recipients ordered by award date, most recent first.
+ *
  * Query Parameters:
- * - page (default 1), limit (default 20, max 100)
  * - search: matches name, SAP ID, registration no, or degree title
  * - discountType: filter by scholarship category slug
  * - year: filter by application_year
- * - sort: asc|desc on awarded date (default desc)
  */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
     const search = searchParams.get('search')?.trim() || '';
     const discountType = searchParams.get('discountType')?.trim() || '';
     const yearParam = searchParams.get('year');
-    const sortParam = (searchParams.get('sort') || 'desc').toLowerCase();
-
-    if (!Number.isFinite(page) || page < 1 || !Number.isFinite(limit) || limit < 1 || limit > 100) {
-      const response = NextResponse.json(
-        { data: null, error: 'Invalid pagination parameters. Page must be >= 1 and limit must be 1–100.' },
-        { status: 400 },
-      );
-      return addCorsHeaders(response, request);
-    }
 
     const year = yearParam != null && yearParam !== '' ? Number(yearParam) : null;
     if (yearParam && (!Number.isFinite(year) || year! < 2000 || year! > 2100)) {
@@ -71,9 +60,6 @@ export async function GET(request: NextRequest) {
       );
       return addCorsHeaders(response, request);
     }
-
-    const sort = sortParam === 'asc' ? 'ASC' : 'DESC';
-    const offset = (page - 1) * limit;
 
     const searchCondition = search
       ? sql`AND (
@@ -95,15 +81,6 @@ export async function GET(request: NextRequest) {
       LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE s.status = 'approved'
     `;
-
-    const countRows = await sql/* sql */`
-      SELECT COUNT(*)::int AS total
-      ${baseFrom}
-      ${searchCondition}
-      ${typeCondition}
-      ${yearCondition}
-    `;
-    const total = Number((countRows[0] as { total?: number } | undefined)?.total ?? 0);
 
     const rows = await sql/* sql */`
       SELECT
@@ -128,9 +105,7 @@ export async function GET(request: NextRequest) {
       ${searchCondition}
       ${typeCondition}
       ${yearCondition}
-      ORDER BY s.created_at ${sql.unsafe(sort)} NULLS LAST, a.alumniid DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
+      ORDER BY s.created_at DESC NULLS LAST, a.alumniid DESC
     `;
 
     const items: RecipientRow[] = (rows as Record<string, unknown>[]).map((r) => {
@@ -165,12 +140,7 @@ export async function GET(request: NextRequest) {
       {
         data: {
           items,
-          pagination: {
-            page,
-            limit,
-            total,
-            totalPages: Math.max(1, Math.ceil(total / limit)),
-          },
+          total: items.length,
         },
         error: null,
       },
