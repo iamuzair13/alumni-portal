@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
 import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
 import { toAbsoluteEventImageUrl } from '@/lib/uploadsImageUrl';
+import { parseMastersDetails } from '@/lib/scholarshipLetter';
 
 /**
  * Handle CORS preflight requests
@@ -18,7 +19,12 @@ type RecipientRow = {
   discountType: string | null;
   applyingFor: string | null;
   degreeTitle: string | null;
-  appliedDiscountPercent: number | null;
+  discounts: {
+    admissionFeePercent: number | null;
+    tuitionFeePercent: number | null;
+    highAchieverPercent: number | null;
+    totalPercent: number | null;
+  };
   applicationYear: number | null;
   applicationTerm: string | null;
   semester: number | null;
@@ -92,6 +98,8 @@ export async function GET(request: NextRequest) {
         s.apply_for,
         s.degree_title,
         s.applied_discount_percent,
+        s.masters_details,
+        a.medal,
         s.application_year,
         s.application_term,
         s.semester,
@@ -121,8 +129,23 @@ export async function GET(request: NextRequest) {
       discountType: r.discount_type != null ? String(r.discount_type) : null,
       applyingFor: r.apply_for != null ? String(r.apply_for) : null,
       degreeTitle: r.degree_title != null ? String(r.degree_title) : null,
-      appliedDiscountPercent:
-        r.applied_discount_percent != null ? Number(r.applied_discount_percent) : null,
+      discounts: (() => {
+        const masters = parseMastersDetails(r.masters_details);
+        const toNum = (v: unknown) =>
+          v != null && Number.isFinite(Number(v)) ? Number(v) : null;
+        const highAchiever =
+          masters?.highAchieverPercent != null
+            ? toNum(masters.highAchieverPercent)
+            : String(r.medal ?? '').trim().toLowerCase() === 'gold medalist'
+              ? 5
+              : null;
+        return {
+          admissionFeePercent: toNum(masters?.admissionFeePercent),
+          tuitionFeePercent: toNum(masters?.tuitionFeePercent),
+          highAchieverPercent: highAchiever,
+          totalPercent: toNum(r.applied_discount_percent),
+        };
+      })(),
       applicationYear: r.application_year != null ? Number(r.application_year) : null,
       applicationTerm: r.application_term != null ? String(r.application_term) : null,
       semester: r.semester != null ? Number(r.semester) : null,
