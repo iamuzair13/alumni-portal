@@ -391,11 +391,6 @@ function createApplicationFormRenderer(
     return kept;
   };
 
-  const valueBlockHeight = (text: string, width: number) => {
-    const lines = cappedLines(text, width, metrics.fontBody);
-    return Math.max(metrics.rowMinH - 3.5, lines.length * lineHeight(metrics.fontBody));
-  };
-
   const drawHRule = (yy: number, light = false) => {
     doc.setDrawColor(...THEME.colors.border);
     doc.setLineWidth(light ? 0.1 : 0.15);
@@ -475,6 +470,48 @@ function createApplicationFormRenderer(
     y += metrics.sectionH + metrics.sectionGap;
   };
 
+  // Inline "LABEL: value" cell — label bold on the same baseline as the first
+  // value line; wrapped value lines hang-indented under the value start.
+  const inlineCell = (
+    label: string,
+    value: string,
+    x: number,
+    cellW: number,
+    uncapped = false,
+  ): { lines: string[]; labelW: number } => {
+    const labelText = `${clamp(label).toUpperCase()}:`;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontLabel);
+    const labelW = doc.getTextWidth(`${labelText} `);
+    const valueW = Math.max(20, cellW - labelW);
+    doc.setFontSize(metrics.fontBody);
+    const lines = uncapped
+      ? (doc.splitTextToSize(value, valueW) as string[])
+      : cappedLines(value, valueW, metrics.fontBody);
+    return { lines, labelW };
+  };
+
+  const drawInlineCell = (
+    cell: { lines: string[]; labelW: number },
+    label: string,
+    x: number,
+    rowTop: number,
+    h: number,
+  ) => {
+    const blockH = cell.lines.length * lineHeight(metrics.fontBody);
+    const baseline0 = rowTop + Math.max(3.4, (h - blockH) / 2 + metrics.fontBody * 0.34);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(metrics.fontLabel);
+    doc.setTextColor(...THEME.colors.muted);
+    doc.text(`${clamp(label).toUpperCase()}:`, x + 2, baseline0);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(metrics.fontBody);
+    doc.setTextColor(...THEME.colors.text);
+    doc.text(cell.lines, x + 2 + cell.labelW, baseline0);
+  };
+
   const drawFieldPair = (
     label1: string,
     value1: string | null | undefined,
@@ -484,10 +521,12 @@ function createApplicationFormRenderer(
     if (y >= contentBottom) return;
     const v1 = clamp(value1);
     const v2 = clamp(value2);
+    const c1 = inlineCell(label1, v1, m, colW);
+    const c2 = inlineCell(label2, v2, m + colW, colW);
     let h = Math.max(
       metrics.rowMinH,
-      valueBlockHeight(v1, colW - 6) + 3.5,
-      valueBlockHeight(v2, colW - 6) + 3.5,
+      c1.lines.length * lineHeight(metrics.fontBody) + 2.5,
+      c2.lines.length * lineHeight(metrics.fontBody) + 2.5,
     );
     if (y + h > contentBottom) h = Math.max(metrics.rowMinH * 0.85, contentBottom - y);
     if (h <= 0) return;
@@ -495,17 +534,8 @@ function createApplicationFormRenderer(
     drawHRule(y + h);
     drawVRule(m + colW, rowTop, y + h);
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(metrics.fontLabel);
-    doc.setTextColor(...THEME.colors.muted);
-    doc.text(clamp(label1).toUpperCase(), m + 2, y + 3.2);
-    doc.text(clamp(label2).toUpperCase(), m + colW + 2, y + 3.2);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(metrics.fontBody);
-    doc.setTextColor(...THEME.colors.text);
-    doc.text(cappedLines(v1, colW - 6, metrics.fontBody), m + 2, y + 6.5);
-    doc.text(cappedLines(v2, colW - 6, metrics.fontBody), m + colW + 2, y + 6.5);
+    drawInlineCell(c1, label1, m, rowTop, h);
+    drawInlineCell(c2, label2, m + colW, rowTop, h);
     y += h;
   };
 
@@ -516,23 +546,13 @@ function createApplicationFormRenderer(
   ) => {
     if (y >= contentBottom) return;
     const v = clamp(value);
-    const lines = opts?.uncapped
-      ? (doc.setFontSize(metrics.fontBody), doc.splitTextToSize(v, W - 6) as string[])
-      : cappedLines(v, W - 6, metrics.fontBody);
-    let h = Math.max(metrics.rowMinH, lines.length * lineHeight(metrics.fontBody) + 3.5);
+    const cell = inlineCell(label, v, m, W, opts?.uncapped);
+    let h = Math.max(metrics.rowMinH, cell.lines.length * lineHeight(metrics.fontBody) + 2.5);
     if (y + h > contentBottom) h = Math.max(metrics.rowMinH * 0.85, contentBottom - y);
     if (h <= 0) return;
     drawHRule(y + h);
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(metrics.fontLabel);
-    doc.setTextColor(...THEME.colors.muted);
-    doc.text(clamp(label).toUpperCase(), m + 2, y + 3.2);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(metrics.fontBody);
-    doc.setTextColor(...THEME.colors.text);
-    doc.text(lines, m + 2, y + 6.5);
+    drawInlineCell(cell, label, m, y, h);
     y += h;
   };
 
