@@ -160,11 +160,11 @@ export default function AlumniVerificationPage() {
               <div className="pt-2 space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Enter your email address to receive your login credentials.
+                    Enter the personal email address registered against your alumni record to receive your login credentials.
                   </label>
                   <input
                     type="email"
-                    placeholder="Enter your email address"
+                    placeholder="Enter your registered personal email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600"

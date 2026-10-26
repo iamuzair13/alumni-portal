@@ -73,7 +73,8 @@ export async function POST(req: NextRequest) {
     }
 
     const rows = await sql/* sql */`
-      SELECT alumniid, alumniname, sapid, registrationno, password
+      SELECT alumniid, alumniname, sapid, registrationno, password,
+             personalemail
       FROM public.tbl_alumni
       WHERE sapid = ${identifier}
          OR registrationno = ${identifier}
@@ -87,11 +88,29 @@ export async function POST(req: NextRequest) {
           sapid: string | null;
           registrationno: string | null;
           password: string | null;
+          personalemail: string | null;
+          officialemail: string | null;
+          universityemail: string | null;
         }
       | undefined;
 
     if (!alumni) {
       return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
+
+    // Only send credentials to the personal email on file for this alumni —
+    // otherwise anyone who knows a SAP ID could harvest passwords.
+    const emailOnFile = String(alumni.personalemail || "").trim().toLowerCase();
+    if (!emailOnFile || emailOnFile !== recipientEmail.toLowerCase()) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: !emailOnFile
+            ? "No personal email is registered for this record. Please contact the alumni office."
+            : "This email does not match our records. Please enter the personal email registered against your alumni account.",
+        },
+        { status: 400 },
+      );
     }
 
     const passwordToSend = String(alumni.password || "").trim();
