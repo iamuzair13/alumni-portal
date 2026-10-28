@@ -1235,7 +1235,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       if (data.discountTermsAccepted === true) {
         form.drawFullRow(
           "Discount Terms",
-          "The approved discount is applicable to the new or current semester, as applicable, and shall continue in subsequent semesters subject to the maintenance of the required CGPA. No fee adjustment, compensation, or refund shall be provided for any previous semesters.",
+          "The approved discount is applicable to the new admission, and shall continue in subsequent semesters subject to the maintenance of the required CGPA. No fee adjustment, compensation, or refund shall be provided for any previous semesters. Applicable discount for each semester shall be varified based on maintaining of CGPA",
           { uncapped: true },
         );
       }

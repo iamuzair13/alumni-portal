@@ -345,7 +345,7 @@ function ScholarshipApplicationContent() {
   );
 
   // Semester options for self (fee-discount) applications — BS runs up to 8 semesters.
-  const semesterOptions = Array.from({ length: 8 }, (_, i) => String(i + 1));
+  const semesterOptions = Array.from({ length: 1 }, (_, i) => String(i + 1));
 
   const missing = (v: unknown): string => {
     const s = String(v ?? "").trim();
@@ -876,7 +876,7 @@ function ScholarshipApplicationContent() {
 
           <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Scholarship</h1>
-            <span className="text-error-500 text-base"> (Applicable if your Admission in University is confirmed and not applicable for Faculty of Medicine and Dentistry)</span>
+            <span className="text-error-500 text-base"> (Applicable if your Admission in University is confirmed and not applicable for Faculty of Medicine and Dentistry). (The tution fee discount is application on new admission)</span>
             <p className="text-gray-600 mb-8">Fill out the form below to apply for UOL Alumni Scholarship or Fee Discount.</p>
 
             <form onSubmit={handleSubmit} className="max-w-4xl mx-auto mt-4" aria-label="Scholarship application form">
@@ -1447,7 +1447,7 @@ function ScholarshipApplicationContent() {
                             onChange={(e) => setAdmissionSemester(e.target.value)}
                             required
                           >
-                            <option value="">Select semester</option>
+                            <option value="">None</option>
                             {semesterOptions.map((s) => (
                               <option key={s} value={s}>
                                 Semester {s}
