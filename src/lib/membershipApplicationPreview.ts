@@ -1,5 +1,6 @@
 import {
   CAMPUS_FACILITY_CONFIG,
+  displayPreferredTiming,
   type CampusFacilityType,
   type CampusMembershipApplicationDetails,
 } from "@/lib/campusMembership";
@@ -269,7 +270,13 @@ export function buildMembershipApplicationPreview(
       ? [
           ["Membership Type", details?.membershipType || row.membership_type || "Missing"],
           ["Pool Location", poolLocation],
-          ["Preferred Session", details?.preferredTiming || row.preferred_timing || "Missing"],
+          [
+            "Preferred Session",
+            displayPreferredTiming(
+              "pool",
+              details?.preferredTiming || row.preferred_timing,
+            ) || "Missing",
+          ],
           ["Valid From", formatDateLong(membershipStartRaw)],
           ["Valid To", formatDateLong(validTillRaw)],
         ]
@@ -370,7 +377,11 @@ export function buildMembershipApplicationPreview(
     discountType: details?.discountType || row.discount_type || config.discountType,
     membershipType: details?.membershipType || row.membership_type || "Missing",
     membershipStartDate: formatDateLong(membershipStartRaw),
-    preferredTiming: details?.preferredTiming || row.preferred_timing || "Missing",
+    preferredTiming:
+      displayPreferredTiming(
+        facilityType,
+        details?.preferredTiming || row.preferred_timing,
+      ) || "Missing",
     medicalConditions: missing(details?.medicalConditions),
     allergies: missing(details?.allergies),
     physicalDisability: missing(details?.physicalDisability),

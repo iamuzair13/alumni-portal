@@ -8,6 +8,7 @@ import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
 
 import { discountCategoryLabel } from "@/lib/scholarshipLetter";
+import { displayPreferredTiming } from "@/lib/campusMembership";
 
 type ScholarshipApplication = {
   id: number;
@@ -291,7 +292,9 @@ function ViewApplicationsContent() {
                           <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                             Preferred Timing
                           </label>
-                          <p className="text-sm text-gray-900 dark:text-gray-100">{app.preferredTiming}</p>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">
+                            {displayPreferredTiming(app.facilityType, app.preferredTiming)}
+                          </p>
                         </div>
                       )}
                       {!app.facilityType && app.gymMembershipMonth && (

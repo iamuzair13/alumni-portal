@@ -127,6 +127,29 @@ export const PREFERRED_TIMING_OPTIONS = [
   { value: "Evening", label: "Evening" },
 ] as const;
 
+/** Pool-only timing labels — same stored values ("Morning"/"Evening"), gendered display text. */
+export const POOL_TIMING_OPTIONS = [
+  { value: "Morning", label: "Morning (Female Only)" },
+  { value: "Evening", label: "Evening (Male Only)" },
+] as const;
+
+/**
+ * Display label for a preferred-timing value.
+ * Pool sessions are gender-segregated: Morning = female, Evening = male.
+ * Stored value is unchanged; this only affects UI/PDF display.
+ */
+export function displayPreferredTiming(
+  facilityType: string | null | undefined,
+  value: string | null | undefined,
+): string {
+  const v = String(value ?? "").trim();
+  if (!v) return v;
+  if (facilityType === "pool") {
+    return POOL_TIMING_OPTIONS.find((o) => o.value === v)?.label ?? v;
+  }
+  return v;
+}
+
 export const SWIMMING_LEVEL_OPTIONS = [
   { value: "Beginner", label: "Beginner" },
   { value: "Intermediate", label: "Intermediate" },

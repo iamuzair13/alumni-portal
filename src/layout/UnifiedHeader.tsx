@@ -24,6 +24,7 @@ import { AlumniChaptersTab } from "@/components/alumni/AlumniChaptersTab";
 import { AlumniAssociationTab } from "@/components/alumni/AlumniAssociationTab";
 import { AlumniScholarshipsTab } from "@/components/alumni/AlumniScholarshipsTab";
 import { AlumniMembershipsTab } from "@/components/alumni/AlumniMembershipsTab";
+import { AlumniBirthdaysTab } from "@/components/alumni/AlumniBirthdaysTab";
 import { JobsTab } from "@/components/alumni/JobsTab";
 import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 
@@ -47,6 +48,7 @@ type MenuKey =
   | "AlumniAssociation"
   | "AlumniScholarships"
   | "AlumniMemberships"
+  | "AlumniBirthdays"
   | "Jobs"
   | "Leadership"
   | "AadAlumni";
@@ -77,6 +79,7 @@ const MENU_TABS: TabConfig[] = [
   { key: "AlumniAssociation", label: "Alumni Association", urlTab: "alumni-association", showCounter: false },
   { key: "AlumniScholarships", label: "Alumni Scholarships", urlTab: "alumni-scholarships", showCounter: true },
   { key: "AlumniMemberships", label: "Alumni Memberships", urlTab: "alumni-memberships", showCounter: true },
+  { key: "AlumniBirthdays", label: "Birthdays", urlTab: "birthdays", showCounter: false },
   { key: "Leadership", label: "Leadership", urlTab: "leadership", showCounter: true },
   { key: "Jobs", label: "Jobs", urlTab: "jobs", showCounter: false },
 ];
@@ -94,6 +97,7 @@ const urlTabToMenuKey: Record<string, MenuKey> = {
   "alumni-association": "AlumniAssociation",
   "alumni-scholarships": "AlumniScholarships",
   "alumni-memberships": "AlumniMemberships",
+  "birthdays": "AlumniBirthdays",
   jobs: "Jobs",
   "add-alumni": "AadAlumni",
   leadership: "Leadership",
@@ -108,6 +112,7 @@ const menuKeyToUrlTab: Record<MenuKey, string> = {
   AlumniAssociation: "alumni-association",
   AlumniScholarships: "alumni-scholarships",
   AlumniMemberships: "alumni-memberships",
+  AlumniBirthdays: "birthdays",
   Jobs: "jobs",
   AadAlumni: "add-alumni",
   Leadership: "leadership",
@@ -223,6 +228,7 @@ const TabContent: FC<{ selected: MenuKey }> = ({ selected }) => {
     AlumniAssociation: <AlumniAssociationTab />,
     AlumniScholarships: <AlumniScholarshipsTab />,
     AlumniMemberships: <AlumniMembershipsTab />,
+    AlumniBirthdays: <AlumniBirthdaysTab />,
     Jobs: <JobsTab />,
     AadAlumni: <AlumniSqlForm />,
     Leadership: <AlumniTabs />, // Fallback - adjust as needed
@@ -321,6 +327,7 @@ const UnifiedHeaderTopbar: FC = () => {
   const t = String(((session?.user ?? {}) as { type?: string }).type || "").toLowerCase();
   const isAlumni = t === "alumni";
   const isSuperAdmin = isSuperAdminUser(session?.user);
+  const canSeeBirthdaysTab = isSuperAdmin || t === "admin";
   const isAnalyticsRoute = pathname === "/admin/analytics";
 
   // ─── Tab logic for tabbed routes (dashboard, leadership, alumni-stories) ───
@@ -522,7 +529,9 @@ const UnifiedHeaderTopbar: FC = () => {
         {isTabbedRoute ? (
           <nav className="min-w-0 flex-1">
             <TabBar
-              items={MENU_TABS.map((tab) => ({
+              items={MENU_TABS.filter(
+                (tab) => tab.key !== "AlumniBirthdays" || canSeeBirthdaysTab,
+              ).map((tab) => ({
                 key: tab.key,
                 label: tab.label,
                 count: tab.showCounter

@@ -75,6 +75,9 @@ const navItems: NavItem[] = [
       { name: "Alumni Scholarships", path: "/dashboard?tab=alumni-scholarships" },
 
       { name: "Alumni Memberships", path: "/dashboard?tab=alumni-memberships" },
+
+      { name: "Alumni Birthdays", path: "/dashboard?tab=birthdays" },
+
       
       { name: "Leadership", path: "/leadership" },
       { name: "Jobs", path: "/dashboard?tab=jobs" },
@@ -195,6 +198,16 @@ const AppSidebarContent: React.FC = () => {
   const isViewer = isViewerUser(session?.user);
 
   const canSeeSetup = isSuperAdmin && !isAdmin && !isViewer;
+
+  const canSeeBirthdays = isSuperAdmin || isAdmin;
+
+  const filteredNavItems = navItems
+    .filter((i) => canSeeSetup || i.name !== "Setup")
+    .map((i) =>
+      canSeeBirthdays || !i.subItems
+        ? i
+        : { ...i, subItems: i.subItems.filter((s) => s.name !== "Alumni Birthdays") },
+    );
 
 
 
@@ -673,7 +686,7 @@ const AppSidebarContent: React.FC = () => {
 
     let submenuMatched = false;
 
-    const items = canSeeSetup ? navItems : navItems.filter((i) => i.name !== "Setup");
+    const items = filteredNavItems;
 
     items.forEach((nav, index) => {
 
@@ -920,7 +933,7 @@ const AppSidebarContent: React.FC = () => {
 
               </h2>
 
-              {renderMenuItems(canSeeSetup ? navItems : navItems.filter((i) => i.name !== "Setup"), "main")}
+              {renderMenuItems(filteredNavItems, "main")}
 
             </div>
 

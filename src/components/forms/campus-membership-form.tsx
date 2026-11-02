@@ -13,6 +13,7 @@ import {
   MEDICAL_CONDITION_OPTIONS,
   MEMBERSHIP_TYPE_OPTIONS,
   PREFERRED_TIMING_OPTIONS,
+  POOL_TIMING_OPTIONS,
   SWIMMING_LEVEL_OPTIONS,
   type CampusFacilityType,
 } from "@/lib/campusMembership";
@@ -354,7 +355,7 @@ export default function CampusMembershipForm({ facilityType, alumniId, sapId: sa
                 label="Preferred Session"
                 value={preferredTiming}
                 onChange={setPreferredTiming}
-                options={PREFERRED_TIMING_OPTIONS}
+                options={POOL_TIMING_OPTIONS}
                 required
               />
               <Field label="Valid From" value={membershipStartDate} readOnly />
