@@ -194,6 +194,10 @@ export const AlumniScholarshipsTab: React.FC = () => {
   const [admissionRefDraft, setAdmissionRefDraft] = useState("");
   const [admissionRefOriginal, setAdmissionRefOriginal] = useState("");
   const [admissionRefSaving, setAdmissionRefSaving] = useState(false);
+  const [kinGradeTypeDraft, setKinGradeTypeDraft] = useState("");
+  const [kinGradeValueDraft, setKinGradeValueDraft] = useState("");
+  const [kinGradeOriginal, setKinGradeOriginal] = useState({ type: "", value: "" });
+  const [kinGradeSaving, setKinGradeSaving] = useState(false);
   const [isTogglingProfileUpdated, setIsTogglingProfileUpdated] = useState(false);
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -355,6 +359,11 @@ export const AlumniScholarshipsTab: React.FC = () => {
       const refValue = data.application?.admissionApplicationRef?.trim() ?? "";
       setAdmissionRefDraft(refValue);
       setAdmissionRefOriginal(refValue);
+      const kinGradeType = String(data.application?.kinshipDetails?.kinGradeType ?? "").trim();
+      const kinGradeValue = String(data.application?.kinshipDetails?.kinGradeValue ?? "").trim();
+      setKinGradeTypeDraft(kinGradeType);
+      setKinGradeValueDraft(kinGradeValue);
+      setKinGradeOriginal({ type: kinGradeType, value: kinGradeValue });
       applicationPreviewModal.openModal();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -431,6 +440,51 @@ export const AlumniScholarshipsTab: React.FC = () => {
       setAdmissionRefSaving(false);
     }
   }, [applicationPreview?.alumniId, admissionRefDraft, admissionRefOriginal, queryClient]);
+
+  const saveKinGrade = useCallback(async () => {
+    if (!applicationPreview?.alumniId) return;
+    const gradeType = kinGradeTypeDraft.trim();
+    const gradeValue = kinGradeValueDraft.trim();
+    if (gradeType !== "CGPA" && gradeType !== "Percentage") {
+      toast.error("Select a grade type (CGPA or Percentage).");
+      return;
+    }
+    const n = Number(gradeValue);
+    if (!gradeValue || !Number.isFinite(n) || n < 0) {
+      toast.error("Enter a valid grade value.");
+      return;
+    }
+    if (gradeType === "CGPA" && n > 4) {
+      toast.error("CGPA cannot exceed 4.00.");
+      return;
+    }
+    if (gradeType === "Percentage" && n > 100) {
+      toast.error("Percentage cannot exceed 100.");
+      return;
+    }
+    if (gradeType === kinGradeOriginal.type && gradeValue === kinGradeOriginal.value) return;
+    setKinGradeSaving(true);
+    try {
+      const res = await fetch(`/api/alumni/scholarships/${applicationPreview.alumniId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kinshipGrade: { gradeType, gradeValue } }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = data && typeof data === "object" && "error" in data ? String((data as any).error || "") : "";
+        throw new Error(err || `Failed to save kin grade (${res.status})`);
+      }
+      setKinGradeOriginal({ type: gradeType, value: gradeValue });
+      toast.success("Kin grade updated.");
+      await handleViewApplication(applicationPreview.alumniId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to save kin grade");
+    } finally {
+      setKinGradeSaving(false);
+    }
+  }, [applicationPreview?.alumniId, kinGradeTypeDraft, kinGradeValueDraft, kinGradeOriginal, handleViewApplication]);
 
   const handleUnapprove = useCallback(async (alumniId: number, reason?: string): Promise<void> => {
     startMut(alumniId);
@@ -1507,24 +1561,78 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                     applicationPreview.application.kinshipDetails?.kinPassingOutYear || "-",
                                   ],
                                   ["CNIC", applicationPreview.application.kinshipDetails?.kinCnic || "-"],
-                                  [
-                                    "Grade Type",
-                                    applicationPreview.application.kinshipDetails?.kinGradeType || "-",
-                                  ],
-                                  [
-                                    applicationPreview.application.kinshipDetails?.kinGradeType === "Percentage"
-                                      ? "Percentage (%)"
-                                      : applicationPreview.application.kinshipDetails?.kinGradeType === "CGPA"
-                                        ? "CGPA"
-                                        : "Grade Value",
-                                    applicationPreview.application.kinshipDetails?.kinGradeValue || "-",
-                                  ],
                                 ].map(([k, v]) => (
                                   <tr key={k} className="bg-white dark:bg-gray-900">
                                     <td className="w-[260px] px-4 py-3 font-semibold text-gray-800 bg-gray-50/60 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">{k}</td>
                                     <td className="px-4 py-3 text-gray-900 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">{String(v || "-")}</td>
                                   </tr>
                                 ))}
+                              <tr className="bg-white dark:bg-gray-900">
+                                <td className="w-[260px] px-4 py-3 font-semibold text-gray-800 bg-gray-50/60 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">Grade Type</td>
+                                <td className="px-4 py-3 text-gray-900 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">
+                                  {isAdmin ? (
+                                    <select
+                                      value={kinGradeTypeDraft}
+                                      onChange={(e) => setKinGradeTypeDraft(e.target.value)}
+                                      className="w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                    >
+                                      <option value="">Select grade type</option>
+                                      <option value="CGPA">CGPA</option>
+                                      <option value="Percentage">Percentage</option>
+                                    </select>
+                                  ) : (
+                                    applicationPreview.application.kinshipDetails?.kinGradeType || "-"
+                                  )}
+                                </td>
+                              </tr>
+                              <tr className="bg-white dark:bg-gray-900">
+                                <td className="w-[260px] px-4 py-3 font-semibold text-gray-800 bg-gray-50/60 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">
+                                  {kinGradeTypeDraft === "Percentage"
+                                    ? "Percentage (%)"
+                                    : kinGradeTypeDraft === "CGPA"
+                                      ? "CGPA"
+                                      : "Grade Value"}
+                                </td>
+                                <td className="px-4 py-3 text-gray-900 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">
+                                  {isAdmin ? (
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="number"
+                                        inputMode="decimal"
+                                        step={kinGradeTypeDraft === "Percentage" ? "0.1" : "0.01"}
+                                        min={0}
+                                        max={kinGradeTypeDraft === "Percentage" ? 100 : 4}
+                                        value={kinGradeValueDraft}
+                                        onChange={(e) => setKinGradeValueDraft(e.target.value)}
+                                        disabled={!kinGradeTypeDraft}
+                                        placeholder={
+                                          kinGradeTypeDraft === "Percentage"
+                                            ? "0.0 - 100.0"
+                                            : kinGradeTypeDraft === "CGPA"
+                                              ? "0.00 - 4.00"
+                                              : "Select grade type first"
+                                        }
+                                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={saveKinGrade}
+                                        disabled={
+                                          kinGradeSaving ||
+                                          !kinGradeTypeDraft ||
+                                          (kinGradeTypeDraft === kinGradeOriginal.type &&
+                                            kinGradeValueDraft.trim() === kinGradeOriginal.value)
+                                        }
+                                        className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700"
+                                      >
+                                        {kinGradeSaving ? "Saving..." : "Save"}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    applicationPreview.application.kinshipDetails?.kinGradeValue || "-"
+                                  )}
+                                </td>
+                              </tr>
                               </tbody>
                             </table>
                           </div>
@@ -1555,44 +1663,42 @@ export const AlumniScholarshipsTab: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white dark:bg-gray-100 dark:divide-gray-700 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">
-                              {!applicationPreview.application.isKinship && (
-                                <tr className="bg-gray-50/50 dark:bg-gray-100 dark:bg-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">
-                                  <td className="px-4 py-3" colSpan={1}>
-                                    <div className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">
-                                      Admission Reference No / Application ID
-                                    </div>
-                                    <div className="mt-1 dark:text-gray-100 dark:bg-gray-900">
-                                      {isAdmin ? (
-                                        <div className="flex items-center gap-2">
-                                          <input
-                                            type="text"
-                                            value={admissionRefDraft}
-                                            onChange={(e) => setAdmissionRefDraft(e.target.value)}
-                                            maxLength={200}
-                                            placeholder="Enter admission reference or application ID"
-                                            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                                            autoComplete="off"
-                                          />
-                                          <button
-                                            type="button"
-                                            onClick={saveAdmissionRef}
-                                            disabled={admissionRefSaving || admissionRefDraft.trim() === admissionRefOriginal}
-                                            className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700"
-                                          >
-                                            {admissionRefSaving ? "Saving..." : "Save"}
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <span className="text-sm text-gray-800 break-all dark:text-gray-100">
-                                          {applicationPreview.application.admissionApplicationRef?.trim() || "—"}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">—</td>
-                                  <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">—</td>
-                                </tr>
-                              )}
+                              <tr className="bg-gray-50/50 dark:bg-gray-100 dark:bg-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">
+                                <td className="px-4 py-3" colSpan={1}>
+                                  <div className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">
+                                    Admission Reference No / Application ID
+                                  </div>
+                                  <div className="mt-1 dark:text-gray-100 dark:bg-gray-900">
+                                    {isAdmin ? (
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="text"
+                                          value={admissionRefDraft}
+                                          onChange={(e) => setAdmissionRefDraft(e.target.value)}
+                                          maxLength={200}
+                                          placeholder="Enter admission reference or application ID"
+                                          className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                          autoComplete="off"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={saveAdmissionRef}
+                                          disabled={admissionRefSaving || admissionRefDraft.trim() === admissionRefOriginal}
+                                          className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700"
+                                        >
+                                          {admissionRefSaving ? "Saving..." : "Save"}
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-gray-800 break-all dark:text-gray-100">
+                                        {applicationPreview.application.admissionApplicationRef?.trim() || "—"}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">—</td>
+                                <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900 hover:bg-gray-50/60 dark:hover:bg-gray-100 dark:hover:bg-gray-100">—</td>
+                              </tr>
                               {(() => {
                                 const baseChecklist = (
                                   applicationPreview.application.isKinship

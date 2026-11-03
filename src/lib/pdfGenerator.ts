@@ -10,6 +10,7 @@ import {
   type ScholarshipFeeBreakdown,
 } from "@/lib/scholarshipLetter";
 import {
+  type ScholarshipDiscountTablePdf,
   type ScholarshipDiscountTierPdfRow,
 } from "@/lib/scholarshipDiscount";
 import { readFileSync } from "fs";
@@ -84,6 +85,7 @@ export interface ScholarshipLetterPDFData {
   medal?: string | null;
   feeBreakdown?: ScholarshipFeeBreakdown | null;
   discountTiers?: ScholarshipDiscountTierPdfRow[];
+  discountTable?: ScholarshipDiscountTablePdf | null;
   documentsAttached: string[];
   sapCode: string;
   registrationNo?: string | null;
@@ -609,59 +611,63 @@ function createApplicationFormRenderer(
     });
   };
 
-  // ── Fixed discount-tier tables (per reference design) ──────────────────────
-  type DiscountTableRow = { cgpa: string; admissionFee: string; tuitionOrKinship: string };
-  type DiscountTableDef = { title: string; thirdColHeader: string; rows: DiscountTableRow[] };
-
-  const DISCOUNT_TABLES: Record<string, DiscountTableDef> = {
-    masters: {
-      title: "Masters",
-      thirdColHeader: "Tuition Fee Discount (CGPA Based)",
-      rows: [
-        { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "15%" },
-        { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "25%" },
-        { cgpa: "3.51 – 3.75", admissionFee: "50%", tuitionOrKinship: "35%" },
-        { cgpa: "3.76 – 4.00", admissionFee: "75%", tuitionOrKinship: "50%" },
-      ],
-    },
-    phd: {
-      title: "PhD",
-      thirdColHeader: "Tuition Fee Discount (CGPA Based)",
-      rows: [
-        { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "10%" },
-        { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "15%" },
-        { cgpa: "3.51 – 3.75", admissionFee: "50%", tuitionOrKinship: "20%" },
-        { cgpa: "3.76 – 4.00", admissionFee: "75%", tuitionOrKinship: "25%" },
-      ],
-    },
-    "kinship-masters": {
-      title: "Kinship Masters",
-      thirdColHeader: "Kinship Discount\n(Tuition Fee)",
-      rows: [
-        { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "10%" },
-        { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "11.50%" },
-        { cgpa: "3.51 – 3.75", admissionFee: "50%", tuitionOrKinship: "13%" },
-        { cgpa: "3.76 – 4.00", admissionFee: "75%", tuitionOrKinship: "15%" },
-      ],
-    },
-    "kinship-phd": {
-      title: "Kinship PhD",
-      thirdColHeader: "Kinship Discount",
-      rows: [
-        { cgpa: "3.00 – 3.25", admissionFee: "20%", tuitionOrKinship: "10%" },
-        { cgpa: "3.26 – 3.50", admissionFee: "35%", tuitionOrKinship: "11.50%" },
-        { cgpa: "3.51 – 3.75", admissionFee: "50%", tuitionOrKinship: "13%" },
-        { cgpa: "3.76 – 4.00", admissionFee: "75%", tuitionOrKinship: "15%" },
-      ],
-    },
-  };
-
-  const CGPA_RANGES: Array<[number, number]> = [
+  // ── Discount-tier tables (DB-driven via `discountTable`, static fallback) ───
+  const FALLBACK_CGPA_RANGES: Array<[number, number]> = [
     [3.00, 3.25],
     [3.26, 3.50],
     [3.51, 3.75],
     [3.76, 4.00],
   ];
+
+  const fallbackRow = (i: number, discounts: string[]) => ({
+    cgpaMin: FALLBACK_CGPA_RANGES[i][0],
+    cgpaMax: FALLBACK_CGPA_RANGES[i][1],
+    cgpa: `${FALLBACK_CGPA_RANGES[i][0].toFixed(2)} – ${FALLBACK_CGPA_RANGES[i][1].toFixed(2)}`,
+    discounts,
+  });
+
+  const DISCOUNT_TABLES: Record<string, ScholarshipDiscountTablePdf> = {
+    masters: {
+      title: "Masters",
+      discountColHeaders: ["Admission Fee Discount", "Tuition Fee Discount (CGPA Based)"],
+      rows: [
+        fallbackRow(0, ["20%", "15%"]),
+        fallbackRow(1, ["35%", "25%"]),
+        fallbackRow(2, ["50%", "35%"]),
+        fallbackRow(3, ["75%", "50%"]),
+      ],
+    },
+    phd: {
+      title: "PhD",
+      discountColHeaders: ["Admission Fee Discount", "Tuition Fee Discount (CGPA Based)"],
+      rows: [
+        fallbackRow(0, ["20%", "10%"]),
+        fallbackRow(1, ["35%", "15%"]),
+        fallbackRow(2, ["50%", "20%"]),
+        fallbackRow(3, ["75%", "25%"]),
+      ],
+    },
+    "kinship-masters": {
+      title: "Kinship Masters",
+      discountColHeaders: ["Admission Fee Discount", "Kinship Discount\n(Tuition Fee)"],
+      rows: [
+        fallbackRow(0, ["20%", "10%"]),
+        fallbackRow(1, ["35%", "11.50%"]),
+        fallbackRow(2, ["50%", "13%"]),
+        fallbackRow(3, ["75%", "15%"]),
+      ],
+    },
+    "kinship-phd": {
+      title: "Kinship PhD",
+      discountColHeaders: ["Admission Fee Discount", "Kinship Discount"],
+      rows: [
+        fallbackRow(0, ["20%", "10%"]),
+        fallbackRow(1, ["35%", "11.50%"]),
+        fallbackRow(2, ["50%", "13%"]),
+        fallbackRow(3, ["75%", "15%"]),
+      ],
+    },
+  };
 
   /**
    * Pick one of the 4 fixed discount tables based on discount type and applying-for level.
@@ -702,31 +708,35 @@ function createApplicationFormRenderer(
     applyingFor: string | null | undefined,
     applicantCgpa: string | null | undefined,
     bottomLimit: number,
+    dynamicTable?: ScholarshipDiscountTablePdf | null,
   ) => {
-    const tableKey = resolveDiscountTableKey(discountType, applyingFor);
-    const tableDef = DISCOUNT_TABLES[tableKey ?? "masters"];
+    const tableDef =
+      dynamicTable ??
+      DISCOUNT_TABLES[resolveDiscountTableKey(discountType, applyingFor) ?? "masters"];
     const rowH = metrics.tableRowH;
-    const cgpaNum = Number(String(applicantCgpa ?? "").replace(/[^0-9.]/g, ""));
+    // cgpaLastDegree can be "3.4/95%" (CGPA/Grade) — take the first numeric token.
+    const cgpaMatch = String(applicantCgpa ?? "").match(/\d+(?:\.\d+)?/);
+    const cgpaNum = cgpaMatch ? Number(cgpaMatch[0]) : NaN;
 
     // Determine which row index matches the applicant's CGPA
     let appliedRowIdx = -1;
-    if (Number.isFinite(cgpaNum) && cgpaNum >= 3.0) {
-      for (let i = 0; i < CGPA_RANGES.length; i++) {
-        if (cgpaNum >= CGPA_RANGES[i][0] && cgpaNum <= CGPA_RANGES[i][1]) {
+    if (Number.isFinite(cgpaNum)) {
+      for (let i = 0; i < tableDef.rows.length; i++) {
+        if (cgpaNum >= tableDef.rows[i].cgpaMin && cgpaNum <= tableDef.rows[i].cgpaMax) {
           appliedRowIdx = i;
           break;
         }
       }
     }
 
-    // Column widths: CGPA | Admission Fee Discount | Tuition/Kinship Discount | Applied (✅)
+    // Column widths: CGPA | 1–2 discount columns | Applied (checkbox)
+    const nDiscCols = Math.max(1, tableDef.discountColHeaders.length);
     const cgpaColW = W * 0.18;
-    const admColW = W * 0.30;
-    const tuiColW = W * 0.35;
-    const appliedColW = W - cgpaColW - admColW - tuiColW;
-    const admX = m + cgpaColW;
-    const tuiX = admX + admColW;
-    const appliedX = tuiX + tuiColW;
+    const appliedColW = W * 0.17;
+    const discColW = (W - cgpaColW - appliedColW) / nDiscCols;
+    const discX: number[] = [];
+    for (let i = 0; i < nDiscCols; i++) discX.push(m + cgpaColW + i * discColW);
+    const appliedX = m + cgpaColW + nDiscCols * discColW;
 
     // ── Table title (underlined, italic) ──
     doc.setFont("helvetica", "bolditalic");
@@ -736,9 +746,10 @@ function createApplicationFormRenderer(
     y += 4;
 
     // ── Header row ──
-    // Use a taller header if the third column header is multi-line
-    const thirdColLines = tableDef.thirdColHeader.split("\n");
-    const headerH = thirdColLines.length > 1 ? rowH * 1.6 : rowH;
+    // Use a taller header if any discount column header is multi-line
+    const discHeaderLines = tableDef.discountColHeaders.map((h) => String(h).split("\n"));
+    const maxHeaderLines = Math.max(1, ...discHeaderLines.map((l) => l.length));
+    const headerH = maxHeaderLines > 1 ? rowH * 1.6 : rowH;
 
     doc.setFillColor(...THEME.colors.brandLight);
     doc.rect(m, y, W, headerH, "F");
@@ -746,27 +757,40 @@ function createApplicationFormRenderer(
     doc.setLineWidth(0.15);
     doc.rect(m, y, W, headerH, "S");
     // Vertical rules in header
-    drawVRule(admX, y, y + headerH);
-    drawVRule(tuiX, y, y + headerH);
+    discX.forEach((x) => drawVRule(x, y, y + headerH));
     drawVRule(appliedX, y, y + headerH);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(metrics.fontTiny);
     doc.setTextColor(...THEME.colors.text);
     doc.text("CGPA", m + cgpaColW / 2, y + headerH * 0.58, { align: "center" });
-    doc.text("Admission Fee Discount", admX + admColW / 2, y + headerH * 0.58, { align: "center" });
-    if (thirdColLines.length > 1) {
-      const lineH = headerH / (thirdColLines.length + 0.6);
-      thirdColLines.forEach((line, li) => {
-        doc.text(line, tuiX + tuiColW / 2, y + lineH * (li + 1), { align: "center" });
-      });
-    } else {
-      doc.text(tableDef.thirdColHeader, tuiX + tuiColW / 2, y + headerH * 0.58, { align: "center" });
-    }
+    discHeaderLines.forEach((lines, ci) => {
+      const cx = discX[ci] + discColW / 2;
+      if (lines.length > 1) {
+        const lineH = headerH / (lines.length + 0.6);
+        lines.forEach((line, li) => {
+          doc.text(line, cx, y + lineH * (li + 1), { align: "center" });
+        });
+      } else {
+        doc.text(lines[0] ?? "", cx, y + headerH * 0.58, { align: "center" });
+      }
+    });
     doc.text("Applied", appliedX + appliedColW / 2, y + headerH * 0.58, { align: "center" });
     y += headerH;
 
     // ── Data rows ──
+    if (tableDef.rows.length === 0) {
+      doc.setDrawColor(...THEME.colors.border);
+      doc.setLineWidth(0.1);
+      doc.rect(m, y, W, rowH, "S");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(metrics.fontTiny);
+      doc.setTextColor(...THEME.colors.muted);
+      doc.text("No discount tiers configured.", m + 2, y + rowH * 0.72);
+      y += rowH;
+      return;
+    }
+
     tableDef.rows.forEach((row, i) => {
       if (y + rowH > bottomLimit) return;
       const isApplied = i === appliedRowIdx;
@@ -781,16 +805,18 @@ function createApplicationFormRenderer(
       doc.setDrawColor(...THEME.colors.border);
       doc.setLineWidth(0.1);
       doc.rect(m, y, W, rowH, "S");
-      drawVRule(admX, y, y + rowH);
-      drawVRule(tuiX, y, y + rowH);
+      discX.forEach((x) => drawVRule(x, y, y + rowH));
       drawVRule(appliedX, y, y + rowH);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(metrics.fontTiny);
       doc.setTextColor(...THEME.colors.text);
       doc.text(row.cgpa, m + cgpaColW / 2, y + rowH * 0.72, { align: "center" });
-      doc.text(row.admissionFee, admX + admColW / 2, y + rowH * 0.72, { align: "center" });
-      doc.text(row.tuitionOrKinship, tuiX + tuiColW / 2, y + rowH * 0.72, { align: "center" });
+      for (let ci = 0; ci < nDiscCols; ci++) {
+        doc.text(row.discounts[ci] ?? "—", discX[ci] + discColW / 2, y + rowH * 0.72, {
+          align: "center",
+        });
+      }
 
       // Applied indicator: checkbox (checked for the matching row)
       drawCheckbox(
@@ -897,11 +923,12 @@ function estimateScholarshipFormHeight(
   data: ScholarshipLetterPDFData,
   metrics: FormMetrics,
 ): number {
-  const tierRows = 4; // fixed 4-row discount table (per reference design)
+  // Dynamic table uses its DB row count; static fallback tables have 4 rows
+  const tierRows = Math.max(1, data.discountTable?.rows.length ?? 4);
   let rows = 1; // meta
   rows += 2; // section A
   rows += data.isKinship ? 3 : 3;
-  if (!data.isKinship) rows += 1; // admission ref
+  rows += 1; // admission ref
   rows += data.isKinship ? 5 : 3; // section C
   rows += 7; // declaration section (disclosure + discount terms, long wrapped text)
   const sections = 6;
@@ -1100,6 +1127,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
             `${data.highAchieverPercent}%`,
           );
         }
+        form.drawFullRow("Admission Reference No", data.admissionApplicationRef);
       } else if (isMergedScholarshipSlug(data.discountType)) {
         form.drawFieldPair(
           "Scholarship Type",
@@ -1152,7 +1180,13 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       }
 
       const tierBottomLimit = form.contentBottom - 90;
-      form.drawDiscountTierTable(data.discountType, data.applyingFor, data.cgpaLastDegree, tierBottomLimit);
+      form.drawDiscountTierTable(
+        data.discountType,
+        data.applyingFor,
+        data.cgpaLastDegree,
+        tierBottomLimit,
+        data.discountTable,
+      );
 
       form.drawSection(
         "c",

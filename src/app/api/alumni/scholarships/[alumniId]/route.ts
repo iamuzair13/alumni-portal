@@ -17,16 +17,19 @@ import {
   parseUploadedDocuments,
   resolveFeeBreakdownDisplay,
   resolveHighAchieverPercent,
+  scholarshipApplyingForFromCategory,
 } from "@/lib/scholarshipLetter";
 import { resolveStoredUploadUrl } from "@/lib/uploadsImageUrl";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import type { Session } from "next-auth";
 import {
+  buildDiscountTablePdf,
   mapTiersForPdf,
   parseCgpa,
   parseDiscountPercentValue,
   resolveDiscountPercent,
   type ScholarshipCgpaDiscountTier,
+  type ScholarshipDiscountTablePdf,
   type ScholarshipDiscountTierPdfRow,
 } from "@/lib/scholarshipDiscount";
 
@@ -109,19 +112,28 @@ async function loadDiscountTiersForPdf(
   cgpaTiers: ScholarshipCgpaDiscountTier[];
   admissionCgpaTiers: ScholarshipCgpaDiscountTier[];
   tuitionCgpaTiers: ScholarshipCgpaDiscountTier[];
+  discountTable: ScholarshipDiscountTablePdf | null;
 }> {
+  const emptyResult = {
+    tiers: [] as ScholarshipDiscountTierPdfRow[],
+    cgpaTiers: [] as ScholarshipCgpaDiscountTier[],
+    admissionCgpaTiers: [] as ScholarshipCgpaDiscountTier[],
+    tuitionCgpaTiers: [] as ScholarshipCgpaDiscountTier[],
+    discountTable: null as ScholarshipDiscountTablePdf | null,
+  };
   const slug = String(discountType || "").trim();
-  if (!slug) return { tiers: [], cgpaTiers: [], admissionCgpaTiers: [], tuitionCgpaTiers: [] };
+  if (!slug) return emptyResult;
 
   // For merged scholarship slugs, load tiers from both component categories
   if (isMergedScholarshipSlug(slug)) {
     const componentSlugs = getMergedFeeComponentSlugs(slug);
-    if (!componentSlugs) return { tiers: [], cgpaTiers: [], admissionCgpaTiers: [], tuitionCgpaTiers: [] };
+    if (!componentSlugs) return emptyResult;
 
     const allTiers: ScholarshipCgpaDiscountTier[] = [];
     const allPdfTiers: ScholarshipDiscountTierPdfRow[] = [];
     let admissionCgpaTiers: ScholarshipCgpaDiscountTier[] = [];
     let tuitionCgpaTiers: ScholarshipCgpaDiscountTier[] = [];
+    let foundCategory = false;
 
     for (const componentSlug of [componentSlugs.admissionSlug, componentSlugs.tuitionSlug]) {
       const catRows = await sql/* sql */`
@@ -133,6 +145,7 @@ async function loadDiscountTiersForPdf(
       if (!catRow) continue;
       const catId = Number(catRow.id);
       if (!Number.isFinite(catId)) continue;
+      foundCategory = true;
 
       const catLabel = String(catRow.label || "").trim() || discountCategoryLabel(componentSlug, applyFor);
       const tierRows = await sql/* sql */`
@@ -162,22 +175,40 @@ async function loadDiscountTiersForPdf(
       }
     }
 
-    return { tiers: allPdfTiers, cgpaTiers: allTiers, admissionCgpaTiers, tuitionCgpaTiers };
+    const discountTable = foundCategory
+      ? buildDiscountTablePdf({
+          title:
+            scholarshipApplyingForFromCategory(slug) ??
+            (String(applyFor || "").trim() || discountCategoryLabel(slug, applyFor)),
+          columns: [
+            { header: "Admission Fee Discount", tiers: admissionCgpaTiers },
+            { header: "Tuition Fee Discount (CGPA Based)", tiers: tuitionCgpaTiers },
+          ],
+        })
+      : null;
+
+    return { tiers: allPdfTiers, cgpaTiers: allTiers, admissionCgpaTiers, tuitionCgpaTiers, discountTable };
   }
 
+  // Legacy kinship applications may store "kinship" — resolve to the current kinship category.
+  const lookupSlug = slug.toLowerCase() === "kinship" ? "kinship-15" : slug;
+
   const categoryRows = await sql/* sql */`
-    SELECT id, label FROM public.scholarship_discount_categories
-    WHERE LOWER(slug) = LOWER(${slug})
+    SELECT id, label, flow_type FROM public.scholarship_discount_categories
+    WHERE LOWER(slug) = LOWER(${lookupSlug})
     LIMIT 1
   `;
-  const categoryRow = categoryRows[0] as { id: unknown; label?: unknown } | undefined;
-  if (!categoryRow) return { tiers: [], cgpaTiers: [], admissionCgpaTiers: [], tuitionCgpaTiers: [] };
+  const categoryRow = categoryRows[0] as
+    | { id: unknown; label?: unknown; flow_type?: unknown }
+    | undefined;
+  if (!categoryRow) return emptyResult;
 
   const categoryId = Number(categoryRow.id);
-  if (!Number.isFinite(categoryId)) return { tiers: [], cgpaTiers: [], admissionCgpaTiers: [], tuitionCgpaTiers: [] };
+  if (!Number.isFinite(categoryId)) return emptyResult;
 
   const categoryLabel =
     String(categoryRow.label || "").trim() || discountCategoryLabel(discountType, applyFor);
+  const flowType = String(categoryRow.flow_type || "").toLowerCase();
 
   const tierRows = await sql/* sql */`
     SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
@@ -197,11 +228,33 @@ async function loadDiscountTiersForPdf(
     }),
   );
 
+  const applyForLabel = String(applyFor || "").trim();
+  const discountTable = buildDiscountTablePdf({
+    title:
+      flowType === "kinship"
+        ? applyForLabel
+          ? `Kinship ${applyForLabel}`
+          : "Kinship Scholarship"
+        : categoryLabel,
+    columns: [
+      {
+        header:
+          flowType === "kinship"
+            ? "Kinship Discount\n(Tuition Fee)"
+            : /admission/i.test(categoryLabel)
+              ? "Admission Fee Discount"
+              : "Tuition Fee Discount (CGPA Based)",
+        tiers: cgpaTiers,
+      },
+    ],
+  });
+
   return {
     tiers: mapTiersForPdf(cgpaTiers, categoryLabel),
     cgpaTiers,
     admissionCgpaTiers: [],
     tuitionCgpaTiers: cgpaTiers,
+    discountTable,
   };
 }
 
@@ -605,7 +658,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
     };
 
     if (mode === "letter-pdf") {
-      const { tiers: discountTiers, cgpaTiers, admissionCgpaTiers, tuitionCgpaTiers } =
+      const { tiers: discountTiers, cgpaTiers, admissionCgpaTiers, tuitionCgpaTiers, discountTable } =
         await loadDiscountTiersForPdf(app.discount_type, app.apply_for);
       const alumniCgpa = parseCgpa(app.cgpa);
 
@@ -666,6 +719,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         medal: applicationLetter.medal,
         feeBreakdown: resolvedFeeBreakdown,
         discountTiers,
+        discountTable,
         documentsAttached: applicationLetter.documentsAttached,
         sapCode: applicationLetter.sapCode,
         registrationNo: applicationLetter.registrationNo ?? null,
@@ -743,13 +797,80 @@ export async function PATCH(
     }
 
     const body = await request.json().catch(() => ({}));
-    const { status, rejectionReason, documentChecklist, admissionApplicationRef, withdrawalReason } = body as {
+    const { status, rejectionReason, documentChecklist, admissionApplicationRef, withdrawalReason, kinshipGrade } = body as {
       status?: string;
       rejectionReason?: string;
       documentChecklist?: Array<{ label: string; verified: "YES" | "NO" }>;
       admissionApplicationRef?: string | null;
       withdrawalReason?: string;
+      kinshipGrade?: { gradeType?: string | null; gradeValue?: string | number | null } | null;
     };
+
+    // Admin-only update of kin's grade (kinship applications only; lives in kinship_details JSONB)
+    if (kinshipGrade !== undefined) {
+      const gradeType = String(kinshipGrade?.gradeType ?? "").trim();
+      const gradeValue = String(kinshipGrade?.gradeValue ?? "").trim();
+
+      if (gradeType !== "CGPA" && gradeType !== "Percentage") {
+        return NextResponse.json({ error: "Grade type must be CGPA or Percentage" }, { status: 400 });
+      }
+      const gradeNum = Number(gradeValue);
+      if (!gradeValue || !Number.isFinite(gradeNum) || gradeNum < 0) {
+        return NextResponse.json({ error: "Enter a valid grade value" }, { status: 400 });
+      }
+      if (gradeType === "CGPA" && gradeNum > 4) {
+        return NextResponse.json({ error: "CGPA cannot exceed 4.00" }, { status: 400 });
+      }
+      if (gradeType === "Percentage" && gradeNum > 100) {
+        return NextResponse.json({ error: "Percentage cannot exceed 100" }, { status: 400 });
+      }
+
+      const rows = await sql/* sql */`
+        SELECT discount_type, kinship_details
+        FROM public.alumni_scholarships
+        WHERE id = ${alumniIdNum}
+        LIMIT 1
+      `;
+      const row = rows[0] as { discount_type: string | null; kinship_details: unknown } | undefined;
+      if (!row) {
+        return NextResponse.json({ error: "Application not found" }, { status: 404 });
+      }
+      if (!isScholarshipKinshipCategory(row.discount_type)) {
+        return NextResponse.json(
+          { error: "Kinship grade can only be updated for kinship applications" },
+          { status: 400 },
+        );
+      }
+
+      const details = {
+        ...((parseMastersDetails(row.kinship_details) ?? {}) as Record<string, unknown>),
+      };
+      details.kinshipGradeType = gradeType;
+      details.kinshipGradeValue = gradeValue;
+
+      await sql/* sql */`
+        UPDATE public.alumni_scholarships
+        SET kinship_details = ${JSON.stringify(details)}
+        WHERE id = ${alumniIdNum}
+      `;
+
+      await logAdminAction({
+        session,
+        req: request,
+        input: {
+          action: "scholarships.update_status",
+          entityType: "alumni_scholarships",
+          entityId: alumniIdNum,
+          success: true,
+          metadata: { alumniId: alumniIdNum, detail: "kinshipGrade updated", gradeType, gradeValue },
+        },
+      });
+
+      return NextResponse.json(
+        { success: true, kinshipGrade: { gradeType, gradeValue } },
+        { status: 200 },
+      );
+    }
 
     // Admin-only update of Admission Reference No / Application ID
     if (admissionApplicationRef !== undefined) {

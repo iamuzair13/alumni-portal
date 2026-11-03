@@ -1,6 +1,6 @@
 /** CGPA tier resolution and validation for scholarship discount categories. */
 
-import { discountCategoryLabel } from "@/lib/scholarshipLetter";
+import { discountCategoryLabel } from "./scholarshipLetter";
 
 export type ScholarshipFlowType = "fee_discount" | "kinship";
 
@@ -170,6 +170,66 @@ export function mapTiersForPdf(
     title: formatTierDiscountTitle(categoryLabel, Number(t.discount_percent)),
     criteria: formatTierCriteria(t.cgpa_min, t.cgpa_max),
   }));
+}
+
+/**
+ * Render model for the scholarship letter PDF discount-tier table.
+ * Rows carry numeric bounds so the renderer can mark the applicant's CGPA row.
+ */
+export type ScholarshipDiscountTablePdf = {
+  title: string;
+  /** Headers for the 1–2 discount columns rendered between CGPA and the Applied checkbox. */
+  discountColHeaders: string[];
+  rows: Array<{
+    cgpaMin: number;
+    cgpaMax: number;
+    /** Formatted CGPA range label, e.g. "3.00 – 3.25". */
+    cgpa: string;
+    /** Display value per discount column, aligned with `discountColHeaders`. */
+    discounts: string[];
+  }>;
+};
+
+/**
+ * Builds the PDF tier-table model from category CGPA tiers.
+ * Columns with no tiers are dropped; the row set is the union of all CGPA ranges
+ * across columns (matched by exact min/max, so ranges missing in a column show "—").
+ */
+export function buildDiscountTablePdf(opts: {
+  title: string;
+  columns: Array<{ header: string; tiers: ScholarshipCgpaDiscountTier[] }>;
+}): ScholarshipDiscountTablePdf {
+  const withTiers = opts.columns.filter((c) => c.tiers.length > 0);
+  const columns = withTiers.length > 0 ? withTiers : opts.columns.slice(0, 1);
+
+  const ranges = new Map<string, { min: number; max: number }>();
+  for (const col of columns) {
+    for (const t of col.tiers) {
+      const min = Number(t.cgpa_min);
+      const max = Number(t.cgpa_max);
+      const key = `${min}-${max}`;
+      if (!ranges.has(key)) ranges.set(key, { min, max });
+    }
+  }
+  const sortedRanges = [...ranges.values()].sort((a, b) => a.min - b.min || a.max - b.max);
+
+  const rows = sortedRanges.map((r) => ({
+    cgpaMin: r.min,
+    cgpaMax: r.max,
+    cgpa: `${r.min.toFixed(2)} – ${r.max.toFixed(2)}`,
+    discounts: columns.map((col) => {
+      const tier = col.tiers.find(
+        (t) => Number(t.cgpa_min) === r.min && Number(t.cgpa_max) === r.max,
+      );
+      return tier ? formatDiscountPercentDisplay(Number(tier.discount_percent)) : "—";
+    }),
+  }));
+
+  return {
+    title: String(opts.title || "").trim() || "Discount",
+    discountColHeaders: columns.map((c) => c.header),
+    rows,
+  };
 }
 
 export function slugifyCategoryLabel(label: string): string {
