@@ -25,7 +25,7 @@ export default function PageBanner({
       description={description}
       breadcrumbs={breadcrumbs}
       actions={actions}
-      className="-mx-4 sm:-mx-6 lg:-mx-8 mb-6 bg-white dark:bg-gray-900"
+      className="mb-6 bg-white dark:bg-gray-900"
     />
   );
 }

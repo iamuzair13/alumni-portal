@@ -4,6 +4,7 @@ import { sql } from "@/lib/dbconnect";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import {
+  normalizeGradeType,
   parseFlowType,
   slugifyCategoryLabel,
   type ScholarshipCgpaDiscountTier,
@@ -28,6 +29,7 @@ function mapTier(row: Record<string, unknown>): ScholarshipCgpaDiscountTier {
     category_id: Number(row.category_id),
     cgpa_min: Number(row.cgpa_min),
     cgpa_max: Number(row.cgpa_max),
+    grade_type: normalizeGradeType(row.grade_type),
     discount_percent: Number(row.discount_percent),
     sort_order: Number(row.sort_order) || 0,
   };
@@ -63,7 +65,7 @@ export async function GET(req: NextRequest) {
     }
 
     const tierRows = await sql/* sql */`
-      SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+      SELECT id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
       FROM public.scholarship_cgpa_discount_tiers
       WHERE category_id = ANY(${categoryIds}::int[])
       ORDER BY sort_order ASC, id ASC

@@ -4,9 +4,17 @@ import { sql } from "@/lib/dbconnect";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import {
+  normalizeGradeType,
   validateTierRanges,
   type ScholarshipCgpaDiscountTier,
+  type ScholarshipGradeType,
 } from "@/lib/scholarshipDiscount";
+
+function parseGradeTypeInput(value: unknown): ScholarshipGradeType | null {
+  if (value == null || value === "") return null;
+  const s = String(value).trim().toLowerCase();
+  return s === "cgpa" || s === "percentage" ? s : null;
+}
 
 function mapTier(row: Record<string, unknown>): ScholarshipCgpaDiscountTier {
   return {
@@ -14,6 +22,7 @@ function mapTier(row: Record<string, unknown>): ScholarshipCgpaDiscountTier {
     category_id: Number(row.category_id),
     cgpa_min: Number(row.cgpa_min),
     cgpa_max: Number(row.cgpa_max),
+    grade_type: normalizeGradeType(row.grade_type),
     discount_percent: Number(row.discount_percent),
     sort_order: Number(row.sort_order) || 0,
   };
@@ -21,7 +30,7 @@ function mapTier(row: Record<string, unknown>): ScholarshipCgpaDiscountTier {
 
 async function loadTiersForCategory(categoryId: number): Promise<ScholarshipCgpaDiscountTier[]> {
   const rows = await sql/* sql */`
-    SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+    SELECT id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
     FROM public.scholarship_cgpa_discount_tiers
     WHERE category_id = ${categoryId}
     ORDER BY sort_order ASC, id ASC
@@ -63,6 +72,7 @@ export async function POST(req: NextRequest) {
       categoryId?: number;
       cgpaMin?: number;
       cgpaMax?: number;
+      gradeType?: string;
       discountPercent?: number;
       sortOrder?: number;
     };
@@ -70,18 +80,22 @@ export async function POST(req: NextRequest) {
     const categoryId = Number(body.categoryId);
     const cgpaMin = Number(body.cgpaMin);
     const cgpaMax = Number(body.cgpaMax);
+    const gradeType = parseGradeTypeInput(body.gradeType) ?? "cgpa";
     const discountPercent = Number(body.discountPercent);
     const sortOrder = Number.isFinite(body.sortOrder as number) ? Number(body.sortOrder) : 0;
 
     if (!Number.isFinite(categoryId) || categoryId < 1) {
       return NextResponse.json({ error: "categoryId is required" }, { status: 400 });
     }
+    if (body.gradeType != null && parseGradeTypeInput(body.gradeType) == null) {
+      return NextResponse.json({ error: "gradeType must be cgpa or percentage" }, { status: 400 });
+    }
     if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100) {
       return NextResponse.json({ error: "discountPercent must be between 0 and 100" }, { status: 400 });
     }
 
     const existing = await loadTiersForCategory(categoryId);
-    const candidate = { cgpa_min: cgpaMin, cgpa_max: cgpaMax };
+    const candidate = { cgpa_min: cgpaMin, cgpa_max: cgpaMax, grade_type: gradeType };
     const overlapErr = validateTierRanges([...existing, candidate]);
     if (overlapErr) {
       return NextResponse.json({ error: overlapErr }, { status: 400 });
@@ -89,10 +103,10 @@ export async function POST(req: NextRequest) {
 
     const rows = await sql/* sql */`
       INSERT INTO public.scholarship_cgpa_discount_tiers (
-        category_id, cgpa_min, cgpa_max, discount_percent, sort_order, updated_at
+        category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order, updated_at
       )
-      VALUES (${categoryId}, ${cgpaMin}, ${cgpaMax}, ${discountPercent}, ${sortOrder}, NOW())
-      RETURNING id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+      VALUES (${categoryId}, ${cgpaMin}, ${cgpaMax}, ${gradeType}, ${discountPercent}, ${sortOrder}, NOW())
+      RETURNING id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
     `;
 
     const created = mapTier((rows?.[0] as Record<string, unknown>) ?? {});
@@ -104,7 +118,7 @@ export async function POST(req: NextRequest) {
         entityType: "scholarship_cgpa_tiers",
         success: true,
         entityId: created.id,
-        metadata: { categoryId, cgpaMin, cgpaMax, discountPercent },
+        metadata: { categoryId, cgpaMin, cgpaMax, gradeType, discountPercent },
       },
     });
 
@@ -139,6 +153,7 @@ export async function PUT(req: NextRequest) {
       id?: number;
       cgpaMin?: number;
       cgpaMax?: number;
+      gradeType?: string;
       discountPercent?: number;
       sortOrder?: number;
     };
@@ -149,7 +164,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const curRows = await sql/* sql */`
-      SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+      SELECT id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
       FROM public.scholarship_cgpa_discount_tiers
       WHERE id = ${id}
       LIMIT 1
@@ -162,6 +177,13 @@ export async function PUT(req: NextRequest) {
     const categoryId = Number(cur.category_id);
     const cgpaMin = body.cgpaMin !== undefined ? Number(body.cgpaMin) : Number(cur.cgpa_min);
     const cgpaMax = body.cgpaMax !== undefined ? Number(body.cgpaMax) : Number(cur.cgpa_max);
+    const gradeType =
+      body.gradeType !== undefined
+        ? parseGradeTypeInput(body.gradeType)
+        : normalizeGradeType(cur.grade_type);
+    if (gradeType == null) {
+      return NextResponse.json({ error: "gradeType must be cgpa or percentage" }, { status: 400 });
+    }
     const discountPercent =
       body.discountPercent !== undefined ? Number(body.discountPercent) : Number(cur.discount_percent);
     const sortOrder =
@@ -177,7 +199,7 @@ export async function PUT(req: NextRequest) {
 
     const existing = await loadTiersForCategory(categoryId);
     const others = existing.filter((t) => t.id !== id);
-    const overlapErr = validateTierRanges([...others, { id, cgpa_min: cgpaMin, cgpa_max: cgpaMax }]);
+    const overlapErr = validateTierRanges([...others, { id, cgpa_min: cgpaMin, cgpa_max: cgpaMax, grade_type: gradeType }]);
     if (overlapErr) {
       return NextResponse.json({ error: overlapErr }, { status: 400 });
     }
@@ -187,11 +209,12 @@ export async function PUT(req: NextRequest) {
       SET
         cgpa_min = ${cgpaMin},
         cgpa_max = ${cgpaMax},
+        grade_type = ${gradeType},
         discount_percent = ${discountPercent},
         sort_order = ${sortOrder},
         updated_at = NOW()
       WHERE id = ${id}
-      RETURNING id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+      RETURNING id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
     `;
 
     const updated = mapTier((rows?.[0] as Record<string, unknown>) ?? {});
@@ -203,7 +226,7 @@ export async function PUT(req: NextRequest) {
         entityType: "scholarship_cgpa_tiers",
         success: true,
         entityId: id,
-        metadata: { cgpaMin, cgpaMax, discountPercent },
+        metadata: { cgpaMin, cgpaMax, gradeType, discountPercent },
       },
     });
 

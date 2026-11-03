@@ -76,6 +76,8 @@ export interface ScholarshipLetterPDFData {
   applyingFor: string;
   previousDegree: string;
   cgpaLastDegree: string;
+  /** Applicant's grades keyed by scale — marks the matching row in the discount table. */
+  applicantGrades?: { cgpa?: number | null; percentage?: number | null };
   requestedDiscount: string;
   appliedDiscountPercent?: number | null;
   admissionFeePercent?: number | null;
@@ -706,7 +708,7 @@ function createApplicationFormRenderer(
   const drawDiscountTierTable = (
     discountType: string | null | undefined,
     applyingFor: string | null | undefined,
-    applicantCgpa: string | null | undefined,
+    applicantGrades: { cgpa?: number | null; percentage?: number | null } | undefined,
     bottomLimit: number,
     dynamicTable?: ScholarshipDiscountTablePdf | null,
   ) => {
@@ -714,18 +716,15 @@ function createApplicationFormRenderer(
       dynamicTable ??
       DISCOUNT_TABLES[resolveDiscountTableKey(discountType, applyingFor) ?? "masters"];
     const rowH = metrics.tableRowH;
-    // cgpaLastDegree can be "3.4/95%" (CGPA/Grade) — take the first numeric token.
-    const cgpaMatch = String(applicantCgpa ?? "").match(/\d+(?:\.\d+)?/);
-    const cgpaNum = cgpaMatch ? Number(cgpaMatch[0]) : NaN;
 
-    // Determine which row index matches the applicant's CGPA
+    // Each row resolves against the applicant's value in the row's own grade scale.
+    // Fallback rows carry no gradeType and resolve against cgpa.
     let appliedRowIdx = -1;
-    if (Number.isFinite(cgpaNum)) {
-      for (let i = 0; i < tableDef.rows.length; i++) {
-        if (cgpaNum >= tableDef.rows[i].cgpaMin && cgpaNum <= tableDef.rows[i].cgpaMax) {
-          appliedRowIdx = i;
-          break;
-        }
+    for (let i = 0; i < tableDef.rows.length; i++) {
+      const v = (applicantGrades ?? {})[tableDef.rows[i].gradeType ?? "cgpa"];
+      if (v != null && Number.isFinite(v) && v >= tableDef.rows[i].cgpaMin && v <= tableDef.rows[i].cgpaMax) {
+        appliedRowIdx = i;
+        break;
       }
     }
 
@@ -763,7 +762,7 @@ function createApplicationFormRenderer(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(metrics.fontTiny);
     doc.setTextColor(...THEME.colors.text);
-    doc.text("CGPA", m + cgpaColW / 2, y + headerH * 0.58, { align: "center" });
+    doc.text(tableDef.cgpaHeader ?? "CGPA", m + cgpaColW / 2, y + headerH * 0.58, { align: "center" });
     discHeaderLines.forEach((lines, ci) => {
       const cx = discX[ci] + discColW / 2;
       if (lines.length > 1) {
@@ -1183,7 +1182,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       form.drawDiscountTierTable(
         data.discountType,
         data.applyingFor,
-        data.cgpaLastDegree,
+        data.applicantGrades,
         tierBottomLimit,
         data.discountTable,
       );

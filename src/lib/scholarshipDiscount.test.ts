@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDiscountTablePdf } from "./scholarshipDiscount";
+import { buildDiscountTablePdf, resolveDiscountPercent } from "./scholarshipDiscount";
 
 const adm = [
   { id: 1, category_id: 1, cgpa_min: 3.0, cgpa_max: 3.25, discount_percent: 20, sort_order: 0 },
@@ -26,9 +26,11 @@ describe("buildDiscountTablePdf", () => {
     expect(t.rows[0]).toEqual({
       cgpaMin: 3.0,
       cgpaMax: 3.25,
+      gradeType: "cgpa",
       cgpa: "3.00 – 3.25",
       discounts: ["20%", "15%"],
     });
+    expect(t.cgpaHeader).toBe("CGPA");
   });
 
   it("renders a single-column table for one category", () => {
@@ -45,7 +47,27 @@ describe("buildDiscountTablePdf", () => {
     });
     expect(t.discountColHeaders).toHaveLength(1);
     expect(t.rows).toEqual([
-      { cgpaMin: 0, cgpaMax: 4, cgpa: "0.00 – 4.00", discounts: ["15%"] },
+      { cgpaMin: 0, cgpaMax: 4, gradeType: "cgpa", cgpa: "0.00 – 4.00", discounts: ["15%"] },
+    ]);
+  });
+
+  it("labels percentage tiers with % ranges and a Percentage header", () => {
+    const t = buildDiscountTablePdf({
+      title: "Kinship",
+      columns: [
+        {
+          header: "Kinship Discount",
+          tiers: [
+            { id: 1, category_id: 2, cgpa_min: 60, cgpa_max: 75, grade_type: "percentage", discount_percent: 10, sort_order: 0 },
+            { id: 2, category_id: 2, cgpa_min: 76, cgpa_max: 100, grade_type: "percentage", discount_percent: 15, sort_order: 1 },
+          ],
+        },
+      ],
+    });
+    expect(t.cgpaHeader).toBe("Percentage");
+    expect(t.rows).toEqual([
+      { cgpaMin: 60, cgpaMax: 75, gradeType: "percentage", cgpa: "60% – 75%", discounts: ["10%"] },
+      { cgpaMin: 76, cgpaMax: 100, gradeType: "percentage", cgpa: "76% – 100%", discounts: ["15%"] },
     ]);
   });
 
@@ -68,8 +90,8 @@ describe("buildDiscountTablePdf", () => {
       ],
     });
     expect(t.rows).toEqual([
-      { cgpaMin: 3, cgpaMax: 3.25, cgpa: "3.00 – 3.25", discounts: ["20%", "—"] },
-      { cgpaMin: 3.26, cgpaMax: 3.5, cgpa: "3.26 – 3.50", discounts: ["—", "15%"] },
+      { cgpaMin: 3, cgpaMax: 3.25, gradeType: "cgpa", cgpa: "3.00 – 3.25", discounts: ["20%", "—"] },
+      { cgpaMin: 3.26, cgpaMax: 3.5, gradeType: "cgpa", cgpa: "3.26 – 3.50", discounts: ["—", "15%"] },
     ]);
   });
 
@@ -77,5 +99,27 @@ describe("buildDiscountTablePdf", () => {
     const t = buildDiscountTablePdf({ title: "X", columns: [{ header: "H", tiers: [] }] });
     expect(t.discountColHeaders).toEqual(["H"]);
     expect(t.rows).toEqual([]);
+  });
+});
+
+describe("resolveDiscountPercent", () => {
+  const mixed = [
+    { id: 1, category_id: 1, cgpa_min: 3.0, cgpa_max: 4, grade_type: "cgpa" as const, discount_percent: 50, sort_order: 0 },
+    { id: 2, category_id: 1, cgpa_min: 80, cgpa_max: 100, grade_type: "percentage" as const, discount_percent: 60, sort_order: 1 },
+  ];
+
+  it("matches each tier against the applicant's value in its own scale", () => {
+    expect(resolveDiscountPercent({ cgpa: 3.4 }, mixed)).toBe(50);
+    expect(resolveDiscountPercent({ percentage: 92 }, mixed)).toBe(60);
+    expect(resolveDiscountPercent({ cgpa: 3.4, percentage: 92 }, mixed)).toBe(50);
+  });
+
+  it("returns null when the applicant lacks the tier's scale", () => {
+    expect(resolveDiscountPercent({ percentage: 92 }, [mixed[0]])).toBeNull();
+    expect(resolveDiscountPercent({ cgpa: 3.4 }, [mixed[1]])).toBeNull();
+  });
+
+  it("accepts a legacy bare cgpa number", () => {
+    expect(resolveDiscountPercent(3.4, mixed)).toBe(50);
   });
 });

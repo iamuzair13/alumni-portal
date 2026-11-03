@@ -314,6 +314,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
 const UnifiedHeaderTopbar: FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileSearchDraft, setMobileSearchDraft] = useState("");
 
   const pathname = usePathname();
   const { isMobileOpen, toggleMobileSidebar } = useSidebar();
@@ -405,6 +406,7 @@ const UnifiedHeaderTopbar: FC = () => {
   }, []);
 
   return (
+    <>
     <motion.header
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -618,8 +620,11 @@ const UnifiedHeaderTopbar: FC = () => {
           </div>
         </div>
       </div>
+    </motion.header>
 
-      {/* Mobile overlay */}
+      {/* Mobile overlay — rendered outside motion.header because the header's
+          backdrop-filter/transform would otherwise become the containing block
+          for these fixed-position elements (trapping them at header height). */}
       <AnimatePresence>
         {isApplicationMenuOpen && (
           <motion.button
@@ -642,7 +647,7 @@ const UnifiedHeaderTopbar: FC = () => {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed inset-y-0 right-0 z-[60] flex w-80 flex-col gap-4 border-l border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-800 dark:bg-gray-900 lg:hidden"
+            className="fixed inset-y-0 right-0 z-[60] flex w-80 max-w-[85vw] flex-col gap-4 border-l border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-800 dark:bg-gray-900 lg:hidden"
           >
             {/* Panel header */}
             <div className="flex items-center justify-between">
@@ -661,8 +666,20 @@ const UnifiedHeaderTopbar: FC = () => {
               </button>
             </div>
 
-            {/* Mobile search */}
-            <div className="relative">
+            {/* Mobile search — SAP ID / registration no lookup (staff & viewers only;
+                alumni can't view other profiles so it's hidden for them) */}
+            {!isAlumni && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = mobileSearchDraft.trim();
+                if (!q) return;
+                setApplicationMenuOpen(false);
+                setMobileSearchDraft("");
+                router.push(`/alumni-profile?sapid=${encodeURIComponent(q)}`);
+              }}
+              className="relative"
+            >
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
                   <circle cx="11" cy="11" r="8" />
@@ -670,11 +687,16 @@ const UnifiedHeaderTopbar: FC = () => {
                 </svg>
               </div>
               <input
+                ref={inputRef}
                 type="text"
-                placeholder="Search..."
+                value={mobileSearchDraft}
+                onChange={(e) => setMobileSearchDraft(e.target.value)}
+                placeholder="Search SAP ID / Reg. No"
+                enterKeyHint="search"
                 className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-accent-500/40 focus:ring-2 focus:ring-accent-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:border-accent-400/40"
               />
-            </div>
+            </form>
+            )}
 
             {/* Mobile actions */}
             <div className="flex flex-col gap-2">
@@ -692,7 +714,7 @@ const UnifiedHeaderTopbar: FC = () => {
                   <span className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                 </div>
               )}
-              {status === "authenticated" && <UserDropdown />}
+              {status === "authenticated" && <UserDropdown inline />}
               {status === "unauthenticated" && (
                 <Link
                   href="/signin"
@@ -705,7 +727,7 @@ const UnifiedHeaderTopbar: FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.header>
+    </>
   );
 };
 

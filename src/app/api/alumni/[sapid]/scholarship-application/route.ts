@@ -24,7 +24,9 @@ import {
   resolveHighAchieverPercent,
 } from "@/lib/scholarshipLetter";
 import {
+  normalizeGradeType,
   parseCgpa,
+  parseGradeValue,
   resolveDiscountPercent,
   type ScholarshipCgpaDiscountTier,
 } from "@/lib/scholarshipDiscount";
@@ -542,7 +544,7 @@ export async function POST(
     }
 
     const tierRows = await sql/* sql */`
-      SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+      SELECT id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
       FROM public.scholarship_cgpa_discount_tiers
       WHERE category_id = ${categoryId}
       ORDER BY sort_order ASC, id ASC
@@ -553,15 +555,56 @@ export async function POST(
         category_id: Number(r.category_id),
         cgpa_min: Number(r.cgpa_min),
         cgpa_max: Number(r.cgpa_max),
+        grade_type: normalizeGradeType(r.grade_type),
         discount_percent: Number(r.discount_percent),
         sort_order: Number(r.sort_order) || 0,
       }),
     );
 
+    // Validate kinship grade type/value — the kin's grade governs kinship discounts.
+    let kinshipGradeType: string | null = null;
+    let kinshipGradeValue: string | null = null;
+    const isKinshipFlow = categoryFlowType === "kinship" || isScholarshipKinshipCategory(discountType);
+    if (isKinshipFlow) {
+      const gt = String(payload.kinshipGradeType || "").trim();
+      const gv = String(payload.kinshipGradeValue || "").trim();
+      if (!gt || !gv) {
+        return NextResponse.json({ error: "Grade type and value are required for kinship applications." }, { status: 400 });
+      }
+      if (gt !== "CGPA" && gt !== "Percentage") {
+        return NextResponse.json({ error: "Grade type must be CGPA or Percentage." }, { status: 400 });
+      }
+      const gvNum = Number(gv);
+      if (!Number.isFinite(gvNum) || gvNum < 0) {
+        return NextResponse.json({ error: "Grade value must be a valid non-negative number." }, { status: 400 });
+      }
+      if (gt === "CGPA" && gvNum > 4) {
+        return NextResponse.json({ error: "CGPA cannot exceed 4.00." }, { status: 400 });
+      }
+      if (gt === "Percentage" && gvNum > 100) {
+        return NextResponse.json({ error: "Percentage cannot exceed 100.0." }, { status: 400 });
+      }
+      kinshipGradeType = gt;
+      kinshipGradeValue = gv;
+    }
+
     // Resolve high achiever discount from alumni medal
     serverHighAchieverPercent = resolveHighAchieverPercent(alumni.medal);
 
-    let appliedDiscountPercent = resolveDiscountPercent(alumniCgpa, tiers);
+    // Kinship tiers resolve only on the kin's declared grade scale; fee-discount
+    // applications resolve on the alumni's own CGPA / marks percentage.
+    const kinType = normalizeGradeType(kinshipGradeType);
+    const kinValue = parseGradeValue(kinshipGradeValue, kinType);
+    const applicantGrades = isKinshipFlow
+      ? {
+          cgpa: kinType === "cgpa" ? kinValue : null,
+          percentage: kinType === "percentage" ? kinValue : null,
+        }
+      : {
+          cgpa: alumniCgpa,
+          percentage: parseGradeValue(gradePercent, "percentage"),
+        };
+    let appliedDiscountPercent = resolveDiscountPercent(applicantGrades, tiers);
 
     // For merged scholarship slugs, resolve both admission and tuition component categories
     if (isMergedScholarshipSlug(discountType)) {
@@ -575,7 +618,7 @@ export async function POST(
         const admCat = admCatRows?.[0] as { id: number } | undefined;
         if (admCat?.id) {
           const admTierRows = await sql/* sql */`
-            SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+            SELECT id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
             FROM public.scholarship_cgpa_discount_tiers
             WHERE category_id = ${admCat.id}
             ORDER BY sort_order ASC, id ASC
@@ -586,11 +629,12 @@ export async function POST(
               category_id: Number(r.category_id),
               cgpa_min: Number(r.cgpa_min),
               cgpa_max: Number(r.cgpa_max),
+              grade_type: normalizeGradeType(r.grade_type),
               discount_percent: Number(r.discount_percent),
               sort_order: Number(r.sort_order) || 0,
             }),
           );
-          serverAdmissionFeePercent = resolveDiscountPercent(alumniCgpa, admTiers);
+          serverAdmissionFeePercent = resolveDiscountPercent(applicantGrades, admTiers);
         }
 
         const tuiCatRows = await sql/* sql */`
@@ -601,7 +645,7 @@ export async function POST(
         const tuiCat = tuiCatRows?.[0] as { id: number } | undefined;
         if (tuiCat?.id) {
           const tuiTierRows = await sql/* sql */`
-            SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+            SELECT id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
             FROM public.scholarship_cgpa_discount_tiers
             WHERE category_id = ${tuiCat.id}
             ORDER BY sort_order ASC, id ASC
@@ -612,11 +656,12 @@ export async function POST(
               category_id: Number(r.category_id),
               cgpa_min: Number(r.cgpa_min),
               cgpa_max: Number(r.cgpa_max),
+              grade_type: normalizeGradeType(r.grade_type),
               discount_percent: Number(r.discount_percent),
               sort_order: Number(r.sort_order) || 0,
             }),
           );
-          serverTuitionFeePercent = resolveDiscountPercent(alumniCgpa, tuiTiers);
+          serverTuitionFeePercent = resolveDiscountPercent(applicantGrades, tuiTiers);
         }
 
         // Use tuition fee as the base applied discount percent (admission fee is standalone)
@@ -697,31 +742,7 @@ export async function POST(
       kinshipNameParts.length > 1 ? kinshipNameParts.slice(1).join(" ") : null;
     const kinshipCnic = payload.kinshipCnic ? String(payload.kinshipCnic).trim() : null;
 
-    // Validate kinship grade type/value when provided
-    let kinshipGradeType: string | null = null;
-    let kinshipGradeValue: string | null = null;
-    if (isScholarshipKinshipCategory(discountType)) {
-      const gt = String(payload.kinshipGradeType || "").trim();
-      const gv = String(payload.kinshipGradeValue || "").trim();
-      if (!gt || !gv) {
-        return NextResponse.json({ error: "Grade type and value are required for kinship applications." }, { status: 400 });
-      }
-      if (gt !== "CGPA" && gt !== "Percentage") {
-        return NextResponse.json({ error: "Grade type must be CGPA or Percentage." }, { status: 400 });
-      }
-      const gvNum = Number(gv);
-      if (!Number.isFinite(gvNum) || gvNum < 0) {
-        return NextResponse.json({ error: "Grade value must be a valid non-negative number." }, { status: 400 });
-      }
-      if (gt === "CGPA" && gvNum > 4) {
-        return NextResponse.json({ error: "CGPA cannot exceed 4.00." }, { status: 400 });
-      }
-      if (gt === "Percentage" && gvNum > 100) {
-        return NextResponse.json({ error: "Percentage cannot exceed 100.0." }, { status: 400 });
-      }
-      kinshipGradeType = gt;
-      kinshipGradeValue = gv;
-    }
+    // Kinship grade type/value validated earlier (before discount resolution).
 
     await sql/* sql */`
       INSERT INTO public.alumni_scholarships (

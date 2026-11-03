@@ -6,7 +6,9 @@ import type {
   ScholarshipCategoryWithTiers,
   ScholarshipCgpaDiscountTier,
   ScholarshipFlowType,
+  ScholarshipGradeType,
 } from "@/lib/scholarshipDiscount";
+import { gradeTypeBounds, normalizeGradeType } from "@/lib/scholarshipDiscount";
 
 type CategoryDraft = {
   id?: number;
@@ -22,6 +24,7 @@ type TierDraft = {
   id?: number;
   cgpaMin: string;
   cgpaMax: string;
+  gradeType: ScholarshipGradeType;
   discountPercent: string;
   sortOrder: number;
 };
@@ -38,6 +41,7 @@ const emptyCategoryDraft: CategoryDraft = {
 const emptyTierDraft: TierDraft = {
   cgpaMin: "",
   cgpaMax: "",
+  gradeType: "cgpa",
   discountPercent: "",
   sortOrder: 0,
 };
@@ -168,6 +172,7 @@ export default function ScholarshipDiscountManager(props: {
       id: t.id,
       cgpaMin: String(t.cgpa_min),
       cgpaMax: String(t.cgpa_max),
+      gradeType: normalizeGradeType(t.grade_type),
       discountPercent: String(t.discount_percent),
       sortOrder: t.sort_order,
     });
@@ -181,8 +186,18 @@ export default function ScholarshipDiscountManager(props: {
     const cgpaMin = Number(tierDraft.cgpaMin);
     const cgpaMax = Number(tierDraft.cgpaMax);
     const discountPercent = Number(tierDraft.discountPercent);
+    const bounds = gradeTypeBounds(tierDraft.gradeType);
     if (!Number.isFinite(cgpaMin) || !Number.isFinite(cgpaMax) || !Number.isFinite(discountPercent)) {
-      pushToast("error", "Enter valid CGPA range and discount percent");
+      pushToast("error", "Enter valid grade range and discount percent");
+      return;
+    }
+    if (cgpaMin < bounds.min || cgpaMax > bounds.max || cgpaMin > cgpaMax) {
+      pushToast(
+        "error",
+        tierDraft.gradeType === "percentage"
+          ? "Percentage range must be between 0 and 100, with min ≤ max"
+          : "CGPA range must be between 0 and 4, with min ≤ max",
+      );
       return;
     }
     setTierSaving(true);
@@ -192,6 +207,7 @@ export default function ScholarshipDiscountManager(props: {
             id: tierEditingId,
             cgpaMin,
             cgpaMax,
+            gradeType: tierDraft.gradeType,
             discountPercent,
             sortOrder: tierDraft.sortOrder,
           }
@@ -199,6 +215,7 @@ export default function ScholarshipDiscountManager(props: {
             categoryId: selectedCategory.id,
             cgpaMin,
             cgpaMax,
+            gradeType: tierDraft.gradeType,
             discountPercent,
             sortOrder: tierDraft.sortOrder,
           };
@@ -278,7 +295,7 @@ export default function ScholarshipDiscountManager(props: {
                           {!c.is_active ? " · Inactive" : ""}
                         </div>
                         <div className="mt-1 text-xs text-gray-500">
-                          {(c.tiers?.length ?? 0)} CGPA tier(s)
+                          {(c.tiers?.length ?? 0)} tier(s)
                           {c.default_apply_for ? ` · Applies to: ${c.default_apply_for}` : ""}
                         </div>
                       </div>
@@ -309,11 +326,11 @@ export default function ScholarshipDiscountManager(props: {
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/30">
             <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              CGPA Discount Tiers
+              Discount Tiers
               {selectedCategory ? ` — ${selectedCategory.label}` : ""}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Inclusive ranges (e.g. 3.50–3.80 → 50%). First matching tier by sort order applies.
+              Inclusive ranges per grade type (CGPA 0–4 or Percentage 0–100). First matching tier by sort order applies.
             </p>
           </div>
           <div className="p-4">
@@ -321,26 +338,43 @@ export default function ScholarshipDiscountManager(props: {
               <div className="text-sm text-gray-600 dark:text-gray-400">Select a category to manage tiers.</div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
                   <div>
-                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400">CGPA min</label>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Grade type</label>
+                    <select
+                      value={tierDraft.gradeType}
+                      onChange={(e) =>
+                        setTierDraft((d) => ({ ...d, gradeType: e.target.value as ScholarshipGradeType }))
+                      }
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900"
+                    >
+                      <option value="cgpa">CGPA</option>
+                      <option value="percentage">Percentage</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                      {tierDraft.gradeType === "percentage" ? "Percent min" : "CGPA min"}
+                    </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step={tierDraft.gradeType === "percentage" ? "0.5" : "0.01"}
                       min={0}
-                      max={4}
+                      max={gradeTypeBounds(tierDraft.gradeType).max}
                       value={tierDraft.cgpaMin}
                       onChange={(e) => setTierDraft((d) => ({ ...d, cgpaMin: e.target.value }))}
                       className="mt-1 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400">CGPA max</label>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                      {tierDraft.gradeType === "percentage" ? "Percent max" : "CGPA max"}
+                    </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step={tierDraft.gradeType === "percentage" ? "0.5" : "0.01"}
                       min={0}
-                      max={4}
+                      max={gradeTypeBounds(tierDraft.gradeType).max}
                       value={tierDraft.cgpaMax}
                       onChange={(e) => setTierDraft((d) => ({ ...d, cgpaMax: e.target.value }))}
                       className="mt-1 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900"
@@ -400,8 +434,12 @@ export default function ScholarshipDiscountManager(props: {
                         className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 flex justify-between gap-2"
                       >
                         <div className="text-sm">
+                          <span className="mr-2 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                            {normalizeGradeType(t.grade_type) === "percentage" ? "%" : "CGPA"}
+                          </span>
                           <span className="font-semibold text-gray-900 dark:text-gray-100">
                             {t.cgpa_min} – {t.cgpa_max}
+                            {normalizeGradeType(t.grade_type) === "percentage" ? "%" : ""}
                           </span>
                           <span className="text-gray-600 dark:text-gray-400"> → </span>
                           <span className="font-semibold text-green-700 dark:text-green-400">

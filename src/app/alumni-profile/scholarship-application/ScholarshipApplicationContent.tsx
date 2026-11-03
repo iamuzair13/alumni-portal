@@ -23,7 +23,9 @@ import {
 import {
   findCategoryBySlug,
   formatDiscountPercentDisplay,
+  normalizeGradeType,
   parseCgpa,
+  parseGradeValue,
   resolveCategoryFlowType,
   resolveDiscountPercent,
   resolveMergedFeeDiscount,
@@ -124,15 +126,36 @@ function ScholarshipApplicationContent() {
     };
   }, [isFormEnabled]);
 
+  /** Optional marks % for Educational Record (stored on scholarship application, not profile). */
+  const [gradePercent, setGradePercent] = useState("");
+
   const selectedCategory = findCategoryBySlug(formData.discountType, scholarshipCategories);
   const profileCgpa = parseCgpa((data as { cgpa?: number | null })?.cgpa);
+  const categoryFlow = resolveCategoryFlowType(formData.discountType, scholarshipCategories, {
+    isFee: isScholarshipFeeDiscountFlow,
+    isKinship: isScholarshipKinshipCategory });
+  const isFeeFlow = categoryFlow === "fee_discount";
+  const isKinshipFlow = categoryFlow === "kinship";
+  // Kinship discounts resolve on the kin's declared grade scale — the kin's
+  // result governs the award, not the alumni's own CGPA.
+  const kinTypeNorm = normalizeGradeType(formData.kinshipGradeType);
+  const kinGradeParsed = parseGradeValue(formData.kinshipGradeValue, kinTypeNorm);
+  const applicantGrades = isKinshipFlow
+    ? {
+        cgpa: kinTypeNorm === "cgpa" ? kinGradeParsed : null,
+        percentage: kinTypeNorm === "percentage" ? kinGradeParsed : null,
+      }
+    : {
+        cgpa: profileCgpa,
+        percentage: parseGradeValue(gradePercent, "percentage"),
+      };
   const alumniMedal = (data as { medal?: string | null })?.medal ?? null;
   const highAchieverPercent = resolveHighAchieverPercent(alumniMedal);
   const isHighAchiever = isHighAchieverMedalist(alumniMedal);
   const mergedFeeComponents = getMergedFeeComponentSlugs(formData.discountType);
   const mergedFeeResult =
     profileCgpa != null && isMergedScholarshipSlug(formData.discountType)
-      ? resolveMergedFeeDiscount(formData.discountType, profileCgpa, scholarshipCategories, mergedFeeComponents)
+      ? resolveMergedFeeDiscount(formData.discountType, applicantGrades, scholarshipCategories, mergedFeeComponents)
       : null;
   const admissionFeePercent =
     mergedFeeResult != null
@@ -147,27 +170,26 @@ function ScholarshipApplicationContent() {
     mergedFeeResult != null
       ? tuitionFeePercent
       : profileCgpa != null && selectedCategory?.tiers?.length
-        ? resolveDiscountPercent(profileCgpa, selectedCategory.tiers)
+        ? resolveDiscountPercent(applicantGrades, selectedCategory.tiers)
         : null;
   const applicableDiscountPercent =
     baseDiscountPercent != null && highAchieverPercent != null
       ? baseDiscountPercent + highAchieverPercent
       : baseDiscountPercent ?? highAchieverPercent ?? null;
 
-  const categoryFlow = resolveCategoryFlowType(formData.discountType, scholarshipCategories, {
-    isFee: isScholarshipFeeDiscountFlow,
-    isKinship: isScholarshipKinshipCategory });
-  const isFeeFlow = categoryFlow === "fee_discount";
-  const isKinshipFlow = categoryFlow === "kinship";
   const needsKinshipApplyingFor =
     isKinshipFlow &&
     !selectedCategory?.default_apply_for &&
     !scholarshipApplyingForFromCategory(formData.discountType);
 
   const applyingForOptions = SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY;
+  const kinGradeFilled =
+    !!String(formData.kinshipGradeType || "").trim() &&
+    !!String(formData.kinshipGradeValue || "").trim();
   const canSubmitScholarship =
     profileCgpa != null &&
     !!formData.discountType &&
+    (!isKinshipFlow || kinGradeFilled) &&
     (mergedFeeResult != null
       ? mergedFeeResult.admissionFeePercent != null || mergedFeeResult.tuitionFeePercent != null
       : applicableDiscountPercent != null) &&
@@ -207,8 +229,6 @@ function ScholarshipApplicationContent() {
     useState<File | null>(null);
   const [docOtherFile, setDocOtherFile] = useState<File | null>(null);
   const [docOtherText, setDocOtherText] = useState("");
-  /** Optional marks % for Educational Record (stored on scholarship application, not profile). */
-  const [gradePercent, setGradePercent] = useState("");
   /** Scholarship application year (starts from 2026, future years generated dynamically). */
   const [applicationYear, setApplicationYear] = useState<string>("");
   /** Scholarship application term (Fall / Spring). */
@@ -417,7 +437,9 @@ function ScholarshipApplicationContent() {
 
     if (applicableDiscountPercent == null) {
       toast.error(
-        "No discount tier applies to your CGPA for this category. Contact the alumni office or choose another category.",
+        isKinshipFlow
+          ? "No discount tier applies to the kin's grade for this category. Contact the alumni office or choose another category."
+          : "No discount tier applies to your CGPA for this category. Contact the alumni office or choose another category.",
         {
           duration: 5000 },
       );
@@ -1833,6 +1855,11 @@ function ScholarshipApplicationContent() {
                             className="field-input disabled:opacity-60"
                             required
                           />
+                          {formData.kinshipGradeType === "Percentage" && (
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              Enter the exact percentage with decimals (e.g. 87.5)
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

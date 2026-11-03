@@ -25,9 +25,12 @@ import type { Session } from "next-auth";
 import {
   buildDiscountTablePdf,
   mapTiersForPdf,
+  normalizeGradeType,
   parseCgpa,
   parseDiscountPercentValue,
+  parseGradeValue,
   resolveDiscountPercent,
+  type ApplicantGrades,
   type ScholarshipCgpaDiscountTier,
   type ScholarshipDiscountTablePdf,
   type ScholarshipDiscountTierPdfRow,
@@ -149,7 +152,7 @@ async function loadDiscountTiersForPdf(
 
       const catLabel = String(catRow.label || "").trim() || discountCategoryLabel(componentSlug, applyFor);
       const tierRows = await sql/* sql */`
-        SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+        SELECT id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
         FROM public.scholarship_cgpa_discount_tiers
         WHERE category_id = ${catId}
         ORDER BY sort_order ASC, id ASC
@@ -160,6 +163,7 @@ async function loadDiscountTiersForPdf(
           category_id: catId,
           cgpa_min: Number(row.cgpa_min),
           cgpa_max: Number(row.cgpa_max),
+          grade_type: normalizeGradeType(row.grade_type),
           discount_percent: Number(row.discount_percent),
           sort_order: Number(row.sort_order) || 0,
         }),
@@ -211,7 +215,7 @@ async function loadDiscountTiersForPdf(
   const flowType = String(categoryRow.flow_type || "").toLowerCase();
 
   const tierRows = await sql/* sql */`
-    SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+    SELECT id, category_id, cgpa_min, cgpa_max, grade_type, discount_percent, sort_order
     FROM public.scholarship_cgpa_discount_tiers
     WHERE category_id = ${categoryId}
     ORDER BY sort_order ASC, id ASC
@@ -223,6 +227,7 @@ async function loadDiscountTiersForPdf(
       category_id: categoryId,
       cgpa_min: Number(row.cgpa_min),
       cgpa_max: Number(row.cgpa_max),
+      grade_type: normalizeGradeType(row.grade_type),
       discount_percent: Number(row.discount_percent),
       sort_order: Number(row.sort_order) || 0,
     }),
@@ -661,21 +666,34 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       const { tiers: discountTiers, cgpaTiers, admissionCgpaTiers, tuitionCgpaTiers, discountTable } =
         await loadDiscountTiersForPdf(app.discount_type, app.apply_for);
       const alumniCgpa = parseCgpa(app.cgpa);
+      const alumniPercent = parseGradeValue(app.grade_percent, "percentage");
+
+      // Kinship tiers resolve only on the kin's declared grade scale — the kin's
+      // result governs the award, not the alumni's own CGPA.
+      const kinGradeType = normalizeGradeType(kinshipDetails?.kinGradeType);
+      const kinGradeValue = parseGradeValue(kinshipDetails?.kinGradeValue, kinGradeType);
+      const applicantGrades: ApplicantGrades = isKinship
+        ? {
+            cgpa: kinGradeType === "cgpa" ? kinGradeValue : null,
+            percentage: kinGradeType === "percentage" ? kinGradeValue : null,
+          }
+        : { cgpa: alumniCgpa, percentage: alumniPercent };
+      const hasGrades = applicantGrades.cgpa != null || applicantGrades.percentage != null;
 
       // For merged scholarship slugs, resolve admission and tuition fee discounts
-      // from their respective CGPA tiers so the "Discount Information" section above
+      // from their respective tiers so the "Discount Information" section above
       // the table matches the checked row in the discount tier table below.
       let resolvedAdmissionFeePercent = applicationLetter.admissionFeePercent;
       let resolvedTuitionFeePercent = applicationLetter.tuitionFeePercent;
-      if (isMergedScholarshipSlug(String(app.discount_type || "").trim()) && alumniCgpa != null) {
-        // Override stale/missing stored values with CGPA-resolved values
+      if (isMergedScholarshipSlug(String(app.discount_type || "").trim()) && hasGrades) {
+        // Override stale/missing stored values with tier-resolved values
         const admissionFromTier =
           admissionCgpaTiers.length > 0
-            ? resolveDiscountPercent(alumniCgpa, admissionCgpaTiers)
+            ? resolveDiscountPercent(applicantGrades, admissionCgpaTiers)
             : null;
         const tuitionFromTier =
           tuitionCgpaTiers.length > 0
-            ? resolveDiscountPercent(alumniCgpa, tuitionCgpaTiers)
+            ? resolveDiscountPercent(applicantGrades, tuitionCgpaTiers)
             : null;
         if (admissionFromTier != null) resolvedAdmissionFeePercent = admissionFromTier;
         if (tuitionFromTier != null) resolvedTuitionFeePercent = tuitionFromTier;
@@ -683,11 +701,11 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
 
       const applicableDiscountPercent =
         parseDiscountPercentValue(app.applied_discount_percent) ??
-        (alumniCgpa != null
+        (hasGrades
           ? isMergedScholarshipSlug(String(app.discount_type || "").trim()) &&
             tuitionCgpaTiers.length > 0
-            ? resolveDiscountPercent(alumniCgpa, tuitionCgpaTiers)
-            : resolveDiscountPercent(alumniCgpa, cgpaTiers)
+            ? resolveDiscountPercent(applicantGrades, tuitionCgpaTiers)
+            : resolveDiscountPercent(applicantGrades, cgpaTiers)
           : null) ??
         parseDiscountPercentValue(applicationLetter.requestedDiscount);
 
@@ -710,6 +728,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         applyingFor: applicationLetter.applyingFor,
         previousDegree: applicationLetter.previousDegree,
         cgpaLastDegree: applicationLetter.cgpaLastDegree,
+        applicantGrades,
         requestedDiscount: applicationLetter.requestedDiscount,
         appliedDiscountPercent: applicableDiscountPercent,
         admissionFeePercent: resolvedAdmissionFeePercent,
