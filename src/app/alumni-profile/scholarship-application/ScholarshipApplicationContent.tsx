@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
@@ -38,6 +39,18 @@ async function fetchScholarshipFormSettings() {
     return { scholarship_application: true };
   }
   return res.json();
+}
+
+/** Attached-file confirmation driven by state — stays correct even if the
+ *  uncontrolled file input remounts (e.g. flow sections toggling). */
+function AttachedFileBadge({ file }: { file: File | null }) {
+  if (!file) return null;
+  return (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400">
+      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="truncate">{file.name}</span>
+    </p>
+  );
 }
 
 function ScholarshipApplicationContent() {
@@ -186,14 +199,6 @@ function ScholarshipApplicationContent() {
   const kinGradeFilled =
     !!String(formData.kinshipGradeType || "").trim() &&
     !!String(formData.kinshipGradeValue || "").trim();
-  const canSubmitScholarship =
-    profileCgpa != null &&
-    !!formData.discountType &&
-    (!isKinshipFlow || kinGradeFilled) &&
-    (mergedFeeResult != null
-      ? mergedFeeResult.admissionFeePercent != null || mergedFeeResult.tuitionFeePercent != null
-      : applicableDiscountPercent != null) &&
-    !categoriesLoading;
 
   // Masters/PhD Discount specific state
   const [orgLoading, setOrgLoading] = useState(false);
@@ -229,6 +234,29 @@ function ScholarshipApplicationContent() {
     useState<File | null>(null);
   const [docOtherFile, setDocOtherFile] = useState<File | null>(null);
   const [docOtherText, setDocOtherText] = useState("");
+
+  // Mirrors the submit-time doc checks so the disabled state is honest about uploads.
+  const requiredDocsAttached = isKinshipFlow
+    ? Boolean(
+        docKinshipAdmissionLetterFile &&
+          docKinshipAlumniCardFile &&
+          docKinshipFrcFile &&
+          docKinshipCnicKinFile &&
+          docKinshipCnicAlumniFile &&
+          docKinshipAcademicCertificatesFile,
+      )
+    : isFeeFlow
+      ? Boolean(docAdmissionLetterFile && docAlumniProofFile && docCnicFile)
+      : true;
+  const canSubmitScholarship =
+    profileCgpa != null &&
+    !!formData.discountType &&
+    (!isKinshipFlow || kinGradeFilled) &&
+    requiredDocsAttached &&
+    (mergedFeeResult != null
+      ? mergedFeeResult.admissionFeePercent != null || mergedFeeResult.tuitionFeePercent != null
+      : applicableDiscountPercent != null) &&
+    !categoriesLoading;
   /** Scholarship application year (starts from 2026, future years generated dynamically). */
   const [applicationYear, setApplicationYear] = useState<string>("");
   /** Scholarship application term (Fall / Spring). */
@@ -1434,9 +1462,6 @@ function ScholarshipApplicationContent() {
                           >
                             <option value="">Select</option>
                             <option value="Lahore">Lahore</option>
-                            <option value="Sargodha">Sargodha</option>
-                            <option value="Islamabad">Islamabad</option>
-                            <option value="Pakpattan">Pakpattan</option>
                           </select>
                         </div>
 
@@ -1508,6 +1533,7 @@ function ScholarshipApplicationContent() {
                             className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             required
                           />
+                          <AttachedFileBadge file={docAdmissionLetterFile} />
                         </div>
                         <div>
                           <label className="field-label">
@@ -1528,6 +1554,7 @@ function ScholarshipApplicationContent() {
                             }}
                             className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
+                          <AttachedFileBadge file={docTranscriptsFile} />
                         </div>
                         <div>
                           <label className="field-label">
@@ -1549,6 +1576,7 @@ function ScholarshipApplicationContent() {
                             className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             required
                           />
+                          <AttachedFileBadge file={docAlumniProofFile} />
                         </div>
                         <div>
                           <label className="field-label">
@@ -1569,6 +1597,7 @@ function ScholarshipApplicationContent() {
                             }}
                             className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                           />
+                          <AttachedFileBadge file={docCvFile} />
                         </div>
                         <div>
                           <label className="field-label">
@@ -1590,6 +1619,7 @@ function ScholarshipApplicationContent() {
                             className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
                             required
                           />
+                          <AttachedFileBadge file={docCnicFile} />
                         </div>
                       </div>
                     </div>
@@ -1685,9 +1715,6 @@ function ScholarshipApplicationContent() {
                           >
                             <option value="">Select campus</option>
                             <option value="Lahore">Lahore</option>
-                            <option value="Sargodha">Sargodha</option>
-                            <option value="Islamabad">Islamabad</option>
-                            <option value="Pakpattan">Pakpattan</option>
                           </select>
                         </div>
                         <div>
@@ -1857,7 +1884,7 @@ function ScholarshipApplicationContent() {
                           />
                           {formData.kinshipGradeType === "Percentage" && (
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                              Enter the exact percentage with decimals (e.g. 87.5)
+                              Enter the exact percentage with decimals (e.g. 87.53)
                             </p>
                           )}
                         </div>
@@ -1872,26 +1899,32 @@ function ScholarshipApplicationContent() {
                         <div>
                           <label className="field-label">Copy of Admission Letter <span className="text-error-500">*</span></label>
                           <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAdmissionLetterFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
+                          <AttachedFileBadge file={docKinshipAdmissionLetterFile} />
                         </div>
                         <div>
                           <label className="field-label">Academic Certificates/Transcripts (Kin) <span className="text-error-500">*</span></label>
                           <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAcademicCertificatesFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
+                          <AttachedFileBadge file={docKinshipAcademicCertificatesFile} />
                         </div>
                         <div>
                           <label className="field-label">Alumni Card <span className="text-error-500">*</span></label>
                           <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAlumniCardFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
+                          <AttachedFileBadge file={docKinshipAlumniCardFile} />
                         </div>
                         <div>
                           <label className="field-label">FRC <span className="text-error-500">*</span></label>
                           <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipFrcFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
+                          <AttachedFileBadge file={docKinshipFrcFile} />
                         </div>
                         <div>
                           <label className="field-label">CNIC Copy (Kinship) <span className="text-error-500">*</span></label>
                           <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipCnicKinFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
+                          <AttachedFileBadge file={docKinshipCnicKinFile} />
                         </div>
                         <div>
                           <label className="field-label">CNIC Copy (Alumni) <span className="text-error-500">*</span></label>
                           <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipCnicAlumniFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
+                          <AttachedFileBadge file={docKinshipCnicAlumniFile} />
                         </div>
                       </div>
                     </div>
@@ -1957,6 +1990,23 @@ function ScholarshipApplicationContent() {
                 disabled={!canSubmitScholarship}
                 className="mt-12 sm:justify-center"
               />
+              {!canSubmitScholarship && !!formData.discountType && !categoriesLoading && (
+                <ul className="mt-3 space-y-0.5 text-center text-xs text-gray-500 dark:text-gray-400">
+                  {isKinshipFlow && !kinGradeFilled && (
+                    <li>Enter the kin&apos;s grade type and value to continue.</li>
+                  )}
+                  {!requiredDocsAttached && (isFeeFlow || isKinshipFlow) && (
+                    <li>Attach all required documents listed above to continue.</li>
+                  )}
+                  {(isKinshipFlow ? kinGradeFilled : true) &&
+                    (mergedFeeResult != null
+                      ? mergedFeeResult.admissionFeePercent == null &&
+                        mergedFeeResult.tuitionFeePercent == null
+                      : applicableDiscountPercent == null) && (
+                    <li>No discount tier matches the entered grade — check the grade or contact the alumni office.</li>
+                  )}
+                </ul>
+              )}
             </form>
           </div>
         </div>
