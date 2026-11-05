@@ -43,6 +43,8 @@ const sqlMock = Object.assign(
 vi.mock("@/lib/dbconnect", () => ({
   sql: sqlMock,
   retryDbOperation: async (op: () => Promise<unknown>) => op(),
+  getDbQueryStats: () => ({ count: 0, totalMs: 0, entries: [] }),
+  resetDbQueryStats: () => {},
 }));
 
 vi.mock("@/lib/auth", async () => {

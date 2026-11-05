@@ -1,6 +1,6 @@
 # Authorization Matrix (baseline snapshot)
 
-Generated from 196 routes. Status codes only; "THRW" = handler threw
+Generated from 197 routes. Status codes only; "THRW" = handler threw
 an unhandled exception; "598" = call timed out (>10 s).
 
 | Route | Method | anonymous | alumniA | alumniB | viewer | admin | superadmin |
@@ -145,6 +145,7 @@ an unhandled exception; "598" = call timed out (>10 s).
 | /api/debug/department-check | GET | 401 | 403 | 403 | 403 | 403 | 200 |
 | /api/debug/program-matching | GET | 401 | 403 | 403 | 403 | 403 | 200 |
 | /api/debug/test-access-filter | GET | 401 | 200 | 200 | 200 | 200 | 200 |
+| /api/dev/perf-stats | GET | 404 | 404 | 404 | 404 | 404 | 404 |
 | /api/distinguished-alumni | GET | 401 | 200 | 200 | 200 | 200 | 200 |
 | /api/distinguished-alumni | POST | 401 | 403 | 403 | 403 | 400 | 400 |
 | /api/distinguished-alumni/[id] | GET | 401 | 404 | 404 | 404 | 404 | 404 |
