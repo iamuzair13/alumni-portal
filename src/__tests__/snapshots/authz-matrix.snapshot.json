@@ -1,0 +1,2586 @@
+{
+  "/api/admin/activity-logs": {
+    "GET": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    }
+  },
+  "/api/admin/birthdays/lookup": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/admin/birthdays": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/admin/birthdays/upload-image": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/admin/change-approvals/[id]": {
+    "GET": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "POST": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/admin/change-approvals": {
+    "GET": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/admin/login-logs": {
+    "GET": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    }
+  },
+  "/api/admin/newsletters": {
+    "GET": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/admin/newsletters/upload": {
+    "POST": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni-cards/[id]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni-cards/applicants": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni-cards/by-sap/[sapid]/download-image": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni-cards/by-sap/[sapid]/image": {
+    "PATCH": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni-cards/by-sap/[sapid]": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "PATCH": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni-cards/counts": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni-cards/export": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni-cards/onhold-reasons": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni-cards": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni-cards/submit-revision": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni-stories/[id]/review": {
+    "POST": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 500,
+      "superadmin": 500
+    }
+  },
+  "/api/alumni-stories/[id]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni-stories/counts": {
+    "GET": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni-stories": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 422,
+      "alumniB": 422,
+      "viewer": 422,
+      "admin": 422,
+      "superadmin": 422
+    }
+  },
+  "/api/alumni/[sapid]/card-profile-image": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/[sapid]/full-details": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/[sapid]/pending-change": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/[sapid]/profile-picture": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/[sapid]": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "PATCH": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/[sapid]/scholarship-application": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/[sapid]/scholarships": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/[sapid]/social-links": {
+    "PUT": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/[sapid]/update-fields": {
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/[sapid]/upskill-application": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/[sapid]/verify-image": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/admission-years": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/association-membership": {
+    "GET": {
+      "anonymous": 400,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 500,
+      "alumniB": 500,
+      "viewer": 500,
+      "admin": 500,
+      "superadmin": 500
+    }
+  },
+  "/api/alumni/association/associations": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/association/counts": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/association/export": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/association": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/campuses": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/categories": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/change-password": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 403
+    }
+  },
+  "/api/alumni/chapter-leadership": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/chapters/counts": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/chapters/current": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/chapters/export": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/chapters/international-chapters": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/chapters/national-chapters": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/chapters": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/check-record": {
+    "POST": {
+      "anonymous": 400,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/check-registration": {
+    "GET": {
+      "anonymous": 400,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/counts/debug": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/counts": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/create": {
+    "POST": {
+      "anonymous": 400,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/cricket-membership": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/current-sapid": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/current-user-image": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/degree-titles": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/departments": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/employers": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/export": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/faculties": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/funding-sources": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/genders": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/gym-membership": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/home-cities": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/home-countries": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/institution-cities": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/institution-countries": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/institution-names": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/marital-statuses": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/medal-document": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/memberships/[alumniId]": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "PATCH": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 500,
+      "superadmin": 500
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/memberships": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/newsletters": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/occupation-statuses": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/occupation-transition-timings": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/participation/export": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/passing-years": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/photo-consent": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/programs-enrolled": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/programs": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/provinces": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 400,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/scholarships/[alumniId]": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "PATCH": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/alumni/scholarships": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/sectors": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/send-credentials": {
+    "POST": {
+      "anonymous": 400,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/swimming-pool-membership": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/talks": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "PATCH": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/alumni/test-new-columns": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/verify-statuses": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/work-cities": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/alumni/work-countries": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/analytics/kpis": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/analytics/realtime-dashboard": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/analytics": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/associations/list": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/auth/[...nextauth]": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/auth/forgot-password": {
+    "POST": {
+      "anonymous": 400,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/bulk-upload/columns": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 500
+    }
+  },
+  "/api/bulk-upload/import": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 500
+    }
+  },
+  "/api/bulk-upload/parse": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/bulk-upload/validate": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 500
+    }
+  },
+  "/api/change-approvals/count": {
+    "GET": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/chapters/list": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/check-faculty-mismatches": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    }
+  },
+  "/api/dashboard/alumni-trends": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/debug/access-filter": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/debug/department-check": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    }
+  },
+  "/api/debug/program-matching": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    }
+  },
+  "/api/debug/test-access-filter": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/distinguished-alumni/[id]": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/distinguished-alumni/counts": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/distinguished-alumni": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/email-history": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/email-preview": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/erp/compare": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/erp/discover": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 500,
+      "superadmin": 500
+    }
+  },
+  "/api/erp/fetch": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/events/[id]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "DELETE": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/events/categories": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/events": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/external/alumni/association-counts": {
+    "GET": {
+      "anonymous": 400,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/external/alumni/association/[associationId]": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/alumni/count": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/associations/[id]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/external/associations": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/birthdays": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/chapters/[id]/member-count": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/chapters/[id]/members": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/chapters/[id]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/external/chapters/member-counts": {
+    "GET": {
+      "anonymous": 400,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/external/chapters": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/distinguished-alumni/[slug]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/external/distinguished-alumni": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/events/[id]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/external/events/chapter/[chapterId]": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/events/home-coaching": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/events/home-past": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/events/home-upcoming": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/events": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/jobs/[id]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/external/jobs": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/memberships": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/scholarships": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/external/success-stories/[id]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/external/success-stories": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/fetch-faculties-departments": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/fetch-programs": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/fix-access-assignments": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    }
+  },
+  "/api/form-templates": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/jobs/[id]": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/jobs": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/actions": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/application-counts": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/leadership/application-details": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/application-pdf": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/applications": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/leadership/bulk-scorecard": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/counts": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/leadership/criteria": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/export": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/leadership/members": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/leadership/pending-filter-options": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/leadership/recommend": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "PATCH": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/role-description-pdf": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/roles": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/send-acknowledgement": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/leadership/settings": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/membership/settings": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/merchants": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/organization/chapters": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/organization/chapters/upload-image": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/organization/courses": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    }
+  },
+  "/api/organization/departments": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    }
+  },
+  "/api/organization/faculties": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    }
+  },
+  "/api/organization/programs": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 401,
+      "alumniB": 401,
+      "viewer": 401,
+      "admin": 401,
+      "superadmin": 400
+    }
+  },
+  "/api/public/org-datasets": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/scholarship/categories": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/scholarship/cgpa-tiers": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/scholarship/settings": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/send-credentials": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/send-email": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/stories/criteria": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    },
+    "DELETE": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/submissions/bulk-edit": {
+    "PATCH": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 500,
+      "superadmin": 500
+    }
+  },
+  "/api/test-email": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 500,
+      "alumniB": 500,
+      "viewer": 500,
+      "admin": 500,
+      "superadmin": 500
+    }
+  },
+  "/api/university/programs": {
+    "GET": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/uploads/images/[...path]": {
+    "GET": {
+      "anonymous": 404,
+      "alumniA": 404,
+      "alumniB": 404,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    }
+  },
+  "/api/uploads/leadership": {
+    "POST": {
+      "anonymous": 401,
+      "alumniA": 400,
+      "alumniB": 400,
+      "viewer": 400,
+      "admin": 400,
+      "superadmin": 400
+    }
+  },
+  "/api/users/[userid]": {
+    "GET": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    },
+    "PUT": {
+      "anonymous": 200,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    },
+    "DELETE": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 200
+    }
+  },
+  "/api/users/create": {
+    "POST": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  },
+  "/api/users/current/access-assignments": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 200,
+      "alumniB": 200,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    }
+  },
+  "/api/users/current": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
+    },
+    "PUT": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 500,
+      "admin": 500,
+      "superadmin": 500
+    }
+  },
+  "/api/users": {
+    "GET": {
+      "anonymous": 401,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 200,
+      "admin": 200,
+      "superadmin": 200
+    },
+    "PUT": {
+      "anonymous": 403,
+      "alumniA": 403,
+      "alumniB": 403,
+      "viewer": 403,
+      "admin": 403,
+      "superadmin": 400
+    }
+  }
+}
