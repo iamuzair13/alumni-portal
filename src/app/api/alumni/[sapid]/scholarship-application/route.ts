@@ -39,6 +39,7 @@ type Payload = {
   degreeTitle?: string;
   kinshipName?: string | null;
   kinshipFatherName?: string | null;
+  kinshipRelation?: string | null;
   kinshipCampus?: string | null;
   kinshipFaculty?: string | null;
   kinshipDepartment?: string | null;
@@ -286,6 +287,8 @@ export async function POST(
         payload.kinshipName = String(formData.get("kinshipName") || "").trim() || null;
         payload.kinshipFatherName =
           String(formData.get("kinshipFatherName") || "").trim() || null;
+        payload.kinshipRelation =
+          String(formData.get("kinshipRelation") || "").trim() || null;
         payload.kinshipCampus = String(formData.get("kinshipCampus") || "").trim() || null;
         payload.kinshipFaculty = String(formData.get("kinshipFaculty") || "").trim() || null;
         payload.kinshipDepartment =
@@ -312,6 +315,11 @@ export async function POST(
             label: "Academic Certificates/Transcripts (Kin)",
             slot: "kinship-academic-certificates",
           },
+          {
+            key: "docKinshipAlumniTranscript",
+            label: "Alumni Transcript",
+            slot: "kinship-alumni-transcript",
+          },
           { key: "docKinshipAlumniCard", label: "Alumni Card", slot: "kinship-alumni-card" },
           { key: "docKinshipFrc", label: "FRC", slot: "kinship-frc" },
           { key: "docKinshipCnicKin", label: "CNIC Copy (Kinship)", slot: "kinship-cnic-kin" },
@@ -334,6 +342,7 @@ export async function POST(
         }
         kinshipDetails = {
           kinshipFatherName: payload.kinshipFatherName,
+          kinshipRelation: payload.kinshipRelation,
           kinshipCampus: payload.kinshipCampus,
           kinshipFaculty: payload.kinshipFaculty,
           kinshipDepartment: payload.kinshipDepartment,
@@ -566,6 +575,13 @@ export async function POST(
     let kinshipGradeValue: string | null = null;
     const isKinshipFlow = categoryFlowType === "kinship" || isScholarshipKinshipCategory(discountType);
     if (isKinshipFlow) {
+      const relation = String(payload.kinshipRelation || "").trim();
+      const ALLOWED_KIN_RELATIONS = new Set(["Brother", "Sister", "Son", "Daughter"]);
+      if (!relation || !ALLOWED_KIN_RELATIONS.has(relation)) {
+        return NextResponse.json({ error: "Relationship with alumni must be one of: Brother, Sister, Son, Daughter." }, { status: 400 });
+      }
+      payload.kinshipRelation = relation;
+
       const gt = String(payload.kinshipGradeType || "").trim();
       const gv = String(payload.kinshipGradeValue || "").trim();
       if (!gt || !gv) {

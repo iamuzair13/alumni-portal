@@ -61,6 +61,8 @@ function getStatusSelectStyles(status: string | null): string {
       return `${base} bg-blue-50 text-blue-800 hover:bg-blue-100 focus:border-blue-500 dark:bg-blue-900/20 dark:text-blue-300`;
     case "Onhold":
       return `${base} bg-error-50 text-error-800 hover:bg-error-100 focus:border-error-500 dark:bg-error-900/20 dark:text-error-300`;
+    case "Returned":
+      return `${base} bg-cyan-50 text-cyan-800 hover:bg-cyan-100 focus:border-cyan-500 dark:bg-cyan-900/20 dark:text-cyan-300`;
     default:
       return `${base} bg-gray-50 text-gray-700 hover:bg-gray-100 focus:border-gray-500 dark:bg-gray-800 dark:text-gray-300`;
   }
@@ -80,6 +82,8 @@ function getStatusDotColor(status: string | null): string {
       return "bg-blue-400";
     case "Onhold":
       return "bg-error-400";
+    case "Returned":
+      return "bg-cyan-400";
     default:
       return "bg-gray-400";
   }
@@ -587,7 +591,7 @@ export async function submitCardStatusChange(
     };
   });
 
-  const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered"];
+  const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "returned", "delivered"];
   for (const s of statuses) {
     const key = cardApplicantsKey(s);
     const current = queryClient.getQueryData<CardApplicantsResponse>(key);

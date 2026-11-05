@@ -69,6 +69,11 @@ export async function GET(req: Request) {
           AND c.status IS NOT NULL
           AND UPPER(TRIM(c.status)) = 'ONHOLD'
         `;
+      } else if (dbStatus === "Returned") {
+        statusCondition = sql`
+          AND c.status IS NOT NULL
+          AND UPPER(TRIM(c.status)) = 'RETURNED'
+        `;
       } else if (dbStatus === "Delivered") {
         statusCondition = sql`
           AND c.status IS NOT NULL

@@ -104,6 +104,7 @@ type ScholarshipApplicationLetter = {
   kinshipDetails?: {
     kinName?: string;
     kinFatherName?: string;
+    kinRelation?: string;
     kinCampus?: string;
     kinFaculty?: string;
     kinDepartment?: string;
@@ -1541,6 +1542,10 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                     "Father's Name",
                                     applicationPreview.application.kinshipDetails?.kinFatherName || "-",
                                   ],
+                                  [
+                                    "Relationship with Alumni",
+                                    applicationPreview.application.kinshipDetails?.kinRelation || "-",
+                                  ],
                                   ["Campus", applicationPreview.application.kinshipDetails?.kinCampus || "-"],
                                   ["Faculty", applicationPreview.application.kinshipDetails?.kinFaculty || "-"],
                                   [
@@ -1705,6 +1710,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                     ? [
                                         "Copy of Admission Letter",
                                         "Academic Certificates/Transcripts (Kin)",
+                                        "Alumni Transcript",
                                         "Alumni Card",
                                         "FRC",
                                         "CNIC Copy (Kinship)",

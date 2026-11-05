@@ -48,6 +48,9 @@ export async function GET(request: Request) {
       } else if (status === "onhold") {
         // Onhold: "Onhold"
         statusCondition = sql` AND c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ONHOLD'`;
+      } else if (status === "returned") {
+        // Returned: "Returned"
+        statusCondition = sql` AND c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'RETURNED'`;
       } else if (status === "delivered") {
         // Delivered: "Delivered"
         statusCondition = sql` AND c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'DELIVERED'`;
@@ -107,6 +110,7 @@ export async function GET(request: Request) {
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND (UPPER(TRIM(c.status)) = 'PROCESS' OR UPPER(TRIM(c.status)) = 'UNDERPRINTING')) as underprinting_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ACTIVE') as active_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ONHOLD') as onhold_count,
+        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'RETURNED') as returned_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'DELIVERED') as delivered_count,
         COUNT(*) FILTER (WHERE (c.status IS NULL OR TRIM(c.status) = '' OR UPPER(TRIM(c.status)) = 'PENDING' OR UPPER(TRIM(c.status)) = 'UNDERREVIEW') AND c.createdat < NOW() - INTERVAL '7 days') as overdue_under_review_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND (UPPER(TRIM(c.status)) = 'PROCESS' OR UPPER(TRIM(c.status)) = 'UNDERPRINTING') AND c.createdat < NOW() - INTERVAL '7 days') as overdue_under_printing_count,
@@ -121,6 +125,7 @@ export async function GET(request: Request) {
       underprinting_count: bigint | number;
       active_count: bigint | number;
       onhold_count: bigint | number;
+      returned_count: bigint | number;
       delivered_count: bigint | number;
       overdue_under_review_count: bigint | number;
       overdue_under_printing_count: bigint | number;
@@ -133,6 +138,7 @@ export async function GET(request: Request) {
     const underprintingCount = countRow?.underprinting_count ? Number(countRow.underprinting_count) : 0;
     const activeCount = countRow?.active_count ? Number(countRow.active_count) : 0;
     const onholdCount = countRow?.onhold_count ? Number(countRow.onhold_count) : 0;
+    const returnedCount = countRow?.returned_count ? Number(countRow.returned_count) : 0;
     const deliveredCount = countRow?.delivered_count ? Number(countRow.delivered_count) : 0;
     const overdueUnderReviewCount = countRow?.overdue_under_review_count ? Number(countRow.overdue_under_review_count) : 0;
     const overdueUnderPrintingCount = countRow?.overdue_under_printing_count ? Number(countRow.overdue_under_printing_count) : 0;
@@ -145,6 +151,7 @@ export async function GET(request: Request) {
         underprinting: underprintingCount,
         active: activeCount,
         onhold: onholdCount,
+        returned: returnedCount,
         delivered: deliveredCount,
         "overdue-under-review": overdueUnderReviewCount,
         "overdue-under-printing": overdueUnderPrintingCount,

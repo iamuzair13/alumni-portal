@@ -401,7 +401,10 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         applyingFor: String(app.apply_for || ""),
         degreeTitle: String(app.degree_title || ""),
         appliedDiscountPercent: app.applied_discount_percent,
-        kinshipRelation: null,
+        kinshipRelation:
+          String(
+            (parseMastersDetails(app.kinship_details) as Record<string, unknown> | null)?.kinshipRelation || ""
+          ).trim() || null,
         kinshipFirstName: kinshipFirstName || null,
         kinshipLastName: kinshipLastName || null,
         kinshipName: hasKinship ? `${kinshipFirstName} ${kinshipLastName}` : null,
@@ -560,6 +563,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         "Data is missing",
       kinFatherName:
         String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipFatherName || "").trim() ||
+        "Data is missing",
+      kinRelation:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipRelation || "").trim() ||
         "Data is missing",
       kinCampus:
         String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipCampus || "").trim() ||
