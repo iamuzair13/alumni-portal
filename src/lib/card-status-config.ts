@@ -6,10 +6,10 @@
  */
 
 // Database status values (as stored in the database)
-export type DbCardStatus = "UnderReview" | "UnderPrinting" | "Active" | "Onhold" | "Delivered";
+export type DbCardStatus = "UnderReview" | "UnderPrinting" | "Active" | "Onhold" | "Returned" | "Delivered";
 
 // UI status values (used in frontend)
-export type CardStatus = "all" | "under-review" | "underprinting" | "active" | "onhold" | "delivered";
+export type CardStatus = "all" | "under-review" | "underprinting" | "active" | "onhold" | "returned" | "delivered";
 
 // Status configuration with labels
 export const CARD_STATUS_CONFIG = {
@@ -38,10 +38,15 @@ export const CARD_STATUS_CONFIG = {
     label: "On Hold",
     order: 4,
   },
+  "returned": {
+    dbValue: "Returned" as DbCardStatus,
+    label: "Returned",
+    order: 5,
+  },
   "delivered": {
     dbValue: "Delivered" as DbCardStatus,
     label: "Delivered",
-    order: 5,
+    order: 6,
   },
 } as const;
 
@@ -85,6 +90,7 @@ export function mapDbStatusToUI(dbStatus: string | null | undefined): CardStatus
   if (normalizedUpper === "UNDERPRINTING") return "underprinting";
   if (upper === "ACTIVE") return "active";
   if (normalizedUpper === "ONHOLD") return "onhold";
+  if (upper === "RETURNED") return "returned";
   if (upper === "DELIVERED") return "delivered";
   
   // Default to under-review for unknown statuses

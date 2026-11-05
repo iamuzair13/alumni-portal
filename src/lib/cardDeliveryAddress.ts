@@ -5,7 +5,7 @@ function displayPart(value: string | null | undefined): string {
   return trimmed || MISSING;
 }
 
-/** Labeled delivery address lines matching the alumni card form fields. */
+/** Labeled delivery address lines, ordered house → street → society → city for display. */
 export function formatCardDeliveryAddressLabeled(
   city: string | null | undefined,
   society: string | null | undefined,
@@ -13,10 +13,10 @@ export function formatCardDeliveryAddressLabeled(
   houseNo: string | null | undefined
 ): Array<{ label: string; value: string }> {
   return [
-    { label: "city", value: displayPart(city) },
-    { label: "society", value: displayPart(society) },
-    { label: "street", value: displayPart(streetNo) },
     { label: "house", value: displayPart(houseNo) },
+    { label: "street", value: displayPart(streetNo) },
+    { label: "society", value: displayPart(society) },
+    { label: "city", value: displayPart(city) },
   ];
 }
 

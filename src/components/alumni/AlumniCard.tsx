@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useSession } from "next-auth/react";
-import { TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon } from "@/icons";
+import { TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon, BoxIconLine, CopyIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
 import { canModify } from "@/lib/alumniProfile";
@@ -92,6 +92,13 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-error-600",
     pillBg: "bg-error-100",
   },
+  returned: {
+    color: "text-cyan-700",
+    bgColor: "bg-cyan-50",
+    ringColor: "ring-cyan-200",
+    iconColor: "text-cyan-600",
+    pillBg: "bg-cyan-100",
+  },
   delivered: {
     color: "text-green-700",
     bgColor: "bg-green-50",
@@ -107,6 +114,7 @@ const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
   underprinting: FileIcon,
   active: CheckCircleIcon,
   onhold: LockIcon,
+  returned: BoxIconLine,
   delivered: CheckCircleIcon,
 };
 
@@ -1644,6 +1652,28 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       : idx % 2 === 0 
         ? "bg-white dark:bg-gray-900" 
         : "bg-gray-50/50 dark:bg-gray-800/30";
+
+    const deliveryParts = formatCardDeliveryAddressLabeled(
+      alum.deliveryCity,
+      alum.deliverySocietyName,
+      alum.deliveryStreetNo,
+      alum.deliveryHouseNo
+    );
+    const deliveryCopyText = deliveryParts
+      .filter((p) => p.value !== "-")
+      .map((p) => `${p.label.charAt(0).toUpperCase() + p.label.slice(1)}: ${p.value}`)
+      .join(", ");
+
+    const handleCopyDeliveryAddress = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!deliveryCopyText) return;
+      try {
+        await navigator.clipboard.writeText(deliveryCopyText);
+        toast.success("Delivery address copied");
+      } catch {
+        toast.error("Failed to copy delivery address");
+      }
+    };
   
     return (
       <>
@@ -1713,19 +1743,29 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           </td>
           
           <td className="px-4 py-4 hidden lg:table-cell">
-            <div className="max-w-[260px] space-y-0.5 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-              {formatCardDeliveryAddressLabeled(
-                alum.deliveryCity,
-                alum.deliverySocietyName,
-                alum.deliveryStreetNo,
-                alum.deliveryHouseNo
-              ).map(({ label, value }) => (
-                <div key={label} className="line-clamp-1">
-                  <span className="font-medium text-gray-500 dark:text-gray-500">{label}.</span>{" "}
-                  <span className={value === "-" ? "text-gray-400 dark:text-gray-500" : ""}>{value}</span>
-                </div>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={handleCopyDeliveryAddress}
+              disabled={!deliveryCopyText}
+              title={deliveryCopyText ? "Click to copy delivery address" : undefined}
+              className={`group/copy relative block w-full max-w-[260px] rounded-md px-2 py-1 -mx-2 -my-1 text-left transition-colors ${
+                deliveryCopyText
+                  ? "cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-900/10"
+                  : "cursor-default"
+              }`}
+            >
+              <div className="space-y-0.5 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                {deliveryParts.map(({ label, value }) => (
+                  <div key={label} className="line-clamp-1">
+                    <span className="font-medium text-gray-500 dark:text-gray-500">{label}.</span>{" "}
+                    <span className={value === "-" ? "text-gray-400 dark:text-gray-500" : ""}>{value}</span>
+                  </div>
+                ))}
+              </div>
+              {deliveryCopyText && (
+                <CopyIcon className="absolute right-1 top-1 h-3 w-3 text-cyan-600 opacity-0 transition-opacity group-hover/copy:opacity-100 dark:text-cyan-400" />
+              )}
+            </button>
           </td>
           
           <td className="px-4 py-4 hidden lg:table-cell">

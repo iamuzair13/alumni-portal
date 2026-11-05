@@ -33,7 +33,7 @@ export type CardApplicant = {
   reason_onhold: string | null;
 };
 
-export type CardStatusFilter = "all" | "under-review" | "underprinting" | "active" | "onhold" | "delivered" | "overdue";
+export type CardStatusFilter = "all" | "under-review" | "underprinting" | "active" | "onhold" | "returned" | "delivered" | "overdue";
 export type OverdueType = "under-review" | "under-printing";
 
 export type CardApplicantsResponse = {
@@ -44,6 +44,7 @@ export type CardApplicantsResponse = {
     underprinting: number;
     active: number;
     onhold: number;
+    returned: number;
     delivered: number;
     "overdue-under-review": number;
     "overdue-under-printing": number;
@@ -87,6 +88,7 @@ export function useCardApplicants(status: CardStatusFilter = "all", options?: { 
           underprinting: 0, 
           active: 0, 
           onhold: 0, 
+          returned: 0,
           delivered: 0,
           "overdue-under-review": 0,
           "overdue-under-printing": 0,
@@ -119,6 +121,7 @@ export function useCardCounts() {
         underprinting: 0, 
         active: 0, 
         onhold: 0, 
+        returned: 0,
         delivered: 0,
         "overdue-under-review": 0,
         "overdue-under-printing": 0,
@@ -159,8 +162,8 @@ export function useOnHoldReasons() {
 
 export function useUpdateApplicantStatus() {
   const qc = useQueryClient();
-  // Database values: "UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"
-  return useMutation<unknown, Error, { sapId: string; status: "UnderReview" | "UnderPrinting" | "Active" | "Onhold" | "Delivered"; reason_onhold?: string }, { prev?: CardApplicant[] }>({
+  // Database values: "UnderReview", "UnderPrinting", "Active", "Onhold", "Returned", "Delivered"
+  return useMutation<unknown, Error, { sapId: string; status: "UnderReview" | "UnderPrinting" | "Active" | "Onhold" | "Returned" | "Delivered"; reason_onhold?: string }, { prev?: CardApplicant[] }>({
     mutationFn: async ({ sapId, status, reason_onhold }) => {
       const body: { status: string; reason_onhold?: string } = { status };
       if (status === "Onhold" && reason_onhold) {
@@ -182,7 +185,7 @@ export function useUpdateApplicantStatus() {
       await qc.cancelQueries({ queryKey: ["alumni", "card", "applicants"] });
       
       // Update all status-specific queries
-      const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered", "overdue"];
+      const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "returned", "delivered", "overdue"];
       const overdueTypes: OverdueType[] = ["under-review", "under-printing"];
       const prevData: Record<string, CardApplicantsResponse | undefined> = {};
       
@@ -248,7 +251,7 @@ export function useUpdateApplicantStatus() {
     },
     onSuccess: (_data, { sapId }) => {
       // After successful update, ensure the updated item is first in all relevant queries
-      const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered"];
+      const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "returned", "delivered"];
       const overdueTypes: OverdueType[] = ["under-review", "under-printing"];
       
       for (const s of statuses) {
@@ -299,7 +302,7 @@ export function useUpdateApplicantStatus() {
       // Restore previous data on error
       if (ctx?.prev) {
         const key = cardApplicantsKey("all");
-        qc.setQueryData(key, { items: ctx.prev, counts: { all: ctx.prev.length, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0 } });
+        qc.setQueryData(key, { items: ctx.prev, counts: { all: ctx.prev.length, "under-review": 0, underprinting: 0, active: 0, onhold: 0, returned: 0, delivered: 0, "overdue-under-review": 0, "overdue-under-printing": 0 } });
       }
     },
     onSettled: () => {

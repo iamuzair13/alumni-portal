@@ -113,6 +113,7 @@ export interface ScholarshipLetterPDFData {
   kinshipDetails?: {
     kinName?: string;
     kinFatherName?: string;
+    kinRelation?: string;
     kinCampus?: string;
     kinFaculty?: string;
     kinDepartment?: string;
@@ -931,7 +932,7 @@ function estimateScholarshipFormHeight(
   rows += data.isKinship ? 5 : 3; // section C
   rows += 7; // declaration section (disclosure + discount terms, long wrapped text)
   const sections = 6;
-  const checklistItems = data.isKinship ? 6 : 5;
+  const checklistItems = data.isKinship ? 7 : 5;
 
   return (
     metrics.headerH +
@@ -1126,7 +1127,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
             `${data.highAchieverPercent}%`,
           );
         }
-        form.drawFullRow("Admission Reference No", data.admissionApplicationRef);
+        
       } else if (isMergedScholarshipSlug(data.discountType)) {
         form.drawFieldPair(
           "Scholarship Type",
@@ -1204,7 +1205,12 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
           "Last Degree / Certificate",
           data.kinshipDetails?.kinLastDegreeCertificate,
         );
-        form.drawFullRow("Passing Out Year", data.kinshipDetails?.kinPassingOutYear);
+        form.drawFieldPair(
+          "Passing Out Year",
+          data.kinshipDetails?.kinPassingOutYear,
+          "Relationship with Alumni",
+          data.kinshipDetails?.kinRelation,
+        );
         const kinGradeTypeLabel =
           data.kinshipDetails?.kinGradeType === "Percentage"
             ? "Percentage (%)"
@@ -1242,6 +1248,10 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
             {
               label: "Academic Certificates / Transcripts (Kin)",
               value: findChecklistValue(["academic certificates/transcripts (kin)", "kinship-academic-certificates"]),
+            },
+            {
+              label: "Alumni Transcript",
+              value: findChecklistValue(["alumni transcript", "kinship-alumni-transcript"]),
             },
             { label: "Alumni Card", value: findChecklistValue(["alumni card", "kinship-alumni-card"]) },
             { label: "FRC", value: findChecklistValue(["frc", "kinship-frc"]) },

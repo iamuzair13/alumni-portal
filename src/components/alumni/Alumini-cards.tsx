@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import { LockIcon, EyeIcon, CheckLineIcon, BoltIcon, TimeIcon, GroupIcon, FileIcon, AlertIcon } from "@/icons";
+import { LockIcon, EyeIcon, CheckLineIcon, BoltIcon, TimeIcon, GroupIcon, FileIcon, AlertIcon, BoxIconLine } from "@/icons";
 import { AlumniDataTable } from "./AlumniCard";
 import { useCardApplicants, useCardCounts, type CardStatusFilter, type CardApplicant, type OverdueType } from "@/app/queries/fetch-card-applicants";
 import { useUpdateApplicantStatus } from "@/app/queries/fetch-card-applicants";
@@ -169,6 +169,10 @@ const STATUS_THEME: Record<string, {
     active: { border: "border-error-500", bg: "bg-error-50", text: "text-error-800", badge: "bg-error-500", badgeText: "text-white", shadow: "shadow-error-500/20", icon: "text-error-500" },
     inactive: { border: "border-gray-200", bg: "bg-white", text: "text-gray-600", badge: "bg-gray-100", badgeText: "text-gray-600", hover: "hover:border-error-300 hover:bg-error-50/50" },
   },
+  returned: {
+    active: { border: "border-cyan-500", bg: "bg-cyan-50", text: "text-cyan-800", badge: "bg-cyan-500", badgeText: "text-white", shadow: "shadow-cyan-500/20", icon: "text-cyan-500" },
+    inactive: { border: "border-gray-200", bg: "bg-white", text: "text-gray-600", badge: "bg-gray-100", badgeText: "text-gray-600", hover: "hover:border-cyan-300 hover:bg-cyan-50/50" },
+  },
   overdue: {
     active: { border: "border-red-500", bg: "bg-red-50", text: "text-red-800", badge: "bg-red-500", badgeText: "text-white", shadow: "shadow-red-500/20", icon: "text-red-500" },
     inactive: { border: "border-gray-200", bg: "bg-white", text: "text-gray-600", badge: "bg-gray-100", badgeText: "text-gray-600", hover: "hover:border-red-300 hover:bg-red-50/50" },
@@ -183,8 +187,9 @@ const STATUS_TABS: { key: AlumniCardTab; label: string; icon: React.FC<{ classNa
   { key: "all", label: "All Cards", icon: GroupIcon, desc: "" },
   { key: "under-review", label: "Under Review", icon: TimeIcon, desc: "" },
   { key: "underprinting", label: "Under Printing", icon: FileIcon, desc: "" },
-  { key: "active", label: "Active", icon: CheckLineIcon, desc: "" },
+  { key: "active", label: "Ready for Delivery", icon: CheckLineIcon, desc: "" },
   { key: "onhold", label: "On Hold", icon: LockIcon, desc: "" },
+  { key: "returned", label: "Returned", icon: BoxIconLine, desc: "" },
   { key: "delivered", label: "Delivered", icon: CheckLineIcon, desc: "" },
   { key: "overdue", label: "Overdue (Admin)", icon: AlertIcon, desc: "" },
   { key: "overdue_by_alumni", label: "Overdue (Alumni)", icon: AlertIcon, desc: "" },
@@ -327,8 +332,9 @@ function EmptyState({ status }: { status: AlumniCardTab }) {
     all: { icon: "📋", title: "No cards yet", desc: "Alumni cards will appear here once submitted" },
     "under-review": { icon: "⏳", title: "Nothing under review", desc: "All cards have been processed" },
     underprinting: { icon: "🖨️", title: "Nothing in production", desc: "No cards are currently being printed" },
-    active: { icon: "✅", title: "No active cards", desc: "No cards are ready for delivery" },
+    active: { icon: "✅", title: "Nothing ready for delivery", desc: "No cards are ready for delivery" },
     onhold: { icon: "🔒", title: "No holds", desc: "No cards require attention" },
+    returned: { icon: "📦", title: "No returned cards", desc: "No cards have been marked as returned" },
     delivered: { icon: "🎉", title: "No deliveries yet", desc: "Cards will appear here once delivered" },
     overdue: { icon: "⚠️", title: "No overdue cards", desc: "All cards are within schedule" },
     overdue_by_alumni: { icon: "👤", title: "No alumni flags", desc: "No cards flagged by alumni" },
@@ -523,7 +529,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
 
   const counts = useMemo(() => {
     return countsData || {
-      all: 0, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0,
+      all: 0, "under-review": 0, underprinting: 0, active: 0, onhold: 0, returned: 0, delivered: 0,
       "overdue-under-review": 0, "overdue-under-printing": 0,
     };
   }, [countsData]);
@@ -585,6 +591,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     if (key === "active") return counts.active || 0;
     if (key === "delivered") return counts.delivered || 0;
     if (key === "onhold") return counts.onhold || 0;
+    if (key === "returned") return counts.returned || 0;
     if (key === "overdue") return (counts["overdue-under-review"] || 0) + (counts["overdue-under-printing"] || 0);
     if (key === "overdue_by_alumni") return overdueByAlumniIds.length;
     return 0;

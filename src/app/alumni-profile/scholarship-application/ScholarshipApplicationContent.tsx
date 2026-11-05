@@ -91,6 +91,7 @@ function ScholarshipApplicationContent() {
     degreeTitle: "",
     kinshipName: "",
     kinshipFatherName: "",
+    kinshipRelation: "",
     kinshipCampus: "",
     kinshipFaculty: "",
     kinshipDepartment: "",
@@ -232,6 +233,8 @@ function ScholarshipApplicationContent() {
   const [docKinshipCnicAlumniFile, setDocKinshipCnicAlumniFile] = useState<File | null>(null);
   const [docKinshipAcademicCertificatesFile, setDocKinshipAcademicCertificatesFile] =
     useState<File | null>(null);
+  const [docKinshipAlumniTranscriptFile, setDocKinshipAlumniTranscriptFile] =
+    useState<File | null>(null);
   const [docOtherFile, setDocOtherFile] = useState<File | null>(null);
   const [docOtherText, setDocOtherText] = useState("");
 
@@ -243,7 +246,8 @@ function ScholarshipApplicationContent() {
           docKinshipFrcFile &&
           docKinshipCnicKinFile &&
           docKinshipCnicAlumniFile &&
-          docKinshipAcademicCertificatesFile,
+          docKinshipAcademicCertificatesFile &&
+          docKinshipAlumniTranscriptFile,
       )
     : isFeeFlow
       ? Boolean(docAdmissionLetterFile && docAlumniProofFile && docCnicFile)
@@ -535,6 +539,7 @@ function ScholarshipApplicationContent() {
       isKinshipFlow &&
       (!formData.kinshipName ||
         !formData.kinshipFatherName ||
+        !formData.kinshipRelation ||
         !formData.kinshipCampus ||
         !formData.kinshipFaculty ||
         !formData.kinshipDepartment ||
@@ -576,7 +581,8 @@ function ScholarshipApplicationContent() {
         !docKinshipFrcFile ||
         !docKinshipCnicKinFile ||
         !docKinshipCnicAlumniFile ||
-        !docKinshipAcademicCertificatesFile)
+        !docKinshipAcademicCertificatesFile ||
+        !docKinshipAlumniTranscriptFile)
     ) {
       toast.error("Please complete all required kinship document checklist fields.", {
         duration: 4000 });
@@ -689,6 +695,7 @@ function ScholarshipApplicationContent() {
               fd.set("highAchieverPercent", String(highAchieverPercent ?? ""));
               fd.set("kinshipName", formData.kinshipName);
               fd.set("kinshipFatherName", formData.kinshipFatherName);
+              fd.set("kinshipRelation", formData.kinshipRelation);
               fd.set("kinshipCampus", formData.kinshipCampus);
               fd.set("kinshipFaculty", formData.kinshipFaculty);
               fd.set("kinshipDepartment", formData.kinshipDepartment);
@@ -706,6 +713,10 @@ function ScholarshipApplicationContent() {
               fd.set(
                 "docKinshipAcademicCertificates",
                 docKinshipAcademicCertificatesFile as File,
+              );
+              fd.set(
+                "docKinshipAlumniTranscript",
+                docKinshipAlumniTranscriptFile as File,
               );
               fd.set("docKinshipAdmissionLetter", docKinshipAdmissionLetterFile as File);
               fd.set("docKinshipAlumniCard", docKinshipAlumniCardFile as File);
@@ -736,6 +747,7 @@ function ScholarshipApplicationContent() {
                 highAchieverPercent: highAchieverPercent ?? null,
                 kinshipName: formData.kinshipName || null,
                 kinshipFatherName: formData.kinshipFatherName || null,
+                kinshipRelation: formData.kinshipRelation || null,
                 kinshipCnic: formData.kinshipCnic || null,
                 kinshipGradeType: formData.kinshipGradeType || null,
                 kinshipGradeValue: formData.kinshipGradeValue || null,
@@ -792,6 +804,7 @@ function ScholarshipApplicationContent() {
         degreeTitle: "",
         kinshipName: "",
         kinshipFatherName: "",
+        kinshipRelation: "",
         kinshipCampus: "",
         kinshipFaculty: "",
         kinshipDepartment: "",
@@ -822,6 +835,7 @@ function ScholarshipApplicationContent() {
       setDocKinshipCnicKinFile(null);
       setDocKinshipCnicAlumniFile(null);
       setDocKinshipAcademicCertificatesFile(null);
+      setDocKinshipAlumniTranscriptFile(null);
       setDocOtherFile(null);
       setDocOtherText("");
       setGradePercent("");
@@ -1706,6 +1720,21 @@ function ScholarshipApplicationContent() {
                         <div><label className="field-label">Name <span className="text-error-500">*</span></label><input type="text" value={formData.kinshipName} onChange={(e) => setFormData({ ...formData, kinshipName: e.target.value })} className="field-input" required /></div>
                         <div><label className="field-label">Father&apos;s Name <span className="text-error-500">*</span></label><input type="text" value={formData.kinshipFatherName} onChange={(e) => setFormData({ ...formData, kinshipFatherName: e.target.value })} className="field-input" required /></div>
                         <div>
+                          <label className="field-label">Relationship with Alumni <span className="text-error-500">*</span></label>
+                          <select
+                            value={formData.kinshipRelation}
+                            onChange={(e) => setFormData({ ...formData, kinshipRelation: e.target.value })}
+                            className="field-input"
+                            required
+                          >
+                            <option value="">Select relationship</option>
+                            <option value="Brother">Brother</option>
+                            <option value="Sister">Sister</option>
+                            <option value="Son">Son</option>
+                            <option value="Daughter">Daughter</option>
+                          </select>
+                        </div>
+                        <div>
                           <label className="field-label">Campus <span className="text-error-500">*</span></label>
                           <select
                             value={formData.kinshipCampus}
@@ -1905,6 +1934,11 @@ function ScholarshipApplicationContent() {
                           <label className="field-label">Academic Certificates/Transcripts (Kin) <span className="text-error-500">*</span></label>
                           <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAcademicCertificatesFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
                           <AttachedFileBadge file={docKinshipAcademicCertificatesFile} />
+                        </div>
+                        <div>
+                          <label className="field-label">Alumni Transcript <span className="text-error-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAlumniTranscriptFile(e.target.files?.[0] ?? null)} className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300" required />
+                          <AttachedFileBadge file={docKinshipAlumniTranscriptFile} />
                         </div>
                         <div>
                           <label className="field-label">Alumni Card <span className="text-error-500">*</span></label>

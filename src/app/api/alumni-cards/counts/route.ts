@@ -21,6 +21,7 @@ export async function GET() {
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND (UPPER(TRIM(c.status)) = 'PROCESS' OR UPPER(TRIM(c.status)) = 'UNDERPRINTING')) as underprinting_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ACTIVE') as active_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ONHOLD') as onhold_count,
+        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'RETURNED') as returned_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'DELIVERED') as delivered_count,
         COUNT(*) as all_count
       FROM public.tblcard c
@@ -33,6 +34,7 @@ export async function GET() {
       underprinting_count: bigint | number;
       active_count: bigint | number;
       onhold_count: bigint | number;
+      returned_count: bigint | number;
       delivered_count: bigint | number;
       all_count: bigint | number;
     } | undefined;
@@ -43,6 +45,7 @@ export async function GET() {
     const underprintingCount = countRow?.underprinting_count ? Number(countRow.underprinting_count) : 0;
     const activeCount = countRow?.active_count ? Number(countRow.active_count) : 0;
     const onholdCount = countRow?.onhold_count ? Number(countRow.onhold_count) : 0;
+    const returnedCount = countRow?.returned_count ? Number(countRow.returned_count) : 0;
     const deliveredCount = countRow?.delivered_count ? Number(countRow.delivered_count) : 0;
     
     return NextResponse.json({ 
@@ -51,6 +54,7 @@ export async function GET() {
       underprinting: underprintingCount,
       active: activeCount,
       onhold: onholdCount,
+      returned: returnedCount,
       delivered: deliveredCount,
     }, { status: 200 });
   } catch (err) {

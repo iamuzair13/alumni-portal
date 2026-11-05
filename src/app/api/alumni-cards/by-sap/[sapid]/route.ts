@@ -146,7 +146,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     // Validate status field exists
     if (!body || typeof body !== 'object' || !('status' in body)) {
       return NextResponse.json({ 
-        error: "Missing required field: 'status'. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered" 
+        error: "Missing required field: 'status'. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Returned, Delivered" 
       }, { status: 400 });
     }
 
@@ -156,7 +156,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     // Validate status is not empty
     if (!newStatus || newStatus.length === 0) {
       return NextResponse.json({ 
-        error: "Status cannot be empty. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered" 
+        error: "Status cannot be empty. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Returned, Delivered" 
       }, { status: 400 });
     }
 
@@ -185,19 +185,21 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       finalStatus = "Active";
     } else if (upperStatus === "ONHOLD" || upperStatus === "ON HOLD" || upperStatus === "ON_HOLD") {
       finalStatus = "Onhold";
+    } else if (upperStatus === "RETURNED") {
+      finalStatus = "Returned";
     } else if (upperStatus === "DELIVERED") {
       finalStatus = "Delivered";
     } else {
       return NextResponse.json({ 
-        error: `Invalid status "${newStatus}". Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered` 
+        error: `Invalid status "${newStatus}". Must be one of: UnderReview, UnderPrinting, Active, Onhold, Returned, Delivered` 
       }, { status: 400 });
     }
 
     // Final validation
-    const validStatuses = ["UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"];
+    const validStatuses = ["UnderReview", "UnderPrinting", "Active", "Onhold", "Returned", "Delivered"];
     if (!validStatuses.includes(finalStatus)) {
       return NextResponse.json({ 
-        error: `Invalid status "${newStatus}". Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered` 
+        error: `Invalid status "${newStatus}". Must be one of: UnderReview, UnderPrinting, Active, Onhold, Returned, Delivered` 
       }, { status: 400 });
     }
 
