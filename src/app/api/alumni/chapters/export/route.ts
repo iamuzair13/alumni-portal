@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { alumniColumns, ALUMNI_EXPORT_COLUMNS, stripSensitive } from "@/lib/alumniColumns";
 
 export async function GET(req: Request) {
   try {
@@ -180,8 +181,8 @@ export async function GET(req: Request) {
 
     // Fetch ALL fields from tbl_alumni with chapter data
     const query = sql/* sql */`
-      SELECT 
-        a.*,
+      SELECT
+        ${alumniColumns("a", ALUMNI_EXPORT_COLUMNS)},
         -- Chapter data
         ac.chapter1 as chapter1_id,
         ac.chapter2 as chapter2_id,
@@ -223,7 +224,7 @@ export async function GET(req: Request) {
 
     const rows = await query;
     
-    return NextResponse.json({ items: rows }, { status: 200 });
+    return NextResponse.json({ items: stripSensitive(rows) }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to export alumni chapters data";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -2560,9 +2560,9 @@
       "anonymous": 401,
       "alumniA": 403,
       "alumniB": 403,
-      "viewer": 500,
-      "admin": 500,
-      "superadmin": 500
+      "viewer": 404,
+      "admin": 404,
+      "superadmin": 404
     }
   },
   "/api/users": {

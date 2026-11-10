@@ -277,5 +277,5 @@ an unhandled exception; "598" = call timed out (>10 s).
 | /api/users/[userid] | DELETE | 403 | 403 | 403 | 403 | 403 | 200 |
 | /api/users/create | POST | 403 | 403 | 403 | 403 | 403 | 400 |
 | /api/users/current | GET | 401 | 403 | 403 | 404 | 404 | 404 |
-| /api/users/current | PUT | 401 | 403 | 403 | 500 | 500 | 500 |
+| /api/users/current | PUT | 401 | 403 | 403 | 404 | 404 | 404 |
 | /api/users/current/access-assignments | GET | 401 | 200 | 200 | 200 | 200 | 200 |
