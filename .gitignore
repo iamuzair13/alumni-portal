@@ -27,11 +27,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env.local
-.env.production
 .env*.local
 .env*.production
-.env
 # vercel
 .vercel
 
@@ -41,3 +38,4 @@ next-env.d.ts
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
+config.bat
