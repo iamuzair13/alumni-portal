@@ -10,6 +10,7 @@ import {
   buildAssociationTabMembershipMembersSQL,
   buildAssociationTabMembershipNonMembersSQL,
 } from "@/lib/association-tab-filters";
+import { alumniColumns, ALUMNI_EXPORT_COLUMNS, stripSensitive } from "@/lib/alumniColumns";
 
 export async function GET(req: NextRequest) {
   try {
@@ -69,8 +70,8 @@ export async function GET(req: NextRequest) {
 
     // Fetch ALL fields from tbl_alumni with association data
     const query = sql/* sql */`
-      SELECT 
-        a.*,
+      SELECT
+        ${alumniColumns("a", ALUMNI_EXPORT_COLUMNS)},
         -- Association organization data
         assoc.id as association_id_value,
         COALESCE(assoc.faculty_name, f.faculty_name) as association_title,
@@ -92,7 +93,7 @@ export async function GET(req: NextRequest) {
 
     const rows = await query;
     
-    return NextResponse.json({ items: rows }, { status: 200 });
+    return NextResponse.json({ items: stripSensitive(rows) }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to export alumni association data";
     return NextResponse.json({ error: message }, { status: 500 });

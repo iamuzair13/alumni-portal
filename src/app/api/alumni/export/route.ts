@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { canViewAlumni } from "@/lib/rbac";
 import { buildAlumniPresenceBaseWhere } from "@/lib/master-filter-utils";
+import { alumniColumns, ALUMNI_EXPORT_COLUMNS, stripSensitive } from "@/lib/alumniColumns";
 
 // Increase timeout for large exports (max 10 minutes for Node.js runtime)
 export const maxDuration = 600;
@@ -906,8 +907,8 @@ export async function GET(req: Request) {
 
     // Fetch ALL fields from tbl_alumni with related data
     const query = sql/* sql */`
-      SELECT 
-        a.*,
+      SELECT
+        ${alumniColumns("a", ALUMNI_EXPORT_COLUMNS)},
         f.faculty_name AS facultyname,
         d.department_name AS departmentname,
         p.program_name AS degreetitle,
@@ -1014,7 +1015,7 @@ export async function GET(req: Request) {
     
     // Return response with headers to help with long-running requests
     return NextResponse.json(
-      { items: rows }, 
+      { items: stripSensitive(rows) },
       { 
         status: 200,
         headers: {
