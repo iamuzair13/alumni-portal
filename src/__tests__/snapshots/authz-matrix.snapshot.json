@@ -647,16 +647,6 @@
       "superadmin": 400
     }
   },
-  "/api/alumni/counts/debug": {
-    "GET": {
-      "anonymous": 200,
-      "alumniA": 200,
-      "alumniB": 200,
-      "viewer": 200,
-      "admin": 200,
-      "superadmin": 200
-    }
-  },
   "/api/alumni/counts": {
     "GET": {
       "anonymous": 200,
@@ -1109,16 +1099,6 @@
       "superadmin": 400
     }
   },
-  "/api/alumni/test-new-columns": {
-    "GET": {
-      "anonymous": 401,
-      "alumniA": 200,
-      "alumniB": 200,
-      "viewer": 200,
-      "admin": 200,
-      "superadmin": 200
-    }
-  },
   "/api/alumni/verify-statuses": {
     "GET": {
       "anonymous": 401,
@@ -1296,46 +1276,6 @@
     }
   },
   "/api/dashboard/alumni-trends": {
-    "GET": {
-      "anonymous": 401,
-      "alumniA": 200,
-      "alumniB": 200,
-      "viewer": 200,
-      "admin": 200,
-      "superadmin": 200
-    }
-  },
-  "/api/debug/access-filter": {
-    "GET": {
-      "anonymous": 401,
-      "alumniA": 200,
-      "alumniB": 200,
-      "viewer": 200,
-      "admin": 200,
-      "superadmin": 200
-    }
-  },
-  "/api/debug/department-check": {
-    "GET": {
-      "anonymous": 401,
-      "alumniA": 403,
-      "alumniB": 403,
-      "viewer": 403,
-      "admin": 403,
-      "superadmin": 200
-    }
-  },
-  "/api/debug/program-matching": {
-    "GET": {
-      "anonymous": 401,
-      "alumniA": 403,
-      "alumniB": 403,
-      "viewer": 403,
-      "admin": 403,
-      "superadmin": 200
-    }
-  },
-  "/api/debug/test-access-filter": {
     "GET": {
       "anonymous": 401,
       "alumniA": 200,
@@ -1770,24 +1710,6 @@
       "alumniB": 200,
       "viewer": 200,
       "admin": 200,
-      "superadmin": 200
-    }
-  },
-  "/api/fix-access-assignments": {
-    "GET": {
-      "anonymous": 401,
-      "alumniA": 403,
-      "alumniB": 403,
-      "viewer": 403,
-      "admin": 403,
-      "superadmin": 200
-    },
-    "POST": {
-      "anonymous": 401,
-      "alumniA": 403,
-      "alumniB": 403,
-      "viewer": 403,
-      "admin": 403,
       "superadmin": 200
     }
   },
@@ -2457,16 +2379,6 @@
       "alumniA": 403,
       "alumniB": 403,
       "viewer": 403,
-      "admin": 500,
-      "superadmin": 500
-    }
-  },
-  "/api/test-email": {
-    "GET": {
-      "anonymous": 401,
-      "alumniA": 500,
-      "alumniB": 500,
-      "viewer": 500,
       "admin": 500,
       "superadmin": 500
     }

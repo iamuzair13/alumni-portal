@@ -1,6 +1,6 @@
 # Authorization Matrix (baseline snapshot)
 
-Generated from 196 routes. Status codes only; "THRW" = handler threw
+Generated from 188 routes. Status codes only; "THRW" = handler threw
 an unhandled exception; "598" = call timed out (>10 s).
 
 | Route | Method | anonymous | alumniA | alumniB | viewer | admin | superadmin |
@@ -76,7 +76,6 @@ an unhandled exception; "598" = call timed out (>10 s).
 | /api/alumni/check-record | POST | 400 | 400 | 400 | 400 | 400 | 400 |
 | /api/alumni/check-registration | GET | 400 | 400 | 400 | 400 | 400 | 400 |
 | /api/alumni/counts | GET | 200 | 200 | 200 | 200 | 200 | 200 |
-| /api/alumni/counts/debug | GET | 200 | 200 | 200 | 200 | 200 | 200 |
 | /api/alumni/create | POST | 400 | 400 | 400 | 400 | 400 | 400 |
 | /api/alumni/cricket-membership | POST | 401 | 400 | 400 | 400 | 400 | 400 |
 | /api/alumni/current-sapid | GET | 401 | 200 | 200 | 404 | 404 | 404 |
@@ -121,7 +120,6 @@ an unhandled exception; "598" = call timed out (>10 s).
 | /api/alumni/talks | PUT | 401 | 400 | 400 | 400 | 400 | 400 |
 | /api/alumni/talks | PATCH | 401 | 400 | 400 | 400 | 400 | 400 |
 | /api/alumni/talks | DELETE | 401 | 403 | 403 | 403 | 400 | 400 |
-| /api/alumni/test-new-columns | GET | 401 | 200 | 200 | 200 | 200 | 200 |
 | /api/alumni/verify-statuses | GET | 401 | 200 | 200 | 200 | 200 | 200 |
 | /api/alumni/work-cities | GET | 401 | 200 | 200 | 200 | 200 | 200 |
 | /api/alumni/work-countries | GET | 401 | 200 | 200 | 200 | 200 | 200 |
@@ -141,10 +139,6 @@ an unhandled exception; "598" = call timed out (>10 s).
 | /api/chapters/list | GET | 200 | 200 | 200 | 200 | 200 | 200 |
 | /api/check-faculty-mismatches | GET | 401 | 403 | 403 | 403 | 403 | 200 |
 | /api/dashboard/alumni-trends | GET | 401 | 200 | 200 | 200 | 200 | 200 |
-| /api/debug/access-filter | GET | 401 | 200 | 200 | 200 | 200 | 200 |
-| /api/debug/department-check | GET | 401 | 403 | 403 | 403 | 403 | 200 |
-| /api/debug/program-matching | GET | 401 | 403 | 403 | 403 | 403 | 200 |
-| /api/debug/test-access-filter | GET | 401 | 200 | 200 | 200 | 200 | 200 |
 | /api/distinguished-alumni | GET | 401 | 200 | 200 | 200 | 200 | 200 |
 | /api/distinguished-alumni | POST | 401 | 403 | 403 | 403 | 400 | 400 |
 | /api/distinguished-alumni/[id] | GET | 401 | 404 | 404 | 404 | 404 | 404 |
@@ -189,8 +183,6 @@ an unhandled exception; "598" = call timed out (>10 s).
 | /api/external/success-stories/[id] | GET | 404 | 404 | 404 | 404 | 404 | 404 |
 | /api/fetch-faculties-departments | GET | 200 | 200 | 200 | 200 | 200 | 200 |
 | /api/fetch-programs | GET | 200 | 200 | 200 | 200 | 200 | 200 |
-| /api/fix-access-assignments | GET | 401 | 403 | 403 | 403 | 403 | 200 |
-| /api/fix-access-assignments | POST | 401 | 403 | 403 | 403 | 403 | 200 |
 | /api/form-templates | GET | 200 | 200 | 200 | 200 | 200 | 200 |
 | /api/jobs | GET | 401 | 200 | 200 | 200 | 200 | 200 |
 | /api/jobs | POST | 401 | 403 | 403 | 403 | 400 | 400 |
@@ -266,7 +258,6 @@ an unhandled exception; "598" = call timed out (>10 s).
 | /api/stories/criteria | PUT | 401 | 403 | 403 | 403 | 403 | 400 |
 | /api/stories/criteria | DELETE | 401 | 403 | 403 | 403 | 403 | 400 |
 | /api/submissions/bulk-edit | PATCH | 401 | 403 | 403 | 403 | 500 | 500 |
-| /api/test-email | GET | 401 | 500 | 500 | 500 | 500 | 500 |
 | /api/university/programs | GET | 200 | 200 | 200 | 200 | 200 | 200 |
 | /api/uploads/images/[...path] | GET | 404 | 404 | 404 | 404 | 404 | 404 |
 | /api/uploads/leadership | POST | 401 | 400 | 400 | 400 | 400 | 400 |
