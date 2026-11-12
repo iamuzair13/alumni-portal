@@ -18,7 +18,6 @@ import { canViewAlumni } from "@/lib/rbac";
 import { type MentorshipStatus } from "./status";
 import ProfileDetailsClient from "./ProfileDetailsClient";
 import ProfileDetailsServer from "./ProfileDetailsServer";
-import PageBanner from "@/components/ui/PageBanner";
 import AlumniCardClient from "@/components/alumni/AlumniCardClient";
 import AlumniCardExpiryClient from "@/components/alumni/AlumniCardExpiryClient";
 import SubmitRevisionButton from "@/components/alumni/SubmitRevisionButton";
@@ -26,7 +25,14 @@ import UpdateAlumniCardPictureButton from "@/components/alumni/UpdateAlumniCardP
 import NetworkingEngagementSection from "@/components/ui/NetworkingEngagementSection";
 import NewslettersCard from "@/components/alumni/NewslettersCard";
 import BenefitCard from "@/components/ui/BenefitCard";
-import AlumniTalksCard from "@/components/alumni/AlumniTalksCard";
+import ProfileHero from "@/components/alumni/profile/ProfileHero";
+import BenefitsBento, {
+  type MembershipSummary,
+  type MerchantSummary,
+  type ScholarshipSummary,
+} from "@/components/alumni/profile/BenefitsBento";
+import QuickActionsRow from "@/components/alumni/profile/QuickActionsRow";
+import StickySectionNav from "@/components/alumni/profile/StickySectionNav";
 import { formatCardValidityMonthYear, resolveAlumniCardValidityRaw } from "@/lib/cardValidity";
 import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
 import { resolvePreferredCardImage } from "@/lib/alumniCardImage";
@@ -55,7 +61,6 @@ async function getProfile(searchParams: { sapid?: string }) {
   try {
     const session = await auth();
     const canView = canViewAlumni(session?.user); // Includes admins, superadmins, and viewers
-    const isAdmin = isAdminUser(session?.user) || isSuperAdminUser(session?.user);
     const sessionAlumniId =
       session?.user && (session.user as { userId?: number | null })?.userId
         ? Number((session.user as { userId?: number | null }).userId)
@@ -665,6 +670,98 @@ let cardImageFile: string | null = null;
     }
   }
 
+  // Benefit summaries for the bento grid — three independent aggregates run in
+  // parallel; each degrades to an empty summary on error so the page never
+  // fails because a benefit count could not be computed.
+  let scholarshipSummary: ScholarshipSummary = { count: 0, approved: 0, pending: 0, maxDiscountPct: null };
+  let membershipSummary: MembershipSummary = { count: 0, approved: 0, pending: 0, facilities: [] };
+  let merchantSummary: MerchantSummary = { count: 0, maxPct: 0, topNames: [] };
+  if (alumniId) {
+    await Promise.all([
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              COUNT(*)::int AS count,
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) = 'approved')::int AS approved,
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('pending', 'under-review', 'under_review'))::int AS pending,
+              MAX(s.applied_discount_percent)::float AS max_discount
+            FROM public.alumni_scholarships s
+            WHERE s.alumniid = ${alumniId}
+          `;
+          const r = rows[0] as { count?: number; approved?: number; pending?: number; max_discount?: number | null } | undefined;
+          if (r) {
+            scholarshipSummary = {
+              count: Number(r.count ?? 0),
+              approved: Number(r.approved ?? 0),
+              pending: Number(r.pending ?? 0),
+              maxDiscountPct: typeof r.max_discount === "number" && Number.isFinite(r.max_discount) ? r.max_discount : null,
+            };
+          }
+        } catch {
+          // keep default summary
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              COUNT(*)::int AS count,
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(am.status, 'pending')) = 'approved')::int AS approved,
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(am.status, 'pending')) IN ('pending', 'under-review', 'under_review'))::int AS pending,
+              ARRAY_AGG(DISTINCT am.facility_type) FILTER (WHERE am.facility_type IS NOT NULL) AS facilities
+            FROM public.alumni_memberships am
+            WHERE am.alumniid = ${alumniId}
+          `;
+          const r = rows[0] as { count?: number; approved?: number; pending?: number; facilities?: string[] | null } | undefined;
+          if (r) {
+            membershipSummary = {
+              count: Number(r.count ?? 0),
+              approved: Number(r.approved ?? 0),
+              pending: Number(r.pending ?? 0),
+              facilities: Array.isArray(r.facilities) ? r.facilities.filter((f): f is string => !!f) : [],
+            };
+          }
+        } catch {
+          // keep default summary
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              COUNT(*)::int AS count,
+              MAX(m.discount_pct)::float AS max_pct,
+              (ARRAY_AGG(m.business_name ORDER BY m.discount_pct DESC))[1:3] AS top_names
+            FROM public.merchants m
+            WHERE m.status = 'active'
+              AND (m.end_date IS NULL OR m.end_date >= CURRENT_DATE)
+          `;
+          const r = rows[0] as { count?: number; max_pct?: number | null; top_names?: string[] | null } | undefined;
+          if (r) {
+            merchantSummary = {
+              count: Number(r.count ?? 0),
+              maxPct: typeof r.max_pct === "number" && Number.isFinite(r.max_pct) ? Math.round(r.max_pct) : 0,
+              topNames: Array.isArray(r.top_names) ? r.top_names.filter((n): n is string => !!n) : [],
+            };
+          }
+        } catch {
+          // keep default summary
+        }
+      })(),
+    ]);
+  }
+
+  const cardIssued = cardStatus === "active" || cardStatus === "received";
+  const sectionNavItems = [
+    { id: "overview", label: "Overview" },
+    { id: "benefits", label: "Benefits" },
+    { id: "profile", label: "Profile" },
+    { id: "engagement", label: "Engagement" },
+    { id: "newsletters", label: "Updates" },
+    { id: "all-benefits", label: "All Benefits" },
+  ];
+
   return (
     <>
     <div className="bg-gray-100 overflow-x-hidden dark:bg-gray-950">
@@ -689,12 +786,62 @@ let cardImageFile: string | null = null;
           <Alert variant="error" title="Account Lookup Failed" message={sapError} />
         </div>
       )}
-      <PageBanner title="My Profile" />
+      {sapId ? (
+        <>
+          <section id="overview" className="scroll-mt-6 w-full max-w-7xl mx-auto mt-5 sm:mt-7 px-3 sm:px-4 md:px-6 lg:px-8" aria-label="Profile overview">
+            <ProfileHero
+              name={name}
+              avatar={avatar}
+              sapId={sapId}
+              memberId={sapId || (alumniId ? `UOL-AL-${alumniId}` : "")}
+              program={p?.degreetitle ?? ""}
+              department={dept}
+              faculty={faculty}
+              graduationYear={p?.yearofending ?? null}
+              campus={p?.campusname ?? null}
+              isVerified={isVerified}
+              cardStatus={cardStatus}
+              cardValidity={validity}
+              leadershipRole={leadershipInfo.roleDisplay}
+            />
+          </section>
+          <div className="w-full max-w-7xl mx-auto mt-4 px-3 sm:px-4 md:px-6 lg:px-8">
+            <StickySectionNav sections={sectionNavItems} />
+          </div>
+          <section id="benefits" className="scroll-mt-24 w-full max-w-7xl mx-auto mt-5 px-3 sm:px-4 md:px-6 lg:px-8" aria-label="Your benefits">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">Your Benefits</h2>
+              <span className="rounded-full border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
+                Alumni card required to avail
+              </span>
+            </div>
+            <BenefitsBento
+              sapId={sapId}
+              isViewer={isViewer}
+              cardStatus={cardStatus}
+              cardValidity={validity}
+              scholarships={scholarshipSummary}
+              memberships={membershipSummary}
+              merchants={merchantSummary}
+              chapters={chapters}
+              engagement={{
+                stories: successStoryCount,
+                talks: alumniTalkCount,
+                mentorship: mentorshipStatus,
+                leadershipRole: leadershipInfo.roleDisplay,
+              }}
+            />
+            <div className="mt-4">
+              <QuickActionsRow sapId={sapId} isViewer={isViewer} cardIssued={cardIssued} />
+            </div>
+          </section>
+        </>
+      ) : null}
 
         {/* 2. Main Content Container (Max-width and Padding) */}
         {/* This container centers and holds the profile details and ID card. */}
-        <div className="w-full bg-gray-100 mx-auto mt-8 sm:mt-12 md:mt-16 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 dark:bg-gray-950">
-          <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row mt-8 sm:mt-10 md:-mt-16 gap-4 sm:gap-6 md:gap-8 p-3 sm:p-4 md:p-6 lg:p-8 dark:bg-gray-900">
+        <section id="profile" className="scroll-mt-24 w-full bg-gray-100 mx-auto mt-5 sm:mt-7 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 dark:bg-gray-950">
+          <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row gap-4 sm:gap-6 md:gap-8 p-3 sm:p-4 md:p-6 lg:p-8 dark:bg-gray-900">
 
             <div className="w-full flex min-w-0 order-1">
                 {sapId && sapId.trim() ? (
@@ -954,8 +1101,8 @@ let cardImageFile: string | null = null;
 
           {/* B. Alumni ID Card (Fixed width on larger screens) */}
         </div>
-      </div>
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 text-gray-900 bg-gray-100 dark:bg-gray-950 dark:text-gray-100">
+      </section>
+      <section id="engagement" className="scroll-mt-24 px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 text-gray-900 bg-gray-100 dark:bg-gray-950 dark:text-gray-100">
         <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-6 dark:text-gray-100">Networking & Engagement</h4>
         <NetworkingEngagementSection
           sapId={sapId}
@@ -966,15 +1113,15 @@ let cardImageFile: string | null = null;
           chapterMembershipCount={chapterMembershipCount}
           associationTitle={associationTitle}
         />
-      </div>
+      </section>
 
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-gray-100 dark:bg-gray-950">
+      <section id="newsletters" className="scroll-mt-24 px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-gray-100 dark:bg-gray-950">
         <NewslettersCard />
-      </div>
+      </section>
 
 
 
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-gray-100 dark:bg-gray-950">
+      <section id="all-benefits" className="scroll-mt-24 px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-gray-100 dark:bg-gray-950">
         <div className="mb-4 sm:mb-6 md:mb-8">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 dark:text-gray-100">
           Perks &amp; Benefits
@@ -1078,7 +1225,7 @@ let cardImageFile: string | null = null;
             }
           />
         </div>
-      </div>
+      </section>
     </div>
       
   </>
