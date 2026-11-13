@@ -10,7 +10,7 @@ import {
   Landmark,
   Crown,
 } from "lucide-react";
-import { HubTile, SectionHeader } from "@/components/alumni/profile/hub-ui";
+import { HubTile, Pill, SectionHeader } from "@/components/alumni/profile/hub-ui";
 
 type EngagementTabProps = {
   sapId: string;
@@ -57,9 +57,9 @@ export default function EngagementTab({
       tone: "amber",
       badge:
         typeof successStoryCount === "number" ? (
-          <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <Pill tone="amber">
             All Stories: {successStoryCount}
-          </span>
+          </Pill>
         ) : undefined,
     },
     {
@@ -72,7 +72,7 @@ export default function EngagementTab({
       tone: "violet",
       badge:
         typeof alumniTalkCount === "number" ? (
-          <span className="rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+          <Pill tone="violet">
             Applications: {alumniTalkCount}
             {alumniTalkCount > 0 && mentorshipStatusError
               ? ` · ${mentorshipStatusError}`
@@ -81,7 +81,7 @@ export default function EngagementTab({
                 : alumniTalkCount > 0 && mentorshipStatus === "conducted"
                   ? " · Conducted"
                   : ""}
-          </span>
+          </Pill>
         ) : undefined,
     },
     {
@@ -93,9 +93,9 @@ export default function EngagementTab({
       tone: "brand",
       badge:
         typeof chapterMembershipCount === "number" ? (
-          <span className="rounded-md border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300">
+          <Pill tone="brand">
             Assigned Chapters: {chapterMembershipCount}
-          </span>
+          </Pill>
         ) : undefined,
     },
     {
@@ -115,9 +115,9 @@ export default function EngagementTab({
       icon: <Landmark />,
       tone: "orange",
       badge: (
-        <span className="rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300">
+        <Pill tone="orange">
           {associationTitle ? associationTitle : "Not Assigned"}
-        </span>
+        </Pill>
       ),
     },
     {
@@ -158,3 +158,4 @@ export default function EngagementTab({
     </div>
   );
 }
+

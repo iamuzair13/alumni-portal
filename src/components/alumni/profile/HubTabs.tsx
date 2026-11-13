@@ -45,6 +45,12 @@ export default function Hub({ tabs, panels }: HubProps) {
     };
   }, [updateScrollState]);
 
+  // Keep the active tab visible when the strip overflows on mobile.
+  useEffect(() => {
+    const btn = listRef.current?.querySelector<HTMLElement>(`[data-tab="${active}"]`);
+    btn?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active]);
+
   const scrollTabs = useCallback((dir: 1 | -1) => {
     const el = listRef.current;
     if (!el) return;
@@ -96,6 +102,24 @@ export default function Hub({ tabs, panels }: HubProps) {
             role="tablist"
             aria-label="Profile sections"
             onKeyDown={onKeyDown}
+            style={{
+              maskImage:
+                canLeft && canRight
+                  ? "linear-gradient(90deg,transparent,black 20px,black calc(100% - 20px),transparent)"
+                  : canLeft
+                    ? "linear-gradient(90deg,transparent,black 20px)"
+                    : canRight
+                      ? "linear-gradient(90deg,black calc(100% - 20px),transparent)"
+                      : "none",
+              WebkitMaskImage:
+                canLeft && canRight
+                  ? "linear-gradient(90deg,transparent,black 20px,black calc(100% - 20px),transparent)"
+                  : canLeft
+                    ? "linear-gradient(90deg,transparent,black 20px)"
+                    : canRight
+                      ? "linear-gradient(90deg,black calc(100% - 20px),transparent)"
+                      : "none",
+            }}
             className="flex flex-1 items-center gap-1.5 overflow-x-auto scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
           {tabs.map((t) => {

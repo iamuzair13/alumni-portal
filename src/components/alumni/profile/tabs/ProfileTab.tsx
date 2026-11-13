@@ -11,7 +11,7 @@ import { isViewerUser } from "@/lib/alumniProfile";
 import ApprovedLeadershipBadges from "@/components/alumni/ApprovedLeadershipBadges";
 import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
 import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
-import { Card, Chip, SectionHeader, BTN_PRIMARY, BTN_SECONDARY } from "@/components/alumni/profile/hub-ui";
+import { Card, Chip, Dialog, SectionHeader, BTN_PRIMARY, BTN_SECONDARY } from "@/components/alumni/profile/hub-ui";
 import { Camera, CheckCircle2, Landmark } from "lucide-react";
 
 type LeadershipInfo = {
@@ -141,6 +141,15 @@ export default function ProfileTab({ sapId, chapters = [], chaptersError, associ
 
     setPendingCropFile(file);
     setShowCropModal(true);
+  };
+
+  const closeConsent = () => {
+    setShowConsentModal(false);
+    setSelectedFile(null);
+    setPhotoConsent(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleUploadWithConsent = async () => {
@@ -467,78 +476,58 @@ export default function ProfileTab({ sapId, chapters = [], chaptersError, associ
       </div>
 
       {/* Photo Usage Consent Modal */}
-      {showConsentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            setShowConsentModal(false);
-            setSelectedFile(null);
-            setPhotoConsent(null);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = "";
-            }
-          }
-        }}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 dark:bg-gray-900 dark:border dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 dark:text-gray-100">Profile update (picture upload)</h3>
-            <p className="text-sm text-gray-600 mb-4 dark:text-gray-400">Please select how you would like your photo to be used:</p>
+      <Dialog
+        open={showConsentModal}
+        onClose={closeConsent}
+        title="Profile update (picture upload)"
+        footer={
+          <>
+            <button type="button" onClick={closeConsent} className={BTN_SECONDARY}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleUploadWithConsent}
+              disabled={photoConsent === null || uploading}
+              className={`${BTN_PRIMARY} disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {uploading ? "Uploading..." : "Upload"}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-content-secondary">Please select how you would like your photo to be used:</p>
 
-            <div className="space-y-3 mb-6">
-              <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors dark:border-gray-700 dark:hover:bg-gray-800">
-                <input
-                  type="radio"
-                  name="photoConsent"
-                  value="false"
-                  checked={photoConsent === false}
-                  onChange={() => setPhotoConsent(false)}
-                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  I allow my photo to be used only to issue my Alumni Honor Card
-                </span>
-              </label>
+        <div className="mt-3 space-y-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border-subtle p-3 transition-colors hover:bg-surface-raised">
+            <input
+              type="radio"
+              name="photoConsent"
+              value="false"
+              checked={photoConsent === false}
+              onChange={() => setPhotoConsent(false)}
+              className="mt-1 h-4 w-4 accent-brand-600"
+            />
+            <span className="text-sm text-content-secondary">
+              I allow my photo to be used only to issue my Alumni Honor Card
+            </span>
+          </label>
 
-              <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors dark:border-gray-700 dark:hover:bg-gray-800">
-                <input
-                  type="radio"
-                  name="photoConsent"
-                  value="true"
-                  checked={photoConsent === true}
-                  onChange={() => setPhotoConsent(true)}
-                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  I allow my photo to be used for my Alumni Honor Card and other official purposes (such as university & alumni websites and official publications)
-                </span>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowConsentModal(false);
-                  setSelectedFile(null);
-                  setPhotoConsent(null);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleUploadWithConsent}
-                disabled={photoConsent === null || uploading}
-                className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:bg-brand-500 dark:text-accent-950 dark:hover:bg-brand-400"
-              >
-                {uploading ? "Uploading..." : "Upload"}
-              </button>
-            </div>
-          </div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border-subtle p-3 transition-colors hover:bg-surface-raised">
+            <input
+              type="radio"
+              name="photoConsent"
+              value="true"
+              checked={photoConsent === true}
+              onChange={() => setPhotoConsent(true)}
+              className="mt-1 h-4 w-4 accent-brand-600"
+            />
+            <span className="text-sm text-content-secondary">
+              I allow my photo to be used for my Alumni Honor Card and other official purposes (such as university &amp; alumni websites and official publications)
+            </span>
+          </label>
         </div>
-      )}
+      </Dialog>
     </>
   );
 }

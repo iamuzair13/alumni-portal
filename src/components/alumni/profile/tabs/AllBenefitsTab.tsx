@@ -22,6 +22,7 @@ import {
   Award,
 } from "lucide-react";
 import type { CardStatus } from "@/app/alumni-profile/status";
+import { EmptyState } from "@/components/alumni/profile/hub-ui";
 
 type AllBenefitsTabProps = {
   sapId: string;
@@ -138,10 +139,11 @@ export default function AllBenefitsTab({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border-subtle bg-surface-raised px-4 py-10 text-center">
-          <p className="text-sm font-semibold text-content">No matches</p>
-          <p className="mt-1 text-xs text-content-muted">Try a different search or filter.</p>
-        </div>
+        <EmptyState
+          icon={<Search />}
+          title="No matches"
+          description="Try a different search or filter."
+        />
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((i) => (

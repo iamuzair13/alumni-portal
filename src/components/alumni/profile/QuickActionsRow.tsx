@@ -57,7 +57,7 @@ export default function QuickActionsRow({ sapId, cardIssued, isViewer }: QuickAc
         <Link
           key={a.label}
           href={a.href}
-          className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 motion-reduce:transition-none ${
+          className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 motion-reduce:transition-none ${
             a.primary
               ? "border-brand-600 bg-brand-600 text-white hover:bg-brand-700 dark:border-brand-500 dark:bg-brand-500 dark:text-accent-950 dark:hover:bg-brand-400"
               : "border-border-subtle bg-surface text-content-secondary hover:border-brand-300 hover:text-brand-700 dark:hover:border-brand-500/50 dark:hover:text-brand-300"

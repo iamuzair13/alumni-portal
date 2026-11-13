@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, SectionHeader } from "@/components/alumni/profile/hub-ui";
+import { Card, EmptyState, ListSkeleton, Notice, SectionHeader } from "@/components/alumni/profile/hub-ui";
+import { Mail } from "lucide-react";
 
 type NewsletterRow = {
   id: number;
@@ -60,25 +61,36 @@ export default function UpdatesTab() {
     const items = data.items ?? [];
     const hasItems = items.length > 0;
     if (loading) {
-      return (
-        <div className="space-y-3" aria-busy="true">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-xl bg-surface-raised" />
-          ))}
-        </div>
-      );
+      return <ListSkeleton rows={4} />;
     }
 
     if (error) {
       return (
-        <div className="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-900 dark:bg-error-950/40 dark:text-error-300">
+        <Notice
+          variant="error"
+          action={
+            <button
+              type="button"
+              onClick={fetchNewsletters}
+              className="shrink-0 rounded-lg border border-error-300 px-2.5 py-1 text-xs font-semibold hover:bg-error-100 dark:border-error-800 dark:hover:bg-error-900/40"
+            >
+              Retry
+            </button>
+          }
+        >
           {error}
-        </div>
+        </Notice>
       );
     }
 
     if (!hasItems) {
-      return <div className="rounded-xl border border-dashed border-border-subtle bg-surface-raised px-4 py-8 text-center text-sm text-content-muted">No newsletters yet.</div>;
+      return (
+        <EmptyState
+          icon={<Mail />}
+          title="No newsletters yet"
+          description="Alumni newsletters will appear here when they are published."
+        />
+      );
     }
 
     return (
@@ -109,7 +121,7 @@ export default function UpdatesTab() {
         ))}
       </div>
     );
-  }, [data.items, error, loading]);
+  }, [data.items, error, loading, fetchNewsletters]);
 
   return (
     <div className="space-y-4">
