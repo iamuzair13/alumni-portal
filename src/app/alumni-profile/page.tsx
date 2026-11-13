@@ -27,7 +27,8 @@ import UpdatesTab from "@/components/alumni/profile/tabs/UpdatesTab";
 import AllBenefitsTab from "@/components/alumni/profile/tabs/AllBenefitsTab";
 import { Suspense } from "react";
 import { Lock } from "lucide-react";
-import { Notice } from "@/components/alumni/profile/hub-ui";import ChangeApprovalNotice from "@/components/alumni/profile/ChangeApprovalNotice";
+import { Notice } from "@/components/alumni/profile/hub-ui";
+import KpiStrip from "@/components/alumni/profile/KpiStrip";import ChangeApprovalNotice from "@/components/alumni/profile/ChangeApprovalNotice";
 import {
   type MembershipSummary,
   type MerchantSummary,
@@ -790,6 +791,7 @@ let cardImageFile: string | null = null;
       )}
       {sapId ? (
         <section className="w-full max-w-7xl mx-auto mt-5 sm:mt-7 px-3 sm:px-4 md:px-6 lg:px-8 pb-10" aria-label="Alumni profile hub">
+          <KpiStrip />
           <ProfileHero
             name={name}
             avatar={avatar}
