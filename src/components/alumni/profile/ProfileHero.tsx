@@ -159,7 +159,7 @@ export default function ProfileHero({
         style={{ backgroundImage: "repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 14px)" }}
       />
 
-      <div className="relative flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-stretch lg:justify-between lg:gap-8">
+      <div className="relative flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
         {/* identity */}
         <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
           <div className="relative shrink-0">
@@ -252,6 +252,18 @@ export default function ProfileHero({
                 </Link>
               )}
             </div>
+
+            {sapId && (
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                <CompletenessMeter sapId={sapId} />
+                <Link
+                  href={profileTabHref}
+                  className="shrink-0 text-xs font-medium text-amber-200 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-100 focus-visible:outline-2 focus-visible:outline-amber-300 rounded-sm"
+                >
+                  Complete your profile
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
@@ -293,17 +305,6 @@ export default function ProfileHero({
                   </span>
                 )}
               </div>
-            </div>
-          )}
-          {sapId && (
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <CompletenessMeter sapId={sapId} />
-              <Link
-                href={profileTabHref}
-                className="shrink-0 text-xs font-medium text-amber-200 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-100 focus-visible:outline-2 focus-visible:outline-amber-300 rounded-sm"
-              >
-                Complete your profile
-              </Link>
             </div>
           )}
         </div>
