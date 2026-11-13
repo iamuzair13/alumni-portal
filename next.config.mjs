@@ -9,6 +9,10 @@ const extraDomains = (process.env.NEXT_PUBLIC_IMAGE_DOMAINS || "")
 
 const nextConfig = {
 
+  watchOptions: {
+    ignored: ["**/.playwright-mcp/**"],
+  },
+
   eslint: {
     ignoreDuringBuilds: true,
   },
