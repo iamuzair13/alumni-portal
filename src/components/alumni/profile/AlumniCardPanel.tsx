@@ -92,12 +92,12 @@ export default function AlumniCardPanel({
       className="rounded-2xl border border-white/15 bg-white/10 p-4 text-center shadow-inner backdrop-blur-sm"
       aria-label="Alumni card"
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-amber-300/90" aria-hidden />
-          <h3 className="text-base font-bold text-white sm:text-lg">Alumni Card</h3>
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <CreditCard className="h-4 w-4 shrink-0 text-amber-300/90" aria-hidden />
+          <h3 className="truncate text-base font-bold text-white sm:text-lg">Alumni Card</h3>
         </div>
-        <div role="status" aria-live="polite">
+        <div role="status" aria-live="polite" className="shrink-0">
           <span
             className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${statusChip}`}
           >
