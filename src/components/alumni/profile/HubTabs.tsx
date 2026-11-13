@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 
 export type HubTabDef = { key: string; label: string };
@@ -18,6 +19,41 @@ export default function Hub({ tabs, panels }: HubProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
   const active = searchParams.get("tab") ?? "overview";
+
+  const [overflowing, setOverflowing] = useState(false);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    setOverflowing(el.scrollWidth > el.clientWidth + 2);
+    setCanLeft(el.scrollLeft > 2);
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    updateScrollState();
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", updateScrollState);
+    };
+  }, [updateScrollState]);
+
+  const scrollTabs = useCallback((dir: 1 | -1) => {
+    const el = listRef.current;
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollBy({
+      left: dir * Math.max(140, el.clientWidth * 0.6),
+      behavior: reduce ? "auto" : "smooth",
+    });
+  }, []);
 
   const setTab = useCallback(
     (key: string) => {
@@ -43,13 +79,25 @@ export default function Hub({ tabs, panels }: HubProps) {
   return (
     <div>
       <div className="sticky top-16 z-30 -mx-1 bg-gray-50/90 px-1 pt-1 pb-2 backdrop-blur supports-[backdrop-filter]:bg-gray-50/70 dark:bg-gray-950/90 dark:supports-[backdrop-filter]:bg-gray-950/70">
-        <div
-          ref={listRef}
-          role="tablist"
-          aria-label="Profile sections"
-          onKeyDown={onKeyDown}
-          className="flex items-center gap-1.5 overflow-x-auto rounded-2xl border border-border-subtle bg-surface p-1.5 shadow-sm scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
+        <div className="flex items-center gap-1 rounded-2xl border border-border-subtle bg-surface p-1.5 shadow-sm">
+          {overflowing && (
+            <button
+              type="button"
+              aria-label="Scroll tabs left"
+              disabled={!canLeft}
+              onClick={() => scrollTabs(-1)}
+              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-xl text-content-secondary transition-colors hover:bg-surface-raised hover:text-content focus-visible:outline-2 focus-visible:outline-brand-500 disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </button>
+          )}
+          <div
+            ref={listRef}
+            role="tablist"
+            aria-label="Profile sections"
+            onKeyDown={onKeyDown}
+            className="flex flex-1 items-center gap-1.5 overflow-x-auto scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
           {tabs.map((t) => {
             const selected = t.key === active;
             return (
@@ -73,6 +121,18 @@ export default function Hub({ tabs, panels }: HubProps) {
               </button>
             );
           })}
+          </div>
+          {overflowing && (
+            <button
+              type="button"
+              aria-label="Scroll tabs right"
+              disabled={!canRight}
+              onClick={() => scrollTabs(1)}
+              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-xl text-content-secondary transition-colors hover:bg-surface-raised hover:text-content focus-visible:outline-2 focus-visible:outline-brand-500 disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
+          )}
         </div>
       </div>
 
