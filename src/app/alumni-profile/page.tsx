@@ -28,7 +28,7 @@ import AllBenefitsTab from "@/components/alumni/profile/tabs/AllBenefitsTab";
 import { Suspense } from "react";
 import { Lock } from "lucide-react";
 import { Notice } from "@/components/alumni/profile/hub-ui";
-import KpiStrip from "@/components/alumni/profile/KpiStrip";import ChangeApprovalNotice from "@/components/alumni/profile/ChangeApprovalNotice";
+import KpiStrip, { type KpiValues } from "@/components/alumni/profile/KpiStrip";import ChangeApprovalNotice from "@/components/alumni/profile/ChangeApprovalNotice";
 import {
   type MembershipSummary,
   type MerchantSummary,
@@ -753,6 +753,78 @@ let cardImageFile: string | null = null;
     ]);
   }
 
+  // Global portal KPI counts for the strip at the top of the hub. Same
+  // aggregate style as the bento summaries — each query degrades
+  // independently so one failure cannot blank the strip.
+  let kpiValues: KpiValues = {
+    verified: null,
+    medalists: null,
+    cards: null,
+    scholarships: null,
+    memberships: null,
+    leaderships: null,
+    merchants: null,
+  };
+  if (alumniId) {
+    await Promise.all([
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(verify, '')) = 'true')::int AS verified,
+              COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(medal, ''))) IN ('gold medalist', 'silver medalist', 'bronze medalist'))::int AS medalists
+            FROM public.tbl_alumni`;
+          const r = rows[0] as { verified?: number; medalists?: number } | undefined;
+          kpiValues.verified = Number(r?.verified ?? 0);
+          kpiValues.medalists = Number(r?.medalists ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT COUNT(*)::int AS c FROM public.tblcard
+            WHERE UPPER(TRIM(COALESCE(status, ''))) IN ('ACTIVE', 'DELIVERED')`;
+          kpiValues.cards = Number((rows[0] as { c?: number } | undefined)?.c ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT COUNT(*)::int AS c FROM public.alumni_scholarships
+            WHERE LOWER(COALESCE(status, 'pending')) = 'approved'`;
+          kpiValues.scholarships = Number((rows[0] as { c?: number } | undefined)?.c ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT COUNT(*)::int AS c FROM public.alumni_memberships`;
+          kpiValues.memberships = Number((rows[0] as { c?: number } | undefined)?.c ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              (SELECT COUNT(*)::int FROM public.chapter_leadership)
+              + (SELECT COUNT(*)::int FROM public.tblalumniassociation) AS c`;
+          kpiValues.leaderships = Number((rows[0] as { c?: number } | undefined)?.c ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+    ]);
+    kpiValues.merchants = merchantSummary.count;
+  }
+
   const cardIssued = cardStatus === "active" || cardStatus === "received";
   const hubTabs = [
     { key: "overview", label: "Overview" },
@@ -791,7 +863,7 @@ let cardImageFile: string | null = null;
       )}
       {sapId ? (
         <section className="w-full max-w-7xl mx-auto mt-5 sm:mt-7 px-3 sm:px-4 md:px-6 lg:px-8 pb-10" aria-label="Alumni profile hub">
-          <KpiStrip />
+          <KpiStrip data={kpiValues} />
           <ProfileHero
             name={name}
             avatar={avatar}
