@@ -27,11 +27,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env.local
-.env.production
 .env*.local
 .env*.production
-.env
 # vercel
 .vercel
 
@@ -44,3 +41,4 @@ temp_interactive_push.bat
 
 # Playwright MCP session artifacts
 .playwright-mcp/
+config.bat
