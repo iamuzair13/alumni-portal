@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import AppHeader from "@/layout/AppHeader";
 import React from "react";
 import BackButton from "@/components/ui/BackButton";
 import { auth } from "@/lib/auth";
@@ -683,9 +682,7 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
   return (
     <>
       <div className="bg-gray-100 overflow-x-hidden dark:bg-gray-950">
-        <div className="border bg-white relative z-50 dark:border-gray-800 dark:bg-gray-900">
-          <AppHeader />
-        </div>
+        
         <div className="w-full">
           <div className="-mx-4 sm:-mx-6 lg:-mx-8">
             <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white dark:bg-gray-900 dark:text-gray-100 dark:border-y dark:border-gray-700">

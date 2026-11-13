@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import AppHeader from "@/layout/AppHeader";
 import PageBanner from "@/components/ui/PageBanner";
 import { CardApplicationContent } from "./CardApplicationContent";
 
@@ -11,7 +10,6 @@ export default function CardApplicationPage() {
     <Suspense
       fallback={
         <>
-          <AppHeader />
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <PageBanner title="Apply for Alumni Card" />
             <div className="container mx-auto px-4 py-8">

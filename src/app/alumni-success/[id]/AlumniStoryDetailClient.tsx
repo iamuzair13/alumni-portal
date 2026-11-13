@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import AppHeader from "@/layout/AppHeader";
 import SuccessStoryDetail from "@/components/alumni/SuccessStoryDetail";
 import { normalizeStoryStatus } from "@/lib/alumniStories";
 import { useEffect, useState } from "react";
@@ -57,9 +56,7 @@ export default function AlumniStoryDetailClient({
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-5xl mx-auto px-4 py-8">
             <div className="h-96 animate-pulse rounded-2xl bg-gray-200" />
           </div>
@@ -72,9 +69,7 @@ export default function AlumniStoryDetailClient({
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
               <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-700 mb-4">
@@ -99,9 +94,7 @@ export default function AlumniStoryDetailClient({
   return (
     <>
       <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900">
-        <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700">
-          <AppHeader />
-        </div>
+        
         <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
           <SuccessStoryDetail
             story={story}

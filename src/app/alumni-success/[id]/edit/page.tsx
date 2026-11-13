@@ -12,7 +12,6 @@ import Link from "next/link";
 import AlumniSuccessForm from "@/components/forms/alumni-success";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
@@ -26,9 +25,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
               <Alert variant="error" title="Authentication Required" message="You must be logged in to edit a story." />
@@ -48,9 +45,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
               <Alert variant="error" title="Invalid Story ID" message="The story ID is invalid." />
@@ -103,9 +98,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
               <Alert variant="error" title="Story Not Found" message="The story you're trying to edit does not exist." />
@@ -157,9 +150,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
               <Alert variant="error" title="Access Denied" message="You can only edit your own stories." />
@@ -180,9 +171,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
               <Alert variant="error" title="Not Found" message="Story not found." />
@@ -209,9 +198,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   return (
     <>
       <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-        <div className="border bg-white relative z-50">
-          <AppHeader />
-        </div>
+        
         {(() => {
           const b = computeLoginBanner(session?.user);
           return b.show ? (

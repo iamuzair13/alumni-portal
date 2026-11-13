@@ -1,7 +1,18 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, CreditCard, Sparkles } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import {
+  BadgeCheck,
+  CreditCard,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Medal,
+  Pencil,
+  Sparkles,
+  Youtube,
+} from "lucide-react";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 import { useCountUp } from "./useCountUp";
@@ -21,6 +32,12 @@ type ProfileHeroProps = {
   cardStatus: CardStatus;
   cardValidity?: string;
   leadershipRole?: string | null;
+  chapters?: string[];
+  associationTitle?: string | null;
+  socials?: { facebook?: string | null; instagram?: string | null; linkedin?: string | null; youtube?: string | null };
+  profileTabHref: string;
+  isViewer?: boolean;
+  cardPanel?: ReactNode;
 };
 
 const CARD_STATUS_LABEL: Record<CardStatus, string> = {
@@ -32,6 +49,12 @@ const CARD_STATUS_LABEL: Record<CardStatus, string> = {
   received: "Received",
   full: "Paused",
 };
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "U";
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
 
 function CompletenessMeter({ sapId }: { sapId: string }) {
   const { data, isLoading, isError } = useAlumniFullDetails(sapId || undefined);
@@ -76,14 +99,6 @@ function CompletenessMeter({ sapId }: { sapId: string }) {
         <p className="text-sm font-semibold text-white leading-tight">
           {complete ? "Profile complete" : `${animated}% complete`}
         </p>
-        {!complete && (
-          <Link
-            href="#profile"
-            className="text-xs font-medium text-amber-200 hover:text-amber-100 underline decoration-amber-300/60 underline-offset-2 focus-visible:outline-2 focus-visible:outline-amber-300 rounded-sm"
-          >
-            Complete your profile
-          </Link>
-        )}
       </div>
     </div>
   );
@@ -103,10 +118,32 @@ export default function ProfileHero({
   cardStatus,
   cardValidity,
   leadershipRole,
+  chapters = [],
+  associationTitle = null,
+  socials,
+  profileTabHref,
+  isViewer = false,
+  cardPanel,
 }: ProfileHeroProps) {
+  const [imgError, setImgError] = useState(false);
+  const { data: fullDetails } = useAlumniFullDetails(sapId || undefined);
+  const medal = String(fullDetails?.medal ?? "").trim();
+  const showMedal = medal && medal !== "None";
+
   const cardIssued = cardStatus === "active" || cardStatus === "received";
   const identity = [program || null, department || null].filter(Boolean).join(" · ");
   const meta = [faculty || null, graduationYear ? `Class of ${graduationYear}` : null, campus].filter(Boolean).join("  ·  ");
+  const avatarOk = Boolean(avatar) && !imgError;
+  const memberships = [...chapters, ...(associationTitle ? [`Member of ${associationTitle}`] : [])];
+  const shownMemberships = memberships.slice(0, 3);
+  const extraMemberships = memberships.length - shownMemberships.length;
+
+  const socialLinks = [
+    { href: socials?.facebook, label: "Facebook", Icon: Facebook },
+    { href: socials?.instagram, label: "Instagram", Icon: Instagram },
+    { href: socials?.linkedin, label: "LinkedIn", Icon: Linkedin },
+    { href: socials?.youtube, label: "YouTube", Icon: Youtube },
+  ].filter((s) => Boolean(s.href));
 
   return (
     <section
@@ -122,12 +159,30 @@ export default function ProfileHero({
         style={{ backgroundImage: "repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 14px)" }}
       />
 
-      <div className="relative flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+      <div className="relative flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-stretch lg:justify-between lg:gap-8">
         {/* identity */}
-        <div className="flex items-start gap-4 sm:gap-5 min-w-0">
+        <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
           <div className="relative shrink-0">
-            <div className="h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-2xl ring-4 ring-white/15 bg-white/10">
-              <Image src={avatar} alt={name ? `${name}'s photo` : "Alumni photo"} width={96} height={96} className="h-full w-full object-cover" priority />
+            <div className="h-20 w-20 overflow-hidden rounded-2xl ring-4 ring-white/15 bg-white/10 sm:h-24 sm:w-24">
+              {avatarOk ? (
+                <Image
+                  src={avatar}
+                  alt={name ? `${name}'s photo` : "Alumni photo"}
+                  width={96}
+                  height={96}
+                  className="h-full w-full object-cover"
+                  priority
+                  onError={() => setImgError(true)}
+                />
+              ) : (
+                <div
+                  role="img"
+                  aria-label={`${name || "Alumni"} initials`}
+                  className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500/60 to-accent-700/80 text-2xl font-bold text-white sm:text-3xl"
+                >
+                  {initials(name)}
+                </div>
+              )}
             </div>
             {isVerified && (
               <span className="absolute -bottom-1.5 -right-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white ring-2 ring-accent-800">
@@ -144,55 +199,111 @@ export default function ProfileHero({
             </h1>
             {identity && <p className="mt-1 truncate text-sm text-white/80">{identity}</p>}
             {meta && <p className="mt-0.5 truncate text-xs text-white/60">{meta}</p>}
-            {leadershipRole && (
-              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-400/15 border border-amber-300/30 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
-                <Sparkles className="h-3 w-3" aria-hidden /> {leadershipRole}
-              </span>
-            )}
-          </div>
-        </div>
 
-        {/* membership card face */}
-        <div className="w-full max-w-sm shrink-0 lg:w-80">
-          <div
-            role="img"
-            aria-label={`Membership card, ID ${memberId || "pending"}, status ${CARD_STATUS_LABEL[cardStatus]}`}
-            className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm shadow-inner"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">
-                Alumni Card
-              </span>
-              <CreditCard className="h-4 w-4 text-amber-300/80" aria-hidden />
-            </div>
-            <p className="mt-3 font-mono text-lg font-semibold tracking-wider text-white">
-              {memberId || "UOL-AL-····"}
-            </p>
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                  cardIssued
-                    ? "bg-emerald-400/20 text-emerald-200"
-                    : cardStatus === "onhold"
-                      ? "bg-red-400/20 text-red-200"
-                      : cardStatus === "none"
-                        ? "bg-white/15 text-white/80"
-                        : "bg-amber-400/20 text-amber-200"
-                }`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${cardIssued ? "bg-emerald-300" : cardStatus === "onhold" ? "bg-red-300" : cardStatus === "none" ? "bg-white/60" : "bg-amber-300"}`} aria-hidden />
-                {CARD_STATUS_LABEL[cardStatus]}
-              </span>
-              {cardValidity && (
-                <span className="text-[11px] font-medium text-white/60">
-                  Valid to <span className="text-white/90">{cardValidity}</span>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {showMedal && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                  <Medal className="h-3 w-3" aria-hidden /> {medal}
                 </span>
+              )}
+              {leadershipRole && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                  <Sparkles className="h-3 w-3" aria-hidden /> {leadershipRole}
+                </span>
+              )}
+              {shownMemberships.map((m) => (
+                <span
+                  key={m}
+                  className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/85"
+                >
+                  {m}
+                </span>
+              ))}
+              {extraMemberships > 0 && (
+                <Link
+                  href={profileTabHref}
+                  className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-white/20"
+                >
+                  +{extraMemberships} more
+                </Link>
+              )}
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {socialLinks.map(({ href, label, Icon }) => (
+                <a
+                  key={label}
+                  href={href || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  title={label}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/25 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
+                </a>
+              ))}
+              {!isViewer && (
+                <Link
+                  href={profileTabHref}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit Profile
+                </Link>
               )}
             </div>
           </div>
+        </div>
+
+        {/* membership card area — single owner of card state */}
+        <div className="w-full max-w-sm shrink-0 lg:w-96">
+          {cardPanel ?? (
+            <div
+              role="img"
+              aria-label={`Membership card, ID ${memberId || "pending"}, status ${CARD_STATUS_LABEL[cardStatus]}`}
+              className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm shadow-inner"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">
+                  Alumni Card
+                </span>
+                <CreditCard className="h-4 w-4 text-amber-300/80" aria-hidden />
+              </div>
+              <p className="mt-3 font-mono text-lg font-semibold tracking-wider text-white">
+                {memberId || "UOL-AL-····"}
+              </p>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                    cardIssued
+                      ? "bg-emerald-400/20 text-emerald-200"
+                      : cardStatus === "onhold"
+                        ? "bg-red-400/20 text-red-200"
+                        : cardStatus === "none"
+                          ? "bg-white/15 text-white/80"
+                          : "bg-amber-400/20 text-amber-200"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${cardIssued ? "bg-emerald-300" : cardStatus === "onhold" ? "bg-red-300" : cardStatus === "none" ? "bg-white/60" : "bg-amber-300"}`} aria-hidden />
+                  {CARD_STATUS_LABEL[cardStatus]}
+                </span>
+                {cardValidity && (
+                  <span className="text-[11px] font-medium text-white/60">
+                    Valid to <span className="text-white/90">{cardValidity}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           {sapId && (
-            <div className="mt-4">
+            <div className="mt-4 flex items-center justify-between gap-3">
               <CompletenessMeter sapId={sapId} />
+              <Link
+                href={profileTabHref}
+                className="shrink-0 text-xs font-medium text-amber-200 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-100 focus-visible:outline-2 focus-visible:outline-amber-300 rounded-sm"
+              >
+                Complete your profile
+              </Link>
             </div>
           )}
         </div>

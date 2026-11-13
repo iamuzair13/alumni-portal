@@ -11,7 +11,6 @@ import AlumniSuccessForm from "@/components/forms/alumni-success";
 import { pickStorySapId } from "@/lib/alumniStories";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
@@ -24,9 +23,7 @@ export default async function Page() {
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
               <Alert variant="error" title="Authentication Required" message="You must be logged in to submit a success story." />
@@ -139,9 +136,7 @@ export default async function Page() {
   return (
     <>
       <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900">
-        <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700">
-          <AppHeader />
-        </div>
+        
         {(() => {
           const b = computeLoginBanner(session?.user);
           return b.show ? (
