@@ -10,7 +10,6 @@ import { sql } from "@/lib/dbconnect";
 import CricketMembershipForm from "@/components/forms/cricket-membership";
 import { auth } from "@/lib/auth";
 import { resolveAlumniPageIds } from "@/lib/resolveAlumniPageIds";
-import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
@@ -82,9 +81,7 @@ export default async function CricketMembershipPage({ searchParams }: { searchPa
   return (
     <>
       <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
-        <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-          <AppHeader />
-        </div>
+        
         {(() => {
           const b = computeLoginBanner(session?.user);
           return b.show ? (

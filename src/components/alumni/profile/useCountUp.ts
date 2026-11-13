@@ -34,3 +34,7 @@ export function useCountUp(target: number, duration = 700): number {
 
   return value;
 }
+
+export function CountUp({ value, duration }: { value: number; duration?: number }): React.ReactNode {
+  return useCountUp(value, duration);
+}

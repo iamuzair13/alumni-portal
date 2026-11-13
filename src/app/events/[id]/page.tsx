@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import AppHeader from "@/layout/AppHeader";
 import { eventImageUrlFromStored } from "@/lib/uploadsImageUrl";
 import { useQuery } from "@tanstack/react-query";
 
@@ -97,19 +96,11 @@ export default function EventDetailPage() {
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
               <div className="animate-pulse space-y-6">
-                <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                <div className="h-64 bg-gray-200 rounded-lg"></div>
                 <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-4/6"></div>
                 </div>
               </div>
             </div>
@@ -123,9 +114,7 @@ export default function EventDetailPage() {
     return (
       <>
         <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:text-gray-300 dark:bg-gray-900">
-          <div className="border bg-white relative z-50">
-            <AppHeader />
-          </div>
+          
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 dark:text-gray-300 dark:bg-gray-900">
               <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-700 mb-4">
@@ -156,9 +145,7 @@ export default function EventDetailPage() {
   return (
     <>
       <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:text-gray-300 dark:bg-gray-900">
-        <div className="border bg-white relative z-50">
-          <AppHeader />
-        </div>
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8 dark:text-gray-300 dark:bg-gray-900">
           {/* Back Button */}
           <div className="mb-6">

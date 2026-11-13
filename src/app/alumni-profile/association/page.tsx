@@ -9,7 +9,6 @@ export const viewport: Viewport = {
 import { sql } from "@/lib/dbconnect";
 import AlumniAssociationForm from "@/components/forms/AlumniAssociationForm";
 import { auth } from "@/lib/auth";
-import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner, isViewerUser } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
@@ -82,9 +81,7 @@ export default async function AssociationPage({ searchParams }: { searchParams: 
   return (
     <>
       <div className="bg-gray-100 overflow-x-hidden min-h-screen">
-        <div className="border bg-white relative z-50">
-          <AppHeader />
-        </div>
+        
         {(() => {
           const b = computeLoginBanner(session?.user);
           return b.show ? (
