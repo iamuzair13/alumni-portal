@@ -30,10 +30,12 @@ const nextConfig = {
   webpack(config) {
     // Keep dev-server artifacts out of the webpack watcher — Playwright MCP
     // appends session logs under .playwright-mcp/ inside the project root,
-    // which otherwise re-triggers compilation in a loop.
+    // which otherwise re-triggers compilation in a loop. webpack's default
+    // `ignored` is a RegExp/function (not safe to spread into an array), so
+    // we replace it explicitly including the usual heavy dirs.
     config.watchOptions = {
       ...(config.watchOptions || {}),
-      ignored: [...(config.watchOptions?.ignored || []), "**/.playwright-mcp/**"],
+      ignored: ["**/.git/**", "**/node_modules/**", "**/.next/**", "**/.playwright-mcp/**"],
     };
 
     config.module.rules.push({
