@@ -863,7 +863,6 @@ let cardImageFile: string | null = null;
       )}
       {sapId ? (
         <section className="w-full max-w-7xl mx-auto mt-5 sm:mt-7 px-3 sm:px-4 md:px-6 lg:px-8 pb-10" aria-label="Alumni profile hub">
-          <KpiStrip data={kpiValues} />
           <ProfileHero
             name={name}
             avatar={avatar}
@@ -912,7 +911,10 @@ let cardImageFile: string | null = null;
               />
             }
           />
-          <div className="mt-4 flex flex-col gap-2">
+          <div className="mt-4">
+            <KpiStrip data={kpiValues} />
+          </div>
+          <div className="mt-2 flex flex-col gap-2">
             {cardStatus === "none" && !isViewer && (
               <Notice variant="warning" icon={<Lock />}>
                 Alumni card is required to avail these benefits.
