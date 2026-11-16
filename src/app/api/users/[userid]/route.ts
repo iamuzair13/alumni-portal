@@ -8,6 +8,7 @@ import { buildAccessAssignmentRowsFromDb } from "@/lib/orgAccessLookup";
 import { createAccessAssignmentsInNewRBAC, deleteAccessAssignmentsInNewRBAC } from "@/lib/rbac-assignments";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import { hashAdminPassword } from "@/lib/adminPassword";
+import { stripSensitive } from "@/lib/alumniColumns";
 
 type DbUser = {
   userid: number;
@@ -44,42 +45,38 @@ export async function GET(req: Request) {
       }
     }
     
-    // Fetch user data with password based on role
+    // Fetch user data (credential columns are never selected or returned)
     let rows;
     if (isSuperAdmin) {
-      // Superadmin can see all passwords
       rows = await sql/* sql */`
-        SELECT 
-          id as userid, 
-          email, 
-          firstname, 
-          lastname, 
-          department, 
-          COALESCE(type, legacy_type) as type, 
-          COALESCE(blocked, NOT is_active) as blocked, 
-          lastlogindatetime, 
-          password
-        FROM public.users 
+        SELECT
+          id as userid,
+          email,
+          firstname,
+          lastname,
+          department,
+          COALESCE(type, legacy_type) as type,
+          COALESCE(blocked, NOT is_active) as blocked,
+          lastlogindatetime
+        FROM public.users
         WHERE id = ${id} OR legacy_userid = ${id}
         LIMIT 1
-      ` as Array<DbUser & { password?: string | null }>;
+      ` as DbUser[];
     } else if ((isAdmin || isViewer) && currentUserId && Number(currentUserId) === id) {
-      // Admin/viewer can only see their own password
       rows = await sql/* sql */`
-        SELECT 
-          id as userid, 
-          email, 
-          firstname, 
-          lastname, 
-          department, 
-          COALESCE(type, legacy_type) as type, 
-          COALESCE(blocked, NOT is_active) as blocked, 
-          lastlogindatetime, 
-          password
-        FROM public.users 
+        SELECT
+          id as userid,
+          email,
+          firstname,
+          lastname,
+          department,
+          COALESCE(type, legacy_type) as type,
+          COALESCE(blocked, NOT is_active) as blocked,
+          lastlogindatetime
+        FROM public.users
         WHERE id = ${id} OR legacy_userid = ${id}
         LIMIT 1
-      ` as Array<DbUser & { password?: string | null }>;
+      ` as DbUser[];
     } else {
       // Should not reach here due to earlier check, but just in case
       rows = await sql/* sql */`
@@ -175,17 +172,13 @@ export async function GET(req: Request) {
       }
     }
     
-    // Build response with password based on permissions
-    const userResponse: DbUser & { password?: string | null; accessAssignments?: typeof accessAssignments } = {
+    const userResponse: DbUser & { accessAssignments?: typeof accessAssignments } = {
       ...user,
       accessAssignments
     };
-    
-    // Password is already included in the query result if user has permission
-    // No need to remove it - the SQL query already handles the permission check
-    
-    return NextResponse.json({ 
-      item: userResponse
+
+    return NextResponse.json({
+      item: stripSensitive(userResponse)
     }, { status: 200 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";

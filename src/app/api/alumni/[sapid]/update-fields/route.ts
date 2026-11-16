@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import { resolveValidFacultyId } from "@/lib/alumniAssociation";
+import { alumniColumns, ALUMNI_DETAIL_COLUMNS } from "@/lib/alumniColumns";
 
 function parseJsonbRecord(v: unknown): Record<string, unknown> {
   if (!v) return {};
@@ -437,7 +438,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       };
 
       const currentAlumniRows = await sql/* sql */`
-        SELECT a.*
+        SELECT ${alumniColumns("a", ALUMNI_DETAIL_COLUMNS)}
         FROM public.tbl_alumni a
         WHERE a.alumniid = ${alumniId}
         LIMIT 1`;

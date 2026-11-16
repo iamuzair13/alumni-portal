@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { mapUIStatusToDb, type CardStatus } from "@/lib/card-status-config";
+import { alumniColumns, ALUMNI_EXPORT_COLUMNS, stripSensitive } from "@/lib/alumniColumns";
 
 export async function GET(req: Request) {
   try {
@@ -125,8 +126,8 @@ export async function GET(req: Request) {
       SELECT 
         -- Card fields
         c.*,
-        -- All alumni fields
-        a.*,
+        -- All alumni fields (credential columns excluded)
+        ${alumniColumns("a", ALUMNI_EXPORT_COLUMNS)},
         -- ID-based faculty, department, program names
         f.faculty_name,
         d.department_name,
@@ -170,7 +171,7 @@ export async function GET(req: Request) {
 
     const rows = await query;
     
-    return NextResponse.json({ items: rows }, { status: 200 });
+    return NextResponse.json({ items: stripSensitive(rows) }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to export alumni cards data";
     return NextResponse.json({ error: message }, { status: 500 });

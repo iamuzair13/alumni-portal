@@ -7,6 +7,7 @@ import { getUserAccessAssignments } from "@/lib/userAccess";
 import { getUserAccessAssignmentsWithIds } from "@/lib/rbac";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import { hashAdminPassword } from "@/lib/adminPassword";
+import { stripSensitive } from "@/lib/alumniColumns";
 
 type DbUser = {
   userid: number;
@@ -118,64 +119,58 @@ export async function GET() {
     };
     
     if (isSuperAdmin) {
-      // Super Admin can see all passwords - get plain text from users.password
+      // Credential columns are never selected or returned
       const rows = await sql/* sql */`
-        SELECT 
-          id as userid, 
-          email, 
-          firstname, 
-          lastname, 
-          department, 
-          COALESCE(type, legacy_type) as type, 
-          COALESCE(blocked, NOT is_active) as blocked, 
-          lastlogindatetime,
-          password
+        SELECT
+          id as userid,
+          email,
+          firstname,
+          lastname,
+          department,
+          COALESCE(type, legacy_type) as type,
+          COALESCE(blocked, NOT is_active) as blocked,
+          lastlogindatetime
         FROM public.users
-        ORDER BY id DESC` as Array<DbUser & { password?: string | null }>;
+        ORDER BY id DESC` as DbUser[];
 
       const usersWithAccess = await attachAssignments(rows);
-      return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
+      return NextResponse.json({ items: stripSensitive(usersWithAccess) ?? [] }, { status: 200 });
     } else if (isAdmin && currentUserId) {
       // Admins can only see their own password
       const userIdNum = Number(currentUserId);
       if (isNaN(userIdNum)) {
         // Invalid user ID, return without passwords
         const rows = await sql/* sql */`
-          SELECT 
-            id as userid, 
-            email, 
-            firstname, 
-            lastname, 
-            department, 
-            COALESCE(type, legacy_type) as type, 
-            COALESCE(blocked, NOT is_active) as blocked, 
+          SELECT
+            id as userid,
+            email,
+            firstname,
+            lastname,
+            department,
+            COALESCE(type, legacy_type) as type,
+            COALESCE(blocked, NOT is_active) as blocked,
             lastlogindatetime
           FROM public.users
           ORDER BY id DESC` as DbUser[];
         const usersWithAccess = await attachAssignments(rows ?? []);
-        return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
+        return NextResponse.json({ items: stripSensitive(usersWithAccess) ?? [] }, { status: 200 });
       }
-      
-      // Fetch all users, but only include password for the current admin user
+
       const rows = await sql/* sql */`
-        SELECT 
-          id as userid, 
-          email, 
-          firstname, 
-          lastname, 
-          department, 
-          COALESCE(type, legacy_type) as type, 
-          COALESCE(blocked, NOT is_active) as blocked, 
-          lastlogindatetime,
-          CASE 
-            WHEN id = ${userIdNum} OR legacy_userid = ${userIdNum} THEN password
-            ELSE NULL 
-          END as password
+        SELECT
+          id as userid,
+          email,
+          firstname,
+          lastname,
+          department,
+          COALESCE(type, legacy_type) as type,
+          COALESCE(blocked, NOT is_active) as blocked,
+          lastlogindatetime
         FROM public.users
-        ORDER BY id DESC` as Array<DbUser & { password?: string | null }>;
+        ORDER BY id DESC` as DbUser[];
 
       const usersWithAccess = await attachAssignments(rows);
-      return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
+      return NextResponse.json({ items: stripSensitive(usersWithAccess) ?? [] }, { status: 200 });
     } else if (isViewer && currentUserId) {
       // Viewer: can only see their own password
       const userIdNum = Number(currentUserId);
@@ -194,29 +189,24 @@ export async function GET() {
           FROM public.users
           ORDER BY id DESC` as DbUser[];
         const usersWithAccess = await attachAssignments(rows ?? []);
-        return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
+        return NextResponse.json({ items: stripSensitive(usersWithAccess) ?? [] }, { status: 200 });
       }
-      
-      // Fetch all users, but only include password for the current viewer user
+
       const rows = await sql/* sql */`
-        SELECT 
-          id as userid, 
-          email, 
-          firstname, 
-          lastname, 
-          department, 
-          COALESCE(type, legacy_type) as type, 
-          COALESCE(blocked, NOT is_active) as blocked, 
-          lastlogindatetime,
-          CASE 
-            WHEN id = ${userIdNum} OR legacy_userid = ${userIdNum} THEN password
-            ELSE NULL 
-          END as password
+        SELECT
+          id as userid,
+          email,
+          firstname,
+          lastname,
+          department,
+          COALESCE(type, legacy_type) as type,
+          COALESCE(blocked, NOT is_active) as blocked,
+          lastlogindatetime
         FROM public.users
-        ORDER BY id DESC` as Array<DbUser & { password?: string | null }>;
-      
+        ORDER BY id DESC` as DbUser[];
+
       const usersWithAccess = await attachAssignments(rows);
-      return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
+      return NextResponse.json({ items: stripSensitive(usersWithAccess) ?? [] }, { status: 200 });
     } else {
       // No session or user ID, return without passwords
       const rows = await sql/* sql */`
@@ -232,7 +222,7 @@ export async function GET() {
         FROM public.users
         ORDER BY id DESC` as DbUser[];
       const usersWithAccess = await attachAssignments(rows ?? []);
-      return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
+      return NextResponse.json({ items: stripSensitive(usersWithAccess) ?? [] }, { status: 200 });
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";

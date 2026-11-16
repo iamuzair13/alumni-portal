@@ -6,6 +6,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { hashAdminPassword } from "@/lib/adminPassword";
+import { stripSensitive } from "@/lib/alumniColumns";
 
 type DbUser = {
   userid: number;
@@ -42,35 +43,31 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     
-    // Fetch current user data with plain text password from users.password
+    // Fetch current user data (credential columns are never selected or returned)
     const rows = await sql/* sql */`
-      SELECT 
-        id as userid, 
-        email, 
-        firstname, 
-        lastname, 
-        department, 
-        COALESCE(type, legacy_type) as type, 
-        COALESCE(blocked, NOT is_active) as blocked, 
+      SELECT
+        id as userid,
+        email,
+        firstname,
+        lastname,
+        department,
+        COALESCE(type, legacy_type) as type,
+        COALESCE(blocked, NOT is_active) as blocked,
         lastlogindatetime,
-        user_image,
-        password
-      FROM public.users 
+        user_image
+      FROM public.users
       WHERE id = ${currentUserId} OR legacy_userid = ${currentUserId}
       LIMIT 1
-    ` as Array<DbUser & { password?: string | null }>;
-    
+    ` as DbUser[];
+
     const user = rows[0] ?? null;
-    
+
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    
-    return NextResponse.json({ 
-      user: {
-        ...user,
-        password: user.password ?? null
-      } 
+
+    return NextResponse.json({
+      user: stripSensitive(user)
     }, { status: 200 });
   } catch (error) {
 
@@ -221,31 +218,31 @@ export async function PUT(req: Request) {
 
     }
     
-    // Fetch updated user data with password
+    // Fetch updated user data (credential columns are never selected or returned)
     const rows = await sql/* sql */`
-      SELECT 
-        id as userid, 
-        email, 
-        firstname, 
-        lastname, 
-        department, 
-        COALESCE(type, legacy_type) as type, 
-        COALESCE(blocked, NOT is_active) as blocked, 
+      SELECT
+        id as userid,
+        email,
+        firstname,
+        lastname,
+        department,
+        COALESCE(type, legacy_type) as type,
+        COALESCE(blocked, NOT is_active) as blocked,
         lastlogindatetime,
-        user_image,
-        password
-      FROM public.users 
+        user_image
+      FROM public.users
       WHERE id = ${currentUserId} OR legacy_userid = ${currentUserId}
       LIMIT 1
-    ` as Array<DbUser & { password?: string | null }>;
-    
+    ` as DbUser[];
+
     const updatedUser = rows[0];
-    
-    return NextResponse.json({ 
-      user: {
-        ...updatedUser,
-        password: updatedUser.password ?? null
-      } 
+
+    if (!updatedUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      user: stripSensitive(updatedUser)
     }, { status: 200 });
   } catch (error) {
 

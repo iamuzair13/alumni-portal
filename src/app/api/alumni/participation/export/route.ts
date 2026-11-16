@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { alumniColumns, ALUMNI_EXPORT_COLUMNS, stripSensitive } from "@/lib/alumniColumns";
 
 export async function GET(req: Request) {
   try {
@@ -29,9 +30,9 @@ export async function GET(req: Request) {
     // Export talks/mentorship data
     if (type === "all" || type === "talks") {
       const talksRows = await sql/* sql */`
-        SELECT 
+        SELECT
           t.*,
-          a.*,
+          ${alumniColumns("a", ALUMNI_EXPORT_COLUMNS)},
           -- Chapter data
           ac.chapter1 as chapter1_id,
           ac.chapter2 as chapter2_id,
@@ -69,9 +70,9 @@ export async function GET(req: Request) {
     // Export association data
     if (type === "all" || type === "association") {
       const associationRows = await sql/* sql */`
-        SELECT 
+        SELECT
           ass.*,
-          a.*,
+          ${alumniColumns("a", ALUMNI_EXPORT_COLUMNS)},
           -- Chapter data
           ac.chapter1 as chapter1_id,
           ac.chapter2 as chapter2_id,
@@ -111,7 +112,7 @@ export async function GET(req: Request) {
       });
     }
     
-    return NextResponse.json({ items: allItems }, { status: 200 });
+    return NextResponse.json({ items: stripSensitive(allItems) }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to export participation data";
     return NextResponse.json({ error: message }, { status: 500 });

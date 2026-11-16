@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { canModify, isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
+import { canModify, isViewerUser } from "@/lib/alumniProfile";
+import { alumniColumns, ALUMNI_DETAIL_COLUMNS, stripSensitive } from "@/lib/alumniColumns";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -18,8 +19,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     const normalizedIdentifier = String(sapid || "").trim();
     
     let rows = await sql/* sql */`
-      SELECT 
-        a.*,
+      SELECT
+        ${alumniColumns("a", ALUMNI_DETAIL_COLUMNS)},
         f.faculty_name as facultyname,
         d.department_name as departmentname,
         p.program_name as degreetitle
@@ -27,14 +28,14 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
       LEFT JOIN public.tbl_departments d ON d.id = a.department
       LEFT JOIN public.tbl_programs p ON p.id = a.program
-      WHERE a.sapid = ${normalizedIdentifier} 
+      WHERE a.sapid = ${normalizedIdentifier}
       LIMIT 1`;
     
     // If not found by SAP ID, try registration number
     if (!rows[0]) {
       rows = await sql/* sql */`
-        SELECT 
-          a.*,
+        SELECT
+          ${alumniColumns("a", ALUMNI_DETAIL_COLUMNS)},
           f.faculty_name as facultyname,
           d.department_name as departmentname,
           p.program_name as degreetitle
@@ -42,15 +43,15 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
-        WHERE a.registrationno = ${normalizedIdentifier} 
+        WHERE a.registrationno = ${normalizedIdentifier}
         LIMIT 1`;
     }
 
     // If still not found, try alumniid (if identifier is numeric)
     if (!rows[0] && !Number.isNaN(Number(normalizedIdentifier))) {
       rows = await sql/* sql */`
-        SELECT 
-          a.*,
+        SELECT
+          ${alumniColumns("a", ALUMNI_DETAIL_COLUMNS)},
           f.faculty_name as facultyname,
           d.department_name as departmentname,
           p.program_name as degreetitle
@@ -94,10 +95,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
     const canAccess = canModify(session.user); // Checks for both admin and superadmin
-    const isAdmin = isAdminUser(session.user);
-    const isSuperAdmin = isSuperAdminUser(session.user);
     const isViewer = isViewerUser(session.user); // Checks for viewer users
-    const canViewPassword = isAdmin || isSuperAdmin;
     const isAdminOrViewer = canAccess || isViewer;
     
     // SECURITY: Viewer users are constrained by access filter.
@@ -203,10 +201,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     // Return all fields from tbl_alumni
     return NextResponse.json({
-      item: {
+      item: stripSensitive({
         alumniid: row.alumniid ?? null,
         alumniemail: row.alumniemail ?? null,
-        password: canViewPassword ? (row.password ?? null) : null,
         registrationno: row.registrationno ?? null,
         sapid: row.sapid ?? null,
         alumniname: row.alumniname ?? null,
@@ -287,7 +284,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         medal: row.medal ?? null,
         medal_document: row.medal_document ?? null,
         profile_updated: row.profile_updated ?? null,
-      },
+      }),
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch alumni details";

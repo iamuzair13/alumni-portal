@@ -5,6 +5,7 @@ import { sql, retryDbOperation } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isAdminUser } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
+import { alumniColumns, ALUMNI_DETAIL_COLUMNS, stripSensitive } from "@/lib/alumniColumns";
 
 // Map DB row -> form values (partial; missing columns set undefined)
 interface DbAlumniRow {
@@ -108,17 +109,17 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     // First try to find by SAP ID
     let rows = await sql/* sql */`
-      SELECT a.*, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle
+      SELECT ${alumniColumns("a", ALUMNI_DETAIL_COLUMNS)}, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle
       FROM public.tbl_alumni a
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
       LEFT JOIN public.tbl_departments d ON d.id = a.department
       LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE a.sapid = ${normalizedIdentifier} LIMIT 1`;
-    
+
     // If not found by SAP ID, try registration number
     if (!rows[0]) {
       rows = await sql/* sql */`
-        SELECT a.*, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle
+        SELECT ${alumniColumns("a", ALUMNI_DETAIL_COLUMNS)}, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -129,7 +130,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     // If still not found, try alumniid (if identifier is numeric)
     if (!rows[0] && !Number.isNaN(Number(normalizedIdentifier))) {
       rows = await sql/* sql */`
-        SELECT a.*, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle
+        SELECT ${alumniColumns("a", ALUMNI_DETAIL_COLUMNS)}, f.faculty_name as facultyname, d.department_name as departmentname, p.program_name as degreetitle
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -224,15 +225,15 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...safeFormVals } = formVals;
     // Include image1 and social links in the response
-    return NextResponse.json({ 
-      item: {
+    return NextResponse.json({
+      item: stripSensitive({
         ...safeFormVals,
         image1: row.image1 ?? undefined,
         facebook: row.facebook ?? undefined,
         instagram: row.instagram ?? undefined,
         youtube: row.youtube ?? undefined,
         linkedin: row.linkedin ?? undefined,
-      }
+      })
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch alumni";
