@@ -96,6 +96,9 @@ type ScholarshipApplicationLetter = {
   applicationYear?: string | null;
   applicationTerm?: string | null;
   semester?: string | null;
+  isCreditTransfer?: boolean | null;
+  transferSemester?: string | null;
+  transferTranscriptUrl?: string | null;
   scholarshipDisclosure?: string | null;
   discountTermsAccepted?: boolean | null;
   mastersAdmissionSummary?: string | null;
@@ -1423,6 +1426,13 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ...(applicationPreview.application.isKinship
                                   ? []
                                   : [["Semester", applicationPreview.application.semester ? `Semester ${applicationPreview.application.semester}` : "-"] as [string, string]]),
+                                ["Credit Transfer", applicationPreview.application.isCreditTransfer === true ? "Yes" : applicationPreview.application.isCreditTransfer === false ? "No" : "-"],
+                                ...(applicationPreview.application.isCreditTransfer === true
+                                  ? ([
+                                      ["Transfer Semester", applicationPreview.application.transferSemester ? `Semester ${applicationPreview.application.transferSemester}` : "-"],
+                                      ["Transfer Transcript", applicationPreview.application.transferTranscriptUrl ? "Attached — see Documents" : "-"],
+                                    ] as [string, string][])
+                                  : []),
                                 ...(applicationPreview.application.feeBreakdown
                                   ? [
                                       ...(applicationPreview.application.applyAdmissionFeeDiscount === true && applicationPreview.application.feeBreakdown.admissionFeeDiscount != null && applicationPreview.application.feeBreakdown.admissionFeeDiscount > 0

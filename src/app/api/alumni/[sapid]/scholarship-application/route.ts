@@ -31,6 +31,7 @@ import {
   type ScholarshipCgpaDiscountTier,
 } from "@/lib/scholarshipDiscount";
 import { logAdminAction } from "@/lib/adminActivityLog";
+import { isValidScholarshipSemester } from "@/lib/scholarshipSemesters";
 import type { Session } from "next-auth";
 
 type Payload = {
@@ -60,6 +61,8 @@ type Payload = {
   applicationYear?: number | string | null;
   applicationTerm?: string | null;
   semester?: number | string | null;
+  isCreditTransfer?: boolean | string | null;
+  transferSemester?: number | string | null;
   scholarshipDisclosure?: string | null;
   discountTermsAccepted?: boolean | string | null;
   disclosureDeclaration?: boolean | string | null;
@@ -160,6 +163,9 @@ export async function POST(
     let applicationYear: number | null = null;
     let applicationTerm: string | null = null;
     let semester: number | null = null;
+    let isCreditTransfer: boolean | null = null;
+    let transferSemester: number | null = null;
+    let transferTranscriptUrl: string | null = null;
     let scholarshipDisclosure: string | null = null;
     let disclosureDeclaration = false;
     let discountTermsAccepted = false;
@@ -213,6 +219,14 @@ export async function POST(
       const rawApplyAdm = formData.get("applyAdmissionFeeDiscount");
       if (rawApplyAdm != null && String(rawApplyAdm).trim().toLowerCase() === "true") {
         clientApplyAdmissionFeeDiscount = true;
+      }
+      const rawIsCreditTransfer = String(formData.get("isCreditTransfer") || "").trim().toLowerCase();
+      if (rawIsCreditTransfer === "true" || rawIsCreditTransfer === "yes") isCreditTransfer = true;
+      else if (rawIsCreditTransfer === "false" || rawIsCreditTransfer === "no") isCreditTransfer = false;
+      const rawTransferSemester = String(formData.get("transferSemester") || "").trim();
+      if (rawTransferSemester) {
+        const s = Number(rawTransferSemester);
+        if (Number.isFinite(s)) transferSemester = Math.trunc(s);
       }
       scholarshipDisclosure = String(formData.get("scholarshipDisclosure") || "").trim() || null;
       disclosureDeclaration =
@@ -356,6 +370,34 @@ export async function POST(
         };
         uploadedDocuments = uploaded;
       }
+
+      // Shared across all flows: previous-institution transcript for credit/course
+      // transfer applications. Saved only when the flag is yes — ignored otherwise.
+      if (isCreditTransfer === true) {
+        const f = formData.get("docTransferTranscript") as File | null;
+        if (!f || f.size <= 0) {
+          return NextResponse.json(
+            { error: "Previous Institution Transcript file is required for credit transfer applications." },
+            { status: 400 }
+          );
+        }
+        const saved = await saveFileToUploads({
+          file: f,
+          prefix: `scholarship-${normalizedSapid}`,
+          slot: "transfer-transcript",
+        });
+        transferTranscriptUrl = saved.url;
+        uploadedDocuments = [
+          ...(uploadedDocuments ?? []),
+          {
+            label: "Previous Institution Transcript (Credit Transfer)",
+            url: saved.url,
+            filename: saved.filename,
+            type: saved.type,
+            size: saved.size,
+          },
+        ];
+      }
     } else {
       payload = (await req.json()) as Payload;
       discountType = String(payload.discountType || "").trim();
@@ -371,6 +413,15 @@ export async function POST(
       if (payload.semester != null && payload.semester !== "") {
         const s = Number(payload.semester);
         if (Number.isFinite(s)) semester = Math.trunc(s);
+      }
+      if (payload.isCreditTransfer === true || payload.isCreditTransfer === "true" || payload.isCreditTransfer === "yes") {
+        isCreditTransfer = true;
+      } else if (payload.isCreditTransfer === false || payload.isCreditTransfer === "false" || payload.isCreditTransfer === "no") {
+        isCreditTransfer = false;
+      }
+      if (payload.transferSemester != null && payload.transferSemester !== "") {
+        const s = Number(payload.transferSemester);
+        if (Number.isFinite(s)) transferSemester = Math.trunc(s);
       }
       if (payload.appliedDiscountPercent != null && payload.appliedDiscountPercent !== "") {
         const n = Number(payload.appliedDiscountPercent);
@@ -430,6 +481,32 @@ export async function POST(
         { error: "Semester is required and must be between 1 and 8." },
         { status: 400 },
       );
+    }
+
+    // Credit/course transfer question is required for all scholarship types.
+    if (isCreditTransfer == null) {
+      return NextResponse.json(
+        { error: "Please answer whether this application relates to a credit/course transfer." },
+        { status: 400 },
+      );
+    }
+    if (isCreditTransfer === true) {
+      if (!isValidScholarshipSemester(transferSemester)) {
+        return NextResponse.json(
+          { error: "Please specify the semester in which the credits/courses were transferred." },
+          { status: 400 },
+        );
+      }
+      if (!transferTranscriptUrl) {
+        return NextResponse.json(
+          { error: "Previous Institution Transcript file is required for credit transfer applications." },
+          { status: 400 },
+        );
+      }
+    } else {
+      // No transfer: dependent fields must not persist.
+      transferSemester = null;
+      transferTranscriptUrl = null;
     }
 
     const alumniRows = await sql/* sql */`
@@ -781,6 +858,9 @@ export async function POST(
         semester,
         scholarship_disclosure,
         discount_terms_accepted,
+        is_credit_transfer,
+        transfer_semester,
+        transfer_transcript_url,
         status
       ) VALUES (
         ${alumni.alumniid},
@@ -802,6 +882,9 @@ export async function POST(
         ${semester},
         ${scholarshipDisclosure},
         ${discountTermsAccepted},
+        ${isCreditTransfer},
+        ${transferSemester},
+        ${transferTranscriptUrl},
         'pending'
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -823,6 +906,9 @@ export async function POST(
         semester = EXCLUDED.semester,
         scholarship_disclosure = EXCLUDED.scholarship_disclosure,
         discount_terms_accepted = EXCLUDED.discount_terms_accepted,
+        is_credit_transfer = EXCLUDED.is_credit_transfer,
+        transfer_semester = EXCLUDED.transfer_semester,
+        transfer_transcript_url = EXCLUDED.transfer_transcript_url,
         status = 'pending',
         reason = NULL
     `;
