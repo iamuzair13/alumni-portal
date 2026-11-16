@@ -797,9 +797,18 @@ export default function MerchantsComponent() {
                   >
                     <td className="px-4 py-3 text-[13px] font-medium text-gray-900 dark:text-gray-100">
                       <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-xs font-bold text-accent-700 dark:bg-accent-900/50 dark:text-accent-300">
-                          {m.business_name.slice(0, 1).toUpperCase() || "M"}
-                        </span>
+                        {m.banner_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.banner_url}
+                            alt={`${m.business_name} banner`}
+                            className="h-10 w-8 shrink-0 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                          />
+                        ) : (
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-xs font-bold text-accent-700 dark:bg-accent-900/50 dark:text-accent-300">
+                            {m.business_name.slice(0, 1).toUpperCase() || "M"}
+                          </span>
+                        )}
                         <span className="truncate">{m.business_name}</span>
                       </div>
                     </td>
