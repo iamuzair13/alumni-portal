@@ -182,6 +182,26 @@
   --z-index-9999: 9999;
   --z-index-99999: 99999;
   --z-index-999999: 999999;
+
+  /* Semantic hub tokens — dark values overridden under .dark below */
+  --color-surface: #ffffff;
+  --color-surface-raised: #f9fafb;
+  --color-surface-sunken: #f2f4f7;
+  --color-border-subtle: #e4e7ec;
+  --color-content: #101828;
+  --color-content-secondary: #475467;
+  --color-content-muted: #667085;
+  --color-gold: #fdb022;
+}
+
+.dark {
+  --color-surface: #1d2939;
+  --color-surface-raised: #101828;
+  --color-surface-sunken: #0c111d;
+  --color-border-subtle: #344054;
+  --color-content: #f2f4f7;
+  --color-content-secondary: #d0d5dd;
+  --color-content-muted: #98a2b3;
 }
 
 /*

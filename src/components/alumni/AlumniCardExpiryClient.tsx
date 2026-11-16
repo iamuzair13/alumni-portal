@@ -115,12 +115,12 @@ export default function AlumniCardExpiryClient({ sapId, fallbackValidity, alumni
   }
 
   return (
-    <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2 sm:mb-3">
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Card valid through</span>
+    <div className="mt-3 pt-3 border-t border-white/10">
+      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+        <span className="text-xs font-medium text-white/60">Card valid through</span>
         <span
-          className={`text-xs sm:text-sm font-semibold sm:text-right tabular-nums ${
-            isExpired ? "text-error-600 dark:text-error-400" : "text-gray-900 dark:text-gray-100"
+          className={`text-xs font-semibold tabular-nums sm:text-right sm:text-sm ${
+            isExpired ? "text-error-300" : "text-white"
           }`}
         >
           {formattedExpiry}

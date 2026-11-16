@@ -7,7 +7,6 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useAlumniFullDetails, useUpdateAlumniFields } from "@/app/queries/alumni-profile";
 import { useQuery } from "@tanstack/react-query";
-import AppHeader from "@/layout/AppHeader";
 import Image from "next/image";
 import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
@@ -576,7 +575,6 @@ function MoreDetailsContent() {
   if (isLoading) {
     return (
       <>
-        <AppHeader />
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="animate-pulse space-y-8">
@@ -602,7 +600,6 @@ function MoreDetailsContent() {
   if (isError || !data) {
     return (
       <>
-        <AppHeader />
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
           <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-8 text-center">
             <div className="mx-auto w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
@@ -621,8 +618,6 @@ function MoreDetailsContent() {
 
   return (
     <>
-      <AppHeader />
-
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
         <PageBanner title="Profile Details" />
 

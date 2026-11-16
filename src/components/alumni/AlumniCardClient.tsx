@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useCardStatus } from "@/app/queries/fetch-card-status";
 import AlumniCardTemplate from "./AlumniCardTemplate";
 
@@ -54,19 +55,54 @@ export default function AlumniCardClient({
   }
 
   return (
-    <AlumniCardTemplate
-      studentName={studentName}
-      department={department}
-      faculty={faculty}
-      campus={campus}
-      passingYear={passingYear}
-      alumniId={alumniId}
-      gender={gender}
-      cnicPassport={cnicPassport}
-      validity={computedValidity}
-      photoUrl={photoUrl}
-      cardImage={cardImage}
-      medal={medal}
-    />
+    <ResponsiveCardScale>
+      <AlumniCardTemplate
+        studentName={studentName}
+        department={department}
+        faculty={faculty}
+        campus={campus}
+        passingYear={passingYear}
+        alumniId={alumniId}
+        gender={gender}
+        cnicPassport={cnicPassport}
+        validity={computedValidity}
+        photoUrl={photoUrl}
+        cardImage={cardImage}
+        medal={medal}
+      />
+    </ResponsiveCardScale>
+  );
+}
+
+// The card template renders at a fixed 332.26×212.03px geometry (every
+// label is absolutely positioned in px), so on narrow panels it is scaled
+// down rather than clipped — never scaled up past its natural size.
+const CARD_W = 332.26;
+const CARD_H = 212.03;
+
+function ResponsiveCardScale({ children }: { children: React.ReactNode }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const update = (w: number) => setScale(Math.min(1, w / CARD_W));
+    update(el.clientWidth);
+    const ro = new ResizeObserver(([entry]) => update(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={hostRef}
+      className="flex w-full justify-center overflow-hidden"
+      style={{ height: CARD_H * scale }}
+    >
+      <div style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
+        {children}
+      </div>
+    </div>
   );
 }

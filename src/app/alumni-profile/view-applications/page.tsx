@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import AppHeader from "@/layout/AppHeader";
 import PageBanner from "@/components/ui/PageBanner";
 import { ViewApplicationsContent } from "./ViewApplicationsContent";
 
@@ -11,7 +10,6 @@ export default function ViewApplicationsPage() {
     <Suspense
       fallback={
         <>
-          <AppHeader />
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <PageBanner title="My Applications" />
             <div className="container mx-auto px-4 py-6 sm:py-8">

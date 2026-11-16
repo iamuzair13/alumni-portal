@@ -115,77 +115,48 @@ export default function SocialLinksForm({ sapId, initialData, onSuccess }: Props
     }
   };
 
+  const fields: { name: keyof FormData; label: string; placeholder: string }[] = [
+    { name: "facebook", label: "Facebook URL", placeholder: "https://facebook.com/yourprofile" },
+    { name: "instagram", label: "Instagram URL", placeholder: "https://instagram.com/yourprofile" },
+    { name: "youtube", label: "YouTube URL", placeholder: "https://youtube.com/@yourchannel" },
+    { name: "linkedin", label: "LinkedIn URL", placeholder: "https://linkedin.com/in/yourprofile" },
+  ];
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div>
-        <label htmlFor="facebook" className="block text-sm font-medium text-gray-700 mb-1">
-          Facebook URL
-        </label>
-        <input
-          id="facebook"
-          type="url"
-          {...register("facebook")}
-          placeholder="https://facebook.com/yourprofile"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        {errors.facebook && (
-          <p className="mt-1 text-sm text-red-600">{errors.facebook.message}</p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="instagram" className="block text-sm font-medium text-gray-700 mb-1">
-          Instagram URL
-        </label>
-        <input
-          id="instagram"
-          type="url"
-          {...register("instagram")}
-          placeholder="https://instagram.com/yourprofile"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        {errors.instagram && (
-          <p className="mt-1 text-sm text-red-600">{errors.instagram.message}</p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="youtube" className="block text-sm font-medium text-gray-700 mb-1">
-          YouTube URL
-        </label>
-        <input
-          id="youtube"
-          type="url"
-          {...register("youtube")}
-          placeholder="https://youtube.com/@yourchannel"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        {errors.youtube && (
-          <p className="mt-1 text-sm text-red-600">{errors.youtube.message}</p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="linkedin" className="block text-sm font-medium text-gray-700 mb-1">
-          LinkedIn URL
-        </label>
-        <input
-          id="linkedin"
-          type="url"
-          {...register("linkedin")}
-          placeholder="https://linkedin.com/in/yourprofile"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        {errors.linkedin && (
-          <p className="mt-1 text-sm text-red-600">{errors.linkedin.message}</p>
-        )}
-      </div>
+      {fields.map((f) => {
+        const error = errors[f.name];
+        const errorId = `${f.name}-error`;
+        return (
+          <div key={f.name}>
+            <label htmlFor={f.name} className="mb-1 block text-sm font-medium text-content-secondary">
+              {f.label}
+            </label>
+            <input
+              id={f.name}
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? errorId : undefined}
+              {...register(f.name)}
+              placeholder={f.placeholder}
+              className="w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-content placeholder:text-content-muted focus-visible:outline-2 focus-visible:outline-brand-500"
+            />
+            {error && (
+              <p id={errorId} role="alert" className="mt-1 text-sm text-error-600 dark:text-error-400">
+                {error.message}
+              </p>
+            )}
+          </div>
+        );
+      })}
 
       <div className="flex gap-3 pt-4">
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="min-h-11 flex-1 rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand-500 dark:text-accent-950 dark:hover:bg-brand-400"
         >
           {isSubmitting ? "Updating..." : "Update Links"}
         </button>
@@ -194,7 +165,7 @@ export default function SocialLinksForm({ sapId, initialData, onSuccess }: Props
             type="button"
             onClick={onSuccess}
             disabled={isSubmitting}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="min-h-11 rounded-lg border border-border-subtle bg-surface px-4 py-2 font-semibold text-content-secondary transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel
           </button>

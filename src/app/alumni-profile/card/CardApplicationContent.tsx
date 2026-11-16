@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
-import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
 
 import PageBanner from "@/components/ui/PageBanner";
@@ -36,7 +35,6 @@ function CardApplicationContent() {
   if (isLoading) {
     return (
       <>
-        <AppHeader />
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           <PageBanner title="Apply for Alumni Card" />
           <div className="container mx-auto px-4 py-8">
@@ -54,7 +52,6 @@ function CardApplicationContent() {
   if (error || !data) {
     return (
       <>
-        <AppHeader />
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           <PageBanner title="Apply for Alumni Card" />
           <div className="container mx-auto px-4 py-8">
@@ -82,7 +79,6 @@ function CardApplicationContent() {
 
   return (
     <>
-      <AppHeader />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <PageBanner title="Apply for Alumni Card" />
         <div className="container mx-auto px-4 py-8">

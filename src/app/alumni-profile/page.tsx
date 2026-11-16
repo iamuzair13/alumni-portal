@@ -11,22 +11,29 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import type { CardStatus } from "./status";
-import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner, isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { canViewAlumni } from "@/lib/rbac";
 import { type MentorshipStatus } from "./status";
-import ProfileDetailsClient from "./ProfileDetailsClient";
 import ProfileDetailsServer from "./ProfileDetailsServer";
-import PageBanner from "@/components/ui/PageBanner";
-import AlumniCardClient from "@/components/alumni/AlumniCardClient";
-import AlumniCardExpiryClient from "@/components/alumni/AlumniCardExpiryClient";
-import SubmitRevisionButton from "@/components/alumni/SubmitRevisionButton";
-import UpdateAlumniCardPictureButton from "@/components/alumni/UpdateAlumniCardPictureButton";
-import NetworkingEngagementSection from "@/components/ui/NetworkingEngagementSection";
-import NewslettersCard from "@/components/alumni/NewslettersCard";
-import BenefitCard from "@/components/ui/BenefitCard";
-import AlumniTalksCard from "@/components/alumni/AlumniTalksCard";
+import ProfileHero from "@/components/alumni/profile/ProfileHero";
+import AlumniCardPanel from "@/components/alumni/profile/AlumniCardPanel";
+import Hub from "@/components/alumni/profile/HubTabs";
+import OverviewTab from "@/components/alumni/profile/tabs/OverviewTab";
+import BenefitsTab from "@/components/alumni/profile/tabs/BenefitsTab";
+import ProfileTab from "@/components/alumni/profile/tabs/ProfileTab";
+import EngagementTab from "@/components/alumni/profile/tabs/EngagementTab";
+import UpdatesTab from "@/components/alumni/profile/tabs/UpdatesTab";
+import AllBenefitsTab from "@/components/alumni/profile/tabs/AllBenefitsTab";
+import { Suspense } from "react";
+import { Lock } from "lucide-react";
+import { Notice } from "@/components/alumni/profile/hub-ui";
+import KpiStrip, { type KpiValues } from "@/components/alumni/profile/KpiStrip";import ChangeApprovalNotice from "@/components/alumni/profile/ChangeApprovalNotice";
+import {
+  type MembershipSummary,
+  type MerchantSummary,
+  type ScholarshipSummary,
+} from "@/components/alumni/profile/BenefitsBento";
 import { formatCardValidityMonthYear, resolveAlumniCardValidityRaw } from "@/lib/cardValidity";
 import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
 import { resolvePreferredCardImage } from "@/lib/alumniCardImage";
@@ -55,7 +62,6 @@ async function getProfile(searchParams: { sapid?: string }) {
   try {
     const session = await auth();
     const canView = canViewAlumni(session?.user); // Includes admins, superadmins, and viewers
-    const isAdmin = isAdminUser(session?.user) || isSuperAdminUser(session?.user);
     const sessionAlumniId =
       session?.user && (session.user as { userId?: number | null })?.userId
         ? Number((session.user as { userId?: number | null }).userId)
@@ -665,12 +671,178 @@ let cardImageFile: string | null = null;
     }
   }
 
+  // Benefit summaries for the bento grid — three independent aggregates run in
+  // parallel; each degrades to an empty summary on error so the page never
+  // fails because a benefit count could not be computed.
+  let scholarshipSummary: ScholarshipSummary = { count: 0, approved: 0, pending: 0, maxDiscountPct: null };
+  let membershipSummary: MembershipSummary = { count: 0, approved: 0, pending: 0, facilities: [] };
+  let merchantSummary: MerchantSummary = { count: 0, maxPct: 0, topNames: [] };
+  if (alumniId) {
+    await Promise.all([
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              COUNT(*)::int AS count,
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) = 'approved')::int AS approved,
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('pending', 'under-review', 'under_review'))::int AS pending,
+              MAX(s.applied_discount_percent)::float AS max_discount
+            FROM public.alumni_scholarships s
+            WHERE s.alumniid = ${alumniId}
+          `;
+          const r = rows[0] as { count?: number; approved?: number; pending?: number; max_discount?: number | null } | undefined;
+          if (r) {
+            scholarshipSummary = {
+              count: Number(r.count ?? 0),
+              approved: Number(r.approved ?? 0),
+              pending: Number(r.pending ?? 0),
+              maxDiscountPct: typeof r.max_discount === "number" && Number.isFinite(r.max_discount) ? r.max_discount : null,
+            };
+          }
+        } catch {
+          // keep default summary
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              COUNT(*)::int AS count,
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(am.status, 'pending')) = 'approved')::int AS approved,
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(am.status, 'pending')) IN ('pending', 'under-review', 'under_review'))::int AS pending,
+              ARRAY_AGG(DISTINCT am.facility_type) FILTER (WHERE am.facility_type IS NOT NULL) AS facilities
+            FROM public.alumni_memberships am
+            WHERE am.alumniid = ${alumniId}
+          `;
+          const r = rows[0] as { count?: number; approved?: number; pending?: number; facilities?: string[] | null } | undefined;
+          if (r) {
+            membershipSummary = {
+              count: Number(r.count ?? 0),
+              approved: Number(r.approved ?? 0),
+              pending: Number(r.pending ?? 0),
+              facilities: Array.isArray(r.facilities) ? r.facilities.filter((f): f is string => !!f) : [],
+            };
+          }
+        } catch {
+          // keep default summary
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              COUNT(*)::int AS count,
+              MAX(m.discount_pct)::float AS max_pct,
+              (ARRAY_AGG(m.business_name ORDER BY m.discount_pct DESC))[1:3] AS top_names
+            FROM public.merchants m
+            WHERE m.status = 'active'
+              AND (m.end_date IS NULL OR m.end_date >= CURRENT_DATE)
+          `;
+          const r = rows[0] as { count?: number; max_pct?: number | null; top_names?: string[] | null } | undefined;
+          if (r) {
+            merchantSummary = {
+              count: Number(r.count ?? 0),
+              maxPct: typeof r.max_pct === "number" && Number.isFinite(r.max_pct) ? Math.round(r.max_pct) : 0,
+              topNames: Array.isArray(r.top_names) ? r.top_names.filter((n): n is string => !!n) : [],
+            };
+          }
+        } catch {
+          // keep default summary
+        }
+      })(),
+    ]);
+  }
+
+  // Global portal KPI counts for the strip at the top of the hub. Same
+  // aggregate style as the bento summaries — each query degrades
+  // independently so one failure cannot blank the strip.
+  let kpiValues: KpiValues = {
+    verified: null,
+    medalists: null,
+    cards: null,
+    scholarships: null,
+    memberships: null,
+    leaderships: null,
+    merchants: null,
+  };
+  if (alumniId) {
+    await Promise.all([
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              COUNT(*) FILTER (WHERE LOWER(COALESCE(verify, '')) = 'true')::int AS verified,
+              COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(medal, ''))) IN ('gold medalist', 'silver medalist', 'bronze medalist'))::int AS medalists
+            FROM public.tbl_alumni`;
+          const r = rows[0] as { verified?: number; medalists?: number } | undefined;
+          kpiValues.verified = Number(r?.verified ?? 0);
+          kpiValues.medalists = Number(r?.medalists ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT COUNT(*)::int AS c FROM public.tblcard
+            WHERE UPPER(TRIM(COALESCE(status, ''))) IN ('ACTIVE', 'DELIVERED')`;
+          kpiValues.cards = Number((rows[0] as { c?: number } | undefined)?.c ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT COUNT(*)::int AS c FROM public.alumni_scholarships
+            WHERE LOWER(COALESCE(status, 'pending')) = 'approved'`;
+          kpiValues.scholarships = Number((rows[0] as { c?: number } | undefined)?.c ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT COUNT(*)::int AS c FROM public.alumni_memberships`;
+          kpiValues.memberships = Number((rows[0] as { c?: number } | undefined)?.c ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+      (async () => {
+        try {
+          const rows = await sql/* sql */`
+            SELECT
+              (SELECT COUNT(*)::int FROM public.chapter_leadership)
+              + (SELECT COUNT(*)::int FROM public.tblalumniassociation) AS c`;
+          kpiValues.leaderships = Number((rows[0] as { c?: number } | undefined)?.c ?? 0);
+        } catch {
+          // keep null
+        }
+      })(),
+    ]);
+    kpiValues.merchants = merchantSummary.count;
+  }
+
+  const cardIssued = cardStatus === "active" || cardStatus === "received";
+  const hubTabs = [
+    { key: "overview", label: "Overview" },
+    { key: "benefits", label: "Benefits" },
+    { key: "profile", label: "Profile" },
+    { key: "engagement", label: "Engagement" },
+    { key: "updates", label: "Updates" },
+    { key: "all-benefits", label: "All Benefits" },
+  ];
+  const encSapId = encodeURIComponent(sapId || "");
+  const profileTabHref = sapId
+    ? `/alumni-profile?sapid=${encSapId}&tab=profile`
+    : "/alumni-profile?tab=profile";
+
   return (
     <>
     <div className="bg-gray-100 overflow-x-hidden dark:bg-gray-950">
-      <div className="border bg-white relative z-50 dark:border-gray-800 dark:bg-gray-900">
-        <AppHeader />
-      </div>
+      
       {(() => {
         const b = computeLoginBanner(session?.user);
         return b.show ? (
@@ -689,396 +861,168 @@ let cardImageFile: string | null = null;
           <Alert variant="error" title="Account Lookup Failed" message={sapError} />
         </div>
       )}
-      <PageBanner title="My Profile" />
-
-        {/* 2. Main Content Container (Max-width and Padding) */}
-        {/* This container centers and holds the profile details and ID card. */}
-        <div className="w-full bg-gray-100 mx-auto mt-8 sm:mt-12 md:mt-16 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 dark:bg-gray-950">
-          <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row mt-8 sm:mt-10 md:-mt-16 gap-4 sm:gap-6 md:gap-8 p-3 sm:p-4 md:p-6 lg:p-8 dark:bg-gray-900">
-
-            <div className="w-full flex min-w-0 order-1">
-                {sapId && sapId.trim() ? (
-                  <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} associationTitle={associationTitle} associationError={associationError} leadershipInfo={leadershipInfo} leadershipError={leadershipError} leadershipGovernanceHtml={leadershipGovernanceHtml} />
-                ) : canView ? (
-                  <div className="w-full p-8 text-center">
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-6 dark:border-blue-900 dark:bg-blue-950/40">
-                      <h3 className="text-lg font-semibold text-blue-900 mb-2 dark:text-blue-200">Select an Alumni Profile</h3>
-                      <p className="text-blue-700 mb-4 dark:text-blue-300">
-                        To view an alumni profile, please select a profile from the alumni list or use the URL with a SAP ID parameter.
-                      </p>
-                      <Link
-                        href="/dashboard"
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Go to Alumni List
-                      </Link>
-                    </div>
-                  </div>
-                ) : (
-                  <ProfileDetailsServer
-                    name={name}
-                    avatar={avatar}
-                    sapId={sapId || ""}
-                    contact={contact}
-                    faculty={faculty}
-                    dept={dept}
-                    facebook={p?.facebook}
-                    instagram={p?.instagram}
-                    youtube={p?.youtube}
-                    linkedin={p?.linkedin}
-                    chapters={chapters}
-                    isVerified={isVerified}
-                    chaptersError={chaptersError}
-                    associationTitle={associationTitle}
-                    associationError={associationError}
-                    leadershipInfo={leadershipInfo}
-                    leadershipError={leadershipError}
-                    leadershipGovernanceHtml={leadershipGovernanceHtml}
-                  />
-                )}
-                </div>
-                  <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 pt-4 sm:pt-6 md:pt-8 lg:pt-10 mt-4 sm:mt-6 md:mt-0 order-2">
-                    <div className={`shadow-sm border rounded-lg overflow-hidden text-center lg:mt-0 ${
-                      cardStatus === "received" 
-                        ? "bg-green-100 border-green-200 dark:bg-green-950/30 dark:border-green-900" 
-                        : cardStatus === "active" 
-                        ? "bg-success-50 border-success-200 dark:bg-success-950/30 dark:border-success-900" 
-                        : cardStatus === "under-review" 
-                        ? "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900" 
-                        : cardStatus === "inprocess"
-                        ? "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900"
-                        : cardStatus === "onhold" 
-                        ? "bg-error-50 border-error-200 dark:bg-error-950/30 dark:border-error-900" 
-                        : cardStatus === "full" 
-                        ? "bg-sky-50 border-sky-200 dark:bg-sky-950/30 dark:border-sky-900" 
-                        : "bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-700"
-                    }`} aria-label="Alumni card">
-                      <div className="p-4 sm:p-5 md:p-6">
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mb-3">
-                          <h3 className={`text-lg sm:text-xl font-bold ${
-                            cardStatus === "received" 
-                              ? "text-green-700" 
-                              : cardStatus === "active" 
-                              ? "text-success-700" 
-                              : cardStatus === "under-review" 
-                              ? "text-amber-700" 
-                              : cardStatus === "inprocess"
-                              ? "text-blue-700"
-                              : cardStatus === "onhold" 
-                              ? "text-error-700" 
-                              : cardStatus === "full" 
-                              ? "text-sky-700" 
-                              : "text-gray-700 dark:text-gray-300"
-                          }`}>Alumni Card</h3>
-                          <div role="status" aria-live="polite">
-                            {cardStatusError ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-error-50 text-error-700 px-2 py-0.5 border border-error-200 dark:bg-error-950/40 dark:text-error-200 dark:border-error-900">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-error-600 dark:text-error-300"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
-                                <span className="text-xs">{cardStatusError}</span>
-                              </div>
-                            ) : cardStatus === "received" ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-green-50 text-green-700 px-2 py-0.5 border border-green-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-green-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
-                                <span className="text-xs">Received</span>
-                              </div>
-                            ) : cardStatus === "active" ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-success-50 text-success-700 px-2 py-0.5 border border-success-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-success-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
-                                <span className="text-xs">Active</span>
-                              </div>
-                            ) : cardStatus === "inprocess" ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700 px-2 py-0.5 border border-blue-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-blue-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
-                                <span className="text-xs">In-Process</span>
-                              </div>
-                            ) : cardStatus === "onhold" ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-error-50 text-error-700 px-2 py-0.5 border border-error-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-error-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
-                                <span className="text-xs">On Hold</span>
-                              </div>
-                            ) : cardStatus === "under-review" ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 text-amber-700 px-2 py-0.5 border border-amber-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
-                                <span className="text-xs">Under Review</span>
-                              </div>
-                            ) : cardStatus === "full" ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-sky-50 text-sky-700 px-2 py-0.5 border border-sky-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-sky-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
-                                <span className="text-xs">Full</span>
-                              </div>
-                            ) : (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-gray-50 text-gray-700 px-2 py-0.5 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-gray-600 dark:text-gray-300"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 7h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>
-                                <span className="text-xs">No Application</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {(cardStatus === "received" || cardStatus === "active") && (
-                          <div className="mb-3 flex justify-center">
-                            <Link
-                              href={sapId ? `/alumni-profile/card-print?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card-print`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-accent-500 hover:bg-accent-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-500 transition-colors"
-                              aria-label="Download alumni card as PDF"
-                            >
-                              Download Card (PDF)
-                            </Link>
-                          </div>
-                        )}
-                        {cardStatus === "received" || cardStatus === "active" ? (
-                          <>
-                            <div className="mt-3 sm:mt-4">
-                              <AlumniCardClient
-                                studentName={name}
-                                department={dept}
-                                faculty={faculty}
-                                campus={p?.campusname ?? null}
-                                passingYear={p?.yearofending ?? null}
-                                alumniId={sapId || "UOL-AL-0000"}
-                                sapId={sapId || ""}
-                                gender={p?.gender ?? null}
-                                cnicPassport={cnicPassport}
-                                validity={validity}
-                                photoUrl={profileImageFilename}
-                                initialCardImage={cardTemplateImageFilename}
-                                medal={p?.medal ?? null}
-                              />
-                            </div>
-                            <AlumniCardExpiryClient
-                              sapId={sapId || ""}
-                              fallbackValidity={validityDate ?? validity ?? null}
-                              alumniId={alumniId}
-                              name={name}
-                              faculty={faculty}
-                              department={dept}
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <div className="mt-3 sm:mt-4">
-                              {cardStatus === "under-review" ? (
-                                <p className="text-xs text-amber-700 dark:text-amber-300">Your application is under review.</p>
-                              ) : cardStatus === "inprocess" ? (
-                                <p className="text-xs text-blue-700 dark:text-blue-300">Your application is in process.</p>
-                              ) : cardStatus === "onhold" ? (
-                                <div className="text-xs text-error-700 dark:text-error-300">
-                                  <p className="font-medium mb-1">Your application is on hold.</p>
-                                  {reasonOnhold && (
-                                    <p className="text-[10px] mt-1 italic bg-error-50 border border-error-200 rounded px-2 py-1 dark:bg-error-950/40 dark:border-error-900">
-                                      Reason: {reasonOnhold}
-                                    </p>
-                                  )}
-                                  {cardComment && (
-                                    <div className="mt-2 p-2 bg-error-50 border border-error-200 rounded-md dark:bg-error-950/40 dark:border-error-900">
-                                      <p className="font-medium text-error-800 mb-1 dark:text-error-200">Note:</p>
-                                      <p className="text-error-700 dark:text-error-300">{cardComment}</p>
-                                    </div>
-                                  )}
-                                  {!cardComment && <p className="mt-1">Please contact us for more information.</p>}
-                                </div>
-                              ) : cardStatus === "full" ? (
-                                <p className="text-xs text-sky-700 dark:text-sky-300">Application capacity is currently full. Please try later.</p>
-                              ) : (
-                                <p className="text-xs text-gray-700 mb-2 sm:mb-3 dark:text-gray-300">Start your application to get your alumni card.</p>
-                              )}
-                            </div>
-                            {cardStatus === "under-review" ? (
-                            <>
-                              <button
-                                type="button"
-                                disabled
-                                aria-disabled
-                                className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
-                              >
-                                Under review
-                              </button>
-                              {!isViewer && !!sapId && (
-                                <div className="mt-2 sm:mt-3">
-                                  <UpdateAlumniCardPictureButton sapId={sapId} />
-                                </div>
-                              )}
-                            </>
-                          ) : cardStatus === "inprocess" ? (
-                            <button
-                              type="button"
-                              disabled
-                              aria-disabled
-                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
-                            >
-                              In-Process
-                            </button>
-                          ) : cardStatus === "onhold" ? (
-                            <div className="mt-2 sm:mt-3 space-y-2">
-                              <button
-                                type="button"
-                                disabled
-                                aria-disabled
-                                className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
-                              >
-                                Application on hold
-                              </button>
-                              {!!sapId && (
-                                <SubmitRevisionButton sapId={sapId} />
-                              )}
-                              {!isViewer && !!sapId && (
-                                <UpdateAlumniCardPictureButton sapId={sapId} />
-                              )}
-                              
-                            </div>
-                          ) : cardStatus === "full" ? (
-                            <button
-                              type="button"
-                              disabled
-                              aria-disabled
-                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
-                            >
-                              Capacity Full
-                            </button>
-                          ) : cardStatus === "none" ? (
-                            !isViewer && (
-                            <Link
-                              href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
-                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-accent-500 hover:bg-accent-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 motion-safe:animate-pulse"
-                            >
-                              <span className="motion-safe:animate-pulse motion-safe:animate-infinite motion-safe:animate-duration-1000">Apply now</span>
-                            </Link>
-                            )
-                          ) : null}
-                        </>
-                      )}
-                    </div>
-                  </div>
+      {sapId ? (
+        <section className="w-full max-w-7xl mx-auto mt-5 sm:mt-7 px-3 sm:px-4 md:px-6 lg:px-8 pb-10" aria-label="Alumni profile hub">
+          <ProfileHero
+            name={name}
+            avatar={avatar}
+            sapId={sapId}
+            memberId={sapId || (alumniId ? `UOL-AL-${alumniId}` : "")}
+            program={p?.degreetitle ?? ""}
+            department={dept}
+            faculty={faculty}
+            graduationYear={p?.yearofending ?? null}
+            campus={p?.campusname ?? null}
+            isVerified={isVerified}
+            cardStatus={cardStatus}
+            cardValidity={validity}
+            leadershipRole={leadershipInfo.roleDisplay}
+            chapters={chapters}
+            associationTitle={associationTitle}
+            socials={{
+              facebook: p?.facebook,
+              instagram: p?.instagram,
+              linkedin: p?.linkedin,
+              youtube: p?.youtube,
+            }}
+            profileTabHref={profileTabHref}
+            isViewer={isViewer}
+            cardPanel={
+              <AlumniCardPanel
+                cardStatus={cardStatus}
+                cardStatusError={cardStatusError ?? null}
+                reasonOnhold={reasonOnhold ?? null}
+                cardComment={cardComment ?? null}
+                name={name}
+                department={dept}
+                faculty={faculty}
+                campus={p?.campusname ?? null}
+                passingYear={p?.yearofending ?? null}
+                sapId={sapId || ""}
+                alumniId={alumniId}
+                gender={p?.gender ?? null}
+                cnicPassport={cnicPassport}
+                validity={validity ?? ""}
+                validityDate={validityDate ?? null}
+                photoUrl={profileImageFilename ?? null}
+                initialCardImage={cardTemplateImageFilename ?? null}
+                medal={p?.medal ?? null}
+                isViewer={isViewer}
+              />
+            }
+          />
+          <div className="mt-4">
+            <KpiStrip data={kpiValues} />
           </div>
+          <div className="mt-2 flex flex-col gap-2">
+            {cardStatus === "none" && !isViewer && (
+              <Notice variant="warning" icon={<Lock />}>
+                Alumni card is required to avail these benefits.
+              </Notice>
+            )}
+            <ChangeApprovalNotice sapId={sapId} />
+          </div>
+          <div className="mt-5">
+            <Suspense fallback={null}>
+              <Hub
+                tabs={hubTabs}
+                panels={{
+                  overview: (
+                    <OverviewTab
+                      sapId={sapId}
+                      cardStatus={cardStatus}
+                      cardValidity={validity}
+                      cardIssued={cardIssued}
+                      isViewer={isViewer}
+                      scholarships={scholarshipSummary}
+                      memberships={membershipSummary}
+                      merchants={merchantSummary}
+                      chapters={chapters}
+                      engagement={{
+                        stories: successStoryCount,
+                        talks: alumniTalkCount,
+                        mentorship: mentorshipStatus,
+                        leadershipRole: leadershipInfo.roleDisplay,
+                      }}
+                    />
+                  ),
+                  benefits: <BenefitsTab sapId={sapId} />,
+                  profile: (
+                    <ProfileTab
+                      sapId={sapId}
+                      chapters={chapters}
+                      isVerified={isVerified}
+                      chaptersError={chaptersError}
+                      associationTitle={associationTitle}
+                      associationError={associationError}
+                      leadershipInfo={leadershipInfo}
+                      leadershipError={leadershipError}
+                      leadershipGovernanceHtml={leadershipGovernanceHtml}
+                    />
+                  ),
+                  engagement: (
+                    <EngagementTab
+                      sapId={sapId}
+                      mentorshipStatus={mentorshipStatus}
+                      mentorshipStatusError={mentorshipStatusError}
+                      successStoryCount={successStoryCount}
+                      alumniTalkCount={alumniTalkCount}
+                      chapterMembershipCount={chapterMembershipCount}
+                      associationTitle={associationTitle}
+                    />
+                  ),
+                  updates: <UpdatesTab />,
+                  "all-benefits": (
+                    <AllBenefitsTab
+                      sapId={sapId}
+                      cardStatus={cardStatus}
+                      scholarshipsTotal={scholarshipSummary.count}
+                      membershipsTotal={membershipSummary.count}
+                      merchantsActive={merchantSummary.count}
+                      chaptersCount={chapters.length}
+                      storiesCount={successStoryCount}
+                      talksCount={alumniTalkCount}
+                    />
+                  ),
+                }}
+              />
+            </Suspense>
+          </div>
+        </section>
+      ) : null}
 
-          {/* B. Alumni ID Card (Fixed width on larger screens) */}
-        </div>
-      </div>
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 text-gray-900 bg-gray-100 dark:bg-gray-950 dark:text-gray-100">
-        <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-6 dark:text-gray-100">Networking & Engagement</h4>
-        <NetworkingEngagementSection
-          sapId={sapId}
-          mentorshipStatus={mentorshipStatus}
-          mentorshipStatusError={mentorshipStatusError}
-          successStoryCount={successStoryCount}
-          alumniTalkCount={alumniTalkCount}
-          chapterMembershipCount={chapterMembershipCount}
-          associationTitle={associationTitle}
-        />
-      </div>
-
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-gray-100 dark:bg-gray-950">
-        <NewslettersCard />
-      </div>
-
-
-
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-gray-100 dark:bg-gray-950">
-        <div className="mb-4 sm:mb-6 md:mb-8">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 dark:text-gray-100">
-          Perks &amp; Benefits
-            <span className="px-3 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 font-semibold border-2 border-yellow-300 shadow-sm dark:from-yellow-950/50 dark:to-amber-950/50 dark:text-yellow-200 dark:border-yellow-900">
-            Alumni card is required to avail these benefits
-          </span>
-        </h2>
-          <p className="text-sm sm:text-base md:text-lg text-gray-600 mt-2 dark:text-gray-400">Explore exclusive benefits and opportunities available to UOL alumni members.</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
-          <BenefitCard
-            title="Academic Benefits"
-            description="Avail special tuition and admission discounts offered to UOL alumni."
-            slug="academic-benefits"
-            gradient="from-brand-50 to-brand-100"
-            borderColor="border-brand-200"
-            iconBg="bg-brand-100"
-            icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-brand-600" viewBox="0 0 24 24">
-                <path d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12z"/>
-                <path d="M7 8h10v2H7zm0 4h7v2H7z"/>
-              </svg>
-            }
+      {!sapId && canView ? (
+        <section className="w-full max-w-7xl mx-auto mt-5 sm:mt-7 px-3 sm:px-4 md:px-6 lg:px-8 pb-10" aria-label="Select alumni profile">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 text-center dark:border-blue-900 dark:bg-blue-950/40">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2 dark:text-blue-200">Select an Alumni Profile</h3>
+            <p className="text-blue-700 mb-4 dark:text-blue-300">To view an alumni profile, please select a profile from the alumni list or use the URL with a SAP ID parameter.</p>
+            <Link href="/dashboard" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Go to Alumni List</Link>
+          </div>
+        </section>
+      ) : !sapId ? (
+        <section className="w-full max-w-7xl mx-auto mt-5 sm:mt-7 px-3 sm:px-4 md:px-6 lg:px-8 pb-10" aria-label="Alumni profile details">
+          <ProfileDetailsServer
+            name={name}
+            avatar={avatar}
+            sapId={sapId || ""}
+            contact={contact}
+            faculty={faculty}
+            dept={dept}
+            facebook={p?.facebook}
+            instagram={p?.instagram}
+            youtube={p?.youtube}
+            linkedin={p?.linkedin}
+            chapters={chapters}
+            isVerified={isVerified}
+            chaptersError={chaptersError}
+            associationTitle={associationTitle}
+            associationError={associationError}
+            leadershipInfo={leadershipInfo}
+            leadershipError={leadershipError}
+            leadershipGovernanceHtml={leadershipGovernanceHtml}
           />
-          <BenefitCard
-            title="Healthcare Benefits"
-            description="Avail comprehensive health insurance and wellness programs as an alumni member."
-            slug="healthcare-benefits"
-            gradient="from-success-50 to-success-100"
-            borderColor="border-success-200"
-            iconBg="bg-success-100"
-            icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-success-600" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
-            }
-          />
-          <BenefitCard
-            title="Campus Facilities and Memberships"
-            description="Enjoy access to gym, sports facilities, and exclusive campus amenities."
-            slug="campus-facilities"
-            gradient="from-blue-50 to-blue-100"
-            borderColor="border-blue-200"
-            iconBg="bg-blue-100"
-            icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-blue-600" viewBox="0 0 24 24">
-                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
-              </svg>
-            }
-          />
-          <BenefitCard
-            title="Merchant and Business Promotions"
-            description="Exclusive partner discounts and offers available for alumni with the Alumni Card."
-            slug="merchant-promotions"
-            gradient="from-orange-50 to-orange-100"
-            borderColor="border-orange-200"
-            iconBg="bg-orange-100"
-            icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-orange-600" viewBox="0 0 24 24">
-                <path d="M7 18c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM1 2v2h2l3.6 7.59-1.35 2.45c-.15.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-              </svg>
-            }
-          />
-          <BenefitCard
-            title="Career and Mentorship"
-            description=" Avail exclusive career and professional development opportunities."
-            slug="career-mentorship"
-            gradient="from-teal-50 to-teal-100"
-            borderColor="border-teal-200"
-            iconBg="bg-teal-100"
-            icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-teal-600" viewBox="0 0 24 24">
-                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-              </svg>
-            }
-          />
-          <BenefitCard
-            title="Chapters & Engagement Events"
-            description="You can join chapters based on their city or country to connect locally and globally."
-            slug="chapters-events"
-            gradient="from-error-50 to-error-100"
-            borderColor="border-error-200"
-            iconBg="bg-error-100"
-            icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-error-600" viewBox="0 0 24 24">
-                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-              </svg>
-            }
-          />
-          <BenefitCard
-            title="Identity, Inclusion & Recognition"
-            description=" Avail opportunities to be honored for achievements via awards and spotlights."
-            slug="recognition"
-            gradient="from-amber-50 to-amber-100"
-            borderColor="border-amber-200"
-            iconBg="bg-amber-100"
-            icon={
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-amber-600" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-            }
-          />
-        </div>
-      </div>
+        </section>
+      ) : null}
     </div>
       
   </>

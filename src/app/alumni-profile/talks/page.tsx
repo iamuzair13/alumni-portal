@@ -7,7 +7,6 @@ export const viewport: Viewport = {
 };
 
 import React from "react";
-import AppHeader from "@/layout/AppHeader";
 import PageBanner from "@/components/ui/PageBanner";
 import BackButton from "@/components/ui/BackButton";
 import Alert from "@/components/ui/alert/Alert";
@@ -25,9 +24,7 @@ export default async function AlumniTalksPage({ searchParams }: { searchParams: 
   return (
     <>
       <div className="bg-gray-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
-        <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-          <AppHeader />
-        </div>
+        
         {(() => {
           const b = computeLoginBanner(session?.user);
           return b.show ? (

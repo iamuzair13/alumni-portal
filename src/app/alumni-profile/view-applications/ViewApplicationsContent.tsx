@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
 
@@ -107,7 +106,6 @@ function ViewApplicationsContent() {
 
   return (
     <>
-      <AppHeader />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <PageBanner title="My Scholarship Applications" />
         <div className="container mx-auto px-4 py-6 sm:py-8">

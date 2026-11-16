@@ -4,7 +4,6 @@ import { CheckCircle2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
-import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
 import { toast } from "react-hot-toast";
 import PageBanner from "@/components/ui/PageBanner";
@@ -854,7 +853,6 @@ function ScholarshipApplicationContent() {
   if (isLoading || settingsLoading) {
     return (
       <>
-        <AppHeader />
         <div className="min-h-screen bg-gray-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="bg-white rounded-lg shadow-sm p-8">
@@ -877,7 +875,6 @@ function ScholarshipApplicationContent() {
   if (!isFormEnabled) {
     return (
       <>
-        <AppHeader />
         <PageBanner title="Scholarship Application" />
         <div className="min-h-screen bg-gray-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -906,7 +903,6 @@ function ScholarshipApplicationContent() {
   if (!data) {
     return (
       <>
-        <AppHeader />
         <div className="min-h-screen bg-gray-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="bg-white rounded-lg shadow-sm p-8">
@@ -929,8 +925,6 @@ function ScholarshipApplicationContent() {
 
   return (
     <>
-      <AppHeader />
-
       <PageBanner title="Scholarship Application" />
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
