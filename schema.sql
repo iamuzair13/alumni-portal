@@ -1372,6 +1372,12 @@ CREATE TABLE IF NOT EXISTS public.merchants (
   updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE public.merchants
+  ADD COLUMN IF NOT EXISTS banner_url text;
+
+ALTER TABLE public.merchants
+  ADD COLUMN IF NOT EXISTS location VARCHAR(500);
+
 CREATE INDEX IF NOT EXISTS idx_merchants_status ON public.merchants (status);
 CREATE INDEX IF NOT EXISTS idx_merchants_end_date ON public.merchants (end_date);
 

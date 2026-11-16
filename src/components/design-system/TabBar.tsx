@@ -14,9 +14,10 @@ interface TabBarProps {
   selected: string;
   onSelect: (key: string) => void;
   className?: string;
+  ariaLabel?: string;
 }
 
-export function TabBar({ items, selected, onSelect, className }: TabBarProps) {
+export function TabBar({ items, selected, onSelect, className, ariaLabel = "Sections" }: TabBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -110,7 +111,7 @@ export function TabBar({ items, selected, onSelect, className }: TabBarProps) {
       <div
         ref={scrollRef}
         role="tablist"
-        aria-label="Sections"
+        aria-label={ariaLabel}
         className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scroll-smooth"
         onScroll={updateScrollState}
       >

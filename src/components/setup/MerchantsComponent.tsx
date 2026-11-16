@@ -7,6 +7,7 @@ import Button from "@/components/ui/button/Button";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
+import { SetupPageHeader } from "@/components/setup/SetupPageHeader";
 import { PencilIcon, TrashBinIcon } from "@/icons";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
@@ -20,6 +21,8 @@ type Merchant = {
   end_date: string;
   discount_pct: number;
   status: "active" | "expired";
+  location: string | null;
+  banner_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -31,6 +34,12 @@ type MerchantFormDraft = {
   endDate: string;
   discountPct: string;
   status: "active" | "expired";
+  location: string;
+};
+
+type MerchantFormPayload = {
+  draft: MerchantFormDraft;
+  banner: File | null;
 };
 
 const EMPTY_DRAFT: MerchantFormDraft = {
@@ -40,6 +49,7 @@ const EMPTY_DRAFT: MerchantFormDraft = {
   endDate: "",
   discountPct: "",
   status: "active",
+  location: "",
 };
 
 function formatDate(iso: string): string {
@@ -67,37 +77,35 @@ async function fetchMerchants(): Promise<Merchant[]> {
   return Array.isArray(data.items) ? data.items : [];
 }
 
-async function createMerchant(draft: MerchantFormDraft): Promise<Merchant> {
+function buildMerchantFormData(payload: MerchantFormPayload, id?: number): FormData {
+  const { draft, banner } = payload;
+  const fd = new FormData();
+  if (id != null) fd.set("id", String(id));
+  fd.set("businessName", draft.businessName);
+  fd.set("discountType", draft.discountType);
+  fd.set("startDate", draft.startDate);
+  fd.set("endDate", draft.endDate);
+  fd.set("discountPct", String(Number(draft.discountPct)));
+  fd.set("status", draft.status);
+  fd.set("location", draft.location);
+  if (banner) fd.set("banner", banner);
+  return fd;
+}
+
+async function createMerchant(payload: MerchantFormPayload): Promise<Merchant> {
   const res = await fetch("/api/merchants", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      businessName: draft.businessName,
-      discountType: draft.discountType,
-      startDate: draft.startDate,
-      endDate: draft.endDate,
-      discountPct: Number(draft.discountPct),
-      status: draft.status,
-    }),
+    body: buildMerchantFormData(payload),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((data as any).error || "Failed to create merchant");
   return (data as any).item as Merchant;
 }
 
-async function updateMerchant(id: number, draft: MerchantFormDraft): Promise<Merchant> {
+async function updateMerchant(id: number, payload: MerchantFormPayload): Promise<Merchant> {
   const res = await fetch("/api/merchants", {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      id,
-      businessName: draft.businessName,
-      discountType: draft.discountType,
-      startDate: draft.startDate,
-      endDate: draft.endDate,
-      discountPct: Number(draft.discountPct),
-      status: draft.status,
-    }),
+    body: buildMerchantFormData(payload, id),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((data as any).error || "Failed to update merchant");
@@ -121,11 +129,11 @@ function SortIcon({ field, active, dir }: { field: SortField; active: boolean; d
     );
   }
   return dir === "asc" ? (
-    <span className="ml-1 text-blue-600 inline-block">
+    <span className="ml-1 text-accent-600 dark:text-accent-300 inline-block">
       <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 7l4-6 4 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
     </span>
   ) : (
-    <span className="ml-1 text-blue-600 inline-block">
+    <span className="ml-1 text-accent-600 dark:text-accent-300 inline-block">
       <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 3l4 6 4-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
     </span>
   );
@@ -151,17 +159,22 @@ function StatusBadge({ status }: { status: "active" | "expired" }) {
 function MerchantForm({
   mode,
   initial,
+  initialBannerUrl,
   onCancel,
   onSubmit,
   saving,
 }: {
   mode: "add" | "edit";
   initial?: MerchantFormDraft;
+  initialBannerUrl?: string | null;
   onCancel: () => void;
-  onSubmit: (draft: MerchantFormDraft) => void;
+  onSubmit: (payload: MerchantFormPayload) => void;
   saving: boolean;
 }) {
   const [draft, setDraft] = useState<MerchantFormDraft>(initial ?? EMPTY_DRAFT);
+  const [banner, setBanner] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(initialBannerUrl ?? null);
+  const [bannerError, setBannerError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof MerchantFormDraft, string>>>({});
 
   const autoStatus = deriveStatus(draft.endDate);
@@ -202,9 +215,44 @@ function MerchantForm({
     return Object.keys(e).length === 0;
   };
 
+  const handleBannerChange = async (file: File | null) => {
+    setBannerError(null);
+    if (!file) {
+      setBanner(null);
+      setBannerPreview(initialBannerUrl ?? null);
+      return;
+    }
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      setBannerError("Only JPEG, PNG, GIF, or WebP images are allowed");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setBannerError("Banner image must be under 5MB");
+      return;
+    }
+    // Portrait only: height must exceed width. Landscape/square rejected.
+    try {
+      const bmp = await createImageBitmap(file);
+      const ok = bmp.height > bmp.width;
+      const w = bmp.width, h = bmp.height;
+      bmp.close();
+      if (!ok) {
+        setBannerError(`Banner must be a portrait image (taller than wide). Got ${w}×${h}.`);
+        return;
+      }
+    } catch {
+      setBannerError("Could not read the image. Please choose a valid image file.");
+      return;
+    }
+    setBanner(file);
+    setBannerPreview(URL.createObjectURL(file));
+  };
+
   const handleSubmit = () => {
+    if (bannerError) return;
     if (!validate()) return;
-    onSubmit({ ...draft, status: autoStatus });
+    onSubmit({ draft: { ...draft, status: autoStatus }, banner });
   };
 
   return (
@@ -284,6 +332,17 @@ function MerchantForm({
         </div>
 
         <div>
+          <Label>Location</Label>
+          <Input
+            value={draft.location}
+            onChange={(e) => set("location", e.target.value)}
+            placeholder="e.g., Gulberg III, Lahore"
+            disabled={saving}
+            maxLength={500}
+          />
+        </div>
+
+        <div>
           <Label>Discount Status</Label>
           <div className="mt-2 flex items-center gap-3">
             <StatusBadge status={autoStatus} />
@@ -292,6 +351,46 @@ function MerchantForm({
                 ? "Auto-set to Expired (end date has passed)"
                 : "Auto-calculated from end date"}
             </span>
+          </div>
+        </div>
+        <div className="md:col-span-2">
+          <Label>Banner Picture <span className="text-xs font-normal text-gray-500">(portrait only — taller than wide, max 5MB)</span></Label>
+          <div className="flex items-start gap-4">
+            <div className="w-24 h-32 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {bannerPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={bannerPreview} alt="Banner preview" className="w-full h-full object-cover" />
+              ) : (
+                <svg className="w-8 h-8 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24">
+                  <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                  <circle cx="9" cy="8" r="1.5" fill="currentColor" />
+                  <path d="M7 17l3-3 2 2 3-4 2 3v2H7z" fill="currentColor" />
+                </svg>
+              )}
+            </div>
+            <div className="flex-1">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                disabled={saving}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  void handleBannerChange(f);
+                  e.target.value = "";
+                }}
+                className="block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-300 disabled:opacity-50"
+              />
+              {bannerError && (
+                <p className="mt-1 text-xs text-red-500">{bannerError}</p>
+              )}
+              {!bannerError && (
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {mode === "edit" && initialBannerUrl && !banner
+                    ? "Current banner is kept unless you choose a new image."
+                    : "Upload a portrait banner for the external promotions site."}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -332,6 +431,7 @@ function ViewModal({
   const fields: { label: string; value: React.ReactNode }[] = [
     { label: "Business Name", value: merchant.business_name },
     { label: "Discount Type", value: merchant.discount_type },
+    { label: "Location", value: merchant.location || "—" },
     { label: "Start Date", value: formatDate(merchant.start_date) },
     { label: "End Date", value: formatDate(merchant.end_date) },
     { label: "Discount", value: `${merchant.discount_pct}%` },
@@ -340,6 +440,14 @@ function ViewModal({
 
   return (
     <div>
+      {merchant.banner_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={merchant.banner_url}
+          alt={`${merchant.business_name} banner`}
+          className="w-32 h-44 object-cover rounded-xl border border-gray-200 dark:border-gray-700 mb-4"
+        />
+      )}
       <dl className="divide-y divide-gray-100 dark:divide-gray-700">
         {fields.map((f) => (
           <div key={f.label} className="flex items-start gap-4 py-3">
@@ -389,7 +497,7 @@ export default function MerchantsComponent() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (draft: MerchantFormDraft) => createMerchant(draft),
+    mutationFn: (payload: MerchantFormPayload) => createMerchant(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["merchants"] });
       setAddOpen(false);
@@ -399,8 +507,8 @@ export default function MerchantsComponent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, draft }: { id: number; draft: MerchantFormDraft }) =>
-      updateMerchant(id, draft),
+    mutationFn: ({ id, payload }: { id: number; payload: MerchantFormPayload }) =>
+      updateMerchant(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["merchants"] });
       setEditMerchant(null);
@@ -497,44 +605,86 @@ export default function MerchantsComponent() {
   }, [search, statusFilter]);
 
   const thClass =
-    "px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap hover:bg-gray-50 dark:hover:bg-gray-800/60";
+    "px-4 py-3 text-left text-[13px] font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700/60";
+
+  const activeCount = useMemo(
+    () => merchants.filter((m) => deriveStatus(m.end_date) !== "expired").length,
+    [merchants]
+  );
+  const expiredCount = merchants.length - activeCount;
+  const filtersActive = search.trim() !== "" || statusFilter !== "all";
+  const activeFilterCount = (search.trim() !== "" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0);
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Merchants &amp; Business Partners
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Manage discount partnerships and promotional offers
-          </p>
-        </div>
-        {canModify && (
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            + Add Merchant
-          </Button>
-        )}
-      </div>
+      <SetupPageHeader
+        title="Merchants & Business Partners"
+        description="Manage discount partnerships and promotional offers"
+        breadcrumbLabel="Merchants"
+        chips={[
+          { label: "Total", value: merchants.length, tone: "neutral" },
+          { label: "Active", value: activeCount, tone: "success" },
+          { label: "Expired", value: expiredCount, tone: "danger" },
+        ]}
+        action={
+          canModify ? (
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              + Add Merchant
+            </Button>
+          ) : null
+        }
+      />
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Search by business name or discount type..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-        />
+      {/* Toolbar */}
+      <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <svg
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by business name or discount type..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-gray-300 bg-white py-2 pl-9 pr-8 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-accent-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          )}
+        </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "expired")}
-          className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-accent-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
           <option value="expired">Expired</option>
         </select>
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={() => { setSearch(""); setStatusFilter("all"); }}
+            className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-accent-700 hover:bg-accent-50 dark:text-accent-300 dark:hover:bg-accent-900/30 whitespace-nowrap"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+            </svg>
+            Reset ({activeFilterCount})
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -562,13 +712,14 @@ export default function MerchantsComponent() {
         </div>
       ) : (
         <>
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <SyncedTableScroll minWidth={900}>
             <table
-              className="min-w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800"
+              className="min-w-full"
               role="table"
               aria-label="Merchants table"
             >
-              <thead className="whitespace-nowrap border-b border-gray-200 bg-white dark:border-white/[0.06] dark:bg-gray-900/80">
+              <thead className="sticky top-0 z-10 whitespace-nowrap border-b border-gray-200 bg-gray-50 dark:border-white/[0.06] dark:bg-gray-800">
                 <tr className="border-b border-gray-200 dark:border-white/[0.06]">
                   <th
                     scope="col"
@@ -590,6 +741,12 @@ export default function MerchantsComponent() {
                   </th>
                   <th
                     scope="col"
+                    className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 border-r border-gray-200 dark:text-gray-300 select-none whitespace-nowrap"
+                  >
+                    Location
+                  </th>
+                  <th
+                    scope="col"
                     className={thClass}
                     onClick={() => handleSort("start_date")}
                     aria-sort={sortField === "start_date" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
@@ -608,7 +765,7 @@ export default function MerchantsComponent() {
                   </th>
                   <th
                     scope="col"
-                    className={thClass}
+                    className={thClass + " text-right"}
                     onClick={() => handleSort("discount_pct")}
                     aria-sort={sortField === "discount_pct" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
                   >
@@ -636,24 +793,32 @@ export default function MerchantsComponent() {
                 {paginated.map((m) => (
                   <tr
                     key={m.id}
-                    className="odd:bg-gray-50 dark:odd:bg-gray-800/70 dark:text-gray-300 dark:bg-gray-900"
+                    className="transition-colors hover:bg-accent-50/60 dark:hover:bg-gray-800/70"
                   >
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-900 dark:text-gray-100 font-medium">
-                      {m.business_name}
+                    <td className="px-4 py-3 text-[13px] font-medium text-gray-900 dark:text-gray-100">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-xs font-bold text-accent-700 dark:bg-accent-900/50 dark:text-accent-300">
+                          {m.business_name.slice(0, 1).toUpperCase() || "M"}
+                        </span>
+                        <span className="truncate">{m.business_name}</span>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-700 dark:text-gray-300">
+                    <td className="px-4 py-3 text-[13px] text-gray-700 dark:text-gray-300">
                       {m.discount_type}
                     </td>
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-700 dark:text-gray-300">
+                    <td className="px-4 py-3 text-[13px] text-gray-700 dark:text-gray-300">
+                      {m.location || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-700 dark:text-gray-300">
                       {formatDate(m.start_date)}
                     </td>
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-700 dark:text-gray-300">
+                    <td className="px-4 py-3 text-[13px] text-gray-700 dark:text-gray-300">
                       {formatDate(m.end_date)}
                     </td>
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px] text-gray-700 dark:text-gray-300 text-center">
+                    <td className="px-4 py-3 text-right text-[13px] tabular-nums text-gray-700 dark:text-gray-300">
                       <span className="font-semibold">{m.discount_pct}%</span>
                     </td>
-                    <td className="px-4 py-3 border-r border-gray-200 text-[13px]">
+                    <td className="px-4 py-3 text-[13px]">
                       <StatusBadge status={m.status} />
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -696,6 +861,7 @@ export default function MerchantsComponent() {
               </tbody>
             </table>
           </SyncedTableScroll>
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -790,10 +956,12 @@ export default function MerchantsComponent() {
               endDate: editMerchant.end_date,
               discountPct: String(editMerchant.discount_pct),
               status: editMerchant.status,
+              location: editMerchant.location ?? "",
             }}
+            initialBannerUrl={editMerchant.banner_url}
             onCancel={() => setEditMerchant(null)}
-            onSubmit={(draft) =>
-              updateMutation.mutate({ id: editMerchant.id, draft })
+            onSubmit={(payload) =>
+              updateMutation.mutate({ id: editMerchant.id, payload })
             }
             saving={updateMutation.isPending}
           />

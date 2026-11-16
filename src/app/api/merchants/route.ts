@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { writeFile, mkdir } from "fs/promises";
+import { join, extname } from "path";
+import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
 import { isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
+import { getUploadsImagesDir } from "@/lib/uploadsDir";
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
+import { isPortraitImage } from "@/lib/imageDimensions";
 
 export type Merchant = {
   id: number;
@@ -12,9 +18,100 @@ export type Merchant = {
   end_date: string;
   discount_pct: number;
   status: "active" | "expired";
+  location: string | null;
+  banner_url: string | null;
   created_at: string;
   updated_at: string;
 };
+
+const MAX_BANNER_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_BANNER_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+function sanitizeFilename(name: string): string {
+  const base = String(name || "banner")
+    .replace(/\\/g, "_")
+    .replace(/\//g, "_")
+    .replace(/\.+/g, ".")
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+  return base.length > 120 ? base.slice(-120) : base;
+}
+
+async function saveMerchantBanner(file: File): Promise<{ url: string; filename: string }> {
+  if (!ALLOWED_BANNER_TYPES.has(file.type)) {
+    throw new Error("Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.");
+  }
+  if (file.size > MAX_BANNER_SIZE) {
+    throw new Error("Banner image exceeds the 5MB limit.");
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Portrait only: height must exceed width. Landscape and square images are rejected.
+  const { ok, dims } = isPortraitImage(buffer);
+  if (!ok) {
+    throw new Error(
+      dims
+        ? `Banner image must be portrait (taller than wide). Received ${dims.width}x${dims.height}.`
+        : "Could not read the image dimensions. Please upload a JPEG, PNG, GIF, or WebP image."
+    );
+  }
+
+  const timestamp = Date.now();
+  const randomSuffix = Math.random().toString(36).slice(2, 9);
+  const ext = extname(file.name || "").toLowerCase() || ".jpg";
+  const baseNoExt = sanitizeFilename(file.name).replace(/\.[^.]+$/, "");
+  const filename = `merchant-banner-${timestamp}-${randomSuffix}-${baseNoExt}${ext}`.slice(0, 180);
+
+  const uploadsDir = getUploadsImagesDir();
+  if (!existsSync(uploadsDir)) {
+    await mkdir(uploadsDir, { recursive: true });
+  }
+  await writeFile(join(uploadsDir, filename), buffer);
+
+  return { url: uploadsImageUrl(filename), filename };
+}
+
+type MerchantBody = {
+  id?: number;
+  businessName?: string;
+  discountType?: string;
+  startDate?: string;
+  endDate?: string;
+  discountPct?: number;
+  status?: string;
+  location?: string | null;
+};
+
+async function readMerchantBody(req: NextRequest): Promise<{
+  body: MerchantBody;
+  bannerFile: File | null;
+}> {
+  const contentType = req.headers.get("content-type") || "";
+  if (contentType.includes("multipart/form-data")) {
+    const fd = await req.formData();
+    const banner = fd.get("banner") as File | null;
+    return {
+      body: {
+        id: fd.get("id") != null ? Number(fd.get("id")) : undefined,
+        businessName: String(fd.get("businessName") ?? "").trim(),
+        discountType: String(fd.get("discountType") ?? "").trim(),
+        startDate: String(fd.get("startDate") ?? "").trim(),
+        endDate: String(fd.get("endDate") ?? "").trim(),
+        discountPct: fd.get("discountPct") != null ? Number(fd.get("discountPct")) : undefined,
+        status: String(fd.get("status") ?? "").trim() || undefined,
+        location: fd.get("location") != null ? String(fd.get("location")).trim() : undefined,
+      },
+      bannerFile: banner && banner.size > 0 ? banner : null,
+    };
+  }
+  return { body: (await req.json().catch(() => ({}))) as MerchantBody, bannerFile: null };
+}
 
 function toISODate(value: unknown): string {
   if (!value) return "";
@@ -42,6 +139,8 @@ function mapMerchant(row: Record<string, unknown>): Merchant {
     end_date: endDateStr,
     discount_pct: Number(row.discount_pct ?? 0),
     status,
+    location: row.location != null ? String(row.location) : null,
+    banner_url: row.banner_url != null ? String(row.banner_url) : null,
     created_at: String(row.created_at ?? ""),
     updated_at: String(row.updated_at ?? ""),
   };
@@ -56,7 +155,7 @@ export async function GET(req: NextRequest) {
 
     const rows = await sql/* sql */`
       SELECT id, business_name, discount_type, start_date, end_date,
-             discount_pct, status, created_at, updated_at
+             discount_pct, status, location, banner_url, created_at, updated_at
       FROM public.merchants
       ORDER BY created_at DESC, id DESC
     `;
@@ -79,14 +178,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = (await req.json().catch(() => ({}))) as {
-      businessName?: string;
-      discountType?: string;
-      startDate?: string;
-      endDate?: string;
-      discountPct?: number;
-      status?: string;
-    };
+    const { body, bannerFile } = await readMerchantBody(req);
 
     const businessName = String(body.businessName ?? "").trim();
     const discountType = String(body.discountType ?? "").trim();
@@ -116,17 +208,22 @@ export async function POST(req: NextRequest) {
     if (!Number.isFinite(discountPct) || discountPct < 0 || discountPct > 100) {
       return NextResponse.json({ error: "Discount must be between 0 and 100" }, { status: 400 });
     }
+    const location = body.location != null && String(body.location).trim() !== ""
+      ? String(body.location).trim().slice(0, 500)
+      : null;
+    const banner = bannerFile ? await saveMerchantBanner(bannerFile) : null;
 
     const rows = await sql/* sql */`
       INSERT INTO public.merchants (
-        business_name, discount_type, start_date, end_date, discount_pct, status, updated_at
+        business_name, discount_type, start_date, end_date, discount_pct, status,
+        location, banner_url, updated_at
       )
       VALUES (
         ${businessName}, ${discountType}, ${startDate}::date, ${endDate}::date,
-        ${discountPct}, ${status}, NOW()
+        ${discountPct}, ${status}, ${location}, ${banner ? banner.url : null}, NOW()
       )
       RETURNING id, business_name, discount_type, start_date, end_date,
-                discount_pct, status, created_at, updated_at
+                discount_pct, status, location, banner_url, created_at, updated_at
     `;
 
     const created = mapMerchant((rows?.[0] as Record<string, unknown>) ?? {});
@@ -172,15 +269,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = (await req.json().catch(() => ({}))) as {
-      id?: number;
-      businessName?: string;
-      discountType?: string;
-      startDate?: string;
-      endDate?: string;
-      discountPct?: number;
-      status?: string;
-    };
+    const { body, bannerFile } = await readMerchantBody(req);
 
     const id = Number(body.id);
     if (!Number.isFinite(id) || id < 1) {
@@ -189,7 +278,7 @@ export async function PUT(req: NextRequest) {
 
     const existing = await sql/* sql */`
       SELECT id, business_name, discount_type, start_date, end_date,
-             discount_pct, status
+             discount_pct, status, location, banner_url
       FROM public.merchants WHERE id = ${id} LIMIT 1
     `;
     const cur = (existing?.[0] as Record<string, unknown> | undefined) ?? null;
@@ -231,6 +320,12 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Discount must be between 0 and 100" }, { status: 400 });
     }
 
+    const location = body.location !== undefined
+      ? (String(body.location ?? "").trim().slice(0, 500) || null)
+      : (cur.location != null ? String(cur.location) : null);
+    const banner = bannerFile ? await saveMerchantBanner(bannerFile) : null;
+    const bannerUrl = banner ? banner.url : (cur.banner_url != null ? String(cur.banner_url) : null);
+
     const rows = await sql/* sql */`
       UPDATE public.merchants
       SET
@@ -240,10 +335,12 @@ export async function PUT(req: NextRequest) {
         end_date      = ${endDate}::date,
         discount_pct  = ${discountPct},
         status        = ${status},
+        location      = ${location},
+        banner_url    = ${bannerUrl},
         updated_at    = NOW()
       WHERE id = ${id}
       RETURNING id, business_name, discount_type, start_date, end_date,
-                discount_pct, status, created_at, updated_at
+                discount_pct, status, location, banner_url, created_at, updated_at
     `;
 
     const updated = mapMerchant((rows?.[0] as Record<string, unknown>) ?? {});

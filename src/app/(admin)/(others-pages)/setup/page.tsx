@@ -31,6 +31,8 @@ import MembershipSettingsComponent from "@/components/setup/MembershipSettingsCo
 import StoriesCriteriaManager from "@/components/setup/StoriesCriteriaManager";
 import BulkUploadPage from "@/components/setup/BulkUploadPage";
 import type { ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
+import { TabBar, type TabItem } from "@/components/design-system";
+import { SetupPageHeader } from "@/components/setup/SetupPageHeader";
 
 type LeadershipType = "chapter" | "association";
 type LeadershipRoleName = "president" | "vice_president" | "coordinator";
@@ -620,6 +622,20 @@ function SetupPageContent() {
   // Calculate total users count after filteredUsers is defined
   const totalUsersCount = filteredUsers.length + realTimeUsersCount;
 
+  const tabBarItems = useMemo<TabItem[]>(
+    () =>
+      TABS.map((t) => ({
+        key: t.key,
+        label: t.label,
+        count:
+          t.key === "users" && !usersLoading && !realTimeUsersLoading
+            ? totalUsersCount
+            : undefined,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isSuperAdmin, usersLoading, realTimeUsersLoading, totalUsersCount]
+  );
+
   const formatDateTime = (iso: string) => {
     try {
       const d = new Date(iso);
@@ -788,53 +804,27 @@ function SetupPageContent() {
           ))}
         </div>
 
-        <div
-          className="tab-list dark:text-gray-300 dark:bg-gray-900"
-          role="tablist"
-          aria-label="Setup sections"
-        >
-          {TABS.map((tab, idx) => (
-            <button
-              key={tab.key}
-              className={`tab-item rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out  hover:shadow-sm  focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-gray-300 dark:bg-gray-900 ${
-                selected === tab.key
-                  ? "bg-white  text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
-                  : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
-              }`}
-              onClick={() => handleTabChange(tab.key)}
-              role="tab"
-              aria-selected={selected === tab.key}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowRight") {
-                  e.preventDefault();
-                  const nextIdx = (idx + 1) % TABS.length;
-                  handleTabChange(TABS[nextIdx].key);
-                } else if (e.key === "ArrowLeft") {
-                  e.preventDefault();
-                  const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                  handleTabChange(TABS[prevIdx].key);
-                } else if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleTabChange(tab.key);
-                }
-              }}
-              aria-label={`Open ${tab.label} tab`}
-            >
-              <span className="flex items-center gap-2">
-                {tab.label}
-                {tab.key === "users" && (
-                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                    {usersLoading || realTimeUsersLoading ? "..." : totalUsersCount.toLocaleString()}
-                  </span>
-                )}
-              </span>
-            </button>
-          ))}
-        </div>
+        <TabBar
+          items={tabBarItems}
+          selected={selected}
+          onSelect={(key) => handleTabChange(key as SetupTabKey)}
+          ariaLabel="Setup sections"
+        />
 
         {selected === "users" && (
           <div className="mt-6 dark:text-gray-300 dark:bg-gray-900">
+            <SetupPageHeader
+              title="Users & Access"
+              description="Manage dashboard users, roles, and access assignments"
+              breadcrumbLabel="Users"
+              action={
+                canManage ? (
+                  <Button size="sm" onClick={() => setAddUserOpen(true)}>
+                    + Add User
+                  </Button>
+                ) : null
+              }
+            />
             {/* Users Counter */}
             <UsersCounter 
               realTimeCount={realTimeUsersCount}
@@ -895,11 +885,6 @@ function SetupPageContent() {
                   ))}
                 </select>
               </div>
-              {canManage && (
-                <div className="flex items-center gap-2 dark:text-gray-300 dark:bg-gray-900">
-                  <Button size="sm" onClick={() => setAddUserOpen(true)}>Add User</Button>
-                </div>
-              )}
               {!canManage && (
                 <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 dark:bg-gray-900">
                   <span>{isAdmin ? "Admin access - Cannot manage users" : "Viewer access - Read only"}</span>
@@ -1054,18 +1039,33 @@ function SetupPageContent() {
 
         {selected === "organizations" && (
           <div className="mt-6">
+            <SetupPageHeader
+              title="Organizations"
+              description="Manage faculties, departments, and programs"
+              breadcrumbLabel="Organizations"
+            />
             <OrganizationComponent />
           </div>
         )}
 
         {selected === "chapters" && (
           <div className="mt-6">
+            <SetupPageHeader
+              title="Chapters"
+              description="Manage national and international alumni chapters"
+              breadcrumbLabel="Chapters"
+            />
             <ChaptersComponent />
           </div>
         )}
 
         {isNewslettersTab && (
           <div className="mt-6">
+            <SetupPageHeader
+              title="Newsletters"
+              description="Compose and manage alumni newsletters"
+              breadcrumbLabel="Newsletters"
+            />
             <NewsletterTab />
           </div>
         )}
@@ -1078,6 +1078,11 @@ function SetupPageContent() {
 
         {selected === "leadership" && isSuperAdmin && (
           <div className="mt-6 space-y-6">
+            <SetupPageHeader
+              title="Leadership"
+              description="Configure leadership form settings and role criteria"
+              breadcrumbLabel="Leadership"
+            />
             <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-4 shadow-sm dark:text-gray-300 dark:bg-gray-900">
               <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 dark:text-gray-300 dark:bg-gray-900">Form Settings</h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -1324,6 +1329,11 @@ function SetupPageContent() {
 
         {selected === "scholarships" && isSuperAdmin && (
           <div className="mt-6 space-y-6">
+            <SetupPageHeader
+              title="Scholarships"
+              description="Configure the scholarship form and discount categories"
+              breadcrumbLabel="Scholarships"
+            />
             <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-4 shadow-sm dark:text-gray-300 dark:bg-gray-900">
               <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 dark:text-gray-300 dark:bg-gray-900">Form Settings</h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -1382,6 +1392,11 @@ function SetupPageContent() {
 
         {selected === "stories" && isSuperAdmin && (
           <div className="mt-6">
+            <SetupPageHeader
+              title="Stories"
+              description="Configure success story criteria questions"
+              breadcrumbLabel="Stories"
+            />
             <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-5 shadow-sm">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Success Story Criteria</h3>
@@ -1418,28 +1433,26 @@ function SetupPageContent() {
 
         {selected === "memberships" && isSuperAdmin && (
           <div className="mt-6">
+            <SetupPageHeader
+              title="Memberships"
+              description="Facility membership pricing and discount rules"
+              breadcrumbLabel="Memberships"
+            />
             <MembershipSettingsComponent />
           </div>
         )}
 
         {selected === "bulk-upload" && isSuperAdmin && (
-          <BulkUploadPage />
+          <div className="mt-6">
+            <SetupPageHeader
+              title="Bulk Upload"
+              description="Import alumni data from Excel or CSV"
+              breadcrumbLabel="Bulk Upload"
+            />
+            <BulkUploadPage />
+          </div>
         )}
 
-      <style jsx>{`
-        .tab-list {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-        .tab-item {
-          flex: 1 1 180px;
-          min-width: 160px;
-        }
-        @media (min-width: 768px) {
-          .tab-item { flex-basis: 200px; }
-        }
-      `}</style>
     </div>
   );
 }
