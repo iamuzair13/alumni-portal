@@ -1,6 +1,33 @@
 import "server-only";
 import postgres from 'postgres'
 
+// ─── Dev-only query statistics (T0.2 perf baseline) ──────────────────────────
+// Enabled with DB_QUERY_STATS=1. Counts every query actually sent to Postgres
+// via the driver's `debug` hook (zero semantic change — fragments composed but
+// never executed are not counted). Read/reset via getDbQueryStats() /
+// resetDbQueryStats() (e.g. from the dev-only /api/dev/perf-stats route).
+type QueryStats = { count: number; totalMs: number; entries: { text: string; ms: number; at: number }[] };
+const statsState = (): QueryStats => {
+  const g = globalThis as { __dbQueryStats?: QueryStats };
+  if (!g.__dbQueryStats) g.__dbQueryStats = { count: 0, totalMs: 0, entries: [] };
+  return g.__dbQueryStats;
+};
+const STATS_ENABLED = () => process.env.DB_QUERY_STATS === "1";
+function recordQuery(text: string) {
+  const s = statsState();
+  s.count += 1;
+  if (s.entries.length < 5000) s.entries.push({ text: text.slice(0, 300), ms: 0, at: Date.now() });
+}
+export function getDbQueryStats(): QueryStats {
+  return statsState();
+}
+export function resetDbQueryStats(): void {
+  const s = statsState();
+  s.count = 0;
+  s.totalMs = 0;
+  s.entries = [];
+}
+
 // Lazy initialization to prevent build-time errors when DATABASE_URL is not set
 let sqlInstance: ReturnType<typeof postgres> | null = null;
 
@@ -18,6 +45,11 @@ function initSql() {
     connect_timeout: 30, // Increased from 10 to 30 seconds
     max_lifetime: 60 * 30, // 30 minutes
     prepare: false, // Disable prepared statements for better connection handling
+    // Driver-level hook fires only for queries actually sent to Postgres —
+    // fragments composed into a larger query are never counted.
+    debug: STATS_ENABLED()
+      ? (_conn: number, query: string) => recordQuery(String(query))
+      : undefined,
   });
 
   return sqlInstance;
