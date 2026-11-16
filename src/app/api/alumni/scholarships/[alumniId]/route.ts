@@ -303,6 +303,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         asch.application_year,
         asch.application_term,
         asch.semester,
+        asch.is_credit_transfer,
+        asch.transfer_semester,
+        asch.transfer_transcript_url,
         asch.scholarship_disclosure,
         asch.discount_terms_accepted,
         asch.withdrawn_at,
@@ -357,6 +360,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       application_year: number | null;
       application_term: string | null;
       semester: number | null;
+      is_credit_transfer: boolean | null;
+      transfer_semester: number | null;
+      transfer_transcript_url: string | null;
       scholarship_disclosure: string | null;
       discount_terms_accepted: boolean | null;
       withdrawn_at: string | null;
@@ -662,6 +668,12 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         app.semester != null && Number.isFinite(Number(app.semester))
           ? String(Number(app.semester))
           : null,
+      isCreditTransfer: app.is_credit_transfer === true ? true : app.is_credit_transfer === false ? false : null,
+      transferSemester:
+        app.transfer_semester != null && Number.isFinite(Number(app.transfer_semester))
+          ? String(Number(app.transfer_semester))
+          : null,
+      transferTranscriptUrl: String(app.transfer_transcript_url || "").trim() || null,
       scholarshipDisclosure: String(app.scholarship_disclosure || "").trim() || null,
       discountTermsAccepted: app.discount_terms_accepted === true,
       scholarshipApplicationPdfId,

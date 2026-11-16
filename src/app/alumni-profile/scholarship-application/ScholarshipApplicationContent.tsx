@@ -30,6 +30,7 @@ import {
   resolveDiscountPercent,
   resolveMergedFeeDiscount,
   type ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
+import { SCHOLARSHIP_SEMESTER_OPTIONS } from "@/lib/scholarshipSemesters";
 import Link from "next/link";
 
 async function fetchScholarshipFormSettings() {
@@ -237,6 +238,11 @@ function ScholarshipApplicationContent() {
   const [docOtherFile, setDocOtherFile] = useState<File | null>(null);
   const [docOtherText, setDocOtherText] = useState("");
 
+  // Credit/course transfer — required for all scholarship types.
+  const [isCreditTransfer, setIsCreditTransfer] = useState<"" | "yes" | "no">("");
+  const [transferSemester, setTransferSemester] = useState("");
+  const [docTransferTranscriptFile, setDocTransferTranscriptFile] = useState<File | null>(null);
+
   // Mirrors the submit-time doc checks so the disabled state is honest about uploads.
   const requiredDocsAttached = isKinshipFlow
     ? Boolean(
@@ -259,6 +265,8 @@ function ScholarshipApplicationContent() {
     (mergedFeeResult != null
       ? mergedFeeResult.admissionFeePercent != null || mergedFeeResult.tuitionFeePercent != null
       : applicableDiscountPercent != null) &&
+    isCreditTransfer !== "" &&
+    (isCreditTransfer !== "yes" || (!!transferSemester && !!docTransferTranscriptFile)) &&
     !categoriesLoading;
   /** Scholarship application year (starts from 2026, future years generated dynamically). */
   const [applicationYear, setApplicationYear] = useState<string>("");
@@ -588,6 +596,22 @@ function ScholarshipApplicationContent() {
       return;
     }
 
+    if (isCreditTransfer === "") {
+      toast.error("Please answer whether this application relates to a credit/course transfer.", {
+        duration: 4000 });
+      return;
+    }
+    if (isCreditTransfer === "yes" && !transferSemester) {
+      toast.error("Please specify the semester in which the credits/courses were transferred.", {
+        duration: 4000 });
+      return;
+    }
+    if (isCreditTransfer === "yes" && !docTransferTranscriptFile) {
+      toast.error("Please attach the transcript from your previous institution.", {
+        duration: 4000 });
+      return;
+    }
+
     if (!scholarshipDisclosure.trim() || !disclosureAccepted) {
       toast.error(
         "Please disclose all scholarships / financial assistance currently availed and accept the declaration.",
@@ -673,6 +697,11 @@ function ScholarshipApplicationContent() {
               }
               fd.set("applicationYear", applicationYear);
               fd.set("applicationTerm", applicationTerm);
+              fd.set("isCreditTransfer", isCreditTransfer === "yes" ? "true" : "false");
+              if (isCreditTransfer === "yes") {
+                fd.set("transferSemester", transferSemester);
+                fd.set("docTransferTranscript", docTransferTranscriptFile as File);
+              }
               fd.set("scholarshipDisclosure", scholarshipDisclosure.trim());
               fd.set("disclosureDeclaration", "true");
               fd.set("discountTermsAccepted", "true");
@@ -727,6 +756,50 @@ function ScholarshipApplicationContent() {
               }
               fd.set("applicationYear", applicationYear);
               fd.set("applicationTerm", applicationTerm);
+              fd.set("isCreditTransfer", isCreditTransfer === "yes" ? "true" : "false");
+              if (isCreditTransfer === "yes") {
+                fd.set("transferSemester", transferSemester);
+                fd.set("docTransferTranscript", docTransferTranscriptFile as File);
+              }
+              fd.set("scholarshipDisclosure", scholarshipDisclosure.trim());
+              fd.set("disclosureDeclaration", "true");
+              fd.set("discountTermsAccepted", "true");
+              return fetch(url, { method: "POST", body: fd });
+            })()
+          : isCreditTransfer === "yes"
+          ? await (async () => {
+              // The transfer transcript requires multipart; send FormData for
+              // non-fee/non-kinship categories when a transfer file is present.
+              const fd = new FormData();
+              fd.set("discountType", formData.discountType);
+              fd.set("applyingFor", effectiveApplyingFor);
+              fd.set("degreeTitle", degreeTitleToSend);
+              fd.set("appliedDiscountPercent", String(applicableDiscountPercent));
+              if (effectiveAdmissionFeePercent != null) {
+                fd.set("admissionFeePercent", String(effectiveAdmissionFeePercent));
+              }
+              if (mergedFeeResult?.tuitionFeePercent != null) {
+                fd.set("tuitionFeePercent", String(mergedFeeResult.tuitionFeePercent));
+              }
+              if (mergedFeeResult != null) {
+                fd.set("applyAdmissionFeeDiscount", applyAdmissionFeeDiscount ? "true" : "false");
+              }
+              if (highAchieverPercent != null) {
+                fd.set("highAchieverPercent", String(highAchieverPercent));
+              }
+              if (formData.kinshipName) fd.set("kinshipName", formData.kinshipName);
+              if (formData.kinshipFatherName) fd.set("kinshipFatherName", formData.kinshipFatherName);
+              if (formData.kinshipRelation) fd.set("kinshipRelation", formData.kinshipRelation);
+              if (formData.kinshipCnic) fd.set("kinshipCnic", formData.kinshipCnic);
+              if (formData.kinshipGradeType) fd.set("kinshipGradeType", formData.kinshipGradeType);
+              if (formData.kinshipGradeValue) fd.set("kinshipGradeValue", formData.kinshipGradeValue);
+              if (formData.fatherCnic) fd.set("fatherCnic", formData.fatherCnic);
+              if (gradePercent.trim()) fd.set("gradePercent", gradePercent.trim());
+              if (applicationYear) fd.set("applicationYear", applicationYear);
+              if (applicationTerm) fd.set("applicationTerm", applicationTerm);
+              fd.set("isCreditTransfer", "true");
+              fd.set("transferSemester", transferSemester);
+              fd.set("docTransferTranscript", docTransferTranscriptFile as File);
               fd.set("scholarshipDisclosure", scholarshipDisclosure.trim());
               fd.set("disclosureDeclaration", "true");
               fd.set("discountTermsAccepted", "true");
@@ -754,6 +827,7 @@ function ScholarshipApplicationContent() {
                 gradePercent: gradePercent.trim() || null,
                 applicationYear: applicationYear || null,
                 applicationTerm: applicationTerm || null,
+                isCreditTransfer: false,
                 scholarshipDisclosure: scholarshipDisclosure.trim(),
                 disclosureDeclaration: true,
                 discountTermsAccepted: true }) });
@@ -842,6 +916,9 @@ function ScholarshipApplicationContent() {
       setScholarshipDisclosure("None");
       setDisclosureAccepted(false);
       setDiscountTermsAccepted(false);
+      setIsCreditTransfer("");
+      setTransferSemester("");
+      setDocTransferTranscriptFile(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit application. Please try again.", {
         duration: 4000 });
@@ -1959,6 +2036,105 @@ function ScholarshipApplicationContent() {
                   </div>
                 )}
               </div>
+
+              {/* Credit/course transfer — required for all scholarship types */}
+              {!!formData.discountType && (
+                <div className="card p-5 sm:p-6 mt-6">
+                  <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
+                    Credit/Course Transfer
+                  </h2>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="field-label">
+                        Is this application related to the transfer of credits/courses from another
+                        institution? <span className="text-error-500">*</span>
+                      </label>
+                      <div className="flex gap-3">
+                        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                          <input
+                            type="radio"
+                            name="isCreditTransfer"
+                            value="yes"
+                            checked={isCreditTransfer === "yes"}
+                            onChange={() => setIsCreditTransfer("yes")}
+                            className="h-4 w-4"
+                            required
+                          />
+                          Yes
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                          <input
+                            type="radio"
+                            name="isCreditTransfer"
+                            value="no"
+                            checked={isCreditTransfer === "no"}
+                            onChange={() => {
+                              setIsCreditTransfer("no");
+                              setTransferSemester("");
+                              setDocTransferTranscriptFile(null);
+                            }}
+                            className="h-4 w-4"
+                            required
+                          />
+                          No
+                        </label>
+                      </div>
+                    </div>
+
+                    {isCreditTransfer === "yes" && (
+                      <>
+                        <div>
+                          <label htmlFor="transferSemester" className="field-label">
+                            Semester in which the credits/courses were transferred{" "}
+                            <span className="text-error-500">*</span>
+                          </label>
+                          <select
+                            id="transferSemester"
+                            className="field-input"
+                            value={transferSemester}
+                            onChange={(e) => setTransferSemester(e.target.value)}
+                            required
+                          >
+                            <option value="">Select</option>
+                            {SCHOLARSHIP_SEMESTER_OPTIONS.map((s) => (
+                              <option key={s} value={s}>
+                                Semester {s}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="field-label">
+                            Previous Institution Transcript{" "}
+                            <span className="text-error-500">*</span>
+                          </label>
+                          <input
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              if (f && f.type !== "application/pdf") {
+                                toast.error("Only PDF files are allowed.");
+                                e.currentTarget.value = "";
+                                setDocTransferTranscriptFile(null);
+                                return;
+                              }
+                              setDocTransferTranscriptFile(f);
+                            }}
+                            className="field-input bg-gray-50 text-gray-600 opacity-80 dark:bg-gray-950 dark:text-gray-300"
+                            required
+                          />
+                          <AttachedFileBadge file={docTransferTranscriptFile} />
+                          <p className="field-hint">
+                            Attach the transcript from your previous institution, clearly indicating
+                            the courses/credits completed and the GPA/CGPA obtained.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Declaration — required for all scholarship applications */}
               <div className="card p-5 sm:p-6 mt-6">

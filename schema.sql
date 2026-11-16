@@ -110,6 +110,15 @@ ALTER TABLE IF EXISTS public.alumni_scholarships
 ALTER TABLE IF EXISTS public.alumni_scholarships
     ADD COLUMN IF NOT EXISTS discount_terms_accepted boolean;
 
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS is_credit_transfer boolean;
+
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS transfer_semester integer;
+
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS transfer_transcript_url text COLLATE pg_catalog."default";
+
 CREATE TABLE IF NOT EXISTS public.alumni_birthdays (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   alumniid integer NOT NULL REFERENCES public.tbl_alumni(alumniid)
