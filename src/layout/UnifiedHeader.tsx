@@ -8,7 +8,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 
 import UserDropdown from "@/components/header/UserDropdown";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
@@ -219,6 +219,7 @@ async function fetchTabCounts(): Promise<Partial<Record<MenuKey, PairCounts>>> {
 
 /** Content area with smooth transitions */
 const TabContent: FC<{ selected: MenuKey }> = ({ selected }) => {
+  const reduceMotion = useReducedMotion();
   const contentMap: Record<MenuKey, ReactNode> = {
     AlumniTabs: <AlumniTabs />,
     AlumniCards: <AlumniCards />,
@@ -235,12 +236,15 @@ const TabContent: FC<{ selected: MenuKey }> = ({ selected }) => {
   };
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={selected}
-        initial={{ opacity: 0, y: 8 }}
+        role="tabpanel"
+        id={`tabpanel-${selected}`}
+        aria-labelledby={`tab-${selected}`}
+        initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
+        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
         transition={{ duration: 0.25, ease: "easeInOut" }}
       >
         {contentMap[selected] || <AlumniTabs />}
@@ -315,6 +319,7 @@ const UnifiedHeaderTopbar: FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileSearchDraft, setMobileSearchDraft] = useState("");
+  const reduceMotion = useReducedMotion();
 
   const pathname = usePathname();
   const { isMobileOpen, toggleMobileSidebar } = useSidebar();
@@ -372,19 +377,26 @@ const UnifiedHeaderTopbar: FC = () => {
 
   const tabCounts = useMemo(() => tabCountsData ?? {}, [tabCountsData]);
 
+  const tabHref = useCallback((tab: MenuKey): string => {
+    if (tab === "Leadership") return "/leadership";
+    if (tab === "AlumniStories") return "/alumni-stories?tab=viewStories";
+    return `/dashboard?tab=${menuKeyToUrlTab[tab]}`;
+  }, []);
+
   const handleTabChange = useCallback((tab: MenuKey) => {
     setSelectedTab(tab);
-    if (tab === "Leadership") {
-      router.push("/leadership", { scroll: false });
-      return;
-    }
-    if (tab === "AlumniStories") {
-      router.push("/alumni-stories?tab=viewStories", { scroll: false });
-      return;
-    }
-    const urlTab = menuKeyToUrlTab[tab];
-    router.push(`/dashboard?tab=${urlTab}`, { scroll: false });
-  }, [router]);
+    router.push(tabHref(tab), { scroll: false });
+  }, [router, tabHref]);
+
+  // Close the mobile menu on Escape
+  useEffect(() => {
+    if (!isApplicationMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setApplicationMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isApplicationMenuOpen]);
 
   // Track scroll
   useEffect(() => {
@@ -408,13 +420,13 @@ const UnifiedHeaderTopbar: FC = () => {
   return (
     <>
     <motion.header
-      initial={{ y: -20, opacity: 0 }}
+      initial={reduceMotion ? { y: 0, opacity: 1 } : { y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       style={{ ["--app-header-height" as string]: "4.25rem" }}
       className={`
-        sticky top-0 z-50 flex min-h-[4.25rem] w-full max-w-full items-center overflow-visible border-b bg-white/95 
-        backdrop-blur-xl transition-all duration-300 
+        sticky top-0 z-50 flex min-h-[4.25rem] w-full max-w-full items-center overflow-visible border-b bg-white/95
+        backdrop-blur-xl transition-[border-color,box-shadow] duration-300
         ${
           isScrolled
             ? "border-gray-200/80 shadow-lg shadow-gray-900/5 dark:border-gray-700/60 dark:shadow-black/20"
@@ -475,7 +487,8 @@ const UnifiedHeaderTopbar: FC = () => {
           ) : (
             /* Mobile-only sidebar toggle (desktop uses floating toggle on sidebar) */
             <button
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700 dark:focus-visible:ring-accent-400/30 lg:hidden"
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-[background-color,border-color,box-shadow,transform] hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700 dark:focus-visible:ring-accent-400/30 lg:hidden"
               onClick={toggleMobileSidebar}
               aria-label={isMobileOpen ? "Close sidebar" : "Open sidebar"}
             >
@@ -529,13 +542,14 @@ const UnifiedHeaderTopbar: FC = () => {
 
         {/* TabBar — inline navigation for tabbed routes (dashboard, leadership, alumni-stories) */}
         {isTabbedRoute ? (
-          <nav className="min-w-0 flex-1">
+          <nav className="min-w-0 flex-1" aria-label="Dashboard sections">
             <TabBar
               items={MENU_TABS.filter(
                 (tab) => tab.key !== "AlumniBirthdays" || canSeeBirthdaysTab,
               ).map((tab) => ({
                 key: tab.key,
                 label: tab.label,
+                href: tabHref(tab.key),
                 count: tab.showCounter
                   ? tabCounts[tab.key]
                     ? tabCounts[tab.key]!.all
@@ -543,7 +557,7 @@ const UnifiedHeaderTopbar: FC = () => {
                   : undefined,
               }))}
               selected={selectedTab}
-              onSelect={(key) => handleTabChange(key as MenuKey)}
+              onSelect={(key) => setSelectedTab(key as MenuKey)}
             />
           </nav>
         ) : !isAlumni && !isAnalyticsRoute ? (
@@ -559,9 +573,9 @@ const UnifiedHeaderTopbar: FC = () => {
             <button
               type="button"
               onClick={() => handleTabChange("AadAlumni")}
-              className="hidden shrink-0 items-center gap-2 rounded-lg bg-accent-500 px-3.5 py-2 text-sm font-medium text-white shadow-theme-sm transition-all hover:bg-accent-600 hover:shadow-theme-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/30 active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500 sm:inline-flex"
+              className="hidden shrink-0 items-center gap-2 rounded-lg bg-accent-500 px-3.5 py-2 text-sm font-medium text-white shadow-theme-sm transition-[background-color,box-shadow,transform] hover:bg-accent-600 hover:shadow-theme-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/30 active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500 sm:inline-flex"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M12 5v14M5 12h14" strokeLinecap="round" />
               </svg>
               <span className="hidden md:inline">Add Alumni</span>
@@ -572,7 +586,7 @@ const UnifiedHeaderTopbar: FC = () => {
             <Link
               target="_blank"
               href="/admin/analytics"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-theme-xs transition-all hover:bg-gray-50 hover:text-accent-700 hover:shadow-theme-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-accent-300"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-theme-xs transition-[background-color,border-color,box-shadow,color] hover:bg-gray-50 hover:text-accent-700 hover:shadow-theme-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-accent-300"
               aria-label="View Analytics"
               title="View Analytics"
             >
@@ -582,12 +596,13 @@ const UnifiedHeaderTopbar: FC = () => {
 
           {/* Mobile menu toggle */}
           <button
+            type="button"
             onClick={toggleApplicationMenu}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700 dark:focus-visible:ring-accent-400/30 lg:hidden"
-            aria-label="Open menu"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-[background-color,border-color,box-shadow,transform] hover:bg-gray-50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700 dark:focus-visible:ring-accent-400/30 lg:hidden"
+            aria-label={isApplicationMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={isApplicationMenuOpen}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="1" />
               <circle cx="19" cy="12" r="1" />
               <circle cx="5" cy="12" r="1" />
@@ -603,7 +618,7 @@ const UnifiedHeaderTopbar: FC = () => {
 
             {/* Auth states */}
             {status === "loading" && (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3" aria-hidden="true">
                 <span className="h-10 w-10 animate-pulse overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700" />
                 <span className="hidden h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700 xl:block" />
               </div>
@@ -612,7 +627,7 @@ const UnifiedHeaderTopbar: FC = () => {
             {status === "unauthenticated" && (
               <Link
                 href="/signin"
-                className="inline-flex items-center gap-2 rounded-xl bg-accent-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-accent-600 hover:shadow-md active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500"
+                className="inline-flex items-center gap-2 rounded-xl bg-accent-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-[background-color,box-shadow,transform] hover:bg-accent-600 hover:shadow-md active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500"
               >
                 Sign in
               </Link>
@@ -643,11 +658,14 @@ const UnifiedHeaderTopbar: FC = () => {
       <AnimatePresence>
         {isApplicationMenuOpen && (
           <motion.div
-            initial={{ x: "100%" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            initial={reduceMotion ? { x: 0 } : { x: "100%" }}
             animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed inset-y-0 right-0 z-[60] flex w-80 max-w-[85vw] flex-col gap-4 border-l border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-800 dark:bg-gray-900 lg:hidden"
+            exit={reduceMotion ? { x: 0 } : { x: "100%" }}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", damping: 30, stiffness: 300 }}
+            className="fixed inset-y-0 right-0 z-[60] flex w-80 max-w-[85vw] flex-col gap-4 overflow-y-auto overscroll-contain border-l border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-800 dark:bg-gray-900 lg:hidden"
           >
             {/* Panel header */}
             <div className="flex items-center justify-between">
@@ -657,10 +675,10 @@ const UnifiedHeaderTopbar: FC = () => {
               <button
                 type="button"
                 onClick={toggleApplicationMenu}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-accent-600 shadow-sm transition-[background-color,border-color,box-shadow,transform] hover:bg-gray-50 hover:shadow-md active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-accent-300 dark:hover:bg-gray-700"
                 aria-label="Close menu"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
@@ -681,17 +699,21 @@ const UnifiedHeaderTopbar: FC = () => {
               className="relative"
             >
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
                   <circle cx="11" cy="11" r="8" />
                   <path d="m21 21-4.3-4.3" strokeLinecap="round" />
                 </svg>
               </div>
               <input
                 ref={inputRef}
-                type="text"
+                type="search"
+                name="sapid"
+                autoComplete="off"
+                spellCheck={false}
                 value={mobileSearchDraft}
                 onChange={(e) => setMobileSearchDraft(e.target.value)}
-                placeholder="Search SAP ID / Reg. No"
+                placeholder="Search SAP ID / Reg. No…"
+                aria-label="Search alumni by SAP ID or registration number"
                 enterKeyHint="search"
                 className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-accent-500/40 focus:ring-2 focus:ring-accent-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:border-accent-400/40"
               />
@@ -709,7 +731,7 @@ const UnifiedHeaderTopbar: FC = () => {
             {/* Mobile auth */}
             <div className="mt-auto border-t border-gray-100 pt-4 dark:border-gray-800">
               {status === "loading" && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3" aria-hidden="true">
                   <span className="h-10 w-10 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
                   <span className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                 </div>
@@ -718,7 +740,7 @@ const UnifiedHeaderTopbar: FC = () => {
               {status === "unauthenticated" && (
                 <Link
                   href="/signin"
-                  className="flex w-full items-center justify-center rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-accent-600 active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500"
+                  className="flex w-full items-center justify-center rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-[background-color,box-shadow,transform] hover:bg-accent-600 active:scale-[0.98] dark:bg-accent-600 dark:hover:bg-accent-500"
                 >
                   Sign in
                 </Link>

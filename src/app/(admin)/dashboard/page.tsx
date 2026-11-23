@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AlumniTabbedMenu } from "@/components/alumni/AlumniTabbedMenu";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard - Alumni",
-  description: "This is Next.js Home for TailAdmin Dashboard Template",
+  description: "Alumni portal admin dashboard",
 };
 
 export default async function Dashboard() {

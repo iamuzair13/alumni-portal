@@ -12,6 +12,7 @@ export interface StatTileProps {
   isSelected?: boolean;
   onClick?: () => void;
   className?: string;
+  "aria-controls"?: string;
 }
 
 export function StatTile({
@@ -23,6 +24,7 @@ export function StatTile({
   isSelected = false,
   onClick,
   className,
+  "aria-controls": ariaControls,
 }: StatTileProps) {
   const pct = total > 0 ? Math.min((value / total) * 100, 100) : 0;
   const effectiveBarColor = barColor ?? dotColor;
@@ -30,7 +32,7 @@ export function StatTile({
   const content = (
     <>
       <div className="flex items-center min-w-20 gap-1">
-        <span className={twMerge("h-1.5 w-1.5 shrink-0 rounded-full", dotColor)} />
+        <span aria-hidden="true" className={twMerge("h-1.5 w-1.5 shrink-0 rounded-full", dotColor)} />
         <span className="truncate text-[10px] font-semibold uppercase leading-3 tracking-wider text-gray-500 dark:text-gray-400">
           {label}
         </span>
@@ -45,7 +47,7 @@ export function StatTile({
       </p>
       <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
         <div
-          className={twMerge("h-full rounded-full transition-all duration-500", effectiveBarColor)}
+          className={twMerge("h-full rounded-full transition-[width] duration-500", effectiveBarColor)}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -59,8 +61,9 @@ export function StatTile({
         onClick={onClick}
         role="tab"
         aria-selected={isSelected}
+        aria-controls={ariaControls}
         className={twMerge(
-          "rounded-lg border p-2.5 text-left transition-all",
+          "rounded-lg border p-2.5 text-left transition-colors",
           isSelected
             ? "border-accent-400 bg-accent-50/70 ring-2 ring-accent-500/30 shadow-theme-sm dark:border-accent-600 dark:bg-accent-900/20 dark:ring-accent-400/30"
             : "border-gray-200/60 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800/60 dark:bg-gray-900/40 dark:hover:border-gray-700 dark:hover:bg-gray-800/40",

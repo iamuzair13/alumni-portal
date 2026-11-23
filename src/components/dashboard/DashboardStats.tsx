@@ -47,6 +47,12 @@ function useAnimatedCounter(target: number, duration = 600) {
     const diff = target - start;
     if (diff === 0) return;
 
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCount(target);
+      prevRef.current = target;
+      return;
+    }
+
     let startTime: number | null = null;
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
@@ -233,6 +239,7 @@ export function DashboardStats({
                 accentBorder={theme.border}
                 accentIconChip={theme.iconChip}
                 accentIconColor={theme.icon}
+                aria-controls="alumni-results-panel"
                 aria-label={`${metric.label} (${counts.underApproval.toLocaleString()} new | ${underApprovalChangeCount.toLocaleString()} changes)`}
               >
                 <UnderApprovalContent
@@ -261,6 +268,7 @@ export function DashboardStats({
               accentBorder={theme.border}
               accentIconChip={theme.iconChip}
               accentIconColor={theme.icon}
+              aria-controls="alumni-results-panel"
             />
           );
         })}
@@ -278,7 +286,7 @@ export function DashboardStats({
               </span>
             }
           />
-          <div className="mt-2.5 grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <div className="mt-2.5 grid grid-cols-3 gap-2 sm:grid-cols-5" role="tablist" aria-label="Alumni categories">
             {CATEGORY_SEGMENTS.map((seg) => (
               <Tooltip key={seg.key}>
                 <TooltipTrigger asChild>
@@ -291,6 +299,7 @@ export function DashboardStats({
                       onClick={() => onSelect(seg.key)}
                       dotColor={categoryDotColors[seg.key]}
                       barColor={categoryDotColors[seg.key]}
+                      aria-controls="alumni-results-panel"
                     />
                   </div>
                 </TooltipTrigger>
@@ -312,7 +321,7 @@ export function DashboardStats({
               </span>
             }
           />
-          <div className="mt-2.5 grid grid-cols-3 gap-2">
+          <div className="mt-2.5 grid grid-cols-3 gap-2" role="tablist" aria-label="Medalists">
             {MEDAL_SEGMENTS.map((seg) => (
               <Tooltip key={seg.key}>
                 <TooltipTrigger asChild>
@@ -325,6 +334,7 @@ export function DashboardStats({
                       onClick={() => onSelect(seg.key)}
                       dotColor={medalDotColors[seg.key]}
                       barColor={medalDotColors[seg.key]}
+                      aria-controls="alumni-results-panel"
                     />
                   </div>
                 </TooltipTrigger>

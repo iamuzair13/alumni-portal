@@ -16,6 +16,12 @@ function useAnimatedCounter(target: number, duration = 600) {
     const diff = target - start;
     if (diff === 0) return;
 
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCount(target);
+      prevRef.current = target;
+      return;
+    }
+
     let startTime: number | null = null;
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
@@ -72,6 +78,7 @@ export interface KpiCardProps {
   accentIconChip?: string;
   accentIconColor?: string;
   "aria-label"?: string;
+  "aria-controls"?: string;
 }
 
 export function KpiCard({
@@ -90,6 +97,7 @@ export function KpiCard({
   accentIconChip,
   accentIconColor,
   "aria-label": ariaLabel,
+  "aria-controls": ariaControls,
 }: KpiCardProps) {
   const animated = useAnimatedCounter(isLoading ? 0 : value);
 
@@ -169,6 +177,7 @@ export function KpiCard({
         onClick={onClick}
         role="tab"
         aria-selected={isSelected}
+        aria-controls={ariaControls}
         aria-label={ariaLabel ?? `${label} (${value.toLocaleString()})`}
         className={twMerge(
           "block h-full w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/25 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"

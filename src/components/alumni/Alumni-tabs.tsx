@@ -76,6 +76,12 @@ function useAnimatedCounter(target: number, duration = 600) {
     const diff = target - start;
     if (diff === 0) return;
 
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCount(target);
+      prevRef.current = target;
+      return;
+    }
+
     let startTime: number | null = null;
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
@@ -117,7 +123,7 @@ function UnderApprovalSubTabCounter({
 
   return (
     <span
-      className={`inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-md px-1.5 text-[10px] font-bold tabular-nums transition-all duration-300 ${
+      className={`inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-md px-1.5 text-[10px] font-bold tabular-nums transition-colors duration-300 ${
         isSelected ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
       }`}
     >
@@ -2810,6 +2816,7 @@ export const AlumniTabs: React.FC = () => {
             <button
               type="button"
               onClick={() => setUnderApprovalSubTab("new")}
+              aria-pressed={underApprovalSubTab === "new"}
               className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
                 underApprovalSubTab === "new"
                   ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20 dark:text-blue-200"
@@ -2826,6 +2833,7 @@ export const AlumniTabs: React.FC = () => {
             <button
               type="button"
               onClick={() => setUnderApprovalSubTab("change")}
+              aria-pressed={underApprovalSubTab === "change"}
               className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
                 underApprovalSubTab === "change"
                   ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20 dark:text-blue-200"
@@ -2851,7 +2859,7 @@ export const AlumniTabs: React.FC = () => {
           title="Search Alumni"
           searchValue={query}
           searchOnChange={setQuery}
-          searchPlaceholder="Search by SR.No, name, SAP ID, registration no, email, faculty, department, or program..."
+          searchPlaceholder="Search by SR.No, name, SAP ID, registration no, email, faculty, department, or program…"
           searchId="alumni-search"
           actions={[]}
           filtersActive={hasActiveFilters}
@@ -2878,8 +2886,8 @@ export const AlumniTabs: React.FC = () => {
                   <button
                     type="button"
                     id="faculty-filter"
-                    onClick={() => setExpandedFilters(prev => ({ ...prev, faculty: !prev.faculty }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                    onClick={() => setExpandedFilters(prev => ({ ...prev, faculty: !prev.faculty }))} aria-expanded={expandedFilters.faculty} aria-haspopup="true"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-colors duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
                       {(() => {
@@ -2962,8 +2970,8 @@ export const AlumniTabs: React.FC = () => {
                   <button
                     type="button"
                     id="department-filter"
-                    onClick={() => setExpandedFilters(prev => ({ ...prev, department: !prev.department }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                    onClick={() => setExpandedFilters(prev => ({ ...prev, department: !prev.department }))} aria-expanded={expandedFilters.department} aria-haspopup="true"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-colors duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
                       {(() => {
@@ -3046,8 +3054,8 @@ export const AlumniTabs: React.FC = () => {
                   <button
                     type="button"
                     id="program-filter"
-                    onClick={() => setExpandedFilters(prev => ({ ...prev, program: !prev.program }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                    onClick={() => setExpandedFilters(prev => ({ ...prev, program: !prev.program }))} aria-expanded={expandedFilters.program} aria-haspopup="true"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-colors duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
                       {(() => {
@@ -3130,8 +3138,8 @@ export const AlumniTabs: React.FC = () => {
                   <button
                     type="button"
                     id="status-filter"
-                    onClick={() => setExpandedFilters(prev => ({ ...prev, status: !prev.status }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                    onClick={() => setExpandedFilters(prev => ({ ...prev, status: !prev.status }))} aria-expanded={expandedFilters.status} aria-haspopup="true"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-colors duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
                       {additionalFilter.length === 0 
@@ -3207,8 +3215,8 @@ export const AlumniTabs: React.FC = () => {
               <div className="w-full">
                 <button
                   type="button"
-                  onClick={() => setExpandedFilters(prev => ({ ...prev, masterFilters: !prev.masterFilters }))}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 flex items-center justify-between"
+                  onClick={() => setExpandedFilters(prev => ({ ...prev, masterFilters: !prev.masterFilters }))} aria-expanded={expandedFilters.masterFilters} aria-haspopup="true"
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-colors duration-200 flex items-center justify-between"
                 >
                   <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                     Master Filters
@@ -3243,12 +3251,12 @@ export const AlumniTabs: React.FC = () => {
                           <>
                             <button
                               type="button"
-                              onClick={() => setExpandedFilters(prev => ({ ...prev, gender: !prev.gender }))}
-                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                              onClick={() => setExpandedFilters(prev => ({ ...prev, gender: !prev.gender }))} aria-expanded={expandedFilters.gender} aria-haspopup="true"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {selectedGenders.length === 0
-                                  ? "Select genders..."
+                                  ? "Select genders�"
                                   : selectedGenders.length === 1
                                   ? gendersData?.genders?.find(g => g.value === selectedGenders[0])?.label || selectedGenders[0]
                                   : `${selectedGenders.length} genders selected`}
@@ -3335,12 +3343,12 @@ export const AlumniTabs: React.FC = () => {
                           <>
                             <button
                               type="button"
-                              onClick={() => setExpandedFilters(prev => ({ ...prev, maritalStatus: !prev.maritalStatus }))}
-                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                              onClick={() => setExpandedFilters(prev => ({ ...prev, maritalStatus: !prev.maritalStatus }))} aria-expanded={expandedFilters.maritalStatus} aria-haspopup="true"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {selectedMaritalStatuses.length === 0
-                                  ? "Select marital statuses..."
+                                  ? "Select marital statuses�"
                                   : selectedMaritalStatuses.length === 1
                                   ? maritalStatusesData?.maritalStatuses?.find(s => s.value === selectedMaritalStatuses[0])?.label || selectedMaritalStatuses[0]
                                   : `${selectedMaritalStatuses.length} statuses selected`}
@@ -3417,12 +3425,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, homeCountry: !prev.homeCountry }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, homeCountry: !prev.homeCountry }))} aria-expanded={expandedFilters.homeCountry} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedHomeCountries.length === 0
-                              ? "Select countries..."
+                              ? "Select countries�"
                               : selectedHomeCountries.length === 1
                               ? selectedHomeCountries[0]
                               : `${selectedHomeCountries.length} countries selected`}
@@ -3491,12 +3499,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, province: !prev.province }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, province: !prev.province }))} aria-expanded={expandedFilters.province} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedProvinces.length === 0
-                              ? "Select provinces..."
+                              ? "Select provinces�"
                               : selectedProvinces.length === 1
                               ? provincesData?.provinces?.find(p => p.value === selectedProvinces[0])?.label || selectedProvinces[0]
                               : `${selectedProvinces.length} provinces selected`}
@@ -3571,12 +3579,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, homeCity: !prev.homeCity }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, homeCity: !prev.homeCity }))} aria-expanded={expandedFilters.homeCity} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedHomeCities.length === 0
-                              ? "Select cities..."
+                              ? "Select cities�"
                               : selectedHomeCities.length === 1
                               ? selectedHomeCities[0]
                               : `${selectedHomeCities.length} cities selected`}
@@ -3653,12 +3661,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, campus: !prev.campus }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, campus: !prev.campus }))} aria-expanded={expandedFilters.campus} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedCampuses.length === 0
-                              ? "Select campuses..."
+                              ? "Select campuses�"
                               : selectedCampuses.length === 1
                               ? selectedCampuses[0]
                               : `${selectedCampuses.length} campuses selected`}
@@ -3737,12 +3745,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, admissionYear: !prev.admissionYear }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, admissionYear: !prev.admissionYear }))} aria-expanded={expandedFilters.admissionYear} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedAdmissionYears.length === 0
-                              ? "Select years..."
+                              ? "Select years�"
                               : selectedAdmissionYears.length === 1
                               ? selectedAdmissionYears[0]
                               : `${selectedAdmissionYears.length} years selected`}
@@ -3811,12 +3819,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, passingYear: !prev.passingYear }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, passingYear: !prev.passingYear }))} aria-expanded={expandedFilters.passingYear} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedPassingYears.length === 0
-                              ? "Select years..."
+                              ? "Select years�"
                               : selectedPassingYears.length === 1
                               ? selectedPassingYears[0]
                               : `${selectedPassingYears.length} years selected`}
@@ -3895,12 +3903,12 @@ export const AlumniTabs: React.FC = () => {
                           <>
                             <button
                               type="button"
-                              onClick={() => setExpandedFilters(prev => ({ ...prev, occupationStatus: !prev.occupationStatus }))}
-                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                              onClick={() => setExpandedFilters(prev => ({ ...prev, occupationStatus: !prev.occupationStatus }))} aria-expanded={expandedFilters.occupationStatus} aria-haspopup="true"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {selectedOccupationStatuses.length === 0
-                                  ? "Select occupation statuses..."
+                                  ? "Select occupation statuses�"
                                   : selectedOccupationStatuses.length === 1
                                   ? occupationStatusesData?.occupationStatuses?.find(s => s.value === selectedOccupationStatuses[0])?.label || selectedOccupationStatuses[0]
                                   : `${selectedOccupationStatuses.length} statuses selected`}
@@ -3988,11 +3996,11 @@ export const AlumniTabs: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setExpandedFilters((prev) => ({ ...prev, occupationTransitionTiming: !prev.occupationTransitionTiming }))}
-                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                              className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {selectedOccupationTransitionTimings.length === 0
-                                  ? "Select transition timing..."
+                                  ? "Select transition timing�"
                                   : selectedOccupationTransitionTimings.length === 1
                                   ? occupationTransitionTimingsData?.occupationTransitionTimings?.find((t) => t.value === selectedOccupationTransitionTimings[0])?.label || selectedOccupationTransitionTimings[0]
                                   : `${selectedOccupationTransitionTimings.length} selected`}
@@ -4074,12 +4082,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, sector: !prev.sector }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, sector: !prev.sector }))} aria-expanded={expandedFilters.sector} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedSectors.length === 0
-                              ? "Select sectors..."
+                              ? "Select sectors�"
                               : selectedSectors.length === 1
                               ? selectedSectors[0]
                               : `${selectedSectors.length} sectors selected`}
@@ -4161,12 +4169,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, workCountry: !prev.workCountry }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, workCountry: !prev.workCountry }))} aria-expanded={expandedFilters.workCountry} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedWorkCountries.length === 0
-                              ? "Select countries..."
+                              ? "Select countries�"
                               : selectedWorkCountries.length === 1
                               ? selectedWorkCountries[0]
                               : `${selectedWorkCountries.length} countries selected`}
@@ -4235,12 +4243,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, employer: !prev.employer }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, employer: !prev.employer }))} aria-expanded={expandedFilters.employer} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedEmployers.length === 0
-                              ? "Select employers..."
+                              ? "Select employers�"
                               : selectedEmployers.length === 1
                               ? employersData?.employers?.find((e: EmployerOption) => e.value === selectedEmployers[0])?.label || selectedEmployers[0]
                               : `${selectedEmployers.length} employers selected`}
@@ -4309,12 +4317,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, workCity: !prev.workCity }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, workCity: !prev.workCity }))} aria-expanded={expandedFilters.workCity} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedWorkCities.length === 0
-                              ? "Select cities..."
+                              ? "Select cities�"
                               : selectedWorkCities.length === 1
                               ? selectedWorkCities[0]
                               : `${selectedWorkCities.length} cities selected`}
@@ -4394,12 +4402,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, institutionName: !prev.institutionName }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, institutionName: !prev.institutionName }))} aria-expanded={expandedFilters.institutionName} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedInstitutionNames.length === 0
-                              ? "Select institutions..."
+                              ? "Select institutions�"
                               : selectedInstitutionNames.length === 1
                               ? selectedInstitutionNames[0]
                               : `${selectedInstitutionNames.length} institutions selected`}
@@ -4479,12 +4487,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, programEnrolled: !prev.programEnrolled }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, programEnrolled: !prev.programEnrolled }))} aria-expanded={expandedFilters.programEnrolled} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedProgramsEnrolled.length === 0
-                              ? "Select programs..."
+                              ? "Select programs�"
                               : selectedProgramsEnrolled.length === 1
                               ? selectedProgramsEnrolled[0]
                               : `${selectedProgramsEnrolled.length} programs selected`}
@@ -4564,12 +4572,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, fundingSource: !prev.fundingSource }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, fundingSource: !prev.fundingSource }))} aria-expanded={expandedFilters.fundingSource} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedFundingSources.length === 0
-                              ? "Select funding sources..."
+                              ? "Select funding sources�"
                               : selectedFundingSources.length === 1
                               ? selectedFundingSources[0]
                               : `${selectedFundingSources.length} sources selected`}
@@ -4649,12 +4657,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, institutionCountry: !prev.institutionCountry }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, institutionCountry: !prev.institutionCountry }))} aria-expanded={expandedFilters.institutionCountry} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedInstitutionCountries.length === 0
-                              ? "Select countries..."
+                              ? "Select countries�"
                               : selectedInstitutionCountries.length === 1
                               ? selectedInstitutionCountries[0]
                               : `${selectedInstitutionCountries.length} countries selected`}
@@ -4734,12 +4742,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, institutionCity: !prev.institutionCity }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, institutionCity: !prev.institutionCity }))} aria-expanded={expandedFilters.institutionCity} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedInstitutionCities.length === 0
-                              ? "Select cities..."
+                              ? "Select cities�"
                               : selectedInstitutionCities.length === 1
                               ? selectedInstitutionCities[0]
                               : `${selectedInstitutionCities.length} cities selected`}
@@ -4819,12 +4827,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, photoConsent: !prev.photoConsent }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, photoConsent: !prev.photoConsent }))} aria-expanded={expandedFilters.photoConsent} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedPhotoConsents.length === 0
-                              ? "Select photo consent..."
+                              ? "Select photo consent�"
                               : selectedPhotoConsents.length === 1
                               ? photoConsentData?.photoConsents?.find(c => c.value === selectedPhotoConsents[0])?.label || selectedPhotoConsents[0]
                               : `${selectedPhotoConsents.length} selected`}
@@ -4899,12 +4907,12 @@ export const AlumniTabs: React.FC = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setExpandedFilters(prev => ({ ...prev, category: !prev.category }))}
-                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, category: !prev.category }))} aria-expanded={expandedFilters.category} aria-haspopup="true"
+                          className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 flex items-center justify-between"
                         >
                           <span className="truncate">
                             {selectedCategories.length === 0
-                              ? "Select categories..."
+                              ? "Select categories�"
                               : selectedCategories.length === 1
                               ? (() => {
                                   const category = categoriesData?.categories?.find(c => c.value === selectedCategories[0]);
@@ -5162,11 +5170,14 @@ export const AlumniTabs: React.FC = () => {
         </SearchToolbar>
 
         {/* Table Section */}
-        <div className="pb-8 mt-4">
+        <div className="pb-8 mt-4" id="alumni-results-panel" role="tabpanel">
           <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
             {/* Top Horizontal Scrollbar - Prominent and Easy to Interact */}
-            <div 
+            <div
               ref={topScrollbarRef}
+              role="region"
+              aria-label="Table horizontal scroll"
+              tabIndex={0}
               className="top-horizontal-scrollbar w-full overflow-x-auto overflow-y-hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
               style={{
                 height: '24px',
@@ -5188,145 +5199,120 @@ export const AlumniTabs: React.FC = () => {
                 <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-                    <TableCell 
-                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      onClick={() => handleSort("alumniid")}
-                    >
-                      <div className="flex items-center gap-2">
+                    <TableCell isHeader scope="col" aria-sort={sortField === "alumniid" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button type="button" onClick={() => handleSort("alumniid")} className="flex w-full items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                         <span>SR.No</span>
-                        <div className="flex flex-col">
+                        <span className="flex flex-col" aria-hidden="true">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "alumniid" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "alumniid" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        </div>
-                      </div>
+                        </span>
+                      </button>
                     </TableCell>
-                    <TableCell 
-                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      onClick={() => handleSort("name")}
-                    >
-                      <div className="flex items-center gap-2">
+                    <TableCell isHeader scope="col" aria-sort={sortField === "name" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button type="button" onClick={() => handleSort("name")} className="flex w-full items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                         <span>Full Name</span>
-                        <div className="flex flex-col">
+                        <span className="flex flex-col" aria-hidden="true">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "name" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "name" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        </div>
-                      </div>
+                        </span>
+                      </button>
                     </TableCell>
-                    <TableCell 
-                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      onClick={() => handleSort("sapId")}
-                    >
-                      <div className="flex items-center gap-2">
+                    <TableCell isHeader scope="col" aria-sort={sortField === "sapId" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button type="button" onClick={() => handleSort("sapId")} className="flex w-full items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                         <span>SAP ID / Registration</span>
-                        <div className="flex flex-col">
+                        <span className="flex flex-col" aria-hidden="true">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "sapId" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "sapId" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                          </div>
-                                </div>
+                        </span>
+                      </button>
                     </TableCell>
-                    <TableCell 
-                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      onClick={() => handleSort("email")}
-                    >
-                      <div className="flex items-center gap-2">
+                    <TableCell isHeader scope="col" aria-sort={sortField === "email" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button type="button" onClick={() => handleSort("email")} className="flex w-full items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                         <span>Email</span>
-                        <div className="flex flex-col">
+                        <span className="flex flex-col" aria-hidden="true">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "email" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "email" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                              </div>
-                                </div>
+                        </span>
+                      </button>
                     </TableCell>
-                    <TableCell
-                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px] hidden lg:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      onClick={() => handleSort("createdDateTime")}
-                    >
-                      Registration Date
+                    <TableCell isHeader scope="col" aria-sort={sortField === "createdDateTime" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px] hidden lg:table-cell hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button type="button" onClick={() => handleSort("createdDateTime")} className="w-full rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                        Registration Date
+                      </button>
                     </TableCell>
-                    <TableCell 
-                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      onClick={() => handleSort("faculty")}
-                    >
-                      <div className="flex items-center gap-2">
+                    <TableCell isHeader scope="col" aria-sort={sortField === "faculty" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button type="button" onClick={() => handleSort("faculty")} className="flex w-full items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                         <span>Faculty</span>
-                        <div className="flex flex-col">
+                        <span className="flex flex-col" aria-hidden="true">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "faculty" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "faculty" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                              </div>
-                                </div>
+                        </span>
+                      </button>
                     </TableCell>
-                    <TableCell 
-                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      onClick={() => handleSort("department")}
-                    >
-                      <div className="flex items-center gap-2">
+                    <TableCell isHeader scope="col" aria-sort={sortField === "department" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button type="button" onClick={() => handleSort("department")} className="flex w-full items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                         <span>Department</span>
-                        <div className="flex flex-col">
+                        <span className="flex flex-col" aria-hidden="true">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "department" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "department" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                              </div>
-                                </div>
+                        </span>
+                      </button>
                     </TableCell>
-                    <TableCell 
-                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      onClick={() => handleSort("program")}
-                    >
-                      <div className="flex items-center gap-2">
+                    <TableCell isHeader scope="col" aria-sort={sortField === "program" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button type="button" onClick={() => handleSort("program")} className="flex w-full items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                         <span>Program</span>
-                        <div className="flex flex-col">
+                        <span className="flex flex-col" aria-hidden="true">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "program" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "program" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                              </div>
-                            </div>
+                        </span>
+                      </button>
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[90px] hidden lg:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[90px] hidden lg:table-cell">
                       Gender
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[110px] hidden lg:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[110px] hidden lg:table-cell">
                       Campus
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px] hidden xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px] hidden xl:table-cell">
                       Primary Contact
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden xl:table-cell">
                       Home Country
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden xl:table-cell">
                       Home Province
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden xl:table-cell">
                       Home City
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden xl:table-cell">
                       Occupation Status
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden 2xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden 2xl:table-cell">
                       Work Country
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden 2xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden 2xl:table-cell">
                       Work City
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden 2xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden 2xl:table-cell">
                       Higher Education Country
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[160px] hidden 2xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[160px] hidden 2xl:table-cell">
                       Higher Education City
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px] hidden 2xl:table-cell">
+                    <TableCell isHeader scope="col" className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px] hidden 2xl:table-cell">
                       Chapter 1
                     </TableCell>
-                    <TableCell 
-                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      onClick={() => handleSort("status")}
-                    >
-                      <div className="flex items-center gap-2">
+                    <TableCell isHeader scope="col" aria-sort={sortField === "status" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button type="button" onClick={() => handleSort("status")} className="flex w-full items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                         <span>Status</span>
-                        <div className="flex flex-col">
+                        <span className="flex flex-col" aria-hidden="true">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "status" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "status" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                          </div>
-                        </div>
+                        </span>
+                      </button>
                       </TableCell>
-                    <TableCell className="sticky right-0 z-20 min-w-[120px] bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 px-3 py-4 text-right text-xs font-extrabold uppercase tracking-wider text-gray-700 backdrop-blur-sm dark:bg-gray-900 dark:bg-none dark:text-gray-200 sm:px-6">
+                    <TableCell isHeader scope="col" className="sticky right-0 z-20 min-w-[120px] bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 px-3 py-4 text-right text-xs font-extrabold uppercase tracking-wider text-gray-700 backdrop-blur-sm dark:bg-gray-900 dark:bg-none dark:text-gray-200 sm:px-6">
                       Actions
                     </TableCell>
                     </TableRow>
@@ -5334,7 +5320,7 @@ export const AlumniTabs: React.FC = () => {
                 <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
                   {isLoading && (
                     Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
-                      <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
+                      <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30" aria-hidden="true">
                         <TableCell className="px-3 sm:px-6 py-5">
                           <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                         </TableCell>
@@ -5420,12 +5406,12 @@ export const AlumniTabs: React.FC = () => {
                           type="button"
                           onClick={() => refetch()}
                           disabled={isFetching}
-                          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-5 py-2.5 text-sm font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-5 py-2.5 text-sm font-semibold hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 shadow-sm hover:shadow-md"
                         >
                           {isFetching ? (
                             <>
-                              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              <span>Retrying...</span>
+                              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                              <span>Retrying…</span>
                             </>
                           ) : (
                             <>
@@ -5445,7 +5431,7 @@ export const AlumniTabs: React.FC = () => {
                     <TableCell className="px-6 py-6 text-center text-gray-500 dark:text-gray-400" colSpan={23}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg aria-hidden="true" className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </div>
@@ -5478,8 +5464,15 @@ export const AlumniTabs: React.FC = () => {
                     <React.Fragment key={`${String(alum.alumniid ?? alum.id)}-fragment`}>
                       <TableRow
                         key={`${String(alum.alumniid ?? alum.id)}-row`}
-                        className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === (alum.alumniid ?? null) ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
+                        className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400 ${selectedRowId === (alum.alumniid ?? null) ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
                         onClick={() => setSelectedRowId(alum.alumniid ?? null)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedRowId(alum.alumniid ?? null);
+                          }
+                        }}
+                        tabIndex={0}
                         aria-selected={selectedRowId === (alum.alumniid ?? null)}
                       >
                         
@@ -5511,12 +5504,15 @@ export const AlumniTabs: React.FC = () => {
                               <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">{alum.name || "-"}</span>
                             </div>
                             {/* Show email on small screens when hidden in table */}
-                            <a 
-                              href={alum.email ? `mailto:${alum.email}` : "#"} 
-                              className={`lg:hidden text-xs ${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate" : "text-gray-400"}`}
-                            >
-                              {alum.email || ""}
-                            </a>
+                            {alum.email ? (
+                              <a
+                                href={`mailto:${alum.email}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="lg:hidden text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate"
+                              >
+                                {alum.email}
+                              </a>
+                            ) : null}
                             {/* Show faculty, department, and program on small screens when hidden in table */}
                             <div className="md:hidden flex flex-col gap-0.5 text-xs text-gray-600 dark:text-gray-400">
                               {alum.faculty && <span className="truncate">{alum.faculty}</span>}
@@ -5529,12 +5525,17 @@ export const AlumniTabs: React.FC = () => {
                           <span className="truncate block max-w-[120px] sm:max-w-none">{sapIdRegNo}</span>
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
-                          <a 
-                            href={alum.email ? `mailto:${alum.email}` : "#"} 
-                            className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate block max-w-[180px]" : "text-gray-400"}`}
-                          >
-                            {alum.email || "-"}
-                          </a>
+                          {alum.email ? (
+                            <a
+                              href={`mailto:${alum.email}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate block max-w-[180px]"
+                            >
+                              {alum.email}
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
                           {formatRegistrationDate(alum.createdDateTime)}
@@ -5699,7 +5700,7 @@ export const AlumniTabs: React.FC = () => {
                                   }}
                                   disabled={isBusy}
                                   aria-disabled={isBusy}
-                                  className={`p-1.5 sm:p-2 rounded-lg ${defaultClass} transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+                                  className={`p-1.5 sm:p-2 rounded-lg ${defaultClass} transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
                                   aria-label={label}
                                   title={label}
                                 >
@@ -5791,7 +5792,7 @@ export const AlumniTabs: React.FC = () => {
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
                 <select
                   id="page-size"
-                  className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   value={pageSize}
                   onChange={(e) => {
                     const newPageSize = Number(e.target.value);
@@ -5815,7 +5816,7 @@ export const AlumniTabs: React.FC = () => {
                       setShowAll(true);
                       setCurrentPage(1);
                     }}
-                    className="rounded-lg border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
+                    className="rounded-lg border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
                   >
                     Show All
                   </button>
@@ -5827,7 +5828,7 @@ export const AlumniTabs: React.FC = () => {
                       setCurrentPage(1);
                       setPageSize(10); // Reset to default page size
                     }}
-                    className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors"
+                    className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors"
                   >
                     Show Paginated
                   </button>
@@ -5892,13 +5893,13 @@ export const AlumniTabs: React.FC = () => {
                   <input
                     value={duplicateSearch}
                     onChange={(e) => setDuplicateSearch(e.target.value)}
-                    placeholder="Search duplicates..."
-                    className="w-full sm:w-72 px-3 py-2 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
+                    placeholder="Search duplicates�"
+                    className="w-full sm:w-72 px-3 py-2 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-colors duration-200"
                   />
                   <select
                     value={duplicateSortKey}
                     onChange={(e) => setDuplicateSortKey(e.target.value as any)}
-                    className="px-3 py-2 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200"
+                    className="px-3 py-2 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-colors duration-200"
                   >
                     <option value="name">Sort: Name</option>
                     <option value="sapId">Sort: SAPID</option>
@@ -5909,7 +5910,7 @@ export const AlumniTabs: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setDuplicateSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-                    className="px-3 py-2 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
+                    className="px-3 py-2 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
                   >
                     {duplicateSortDir === "asc" ? "Asc" : "Desc"}
                   </button>
@@ -5944,11 +5945,11 @@ export const AlumniTabs: React.FC = () => {
                     <Table>
                       <TableHeader >
                         <TableRow>
-                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Full Name</TableCell>
-                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">SAPID</TableCell>
-                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Reg No</TableCell>
-                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Gender</TableCell>
-                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Verify</TableCell>
+                          <TableCell isHeader scope="col" className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Full Name</TableCell>
+                          <TableCell isHeader scope="col" className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">SAPID</TableCell>
+                          <TableCell isHeader scope="col" className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Reg No</TableCell>
+                          <TableCell isHeader scope="col" className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Gender</TableCell>
+                          <TableCell isHeader scope="col" className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Verify</TableCell>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -6101,7 +6102,7 @@ export const AlumniTabs: React.FC = () => {
                     setPendingAction(null);
                   }
                 }}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus:ring-offset-2 focus:ring-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 Cancel
               </button>
@@ -6109,7 +6110,7 @@ export const AlumniTabs: React.FC = () => {
                 type="button"
                 disabled={mutatingIds.has(pendingAction.sapid)}
                 onClick={handleConfirmClick}
-                className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md ${
+                className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 shadow-sm hover:shadow-md ${
                   pendingAction.type === "delete"
                     ? "bg-error-600 hover:bg-error-700 focus:ring-error-500"
                     : pendingAction.type === "unverify"
@@ -6191,7 +6192,7 @@ export const AlumniTabs: React.FC = () => {
                   setIncompleteTarget(null);
                   setIncompleteHighlightKeys([]);
                 }}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus:ring-offset-2 focus:ring-gray-400"
               >
                 Close
               </button>
@@ -6209,7 +6210,7 @@ export const AlumniTabs: React.FC = () => {
 
                   incompleteProfileModal.closeModal();
                 }}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-error-600 hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-error-600 hover:bg-error-700 focus:outline-none focus-visible:ring-2 focus:ring-offset-2 focus:ring-error-500"
               >
                 Go to Edit
               </button>

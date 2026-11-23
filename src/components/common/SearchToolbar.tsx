@@ -46,7 +46,7 @@ export default function SearchToolbar({
   title = "Search",
   searchValue = "",
   searchOnChange,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Search…",
   searchId = "search-input",
   actions = [],
   filtersActive = false,
@@ -64,7 +64,7 @@ export default function SearchToolbar({
   const [showFilters, setShowFilters] = useState(false);
 
   const iconBtnBase =
-    "inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent";
+    "inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 dark:focus-visible:ring-gray-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent";
 
   return (
     <div
@@ -85,14 +85,15 @@ export default function SearchToolbar({
               <button
                 type="button"
                 onClick={() => setShowFilters((prev) => !prev)}
-                className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-semibold transition-all ${showFilters ? "border-blue-500 text-blue-600 bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:bg-blue-950/30" : "border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:border-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/30"}`}
+                className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-semibold transition-colors ${showFilters ? "border-blue-500 text-blue-600 bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:bg-blue-950/30" : "border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:border-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/30"}`}
                 aria-label="Toggle filters"
+                aria-expanded={showFilters}
                 title="Toggle filters"
               >
                 {showFilters ? <ChevronUpIcon className="h-3.5 w-3.5" /> : <ChevronDownIcon className="h-3.5 w-3.5" />}
                 <span>Filters</span>
                 {filtersActive && (
-                  <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-bold text-white bg-blue-500 rounded-full">
+                  <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-bold text-white bg-blue-500 rounded-full" aria-label="Filters active">
                     !
                   </span>
                 )}
@@ -104,7 +105,7 @@ export default function SearchToolbar({
               <button
                 type="button"
                 onClick={onResetSort}
-                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:border-amber-500 dark:hover:text-amber-400 dark:hover:bg-amber-950/30 focus:outline-none focus:ring-2 focus:ring-amber-300 dark:focus:ring-amber-600 transition-all"
+                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:border-amber-500 dark:hover:text-amber-400 dark:hover:bg-amber-950/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 dark:focus-visible:ring-amber-600 transition-colors"
                 aria-label="Reset sort"
                 title="Reset sort"
               >
@@ -119,7 +120,7 @@ export default function SearchToolbar({
                 type="button"
                 onClick={onClearFilters}
                 disabled={!filtersActive}
-                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:border-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:border-red-500 dark:hover:text-red-400 dark:hover:bg-red-950/30 focus:outline-none focus:ring-2 focus:ring-red-300 dark:focus:ring-red-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-600 disabled:hover:bg-transparent dark:disabled:hover:border-gray-600 dark:disabled:hover:text-gray-300 dark:disabled:hover:bg-transparent"
+                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:border-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:border-red-500 dark:hover:text-red-400 dark:hover:bg-red-950/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 dark:focus-visible:ring-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-600 disabled:hover:bg-transparent dark:disabled:hover:border-gray-600 dark:disabled:hover:text-gray-300 dark:disabled:hover:bg-transparent"
                 aria-label="Clear filters"
                 title="Clear filters"
               >
@@ -159,24 +160,24 @@ export default function SearchToolbar({
                 type="button"
                 onClick={onExport}
                 disabled={exportDisabled}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-[background-color,box-shadow] shadow-sm"
                 aria-label={exportLabel}
                 title={exportLabel}
               >
                 {isExporting ? (
-                  <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden="true" />
                 ) : (
                   <DownloadIcon className="h-3.5 w-3.5" />
                 )}
-                <span className="hidden sm:inline">{isExporting ? "Exporting..." : exportLabel}</span>
+                <span className="hidden sm:inline">{isExporting ? "Exporting…" : exportLabel}</span>
               </button>
             )}
 
             {/* Background refetch indicator */}
             {isFetching && (
-              <div className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                <div className="h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-[11px] font-medium hidden sm:inline">Updating...</span>
+              <div role="status" className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                <div className="h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                <span className="text-[11px] font-medium hidden sm:inline">Updating…</span>
               </div>
             )}
           </div>
@@ -185,6 +186,7 @@ export default function SearchToolbar({
         {/* Row 2: Search Input */}
         <div className="relative">
           <svg
+            aria-hidden="true"
             className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500"
             fill="none"
             stroke="currentColor"
@@ -194,18 +196,22 @@ export default function SearchToolbar({
           </svg>
           <input
             id={searchId}
-            type="text"
+            type="search"
+            name="q"
+            autoComplete="off"
+            spellCheck={false}
             value={searchValue}
             onChange={(e) => searchOnChange?.(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 bg-gray-50/50 dark:bg-gray-900 dark:border-gray-700 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-gray-100 transition-all duration-200"
+            aria-label={title}
+            className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 bg-gray-50/50 dark:bg-gray-900 dark:border-gray-700 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-gray-100 transition-colors duration-200"
           />
         </div>
 
         {/* Collapsible Filters Panel */}
         {children && (
           <div
-            className={`transition-all duration-300 ease-in-out ${showFilters ? "overflow-visible" : "overflow-hidden"}`}
+            className={`transition-[max-height,opacity] duration-300 ease-in-out ${showFilters ? "overflow-visible" : "overflow-hidden"}`}
             style={{
               maxHeight: showFilters ? "5000px" : "0px",
               opacity: showFilters ? 1 : 0,

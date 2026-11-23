@@ -15,23 +15,24 @@ const Pagination: React.FC<PaginationProps> = ({
   );
 
   return (
-    <div className="flex items-center gap-2">
+    <nav aria-label="Pagination" className="flex items-center gap-2">
       <button
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="flex items-center h-10 justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+        className="flex items-center h-10 justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
       >
         Previous
       </button>
       <div className="flex items-center gap-1">
-        {currentPage > 3 && <span className="px-2 text-gray-400 dark:text-gray-600">...</span>}
+        {currentPage > 3 && <span aria-hidden="true" className="px-2 text-gray-400 dark:text-gray-600">…</span>}
         {pagesAroundCurrent.map((page) => (
           <button
             key={page}
             type="button"
             onClick={() => onPageChange(page)}
-            className={`flex w-10 h-10 items-center justify-center rounded-lg text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
+            aria-current={currentPage === page ? "page" : undefined}
+            className={`flex w-10 h-10 items-center justify-center rounded-lg text-sm font-semibold transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${
               currentPage === page
                 ? "bg-blue-600 text-white shadow-sm"
                 : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50"
@@ -40,17 +41,17 @@ const Pagination: React.FC<PaginationProps> = ({
             {page}
           </button>
         ))}
-        {currentPage < totalPages - 2 && <span className="px-2 text-gray-400 dark:text-gray-600">...</span>}
+        {currentPage < totalPages - 2 && <span aria-hidden="true" className="px-2 text-gray-400 dark:text-gray-600">…</span>}
       </div>
       <button
         type="button"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="flex items-center justify-center h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+        className="flex items-center justify-center h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
       >
         Next
       </button>
-    </div>
+    </nav>
   );
 };
 

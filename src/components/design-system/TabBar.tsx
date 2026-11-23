@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useRef, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { twMerge } from "tailwind-merge";
 
 export interface TabItem {
   key: string;
   label: string;
   count?: number;
+  /** When provided the tab renders as a real link (Cmd/Ctrl+click, middle-click support). */
+  href?: string;
 }
 
 interface TabBarProps {
@@ -19,6 +23,7 @@ interface TabBarProps {
 
 export function TabBar({ items, selected, onSelect, className, ariaLabel = "Sections" }: TabBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -69,21 +74,23 @@ export function TabBar({ items, selected, onSelect, className, ariaLabel = "Sect
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, idx: number) => {
+      const move = (nextIdx: number) => {
+        const target = items[nextIdx];
+        if (!target) return;
+        onSelect(target.key);
+        if (target.href) router.push(target.href, { scroll: false });
+        const btns = scrollRef.current?.querySelectorAll('[role="tab"]');
+        (btns?.[nextIdx] as HTMLElement)?.focus();
+      };
       if (e.key === "ArrowRight") {
         e.preventDefault();
-        const next = (idx + 1) % items.length;
-        onSelect(items[next].key);
-        const btns = scrollRef.current?.querySelectorAll('[role="tab"]');
-        (btns?.[next] as HTMLElement)?.focus();
+        move((idx + 1) % items.length);
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
-        const prev = (idx - 1 + items.length) % items.length;
-        onSelect(items[prev].key);
-        const btns = scrollRef.current?.querySelectorAll('[role="tab"]');
-        (btns?.[prev] as HTMLElement)?.focus();
+        move((idx - 1 + items.length) % items.length);
       }
     },
-    [items, onSelect]
+    [items, onSelect, router]
   );
 
   const showScrollButtons = canScrollLeft || canScrollRight;
@@ -97,13 +104,13 @@ export function TabBar({ items, selected, onSelect, className, ariaLabel = "Sect
           disabled={!canScrollLeft}
           aria-label="Scroll tabs left"
           className={twMerge(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
             canScrollLeft
               ? "text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
               : "text-gray-300 dark:text-gray-700 cursor-default"
           )}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
@@ -117,22 +124,23 @@ export function TabBar({ items, selected, onSelect, className, ariaLabel = "Sect
       >
         {items.map((tab, idx) => {
           const isSelected = selected === tab.key;
-          return (
-            <button
-              key={tab.key}
-              role="tab"
-              aria-selected={isSelected}
-              tabIndex={isSelected ? 0 : -1}
-              onClick={() => onSelect(tab.key)}
-              onKeyDown={(e) => handleKeyDown(e, idx)}
-              className={twMerge(
-                "relative inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900",
-                isSelected
-                  ? "bg-accent-500 text-white shadow-theme-md ring-1 ring-accent-600/30 dark:bg-accent-600 dark:text-white dark:shadow-black/30 dark:ring-accent-400/30"
-                  : "border border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-              )}
-            >
+          const sharedProps = {
+            role: "tab" as const,
+            "aria-selected": isSelected,
+            "aria-controls": `tabpanel-${tab.key}`,
+            id: `tab-${tab.key}`,
+            tabIndex: isSelected ? 0 : -1,
+            onKeyDown: (e: React.KeyboardEvent) => handleKeyDown(e, idx),
+            className: twMerge(
+              "relative inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors duration-200",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/20 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900",
+              isSelected
+                ? "bg-accent-500 text-white shadow-theme-md ring-1 ring-accent-600/30 dark:bg-accent-600 dark:text-white dark:shadow-black/30 dark:ring-accent-400/30"
+                : "border border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            ),
+          };
+          const inner = (
+            <>
               <span className="whitespace-nowrap font-semibold">{tab.label}</span>
               {tab.count !== undefined && (
                 <span
@@ -149,6 +157,26 @@ export function TabBar({ items, selected, onSelect, className, ariaLabel = "Sect
               {isSelected && (
                 <span className="absolute -bottom-px left-2 right-2 h-0.5 rounded-full bg-accent-600 dark:bg-accent-400" aria-hidden />
               )}
+            </>
+          );
+          return tab.href ? (
+            <Link
+              key={tab.key}
+              href={tab.href}
+              scroll={false}
+              onClick={() => onSelect(tab.key)}
+              {...sharedProps}
+            >
+              {inner}
+            </Link>
+          ) : (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => onSelect(tab.key)}
+              {...sharedProps}
+            >
+              {inner}
             </button>
           );
         })}
@@ -160,13 +188,13 @@ export function TabBar({ items, selected, onSelect, className, ariaLabel = "Sect
           disabled={!canScrollRight}
           aria-label="Scroll tabs right"
           className={twMerge(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
             canScrollRight
               ? "text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
               : "text-gray-300 dark:text-gray-700 cursor-default"
           )}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 18l6-6-6-6" />
           </svg>
         </button>
