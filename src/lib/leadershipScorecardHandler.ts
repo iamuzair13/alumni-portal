@@ -4,10 +4,11 @@ import { canModify } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import { fetchBulkLeadershipScorecardPayload } from "@/lib/leadershipScorecardData";
 import { generateBulkLeadershipScorecardPDF, generateBulkLeadershipSummaryPDF } from "@/lib/scorecardGenerator";
+import { LEADERSHIP_ROLE_NAMES, type LeadershipRoleName } from "@/lib/leadershipRoles";
 
-const VALID_ROLES = new Set(["president", "vice_president", "coordinator", "all_roles"]);
+const VALID_ROLES = new Set<string>([...LEADERSHIP_ROLE_NAMES, "all_roles"]);
 const VALID_TYPES = new Set(["chapter", "association"]);
-const ALL_SCORECARD_ROLES = ["president", "vice_president", "coordinator"] as const;
+const ALL_SCORECARD_ROLES = LEADERSHIP_ROLE_NAMES;
 
 function parsePositiveInt(value: string | null): number | null {
   if (!value) return null;
@@ -72,7 +73,7 @@ export async function handleBulkLeadershipScorecardDownload(
       : [
           await fetchBulkLeadershipScorecardPayload({
             ...fetchInput,
-            role: role as "president" | "vice_president" | "coordinator",
+            role: role as LeadershipRoleName,
           }),
         ];
 

@@ -4,6 +4,7 @@ import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { normalizeObtainedMark } from "@/lib/leadershipMarks";
 import { associationPostRoleCondition, chapterPostRoleCondition } from "@/lib/leadershipRoleSql";
+import { LEADERSHIP_ROLE_LABELS, type LeadershipRoleName } from "@/lib/leadershipRoles";
 
 export type BulkScorecardCriterion = {
   id: number;
@@ -23,7 +24,7 @@ export type BulkScorecardApplicant = {
 };
 
 export type BulkScorecardPayload = {
-  role: "president" | "vice_president" | "coordinator";
+  role: LeadershipRoleName;
   leadershipType: "chapter" | "association";
   generatedAt: string;
   categoryLabel?: string | null;
@@ -34,14 +35,8 @@ export type BulkScorecardPayload = {
   applicants: BulkScorecardApplicant[];
 };
 
-const ROLE_LABELS: Record<BulkScorecardPayload["role"], string> = {
-  president: "President",
-  vice_president: "Vice President",
-  coordinator: "Coordinator",
-};
-
 export function bulkScorecardRoleLabel(role: BulkScorecardPayload["role"]): string {
-  return ROLE_LABELS[role] ?? role;
+  return LEADERSHIP_ROLE_LABELS[role] ?? role;
 }
 
 function mapCriterionRow(row: Record<string, unknown>): BulkScorecardCriterion {

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isSuperAdminUser, isAdminUser } from "@/lib/alumniProfile";
 import { associationPostRoleCondition, chapterPostRoleCondition } from "@/lib/leadershipRoleSql";
+import { LEADERSHIP_ROLE_NAMES, type LeadershipRoleName } from "@/lib/leadershipRoles";
 
 type OptionItem = { id: number; label: string; count: number };
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     const selectedInternationalChapterId = toPositiveInt(searchParams.get("internationalChapterId"));
     const selectedNationalChapterId = toPositiveInt(searchParams.get("nationalChapterId"));
 
-    const roleValues = new Set(["all", "president", "vice_president", "coordinator"]);
+    const roleValues = new Set(["all", ...LEADERSHIP_ROLE_NAMES]);
     if (!roleValues.has(role)) return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     const statusValues = new Set(["all", "approved", "assessed", "pending", "rejected"]);
     if (!statusValues.has(status)) return NextResponse.json({ error: "Invalid status" }, { status: 400 });
@@ -56,12 +57,12 @@ export async function GET(req: NextRequest) {
     const chapterRoleCondition =
       role === "all"
         ? sql``
-        : chapterPostRoleCondition(role as "president" | "vice_president" | "coordinator");
+        : chapterPostRoleCondition(role as LeadershipRoleName);
 
     const assocRoleCondition =
       role === "all"
         ? sql``
-        : associationPostRoleCondition(role as "president" | "vice_president" | "coordinator");
+        : associationPostRoleCondition(role as LeadershipRoleName);
 
     const hasAdditional = hasAdditionalAchievements === "1" || hasAdditionalAchievements === "true";
     const chapterAdditionalCondition = hasAdditional

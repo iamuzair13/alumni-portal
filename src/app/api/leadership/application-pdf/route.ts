@@ -6,13 +6,7 @@ import { sql } from "@/lib/dbconnect";
 import { resolveAlumniProfilePhotoForPdf } from "@/lib/alumniProfilePhotoPdf";
 import { generateLeadershipApplicationPDF, sanitizePdfText } from "@/lib/pdfGenerator";
 import { publicUploadsUrlFromStored } from "@/lib/uploadsImageUrl";
-
-function inferRoleNameFromPosition(position: string): "president" | "vice_president" | "coordinator" {
-  const s = String(position || "").toLowerCase();
-  if (s.includes("vice")) return "vice_president";
-  if (s.includes("coordinator")) return "coordinator";
-  return "president";
-}
+import { inferRoleNameFromPosition } from "@/lib/leadershipRoles";
 
 function normalizeOptionalCriteriaProficiency(raw: unknown): Record<string, number> | null {
   try {

@@ -28,6 +28,7 @@ import AllBenefitsTab from "@/components/alumni/profile/tabs/AllBenefitsTab";
 import { Suspense } from "react";
 import { Lock } from "lucide-react";
 import { Notice } from "@/components/alumni/profile/hub-ui";
+import { inferRoleNameFromPosition, type LeadershipRoleName } from "@/lib/leadershipRoles";
 import KpiStrip, { type KpiValues } from "@/components/alumni/profile/KpiStrip";import ChangeApprovalNotice from "@/components/alumni/profile/ChangeApprovalNotice";
 import {
   type MembershipSummary,
@@ -642,13 +643,11 @@ let cardImageFile: string | null = null;
     }
   }
 
-  const mapLeadershipRoleToRoleName = (rawRole: string): "president" | "vice_president" | "coordinator" | null => {
+  const mapLeadershipRoleToRoleName = (rawRole: string): LeadershipRoleName | null => {
     const s = String(rawRole || "").trim().toLowerCase();
     if (!s) return null;
-    if (s.includes("vice")) return "vice_president";
-    if (s.includes("coordinator")) return "coordinator";
-    if (s.includes("president")) return "president";
-    return null;
+    if (!/(vice|coordinator|secretary|president)/.test(s)) return null;
+    return inferRoleNameFromPosition(s);
   };
 
   if (leadershipInfo.type && leadershipInfo.roleDisplay) {

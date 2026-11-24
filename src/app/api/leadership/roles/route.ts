@@ -3,9 +3,10 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
+import { parseLeadershipRoleName, type LeadershipRoleName } from "@/lib/leadershipRoles";
 
 type LeadershipType = "chapter" | "association";
-type RoleName = "president" | "vice_president" | "coordinator";
+type RoleName = LeadershipRoleName;
 
 function parseLeadershipType(v: string | null): LeadershipType | null {
   if (v === "chapter" || v === "association") return v;
@@ -13,8 +14,7 @@ function parseLeadershipType(v: string | null): LeadershipType | null {
 }
 
 function parseRoleName(v: string | null): RoleName | null {
-  if (v === "president" || v === "vice_president" || v === "coordinator") return v;
-  return null;
+  return parseLeadershipRoleName(v);
 }
 
 export async function GET(req: NextRequest) {

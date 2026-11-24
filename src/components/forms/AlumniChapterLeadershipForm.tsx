@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LeadershipApplicationsTracker from "@/components/alumni/LeadershipApplicationsTracker";
+import { LEADERSHIP_POST_OPTIONS, postValueToRoleName } from "@/lib/leadershipRoles";
 import StarRating, { proficiencyLabel } from "@/components/ui/StarRating";
 import {
   ADDITIONAL_ACHIEVEMENTS_MAX_LEN,
@@ -220,12 +221,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     setCvError(null);
   }, [post]);
 
-  const criteriaRoleName = useMemo(() => {
-    if (!selectedPost) return null;
-    if (selectedPost === "vicePresident") return "vice_president";
-    if (selectedPost === "president" || selectedPost === "coordinator") return selectedPost;
-    return null;
-  }, [selectedPost]);
+  const criteriaRoleName = useMemo(() => postValueToRoleName(selectedPost), [selectedPost]);
 
   const { data: criteriaData, isLoading: criteriaLoading } = useQuery({
     queryKey: ["leadership-criteria", "chapter", criteriaRoleName],
@@ -305,7 +301,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   const handlePrintApplication = () => {
     try {
       const applicantId = String(parseInt(alumniId, 10) || "").trim();
-      const position = selectedPost ? selectedPost : "-";
+      const position = LEADERSHIP_POST_OPTIONS.find((o) => o.value === selectedPost)?.label || selectedPost || "-";
       const selected = optionalCriteriaItems
         .map((c) => ({
           id: Number(c.id),
@@ -740,11 +736,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
               Apply for the post <span className="text-error-600">*</span>
             </label>
             <div className="space-y-3 mt-3">
-              {[
-                { value: "president", label: "President" },
-                { value: "vicePresident", label: "Vice President" },
-                { value: "coordinator", label: "Coordinator" },
-              ].map((postOption) => (
+              {LEADERSHIP_POST_OPTIONS.map((postOption) => (
                 <label
                   key={postOption.value}
                   className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${

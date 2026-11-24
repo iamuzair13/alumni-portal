@@ -11,6 +11,7 @@ import {
 } from "@/lib/leadershipApplicationFields";
 import { storedUploadUrlFromClient } from "@/lib/uploadsImageUrl";
 import { findExistingUploadFilePath } from "@/lib/resolveUploadFilePath";
+import { LEADERSHIP_POST_OPTIONS, postValueToRoleName } from "@/lib/leadershipRoles";
 
 export async function GET() {
   try {
@@ -101,12 +102,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate post
-    const validPosts = ["president", "vicePresident", "coordinator"];
+    const validPosts: readonly string[] = LEADERSHIP_POST_OPTIONS.map((o) => o.value);
     if (!validPosts.includes(body.post)) {
       return NextResponse.json({ error: "Invalid post selected" }, { status: 400 });
     }
 
-    const roleName = body.post === "vicePresident" ? "vice_president" : body.post;
+    const roleName = postValueToRoleName(body.post);
     const legacyConfirmedCriteriaIds = Array.isArray(body.criteriaIds)
       ? Array.from(new Set(body.criteriaIds.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0)))
       : [];
@@ -197,11 +198,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Map post values to display names
-    const postDisplayNames: Record<string, string> = {
-      president: "President",
-      vicePresident: "Vice President",
-      coordinator: "Coordinator",
-    };
+    const postDisplayNames: Record<string, string> = Object.fromEntries(
+      LEADERSHIP_POST_OPTIONS.map((o) => [o.value, o.label])
+    );
 
     const postDisplayName = postDisplayNames[body.post] || body.post;
     const alumniIdNum = Number(body.alumniId);

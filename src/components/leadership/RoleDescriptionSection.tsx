@@ -5,9 +5,9 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import { Modal } from "@/components/ui/modal";
+import type { LeadershipRoleName } from "@/lib/leadershipRoles";
 
 type LeadershipType = "chapter" | "association";
-type LeadershipRoleName = "president" | "vice_president" | "coordinator";
 type PdfSectionKey = "role_description" | "code_of_ethics" | "compliance_declaration" | "office_term_governance";
 
 export default function RoleDescriptionSection(props: {

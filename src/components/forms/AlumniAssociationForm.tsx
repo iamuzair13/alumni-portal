@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LeadershipApplicationsTracker from "@/components/alumni/LeadershipApplicationsTracker";
+import { LEADERSHIP_POST_OPTIONS, postValueToRoleName } from "@/lib/leadershipRoles";
 import StarRating, { proficiencyLabel } from "@/components/ui/StarRating";
 import {
   ADDITIONAL_ACHIEVEMENTS_MAX_LEN,
@@ -206,12 +207,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
     setCvError(null);
   }, [role]);
 
-  const criteriaRoleName = useMemo(() => {
-    if (!selectedRole) return null;
-    if (selectedRole === "vicePresident") return "vice_president";
-    if (selectedRole === "president" || selectedRole === "coordinator") return selectedRole;
-    return null;
-  }, [selectedRole]);
+  const criteriaRoleName = useMemo(() => postValueToRoleName(selectedRole), [selectedRole]);
 
   const { data: criteriaData, isLoading: criteriaLoading } = useQuery({
     queryKey: ["leadership-criteria", "association", criteriaRoleName],
@@ -291,7 +287,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
   const handlePrintApplication = () => {
     try {
       const applicantId = String(parseInt(alumniId, 10) || "").trim();
-      const position = selectedRole ? selectedRole : "-";
+      const position = LEADERSHIP_POST_OPTIONS.find((o) => o.value === selectedRole)?.label || selectedRole || "-";
       const selected = optionalCriteriaItems
         .map((c) => ({
           id: Number(c.id),
@@ -679,11 +675,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
               Apply for the role <span className="text-error-600">*</span>
             </label>
             <div className="space-y-3 mt-3">
-              {[
-                { value: "president", label: "President" },
-                { value: "vicePresident", label: "Vice President" },
-                { value: "coordinator", label: "Coordinator" },
-              ].map((roleOption) => (
+              {LEADERSHIP_POST_OPTIONS.map((roleOption) => (
                 <label
                   key={roleOption.value}
                   className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${

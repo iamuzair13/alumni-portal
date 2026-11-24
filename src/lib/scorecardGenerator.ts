@@ -33,21 +33,23 @@ type RoleTheme = {
 };
 
 function getRoleTheme(role: BulkScorecardPayload["role"]): RoleTheme {
-  switch (role) {
-    case "vice_president":
+  // Theme by role family so compound roles share their generic counterpart's colours.
+  if (role.startsWith("vice_president")) {
       return {
         brand: [25, 90, 170] as [number, number, number],
         brandLight: [235, 243, 255] as [number, number, number],
         bannerSubtext: [200, 220, 255] as [number, number, number],
       };
-    case "coordinator":
+  }
+  if (role.startsWith("coordinator")) {
       return {
         brand: [153, 102, 0] as [number, number, number],
         brandLight: [255, 250, 230] as [number, number, number],
         bannerSubtext: [255, 235, 160] as [number, number, number],
       };
-    case "president":
-    default:
+  }
+  // president, secretary_general
+  {
       return {
         brand: [0, 102, 51] as [number, number, number],
         brandLight: [240, 247, 243] as [number, number, number],

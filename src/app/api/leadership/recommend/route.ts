@@ -5,21 +5,13 @@ import { canModify } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import { sendEmail } from "@/lib/email";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
+import { LEADERSHIP_ROLE_NAMES, LEADERSHIP_ROLE_LABELS, type LeadershipRoleName } from "@/lib/leadershipRoles";
 
-const VALID_ROLES = ["president", "vice_president", "coordinator"] as const;
-type RecommendedRole = (typeof VALID_ROLES)[number];
+const VALID_ROLES = LEADERSHIP_ROLE_NAMES;
+type RecommendedRole = LeadershipRoleName;
 
 function roleDisplayName(role: string): string {
-  switch (role) {
-    case "president":
-      return "President";
-    case "vice_president":
-      return "Vice President";
-    case "coordinator":
-      return "Coordinator";
-    default:
-      return role;
-  }
+  return LEADERSHIP_ROLE_LABELS[role as LeadershipRoleName] ?? role;
 }
 
 // GET: Fetch all recommendations (for the Recommended For sub-section)

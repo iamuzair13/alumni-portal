@@ -6,6 +6,7 @@ import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 import { EMAIL_LOG_STATUS, EMAIL_TRIGGERED_BY, insertEmailLog } from "@/lib/emailLogs";
 import { combineOrConditions } from "@/lib/master-filter-utils";
+import { LEADERSHIP_POST_OPTIONS, postValueToRoleName } from "@/lib/leadershipRoles";
 import {
   buildAssociationTabDepartmentFilterSQL,
   buildAssociationTabFacultyFilterSQL,
@@ -219,12 +220,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role
-    const validRoles = ["president", "vicePresident", "coordinator"];
+    const validRoles: readonly string[] = LEADERSHIP_POST_OPTIONS.map((o) => o.value);
     if (!validRoles.includes(role)) {
       return NextResponse.json({ error: "Invalid role selected" }, { status: 400 });
     }
 
-    const roleName = role === "vicePresident" ? "vice_president" : role;
+    const roleName = postValueToRoleName(role);
     const legacyConfirmedCriteriaIds = Array.isArray(criteriaIds)
       ? Array.from(new Set(criteriaIds.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0)))
       : [];
@@ -313,11 +314,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Map role values to display names
-    const roleDisplayNames: Record<string, string> = {
-      president: "President",
-      vicePresident: "Vice President",
-      coordinator: "Coordinator",
-    };
+    const roleDisplayNames: Record<string, string> = Object.fromEntries(
+      LEADERSHIP_POST_OPTIONS.map((o) => [o.value, o.label])
+    );
 
     const roleDisplayName = roleDisplayNames[role] || role;
     const alumniIdNum = Number(alumniId);

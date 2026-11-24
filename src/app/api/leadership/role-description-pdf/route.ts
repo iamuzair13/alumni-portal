@@ -3,9 +3,10 @@ import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
 import { sql } from "@/lib/dbconnect";
 import { jsPDF } from "jspdf";
+import { parseLeadershipRoleName, type LeadershipRoleName } from "@/lib/leadershipRoles";
 
 type LeadershipType = "chapter" | "association";
-type RoleName = "president" | "vice_president" | "coordinator";
+type RoleName = LeadershipRoleName;
 
 type SectionKey = "role_description" | "code_of_ethics" | "compliance_declaration" | "office_term_governance";
 
@@ -15,8 +16,7 @@ function parseLeadershipType(v: string | null): LeadershipType | null {
 }
 
 function parseRoleName(v: string | null): RoleName | null {
-  if (v === "president" || v === "vice_president" || v === "coordinator") return v;
-  return null;
+  return parseLeadershipRoleName(v);
 }
 
 function normalizeHtmlToText(html: string): string {

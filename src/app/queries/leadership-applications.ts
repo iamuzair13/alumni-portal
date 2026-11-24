@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import type { LeadershipRoleName } from "@/lib/leadershipRoles";
 
 export type LeadershipApplicationTrace = {
   id: number;
@@ -31,7 +32,7 @@ export type LeadershipApplicationsQueryInput = {
   type?: "all" | "chapter" | "association";
   category?: "all" | "national" | "international" | "association";
   status?: "all" | "pending" | "assessed" | "approved" | "rejected" | "invalid";
-  role?: "all" | "president" | "vice_president" | "coordinator";
+  role?: "all" | LeadershipRoleName;
   search?: string;
   hasAdditionalAchievements?: boolean;
   alumniId?: number;

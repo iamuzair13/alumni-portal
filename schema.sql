@@ -203,7 +203,7 @@ CREATE TABLE public.leadership_form_settings (
 CREATE TABLE IF NOT EXISTS public.leadership_roles (
   id BIGSERIAL PRIMARY KEY,
   leadership_type TEXT NOT NULL CHECK (leadership_type IN ('chapter','association')),
-  role_name TEXT NOT NULL CHECK (role_name IN ('president','vice_president','coordinator')),
+  role_name TEXT NOT NULL CHECK (role_name IN ('president','vice_president','coordinator','secretary_general','vice_president_regional_affairs','vice_president_administrative_affairs','coordinator_regional_affairs','coordinator_administrative_affairs')),
   role_description TEXT,
   UNIQUE (leadership_type, role_name)
 );
@@ -1254,7 +1254,7 @@ ALTER TABLE public.alumni_talk_sessions
 CREATE TABLE IF NOT EXISTS public.leadership_roles (
   id BIGSERIAL PRIMARY KEY,
   leadership_type TEXT NOT NULL CHECK (leadership_type IN ('chapter','association')),
-  role_name TEXT NOT NULL CHECK (role_name IN ('president','vice_president','coordinator')),
+  role_name TEXT NOT NULL CHECK (role_name IN ('president','vice_president','coordinator','secretary_general','vice_president_regional_affairs','vice_president_administrative_affairs','coordinator_regional_affairs','coordinator_administrative_affairs')),
   UNIQUE (leadership_type, role_name)
 );
 
@@ -1293,9 +1293,19 @@ VALUES
   ('chapter','president'),
   ('chapter','vice_president'),
   ('chapter','coordinator'),
+  ('chapter','secretary_general'),
+  ('chapter','vice_president_regional_affairs'),
+  ('chapter','vice_president_administrative_affairs'),
+  ('chapter','coordinator_regional_affairs'),
+  ('chapter','coordinator_administrative_affairs'),
   ('association','president'),
   ('association','vice_president'),
-  ('association','coordinator')
+  ('association','coordinator'),
+  ('association','secretary_general'),
+  ('association','vice_president_regional_affairs'),
+  ('association','vice_president_administrative_affairs'),
+  ('association','coordinator_regional_affairs'),
+  ('association','coordinator_administrative_affairs')
 ON CONFLICT (leadership_type, role_name) DO NOTHING;
 
 -- Adds optional Additional Achievements field to leadership application tables

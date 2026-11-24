@@ -31,6 +31,13 @@ import {
   viewStoredUploadUrl,
 } from "@/lib/uploadsImageUrl";
 import AlumniProfilePhoto from "@/components/ui/AlumniProfilePhoto";
+import {
+  LEADERSHIP_ROLE_NAMES,
+  LEADERSHIP_ROLE_LABELS,
+  inferRoleNameFromPosition,
+  parseLeadershipRoleName,
+  type LeadershipRoleName,
+} from "@/lib/leadershipRoles";
 
 type RoleCriterion = {
   id: number;
@@ -44,20 +51,8 @@ type RoleCriterion = {
   criterion_score?: number | null;
 };
 
-function inferRoleNameFromPosition(position: string): "president" | "vice_president" | "coordinator" {
-  const s = String(position || "").toLowerCase();
-  if (s.includes("vice")) return "vice_president";
-  if (s.includes("coordinator")) return "coordinator";
-  return "president";
-}
-
 function recommendRoleDisplayName(role: string): string {
-  switch (role) {
-    case "president": return "President";
-    case "vice_president": return "Vice President";
-    case "coordinator": return "Coordinator";
-    default: return role;
-  }
+  return LEADERSHIP_ROLE_LABELS[role as LeadershipRoleName] ?? role;
 }
 
 type TabKey = "chapterMembers" | "associationMembers" | "applications" | "recommendedFor";
@@ -161,7 +156,7 @@ type RecommendationItem = {
 type ApplicationStatusTab = "all" | "pending" | "assessed" | "approved" | "rejected" | "invalid";
 type ApplicationCategoryFilter = "all" | "national" | "international" | "association";
 type MemberCategoryFilter = "all" | "national" | "international" | "association";
-type RoleFilter = "all" | "president" | "vice_president" | "coordinator";
+type RoleFilter = "all" | LeadershipRoleName;
 type SortKey = "createdAt" | "name" | "sapId" | "type" | "position" | "status" | "bonusMarks";
 
 type ApplicationCounts = {
@@ -641,9 +636,7 @@ export default function LeadershipPage() {
   const [scorecardModeModalOpen, setScorecardModeModalOpen] = useState(false);
   const [scorecardMode, setScorecardMode] = useState<"scorecard" | "summary">("scorecard");
   const [scorecardModalOpen, setScorecardModalOpen] = useState(false);
-  const [scorecardRole, setScorecardRole] = useState<
-    "" | "all_roles" | "president" | "vice_president" | "coordinator"
-  >("");
+  const [scorecardRole, setScorecardRole] = useState<"" | "all_roles" | LeadershipRoleName>("");
   const [scorecardType, setScorecardType] = useState<"" | "chapter" | "association">("");
   const [scorecardChapterCategory, setScorecardChapterCategory] = useState<"" | "national" | "international">("");
   const [scorecardCategoryItemId, setScorecardCategoryItemId] = useState<number | null>(null);
@@ -704,8 +697,11 @@ export default function LeadershipPage() {
       setApplicationCategoryFilter(category);
     }
     const role = safeSearchParams.get("role");
-    if (role === "all" || role === "president" || role === "vice_president" || role === "coordinator") {
-      setApplicationRoleFilter(role);
+    const parsedRole = parseLeadershipRoleName(role);
+    if (role === "all") {
+      setApplicationRoleFilter("all");
+    } else if (parsedRole) {
+      setApplicationRoleFilter(parsedRole);
     }
     const search = safeSearchParams.get("search") || "";
     setSearchQuery(search);
@@ -781,7 +777,7 @@ export default function LeadershipPage() {
   // ─── Recommend For State ───
   const recommendModal = useModal();
   const [recommendApp, setRecommendApp] = useState<LeadershipApplication | null>(null);
-  const [recommendRole, setRecommendRole] = useState<"president" | "vice_president" | "coordinator" | "">(""  );
+  const [recommendRole, setRecommendRole] = useState<LeadershipRoleName | "">(""  );
   const [recommendStep, setRecommendStep] = useState<"select" | "confirm">("select");
   const [recommendProcessing, setRecommendProcessing] = useState(false);
   const [recommendEmailPreviewOpen, setRecommendEmailPreviewOpen] = useState(false);
@@ -2070,9 +2066,9 @@ export default function LeadershipPage() {
             className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
           >
             <option value="all">All Roles</option>
-            <option value="president">President</option>
-            <option value="vice_president">Vice President</option>
-            <option value="coordinator">Coordinator</option>
+            {LEADERSHIP_ROLE_NAMES.map((r) => (
+              <option key={r} value={r}>{LEADERSHIP_ROLE_LABELS[r]}</option>
+            ))}
           </select>
           <svg
             className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]"
@@ -2194,9 +2190,9 @@ export default function LeadershipPage() {
               className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
             >
               <option value="all">All Roles</option>
-              <option value="president">President</option>
-              <option value="vice_president">Vice President</option>
-              <option value="coordinator">Coordinator</option>
+              {LEADERSHIP_ROLE_NAMES.map((r) => (
+                <option key={r} value={r}>{LEADERSHIP_ROLE_LABELS[r]}</option>
+              ))}
             </select>
             <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -2357,14 +2353,7 @@ export default function LeadershipPage() {
                   <select
                     value={scorecardRole}
                     onChange={(e) => {
-                      setScorecardRole(
-                        e.target.value as
-                          | ""
-                          | "all_roles"
-                          | "president"
-                          | "vice_president"
-                          | "coordinator"
-                      );
+                      setScorecardRole(e.target.value as "" | "all_roles" | LeadershipRoleName);
                       setScorecardChapterCategory("");
                       setScorecardCategoryItemId(null);
                     }}
@@ -2372,9 +2361,9 @@ export default function LeadershipPage() {
                   >
                     <option value="">Select role</option>
                     <option value="all_roles">All Roles</option>
-                    <option value="president">President</option>
-                    <option value="vice_president">Vice President</option>
-                    <option value="coordinator">Coordinator</option>
+                    {LEADERSHIP_ROLE_NAMES.map((r) => (
+                      <option key={r} value={r}>{LEADERSHIP_ROLE_LABELS[r]}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -3349,7 +3338,7 @@ export default function LeadershipPage() {
                   {recommendStep === "select" && (
                     <div className="mt-5 space-y-3">
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Select a leadership role:</p>
-                      {(["president", "vice_president", "coordinator"] as const).map((role) => (
+                      {LEADERSHIP_ROLE_NAMES.map((role) => (
                         <label
                           key={role}
                           className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all ${

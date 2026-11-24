@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { chapterPostRoleCondition, associationPostRoleCondition } from "@/lib/leadershipRoleSql";
+import { LEADERSHIP_ROLE_NAMES, type LeadershipRoleName } from "@/lib/leadershipRoles";
 
 export async function GET(req: Request) {
   try {
@@ -49,7 +50,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    const roleValues = new Set(["all", "president", "vice_president", "coordinator"]);
+    const roleValues = new Set(["all", ...LEADERSHIP_ROLE_NAMES]);
     if (!roleValues.has(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
@@ -79,10 +80,10 @@ export async function GET(req: Request) {
       : sql``;
 
     const chapterRoleCondition =
-      role === "all" ? sql`` : chapterPostRoleCondition(role as "president" | "vice_president" | "coordinator");
+      role === "all" ? sql`` : chapterPostRoleCondition(role as LeadershipRoleName);
 
     const assocRoleCondition =
-      role === "all" ? sql`` : associationPostRoleCondition(role as "president" | "vice_president" | "coordinator");
+      role === "all" ? sql`` : associationPostRoleCondition(role as LeadershipRoleName);
 
     const facultyCondition = faculty ? sql` AND f.faculty_name = ${faculty}` : sql``;
 

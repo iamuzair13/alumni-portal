@@ -6,6 +6,7 @@ import {
   chapterPostRoleCondition,
   associationPostRoleCondition,
 } from "@/lib/leadershipRoleSql";
+import { LEADERSHIP_ROLE_NAMES, type LeadershipRoleName } from "@/lib/leadershipRoles";
 
 // Get approved leadership members
 export async function GET(req: NextRequest) {
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }
 
-    const roleValues = new Set(["all", "president", "vice_president", "coordinator"]);
+    const roleValues = new Set(["all", ...LEADERSHIP_ROLE_NAMES]);
     const categoryValues = new Set(["all", "national", "international", "association"]);
 
     if (!roleValues.has(role)) {
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
 
       const facultyCondition = faculty ? sql` AND f.faculty_name = ${faculty}` : sql``;
 
-      const roleCondition = role === "all" ? sql`` : chapterPostRoleCondition(role as "president" | "vice_president" | "coordinator");
+      const roleCondition = role === "all" ? sql`` : chapterPostRoleCondition(role as LeadershipRoleName);
 
       const categoryTypeCondition =
         category === "national"
@@ -183,7 +184,7 @@ export async function GET(req: NextRequest) {
 
       const chapterCondition = chapter ? sql` AND assoc.faculty_name ILIKE ${`%${chapter}%`}` : sql``;
 
-      const roleCondition = role === "all" ? sql`` : associationPostRoleCondition(role as "president" | "vice_president" | "coordinator");
+      const roleCondition = role === "all" ? sql`` : associationPostRoleCondition(role as LeadershipRoleName);
 
       const categoryTypeCondition =
         category === "national" || category === "international"

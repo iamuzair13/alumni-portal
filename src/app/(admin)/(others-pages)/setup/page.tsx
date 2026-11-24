@@ -31,11 +31,11 @@ import MembershipSettingsComponent from "@/components/setup/MembershipSettingsCo
 import StoriesCriteriaManager from "@/components/setup/StoriesCriteriaManager";
 import BulkUploadPage from "@/components/setup/BulkUploadPage";
 import type { ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
+import { LEADERSHIP_ROLE_NAMES, LEADERSHIP_ROLE_LABELS, type LeadershipRoleName } from "@/lib/leadershipRoles";
 import { TabBar, type TabItem } from "@/components/design-system";
 import { SetupPageHeader } from "@/components/setup/SetupPageHeader";
 
 type LeadershipType = "chapter" | "association";
-type LeadershipRoleName = "president" | "vice_president" | "coordinator";
 
 type LeadershipSettings = {
   chapter_leadership: boolean;
@@ -89,9 +89,7 @@ type StoryCriteriaDraft = {
 };
 
 function roleLabel(role: LeadershipRoleName): string {
-  if (role === "vice_president") return "Vice President";
-  if (role === "coordinator") return "Coordinator";
-  return "President";
+  return LEADERSHIP_ROLE_LABELS[role] ?? role;
 }
 
 function typeLabel(t: LeadershipType): string {
@@ -1172,9 +1170,9 @@ function SetupPageContent() {
                     }}
                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900"
                   >
-                    <option value="president">President</option>
-                    <option value="vice_president">Vice President</option>
-                    <option value="coordinator">Coordinator</option>
+                    {LEADERSHIP_ROLE_NAMES.map((r) => (
+                      <option key={r} value={r}>{LEADERSHIP_ROLE_LABELS[r]}</option>
+                    ))}
                   </select>
                 </div>
               </div>

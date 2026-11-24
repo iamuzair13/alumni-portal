@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
 import { normalizeObtainedMark } from "@/lib/leadershipMarks";
+import { inferRoleNameFromPosition } from "@/lib/leadershipRoles";
 
 function parseCriterionObtainedMarks(raw: unknown): Record<number, number> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
@@ -261,11 +262,7 @@ export async function POST(req: NextRequest) {
         }
 
         const roleText = String((appRecord[0] as { post?: unknown }).post ?? "");
-        const roleName = roleText.toLowerCase().includes("vice")
-          ? "vice_president"
-          : roleText.toLowerCase().includes("coordinator")
-            ? "coordinator"
-            : "president";
+        const roleName = inferRoleNameFromPosition(roleText);
 
         const confirmedAdminIds = Array.isArray(adminCriteriaIds)
           ? Array.from(
@@ -679,11 +676,7 @@ export async function POST(req: NextRequest) {
         }
 
         const roleText = String((appRecord[0] as { q3?: unknown }).q3 ?? "");
-        const roleName = roleText.toLowerCase().includes("vice")
-          ? "vice_president"
-          : roleText.toLowerCase().includes("coordinator")
-            ? "coordinator"
-            : "president";
+        const roleName = inferRoleNameFromPosition(roleText);
 
         const confirmedAdminIds = Array.isArray(adminCriteriaIds)
           ? Array.from(

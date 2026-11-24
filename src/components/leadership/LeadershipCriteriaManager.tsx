@@ -2,9 +2,9 @@
 import React from "react";
 import { jsPDF } from "jspdf";
 import { Modal } from "@/components/ui/modal";
+import type { LeadershipRoleName } from "@/lib/leadershipRoles";
 
 type LeadershipType = "chapter" | "association";
-type LeadershipRoleName = "president" | "vice_president" | "coordinator";
 
 type RoleCriterion = {
   id: number;

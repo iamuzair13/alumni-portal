@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isSuperAdminUser, isAdminUser } from "@/lib/alumniProfile";
+import { LEADERSHIP_ROLE_NAMES, type LeadershipRoleName } from "@/lib/leadershipRoles";
 
 export async function GET(req: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
       internationalChapterId && Number.isFinite(internationalChapterId) && internationalChapterId > 0 ? internationalChapterId : null;
     const validAssociationId = associationId && Number.isFinite(associationId) && associationId > 0 ? associationId : null;
 
-    const roleValues = new Set(["all", "president", "vice_president", "coordinator"]);
+    const roleValues = new Set(["all", ...LEADERSHIP_ROLE_NAMES]);
     if (!roleValues.has(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
@@ -65,17 +66,31 @@ export async function GET(req: NextRequest) {
       // lower + trim + remove all non-letters, so "Vice President" -> "vicepresident" and "President" -> "president"
       sql`LOWER(REGEXP_REPLACE(TRIM(COALESCE(${columnExpr}, '')), '[^a-z]+', '', 'g'))`;
 
-    const roleMatchValuesChapter =
-      role === "vice_president"
-        ? ["vicepresident", "chaptervicepresident"]
-        : role === "coordinator"
-          ? ["coordinator", "chaptercoordinator"]
-          : role === "president"
-            ? ["president", "chapterpresident"]
-            : null;
+    // Stored position text normalized via normalizeRoleExpr (lowercase, letters only).
+    // Compound roles must match before their generic counterparts are filtered out.
+    const chapterRoleMatchValues: Record<LeadershipRoleName, string[]> = {
+      president: ["president", "chapterpresident"],
+      vice_president: ["vicepresident", "chaptervicepresident"],
+      coordinator: ["coordinator", "chaptercoordinator"],
+      secretary_general: ["secretarygeneral", "chaptersecretarygeneral"],
+      vice_president_regional_affairs: ["vicepresidentregionalaffairs"],
+      vice_president_administrative_affairs: ["vicepresidentadministrativeaffairs"],
+      coordinator_regional_affairs: ["coordinatorregionalaffairs"],
+      coordinator_administrative_affairs: ["coordinatoradministrativeaffairs"],
+    };
+    const assocRoleMatchValues: Record<LeadershipRoleName, string[]> = {
+      president: ["president"],
+      vice_president: ["vicepresident"],
+      coordinator: ["coordinator"],
+      secretary_general: ["secretarygeneral"],
+      vice_president_regional_affairs: ["vicepresidentregionalaffairs"],
+      vice_president_administrative_affairs: ["vicepresidentadministrativeaffairs"],
+      coordinator_regional_affairs: ["coordinatorregionalaffairs"],
+      coordinator_administrative_affairs: ["coordinatoradministrativeaffairs"],
+    };
 
-    const roleMatchValuesAssoc =
-      role === "vice_president" ? ["vicepresident"] : role === "coordinator" ? ["coordinator"] : role === "president" ? ["president"] : null;
+    const roleMatchValuesChapter = role === "all" ? null : chapterRoleMatchValues[role as LeadershipRoleName];
+    const roleMatchValuesAssoc = role === "all" ? null : assocRoleMatchValues[role as LeadershipRoleName];
 
     const chapterRoleCondition = (() => {
       if (role === "all" || !roleMatchValuesChapter || roleMatchValuesChapter.length === 0) return sql``;

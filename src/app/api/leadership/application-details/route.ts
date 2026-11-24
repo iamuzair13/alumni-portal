@@ -5,6 +5,7 @@ import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
 import { publicUploadsUrlFromStored } from "@/lib/uploadsImageUrl";
+import { inferRoleNameFromPosition } from "@/lib/leadershipRoles";
 
 function alumniProfilePhotoUrl(image1: unknown, image2: unknown): string | null {
   const filename = pickAlumniProfilePhotoFilename(
@@ -12,13 +13,6 @@ function alumniProfilePhotoUrl(image1: unknown, image2: unknown): string | null 
     image1 as string | null | undefined
   );
   return publicUploadsUrlFromStored(filename);
-}
-
-function inferRoleNameFromPosition(position: string): "president" | "vice_president" | "coordinator" {
-  const s = String(position || "").toLowerCase();
-  if (s.includes("vice")) return "vice_president";
-  if (s.includes("coordinator")) return "coordinator";
-  return "president";
 }
 
 function normalizeOptionalCriteriaProficiency(raw: unknown): Record<string, number> | null {
