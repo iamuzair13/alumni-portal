@@ -30,7 +30,7 @@ export const CARD_STATUS_CONFIG = {
   },
   "active": {
     dbValue: "Active" as DbCardStatus,
-    label: "Ready for Delivery",
+    label: "Collect from Campus",
     order: 3,
   },
   "onhold": {
