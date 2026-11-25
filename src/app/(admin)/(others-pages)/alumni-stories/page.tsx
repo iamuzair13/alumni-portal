@@ -6,16 +6,13 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import ComponentCard from "@/components/common/ComponentCard";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
-import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon, PencilIcon } from "@/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAlumniStories, alumniStoriesKey, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
 import AlumniSuccessForm from "@/components/forms/alumni-success";
 import { canModify, isSuperAdminUser } from "@/lib/alumniProfile";
 import { storyHtmlTextContent } from "@/lib/sanitizeStoryHtml";
-import StoryStatusBadge from "@/components/alumni/StoryStatusBadge";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { normalizeStoryStatus } from "@/lib/alumniStories";
@@ -43,27 +40,26 @@ type StatusTabKey = "all" | "pending" | "approved" | "notApproved";
 
 const STATUS_TABS: { key: StatusTabKey; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "pending", label: "Pending" },
-  { key: "approved", label: "Approved" },
-  { key: "notApproved", label: "Not Approved" },
+  { key: "pending", label: "Awaiting review" },
+  { key: "approved", label: "Published" },
+  { key: "notApproved", label: "Returned" },
 ];
 
 // Tabs typing
 type TabKey = "viewStories" | "addStory";
 
-const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: "viewStories", label: "View Stories", icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" },
-  { key: "addStory", label: "Add Story", icon: "M12 4v16m8-8H4" },
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "viewStories", label: "Review desk" },
+  { key: "addStory", label: "Add story" },
 ];
 
-// Helper to format date safely to YYYY-MM-DD
-function formatDate(input: string | Date): string {
+function submittedLabel(input: string | Date): string {
   try {
     const d = typeof input === "string" ? new Date(input) : input;
-    if (Number.isNaN(d.getTime())) return "-";
-    return d.toISOString().slice(0, 10);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   } catch {
-    return "-";
+    return "";
   }
 }
 
@@ -75,27 +71,14 @@ const Toast: React.FC<{ message: string; type: "success" | "error"; onClose: () 
   }, [onClose]);
 
   return (
-    <div className="fixed top-6 right-6 z-50 animate-slide-in-right">
-      <div className={`flex items-center gap-3 rounded-2xl px-5 py-4 shadow-2xl backdrop-blur-xl border ${
-        type === "success" 
-          ? "bg-success-50/95 border-success-200/50 text-success-800 dark:bg-success-900/90 dark:border-success-700/30 dark:text-success-200" 
-          : "bg-error-50/95 border-error-200/50 text-error-800 dark:bg-error-900/90 dark:border-error-700/30 dark:text-error-200"
+    <div className="fixed top-6 right-6 z-50">
+      <div className={`flex items-center gap-3 rounded-xl px-5 py-4 shadow-xl border ${
+        type === "success"
+          ? "bg-white border-emerald-200 text-emerald-800 dark:bg-gray-900 dark:border-emerald-800 dark:text-emerald-200"
+          : "bg-white border-rose-200 text-rose-800 dark:bg-gray-900 dark:border-rose-800 dark:text-rose-200"
       }`}>
-        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-          type === "success" ? "bg-success-100 dark:bg-success-800/50" : "bg-error-100 dark:bg-error-800/50"
-        }`}>
-          {type === "success" ? (
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          )}
-        </div>
         <span className="text-sm font-medium">{message}</span>
-        <button onClick={onClose} className="ml-2 rounded-lg p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+        <button onClick={onClose} className="ml-2 rounded-lg p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors" aria-label="Dismiss">
           <svg className="h-4 w-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -104,18 +87,6 @@ const Toast: React.FC<{ message: string; type: "success" | "error"; onClose: () 
     </div>
   );
 };
-
-// Shimmer skeleton for table rows
-const ShimmerRow: React.FC = () => (
-  <TableRow className="relative overflow-hidden">
-    {Array.from({ length: 8 }).map((_, i) => (
-      <TableCell key={i} className="px-4 py-4">
-        <div className="h-4 rounded-lg bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 animate-shimmer bg-[length:200%_100%]" 
-             style={{ width: i === 0 ? '2rem' : i === 5 ? '2.5rem' : i === 6 ? '5rem' : '80%' }} />
-      </TableCell>
-    ))}
-  </TableRow>
-);
 
 const STORY_ACTIONS_MENU_WIDTH = 256;
 const STORY_ACTIONS_MENU_MAX_HEIGHT = 360;
@@ -189,16 +160,13 @@ function StoryActionsDropdown({
             <div className="fixed inset-0 z-[9998]" aria-hidden="true" onClick={onClose} />
             <div
               role="menu"
-              className="fixed z-[9999] w-64 origin-top-right overflow-y-auto rounded-xl border border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900 shadow-2xl shadow-black/10 dark:shadow-black/30 ring-1 ring-black/5 dark:ring-white/5 py-1.5"
+              className="fixed z-[9999] w-60 origin-top-right overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl py-1.5"
               style={{
                 top: menuPosition.top,
                 left: menuPosition.left,
                 maxHeight: menuPosition.maxHeight,
               }}
             >
-              <div className="px-3 pt-2 pb-1">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Story</p>
-              </div>
               <button
                 type="button"
                 role="menuitem"
@@ -209,7 +177,7 @@ function StoryActionsDropdown({
                 className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
               >
                 <EyeIcon className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
-                View Details
+                Read story
               </button>
 
               {canReview && (
@@ -220,56 +188,45 @@ function StoryActionsDropdown({
                     onEdit(story);
                     onClose();
                   }}
-                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
                 >
-                  <PencilIcon className="h-4 w-4 shrink-0 text-amber-500/80 group-hover:text-amber-600 dark:group-hover:text-amber-400" />
-                  <span className="group-hover:text-amber-700 dark:group-hover:text-amber-300">Edit Story</span>
+                  <PencilIcon className="h-4 w-4 shrink-0 text-gray-400 group-hover:text-gray-600" />
+                  Edit story
                 </button>
               )}
 
-              {canReview && (canApprove || canReject) && (
-                <>
-                  <div className="my-1.5 mx-3 border-t border-gray-100 dark:border-gray-800" />
-                  <div className="px-3 py-1">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Review</p>
-                  </div>
-                  {canApprove && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        onApprove(story);
-                        onClose();
-                      }}
-                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-success-50 dark:hover:bg-success-900/20 transition-colors"
-                    >
-                      <CheckLineIcon className="h-4 w-4 shrink-0 text-success-500/80 group-hover:text-success-600 dark:group-hover:text-success-400" />
-                      <span className="group-hover:text-success-700 dark:group-hover:text-success-300">Approve</span>
-                    </button>
-                  )}
-                  {canReject && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        onReject(story);
-                        onClose();
-                      }}
-                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-error-50 dark:hover:bg-error-900/20 transition-colors"
-                    >
-                      <CloseLineIcon className="h-4 w-4 shrink-0 text-error-500/80 group-hover:text-error-600 dark:group-hover:text-error-400" />
-                      <span className="group-hover:text-error-700 dark:group-hover:text-error-300">Reject</span>
-                    </button>
-                  )}
-                </>
+              {canApprove && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onApprove(story);
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                >
+                  <CheckLineIcon className="h-4 w-4 shrink-0 text-emerald-500" />
+                  <span className="group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Publish</span>
+                </button>
+              )}
+              {canReject && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onReject(story);
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                >
+                  <CloseLineIcon className="h-4 w-4 shrink-0 text-amber-500" />
+                  <span className="group-hover:text-amber-700 dark:group-hover:text-amber-300">Return to author</span>
+                </button>
               )}
 
               {canDelete && (
                 <>
                   <div className="my-1.5 mx-3 border-t border-gray-100 dark:border-gray-800" />
-                  <div className="px-3 py-1">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Danger</p>
-                  </div>
                   <button
                     type="button"
                     role="menuitem"
@@ -300,28 +257,22 @@ function StoryActionsDropdown({
           if (!isOpen) updateMenuPosition();
           onToggle();
         }}
-        className={`dropdown-toggle inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[140px] ${
+        className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
           isProcessing
-            ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-400 cursor-not-allowed"
-            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow-md"
+            ? "text-gray-400 cursor-not-allowed"
+            : "text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
         }`}
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label={`Actions for ${story.name}`}
       >
         {isProcessing ? (
-          <>
-            <svg className="h-4 w-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            <span>Processing…</span>
-          </>
+          <span>Working…</span>
         ) : (
           <>
-            <span>Actions</span>
+            <span>More</span>
             <svg
-              className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+              className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -337,7 +288,37 @@ function StoryActionsDropdown({
   );
 }
 
-// Stories table component with modern styling
+/** Editorial status stamp — desk vocabulary, not database vocabulary. */
+function StatusStamp({ status }: { status: string }) {
+  const n = normalizeStoryStatus(status);
+  const meta =
+    n === "approved"
+      ? { label: "Published", cls: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800" }
+      : n === "not-approved"
+        ? { label: "Returned to author", cls: "text-gray-600 bg-gray-100 border-gray-300 dark:text-gray-300 dark:bg-gray-800 dark:border-gray-600" }
+        : { label: "Awaiting review", cls: "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/40 dark:border-amber-800" };
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium ${meta.cls}`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden="true" />
+      {meta.label}
+    </span>
+  );
+}
+
+const StoryProofSkeleton: React.FC = () => (
+  <div className="flex gap-5 border-b border-gray-100 py-6 last:border-0 dark:border-gray-800">
+    <div className="aspect-[4/3] w-32 shrink-0 animate-pulse rounded-md bg-gray-100 sm:w-44 dark:bg-gray-800" />
+    <div className="flex-1 space-y-2.5 pt-1">
+      <div className="h-4 w-24 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+      <div className="h-6 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+      <div className="h-3 w-1/2 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+      <div className="h-3 w-full animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+      <div className="h-3 w-4/5 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+    </div>
+  </div>
+);
+
+// Editorial review desk — one proof sheet per story
 type StoryListProps = {
   items: Story[];
   loading?: boolean;
@@ -355,7 +336,7 @@ type StoryListProps = {
   actionError?: string | null;
 };
 
-const StoryTable: React.FC<StoryListProps> = ({
+const StoryDesk: React.FC<StoryListProps> = ({
   items,
   loading,
   isFetching,
@@ -407,148 +388,75 @@ const StoryTable: React.FC<StoryListProps> = ({
     : undefined;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white/80 shadow-xl shadow-gray-200/50 backdrop-blur-sm dark:border-white/[0.08] dark:bg-gray-900/60 dark:shadow-none">
-      <SyncedTableScroll minWidth={950} maxHeight={700}>
-        <Table className="min-w-full">
-          <TableHeader className="sticky top-0 z-10">
-            <TableRow className="border-b border-gray-100 bg-gray-50/80 backdrop-blur-xl dark:border-white/[0.06] dark:bg-gray-800/80">
-              {["SrNo.", "Date", "Name & Title", "Program & Session", "Short Description", "Status", "Image", "Actions"].map((header) => (
-                <TableCell 
-                  key={header} 
-                  isHeader 
-                  className={`px-5 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 ${
-                    header === "Actions" ? "text-right" : "text-left"
-                  }`}
-                >
-                  {header}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHeader>
+    <div>
+      <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        {(loading || isFetching) && (
+          <div className="px-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <StoryProofSkeleton key={`skeleton-${i}`} />
+            ))}
+          </div>
+        )}
 
-          <TableBody className="divide-y divide-gray-50 dark:divide-white/[0.04]">
-            {(loading || isFetching) && (
-              Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
-                <ShimmerRow key={`skeleton-${i}`} />
-              ))
-            )}
-            
-            {!loading && !!errorMessage && (
-              <TableRow>
-                <TableCell className="px-5 py-8" colSpan={8}>
-                  <div className="flex flex-col items-center justify-center gap-4 text-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 dark:bg-red-900/20">
-                      <svg className="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{errorMessage}</p>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage(1)}
-                        className="mt-3 inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-gray-900/20 transition-all hover:bg-gray-800 hover:shadow-xl hover:shadow-gray-900/30 active:scale-95 dark:bg-white dark:text-gray-900 dark:shadow-none dark:hover:bg-gray-100"
-                      >
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Try Again
-                      </button>
-                    </div>
+        {!loading && !!errorMessage && (
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(1)}
+              className="mt-4 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {!loading && !errorMessage && paged.length === 0 && (
+          <div className="px-6 py-16 text-center">
+            <p className="font-serif text-lg text-gray-700 dark:text-gray-200">{emptyMessage || "Nothing on the desk"}</p>
+            <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">
+              Stories arrive here when alumni submit them for review.
+            </p>
+          </div>
+        )}
+
+        {!loading && !errorMessage && paged.map((story) => {
+          const normalized = normalizeStoryStatus(story.status);
+          const isPending = normalized === "pending";
+          const isProcessing = Boolean(reviewingIds?.has(story.id) || deletingIds?.has(story.id));
+          const byline = [story.program, story.session].filter(Boolean).join(" · ");
+          const submitted = submittedLabel(story.date);
+          const excerpt = storyHtmlTextContent(story.shortDescription);
+
+          return (
+            <article
+              key={story.id}
+              className={`flex flex-col gap-4 border-b border-gray-100 px-6 py-6 last:border-0 sm:flex-row sm:gap-5 dark:border-gray-800 ${isProcessing ? "opacity-60" : ""}`}
+            >
+              {/* Cover — the story's image is content, not a thumbnail */}
+              <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-md bg-gray-100 sm:w-44 dark:bg-gray-800">
+                <img
+                  src={safeImageSrc(story.imageUrl)}
+                  alt={story.title ? `Cover image for “${story.title}”` : `${story.name}'s story image`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/176x132"; }}
+                />
+              </div>
+
+              {/* Proof body */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <StatusStamp status={story.status} />
+                    <h3 className="mt-1.5 font-serif text-xl font-semibold leading-snug text-gray-900 dark:text-gray-50">
+                      {story.title || "Untitled story"}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      By <span className="font-medium text-gray-700 dark:text-gray-300">{story.name || "—"}</span>
+                      {byline ? ` · ${byline}` : ""}
+                    </p>
                   </div>
-                </TableCell>
-              </TableRow>
-            )}
-            
-            {!loading && !errorMessage && paged.length === 0 && (
-              <TableRow>
-                <TableCell className="px-5 py-16" colSpan={8}>
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700">
-                      <svg className="h-10 w-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                    </div>
-                    <p className="mt-4 text-sm font-medium text-gray-500 dark:text-gray-400">{emptyMessage || "No stories found"}</p>
-                    <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Get started by adding your first alumni story</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-            
-            {!loading && !errorMessage && paged.map((story, idx) => (
-              <TableRow 
-                key={story.id} 
-                className="group transition-all duration-200 hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
-              >
-                <TableCell className="px-5 py-4">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gray-100 text-xs font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                    {startIdx + idx + 1}
-                  </span>
-                </TableCell>
-
-                <TableCell className="px-5 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                      <svg className="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{formatDate(story.date)}</span>
-                  </div>
-                </TableCell>
-
-                <TableCell className="px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-brand-600 text-sm font-bold text-white shadow-lg shadow-blue-500/30">
-                      {story.name?.charAt(0).toUpperCase() || "?"}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-gray-900 dark:text-white">{story.name || "-"}</div>
-                      {story.title && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{story.title}</div>
-                      )}
-                    </div>
-                  </div>
-                </TableCell>
-
-                <TableCell className="px-5 py-4">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{story.program || "-"}</span>
-                    {story.session && (
-                      <span className="inline-flex w-fit items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
-                        {story.session}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-
-                <TableCell className="px-5 py-4 max-w-xs">
-                  <p className="line-clamp-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                    {storyHtmlTextContent(story.shortDescription).slice(0, 200) || "-"}
-                  </p>
-                </TableCell>
-
-                <TableCell className="px-5 py-4">
-                  <StoryStatusBadge status={story.status} size="sm" />
-                  {normalizeStoryStatus(story.status) === "not-approved" && story.rejectionReason && (
-                    <p className="mt-1 line-clamp-2 text-xs text-error-600 dark:text-error-400">{story.rejectionReason}</p>
-                  )}
-                </TableCell>
-
-                <TableCell className="px-5 py-4">
-                  <div className="relative h-12 w-12 overflow-hidden rounded-xl ring-2 ring-gray-100 transition-all duration-300 group-hover:ring-blue-200 dark:ring-gray-800 dark:group-hover:ring-blue-800">
-                    <img
-                      src={safeImageSrc(story.imageUrl)}
-                      alt={`${story.name}'s story image`}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      loading="lazy"
-                      onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/64"; }}
-                    />
-                  </div>
-                </TableCell>
-
-                <TableCell className="px-5 py-4 text-right sticky right-0 z-20 bg-white dark:bg-gray-900/60 w-[180px] overflow-visible">
                   <StoryActionsDropdown
                     story={story}
                     isOpen={openActionMenuId === story.id}
@@ -556,7 +464,7 @@ const StoryTable: React.FC<StoryListProps> = ({
                     onClose={() => setOpenActionMenuId(null)}
                     canReview={canReview}
                     canDelete={canDelete}
-                    isProcessing={Boolean(reviewingIds?.has(story.id) || deletingIds?.has(story.id))}
+                    isProcessing={isProcessing}
                     onView={(s) => router.push(`/alumni-stories/${s.id}`)}
                     onEdit={(s) => router.push(`/alumni-stories/${s.id}/edit`)}
                     onApprove={(s) => {
@@ -573,44 +481,81 @@ const StoryTable: React.FC<StoryListProps> = ({
                       deleteModal.openModal();
                     }}
                   />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </SyncedTableScroll>
+                </div>
 
-      <div className="flex flex-col gap-4 border-t border-gray-100 bg-gray-50/50 px-6 py-4 dark:border-white/[0.06] dark:bg-gray-800/30 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {(() => {
-            const start = (currentPage - 1) * pageSize + 1;
-            const end = start + paged.length - 1;
-            const total = safeItems.length;
-            return (
-              <span>
-                Showing <span className="font-semibold text-gray-700 dark:text-gray-300">{paged.length ? start : 0}-{paged.length ? end : 0}</span> of <span className="font-semibold text-gray-700 dark:text-gray-300">{total}</span> stories
-              </span>
-            );
-          })()}
-        </span>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-500 dark:text-gray-400" htmlFor="page-size">Show</label>
-            <select
-              id="page-size"
-              className="rounded-xl border-0 bg-white py-2 pl-3 pr-8 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 transition-all hover:ring-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700 dark:hover:ring-gray-600"
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-          </div>
-          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))} />
-        </div>
+                <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                  {excerpt.slice(0, 280) || "No excerpt provided."}
+                </p>
+
+                {normalized === "not-approved" && story.rejectionReason ? (
+                  <p className="mt-2 border-l-2 border-amber-300 pl-3 text-xs text-gray-500 dark:border-amber-700 dark:text-gray-400">
+                    <span className="font-medium text-amber-700 dark:text-amber-400">Returned:</span> {story.rejectionReason}
+                  </p>
+                ) : null}
+
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {submitted ? (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Submitted {submitted}</span>
+                  ) : null}
+                  {isPending && canReview ? (
+                    <div className="ml-auto flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={isProcessing}
+                        onClick={() => {
+                          setApproveTargetId(story.id);
+                          approveModal.openModal();
+                        }}
+                        className="rounded-md bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      >
+                        Publish
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isProcessing}
+                        onClick={() => {
+                          setRejectTargetId(story.id);
+                          setRejectionReason("");
+                          rejectModal.openModal();
+                        }}
+                        className="rounded-md border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                      >
+                        Return to author
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </article>
+          );
+        })}
       </div>
+
+      {/* Footer */}
+      {!loading && !errorMessage && safeItems.length > 0 ? (
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            Showing {paged.length ? startIdx + 1 : 0}–{paged.length ? startIdx + paged.length : 0} of {safeItems.length} stories
+          </span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-500 dark:text-gray-400" htmlFor="page-size">Show</label>
+              <select
+                id="page-size"
+                className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))} />
+          </div>
+        </div>
+      ) : null}
 
       <Modal
         isOpen={approveModal.isOpen}
@@ -620,10 +565,12 @@ const StoryTable: React.FC<StoryListProps> = ({
         }}
         className="max-w-lg p-6"
       >
-        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Approve Story</h3>
+        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Publish story</h3>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Are you sure you want to approve this success story? It will be published and visible to the alumni
-          community.
+          Publishing makes this story visible to the alumni community.
+          {approveTargetStory ? (
+            <> <span className="font-medium text-gray-900 dark:text-white">“{approveTargetStory.title || approveTargetStory.name}”</span></>
+          ) : null}
         </p>
         {approveTargetStory && (
           <StoryActionEmailBlock
@@ -655,9 +602,9 @@ const StoryTable: React.FC<StoryListProps> = ({
               approveModal.closeModal();
               setApproveTargetId(null);
             }}
-            className="rounded-lg bg-success-600 px-4 py-2 text-sm font-medium text-white hover:bg-success-700"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
           >
-            Confirm Approval
+            Publish
           </button>
         </div>
       </Modal>
@@ -671,16 +618,16 @@ const StoryTable: React.FC<StoryListProps> = ({
         }}
         className="max-w-lg p-6"
       >
-        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Reject Story</h3>
+        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">Return story to author</h3>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Are you sure you want to reject this story? Please provide a reason so the alumni can revise and resubmit.
+          Tell the author what to change. They can revise and resubmit.
         </p>
         <textarea
           value={rejectionReason}
           onChange={(e) => setRejectionReason(e.target.value)}
           rows={4}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-          placeholder="Enter rejection reason..."
+          placeholder="What needs revising?"
         />
         {rejectTargetStory && (
           <StoryActionEmailBlock
@@ -712,9 +659,9 @@ const StoryTable: React.FC<StoryListProps> = ({
               setRejectionReason("");
             }}
             disabled={!rejectionReason.trim()}
-            className="rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white hover:bg-error-700 disabled:opacity-50"
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
           >
-            Confirm Rejection
+            Return to author
           </button>
         </div>
       </Modal>
@@ -850,7 +797,7 @@ function AlumniPageInner() {
       if (!res.ok) throw new Error(`Approve failed: ${res.status}`);
       await queryClient.invalidateQueries({ queryKey: alumniStoriesKey, exact: false });
       await queryClient.invalidateQueries({ queryKey: ["alumni-stories-counts"] });
-      setToast({ message: "Story approved successfully", type: "success" });
+      setToast({ message: "Story published", type: "success" });
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Failed to approve", type: "error" });
     } finally {
@@ -873,7 +820,7 @@ function AlumniPageInner() {
       if (!res.ok) throw new Error(`Reject failed: ${res.status}`);
       await queryClient.invalidateQueries({ queryKey: alumniStoriesKey, exact: false });
       await queryClient.invalidateQueries({ queryKey: ["alumni-stories-counts"] });
-      setToast({ message: "Story rejected", type: "success" });
+      setToast({ message: "Story returned to author", type: "success" });
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Failed to reject", type: "error" });
     } finally {
@@ -907,91 +854,100 @@ function AlumniPageInner() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950/20">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header Section */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-brand-700 shadow-lg shadow-blue-600/25">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Masthead */}
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b-2 border-gray-900 pb-5 dark:border-gray-100">
+          <div>
+            <h1 className="font-serif text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
               Alumni Stories
             </h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Review submissions and publish success stories for the community.
+            </p>
           </div>
-          <p className="mt-2 text-base text-gray-500 dark:text-gray-400 max-w-2xl">
-            Celebrate the achievements of our graduates. Browse inspiring stories or share a new success story with our community.
-          </p>
+          <div className="flex items-center gap-2" role="tablist" aria-label="Story sections">
+            {TABS.map((tab, idx) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={selected === tab.key}
+                tabIndex={selected === tab.key ? 0 : -1}
+                onClick={() => handleTabChange(tab.key)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    handleTabChange(TABS[(idx + 1) % TABS.length].key);
+                  } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    handleTabChange(TABS[(idx - 1 + TABS.length) % TABS.length].key);
+                  }
+                }}
+                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 ${
+                  selected === tab.key
+                    ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+                    : "text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <ComponentCard className="border-0 bg-white/70 shadow-2xl shadow-gray-200/50 backdrop-blur-xl dark:bg-gray-900/70 dark:shadow-none dark:ring-1 dark:ring-white/[0.08]">
-          {/* Modern Tab Navigation */}
-          <div className="mb-8">
-            <div className="flex flex-wrap gap-2 p-1.5 bg-gray-100/80 rounded-2xl dark:bg-gray-800/50 w-fit">
-              {TABS.map((tab, idx) => (
-                <button
-                  key={tab.key}
-                  className={`relative flex items-center gap-2.5 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-300 ${
-                    selected === tab.key
-                      ? "bg-white text-blue-700 shadow-lg shadow-blue-900/10 dark:bg-gray-700 dark:text-blue-400 dark:shadow-none"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/50"
-                  }`}
-                  onClick={() => handleTabChange(tab.key)}
-                  role="tab"
-                  aria-selected={selected === tab.key}
-                  tabIndex={selected === tab.key ? 0 : -1}
-                  onKeyDown={(e) => {
-                    if (e.key === "ArrowRight") {
-                      e.preventDefault();
-                      const nextIdx = (idx + 1) % TABS.length;
-                      handleTabChange(TABS[nextIdx].key);
-                    } else if (e.key === "ArrowLeft") {
-                      e.preventDefault();
-                      const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                      handleTabChange(TABS[prevIdx].key);
-                    }
-                  }}
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                  </svg>
-                  {tab.label}
-                  {selected === tab.key && (
-                    <span className="absolute inset-0 rounded-xl ring-2 ring-blue-500/20 dark:ring-blue-400/20" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={`transition-all duration-300 ${isTabAnimating ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}>
-            {selected === "viewStories" && (
-              <div className="space-y-6">
-                {/* Search and Actions Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="relative flex-1 max-w-md">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className={`transition-all duration-300 ${isTabAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
+          {selected === "viewStories" && (
+            <div className="space-y-5">
+              {/* Desk toolbar */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by status">
+                  {STATUS_TABS.map((tab) => {
+                    const active = selectedStatus === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setSelectedStatus(tab.key)}
+                        aria-pressed={active}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                          active
+                            ? "border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900"
+                            : "border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-500 dark:hover:text-gray-100"
+                        }`}
+                      >
+                        {tab.label}
+                        <span className={`tabular-nums ${active ? "opacity-70" : "text-gray-400 dark:text-gray-500"}`}>
+                          {statusCounts[tab.key]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                     </div>
                     <input
                       id="stories-search"
-                      type="text"
+                      type="search"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search by name, program, session..."
-                      className="w-full rounded-2xl border-0 bg-gray-100 py-3 pl-11 pr-4 text-sm font-medium text-gray-900 shadow-inner transition-all duration-200 placeholder:text-gray-400 focus:bg-white focus:shadow-lg focus:shadow-gray-200/50 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:focus:bg-gray-800 dark:focus:shadow-none dark:focus:ring-blue-600"
-                      aria-label="Search stories by name, program, session, or description"
+                      placeholder="Search title, author, program…"
+                      className="w-56 rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500"
+                      aria-label="Search stories by title, author, or program"
                     />
                     {searchQuery && (
                       <button
+                        type="button"
                         onClick={() => setSearchQuery("")}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        aria-label="Clear search"
                       >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -999,7 +955,6 @@ function AlumniPageInner() {
                       </button>
                     )}
                   </div>
-                  
                   <button
                     type="button"
                     onClick={() => {
@@ -1007,89 +962,67 @@ function AlumniPageInner() {
                       refetch();
                     }}
                     disabled={isFetching}
-                    className="group inline-flex items-center gap-2.5 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200 transition-all duration-200 hover:bg-gray-50 hover:shadow-md hover:ring-gray-300 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-gray-700 dark:hover:ring-gray-600"
+                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                     aria-label="Refresh stories list"
                   >
-                    <svg className={`h-4 w-4 transition-transform duration-500 ${isFetching ? 'animate-spin' : 'group-hover:rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    {isFetching ? "Syncing..." : "Refresh"}
+                    {isFetching ? "Syncing" : "Refresh"}
                   </button>
                 </div>
+              </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {STATUS_TABS.map((tab) => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setSelectedStatus(tab.key)}
-                      className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                        selectedStatus === tab.key
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                      }`}
-                    >
-                      {tab.label}
-                      <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-                        {statusCounts[tab.key]}
-                      </span>
-                    </button>
-                  ))}
+              <StoryDesk
+                items={filteredStories}
+                loading={isLoading}
+                isFetching={isFetching}
+                errorMessage={isError ? (error?.message ?? "Failed to load data.") : null}
+                emptyMessage="Nothing on the desk"
+                deletingIds={deletingIds}
+                reviewingIds={reviewingIds}
+                canDelete={isSuperAdmin}
+                canReview={canReviewStories}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onDelete={async (id: string) => {
+                  try {
+                    setDeletingIds((prev) => new Set(prev).add(id));
+                    const res = await fetch(`/api/alumni-stories/${id}`, { method: "DELETE" });
+                    if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+                    await queryClient.invalidateQueries({ queryKey: alumniStoriesKey, exact: false });
+                    await queryClient.refetchQueries({ queryKey: alumniStoriesKey, exact: false });
+                    setToast({ message: "Story deleted", type: "success" });
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : "Failed to delete. Please try again.";
+                    setToast({ message: msg, type: "error" });
+                  } finally {
+                    setDeletingIds((prev) => {
+                      const next = new Set(prev);
+                      next.delete(id);
+                      return next;
+                    });
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {selected === "addStory" && (
+            <ComponentCard className="bg-white dark:bg-gray-900">
+              <div className="p-2">
+                <div className="mb-6">
+                  <h2 className="font-serif text-2xl font-bold text-gray-900 dark:text-white">Share an Alumni Story</h2>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Fill in the details below to add a new story to the collection.</p>
                 </div>
-
-                <StoryTable
-                  items={filteredStories}
-                  loading={isLoading}
-                  isFetching={isFetching}
-                  errorMessage={isError ? (error?.message ?? "Failed to load data.") : null}
-                  emptyMessage="No stories available"
-                  deletingIds={deletingIds}
-                  reviewingIds={reviewingIds}
-                  canDelete={isSuperAdmin}
-                  canReview={canReviewStories}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                  onDelete={async (id: string) => {
-                    try {
-                      setDeletingIds((prev) => new Set(prev).add(id));
-                      const res = await fetch(`/api/alumni-stories/${id}`, { method: "DELETE" });
-                      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
-                      await queryClient.invalidateQueries({ queryKey: alumniStoriesKey, exact: false });
-                      await queryClient.refetchQueries({ queryKey: alumniStoriesKey, exact: false });
-                      setToast({ message: "Story deleted successfully", type: "success" });
-                    } catch (err) {
-                      const msg = err instanceof Error ? err.message : "Failed to delete. Please try again.";
-                      setToast({ message: msg, type: "error" });
-                    } finally {
-                      setDeletingIds((prev) => {
-                        const next = new Set(prev);
-                        next.delete(id);
-                        return next;
-                      });
-                    }
-                  }}
+                <AlumniSuccessForm
+                  mode="admin"
+                  onSuccess={() => setToast({ message: "Story published", type: "success" })}
                 />
               </div>
-            )}
-
-            {selected === "addStory" && (
-              <div className="animate-fade-in-up">
-                <div className="rounded-3xl border border-dashed border-gray-300/80 bg-gradient-to-b from-white to-gray-50/50 p-2 dark:border-white/[0.08] dark:from-gray-900 dark:to-gray-900/50">
-                  <div className="rounded-2xl bg-white/80 p-8 shadow-sm dark:bg-gray-800/50">
-                    <div className="mb-8">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white">Share an Alumni Story</h2>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Fill in the details below to add a new inspiring story to our collection.</p>
-                    </div>
-                    <AlumniSuccessForm
-                      mode="admin"
-                      onSuccess={() => setToast({ message: "Story published successfully!", type: "success" })}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </ComponentCard>
+            </ComponentCard>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1097,7 +1030,7 @@ function AlumniPageInner() {
 
 function safeImageSrc(input?: string): string {
   const u = String(input || "").trim();
-  if (!u || u === "null") return "https://via.placeholder.com/64";
+  if (!u || u === "null") return "https://via.placeholder.com/176x132";
   try {
     if (/^https?:\/\//i.test(u)) {
       const parsed = new URL(u);
@@ -1107,7 +1040,7 @@ function safeImageSrc(input?: string): string {
     if (u.startsWith('/')) return u;
     return `/images/${u}`;
   } catch {
-    return "https://via.placeholder.com/64";
+    return "https://via.placeholder.com/176x132";
   }
 }
 
