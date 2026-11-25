@@ -1486,11 +1486,9 @@ export default function LeadershipPage() {
     }
   };
 
-  const handleRecommendSubmit = async (opts?: { skipEmail?: boolean; previewAfter?: boolean }) => {
-    if (!recommendApp || !recommendRole) return;
-    setRecommendProcessing(true);
+  const saveRecommendation = async (): Promise<boolean> => {
+    if (!recommendApp || !recommendRole) return false;
     try {
-      const email = recommendApp.email;
       const res = await fetch("/api/leadership/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1501,41 +1499,64 @@ export default function LeadershipPage() {
           originalRole: recommendApp.position,
           chapterOrAssociationName: recommendApp.categoryName || null,
           alumniName: recommendApp.name,
-          alumniEmail: email,
-          skipEmail: opts?.skipEmail ?? false,
+          alumniEmail: recommendApp.email,
+          skipEmail: true,
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data as { error?: string })?.error || "Failed");
-      toast.success(data?.message || "Recommendation saved");
-      void refetchRecommendations();
-
-      if (opts?.previewAfter) {
-        const tpl = generateAdminActionEmail({
-          actionType: EMAIL_ACTION_TYPE.LEADERSHIP_RECOMMENDATION,
-          alumniName: recommendApp.name || "Alumni",
-        });
-        const orgName =
-          recommendApp.categoryName ||
-          (recommendApp.type === "chapter" ? "your selected chapter" : "the Alumni Association");
-        setRecommendEmailInitial({
-          subject: tpl.subject,
-          body: tpl.html
-            .replaceAll("{RECOMMENDED_ROLE}", recommendRoleDisplayName(recommendRole))
-            .replaceAll("{ORG}", orgName),
-        });
-        setRecommendEmailPreviewOpen(true);
-      } else {
-        recommendModal.closeModal();
-        setRecommendApp(null);
-        setRecommendRole("");
-        setRecommendStep("select");
+      if (!res.ok) {
+        toast.error((data as { error?: string })?.error || "Failed to save recommendation");
+        return false;
       }
+      void refetchRecommendations();
+      return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save recommendation");
+      return false;
+    }
+  };
+
+  const buildRecommendEmailInitial = () => {
+    const tpl = generateAdminActionEmail({
+      actionType: EMAIL_ACTION_TYPE.LEADERSHIP_RECOMMENDATION,
+      alumniName: recommendApp?.name || "Alumni",
+    });
+    const orgName =
+      recommendApp?.categoryName ||
+      (recommendApp?.type === "chapter" ? "your selected chapter" : "the Alumni Association");
+    return {
+      subject: tpl.subject,
+      body: tpl.html
+        .replaceAll("{RECOMMENDED_ROLE}", recommendRoleDisplayName(recommendRole))
+        .replaceAll("{ORG}", orgName),
+    };
+  };
+
+  const resetRecommendFlow = () => {
+    recommendModal.closeModal();
+    setRecommendApp(null);
+    setRecommendRole("");
+    setRecommendStep("select");
+    setRecommendEmailInitial(null);
+  };
+
+  const handleRecommendSubmit = async () => {
+    setRecommendProcessing(true);
+    try {
+      const ok = await saveRecommendation();
+      if (!ok) return;
+      toast.success("Recommendation saved");
+      resetRecommendFlow();
     } finally {
       setRecommendProcessing(false);
     }
+  };
+
+  // Preview is a read: nothing is saved until the admin sends or confirms.
+  const handleRecommendPreview = () => {
+    if (!recommendApp || !recommendRole) return;
+    setRecommendEmailInitial(buildRecommendEmailInitial());
+    setRecommendEmailPreviewOpen(true);
   };
 
   const handleSendAcknowledgement = async () => {
@@ -3393,7 +3414,7 @@ export default function LeadershipPage() {
                           <strong>{recommendApp.name}</strong>?
                         </p>
                         <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                          Confirming will save the recommendation. You can send an email manually via the Preview Email button.
+                          Preview Email lets you review the email first — nothing is saved until you confirm or send.
                         </p>
                       </div>
 
@@ -3415,7 +3436,7 @@ export default function LeadershipPage() {
                         <button
                           type="button"
                           disabled={recommendProcessing}
-                          onClick={() => void handleRecommendSubmit({ skipEmail: true })}
+                          onClick={() => void handleRecommendSubmit()}
                           className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
                         >
                           {recommendProcessing ? "Saving…" : "Confirm"}
@@ -3423,7 +3444,7 @@ export default function LeadershipPage() {
                         <button
                           type="button"
                           disabled={recommendProcessing || !recommendApp.email}
-                          onClick={() => void handleRecommendSubmit({ skipEmail: true, previewAfter: true })}
+                          onClick={handleRecommendPreview}
                           className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                         >
                           {recommendProcessing && (
@@ -3438,39 +3459,41 @@ export default function LeadershipPage() {
                     </div>
                   )}
 
-                  {/* Recommendation email preview modal (same pattern as underapproval status change) */}
+                  {/* Recommendation email preview — shown before the recommendation is saved.
+                      Sending saves the recommendation, then sends the email. */}
                   {recommendEmailInitial && (
                     <EmailPreviewModal
                       isOpen={recommendEmailPreviewOpen}
                       onClose={() => {
-                        if (!recommendEmailMutation.isPending) {
+                        if (!recommendProcessing && !recommendEmailMutation.isPending) {
                           setRecommendEmailPreviewOpen(false);
-                          recommendModal.closeModal();
-                          setRecommendApp(null);
-                          setRecommendRole("");
-                          setRecommendStep("select");
                         }
                       }}
                       initial={recommendEmailInitial}
-                      sending={recommendEmailMutation.isPending}
+                      sending={recommendProcessing || recommendEmailMutation.isPending}
                       onSend={async (payload) => {
                         if (!recommendApp) return;
-                        const res = await recommendEmailMutation.mutateAsync({
-                          alumniId: recommendApp.alumniId,
-                          recipientEmail: recommendApp.email,
-                          actionType: EMAIL_ACTION_TYPE.LEADERSHIP_RECOMMENDATION,
-                          subject: payload.subject,
-                          body: payload.body,
-                        });
-                        if (res.ok) {
-                          toast.success("Email sent");
+                        setRecommendProcessing(true);
+                        try {
+                          const saved = await saveRecommendation();
+                          if (!saved) return;
+                          const res = await recommendEmailMutation.mutateAsync({
+                            alumniId: recommendApp.alumniId,
+                            recipientEmail: recommendApp.email,
+                            actionType: EMAIL_ACTION_TYPE.LEADERSHIP_RECOMMENDATION,
+                            subject: payload.subject,
+                            body: payload.body,
+                          });
+                          if (res.ok) {
+                            toast.success("Recommendation saved and email sent");
+                          } else {
+                            toast.success("Recommendation saved");
+                            toast.error(res.errorMessage || "Failed to send email");
+                          }
                           setRecommendEmailPreviewOpen(false);
-                          recommendModal.closeModal();
-                          setRecommendApp(null);
-                          setRecommendRole("");
-                          setRecommendStep("select");
-                        } else {
-                          toast.error(res.errorMessage || "Failed to send email");
+                          resetRecommendFlow();
+                        } finally {
+                          setRecommendProcessing(false);
                         }
                       }}
                     />
