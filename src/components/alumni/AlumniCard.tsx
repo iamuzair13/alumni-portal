@@ -1,7 +1,9 @@
 "use client";
 import React from "react";
 import { useSession } from "next-auth/react";
-import { TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon, BoxIconLine, CopyIcon } from "@/icons";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon, BoxIconLine, CopyIcon, PencilIcon, DownloadIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
 import { canModify } from "@/lib/alumniProfile";
@@ -325,7 +327,7 @@ import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components
 import Pagination from "@/components/tables/Pagination";
 import { useCardStatus, cardStatusKey, type CardData } from "@/app/queries/fetch-card-status";
 import { useCardApplicants, cardApplicantsKey, type CardApplicantsResponse, type CardStatusFilter, type OverdueType } from "@/app/queries/fetch-card-applicants";
-import PrintCardButton from "./PrintCardButton";
+
 
 type SortDirection = "asc" | "desc";
 type SortKey = "name" | "passingYear" | "program" | "designation" | "organization" | "contact" | "department" | "id" | "faculty";
@@ -793,9 +795,25 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const [isSavingPicture, setIsSavingPicture] = React.useState(false);
     const [showCropModal, setShowCropModal] = React.useState(false);
     const [pendingCropFile, setPendingCropFile] = React.useState<File | null>(null);
-    
-    // Preview button available for ALL statuses (fixed rendering issue - no conditional logic)
-    const canPreview = true;
+    const [showEditModal, setShowEditModal] = React.useState(false);
+    const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
+    const [isSavingDetails, setIsSavingDetails] = React.useState(false);
+    const [editError, setEditError] = React.useState<string | null>(null);
+    const [editForm, setEditForm] = React.useState({
+      cnicno: "",
+      preference: "collect" as "collect" | "deliver",
+      city: "",
+      society: "",
+      street: "",
+      house: "",
+      validityDate: "",
+    });
+    const [menuOpen, setMenuOpen] = React.useState(false);
+    const [menuPos, setMenuPos] = React.useState<{ top: number; right: number; flip: boolean } | null>(null);
+    const menuBtnRef = React.useRef<HTMLButtonElement>(null);
+    const menuRef = React.useRef<HTMLDivElement>(null);
+    const reducedMotion = useReducedMotion();
+
     const canEdit = canModify(session?.user); // Includes both admin and superadmin
     
     const handleView = React.useCallback(() => {
@@ -900,6 +918,152 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       throw new Error("Failed to load card picture");
     };
 
+    const handleEdit = async () => {
+      if (!sapId || sapId.trim() === "") {
+        toast.error("Invalid SAP ID");
+        return;
+      }
+      setIsLoadingDetails(true);
+      setEditError(null);
+      try {
+        const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, { cache: "no-store" });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error((j as { error?: string })?.error || `Failed to load card (${res.status})`);
+        }
+        const c = (j?.card ?? {}) as Record<string, unknown>;
+        const rawAddr = String(c?.cardaddress ?? "").trim();
+        const isDeliver =
+          Boolean(String(c?.delivery_city ?? "").trim()) ||
+          (rawAddr !== "" && rawAddr !== "Collect from Campus");
+        setEditForm({
+          cnicno: String(c?.cnicno ?? ""),
+          preference: isDeliver ? "deliver" : "collect",
+          city: String(c?.delivery_city ?? ""),
+          society: String(c?.delivery_society_name ?? ""),
+          street: String(c?.delivery_street_no ?? ""),
+          house: String(c?.delivery_house_no ?? ""),
+          validityDate: c?.validity_date ? String(c.validity_date).slice(0, 10) : "",
+        });
+        setShowEditModal(true);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to load card details");
+      } finally {
+        setIsLoadingDetails(false);
+      }
+    };
+
+    const handleSaveEdit = async () => {
+      if (
+        editForm.preference === "deliver" &&
+        (!editForm.city.trim() || !editForm.society.trim() || !editForm.street.trim() || !editForm.house.trim())
+      ) {
+        setEditError("Delivery address requires house number, street, society name, and city.");
+        return;
+      }
+
+      setIsSavingDetails(true);
+      setEditError(null);
+      const loadingToast = toast.loading("Saving application details...");
+      try {
+        const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "update_details",
+            deliveryPreference: editForm.preference,
+            cnicno: editForm.cnicno,
+            delivery_city: editForm.city,
+            delivery_society_name: editForm.society,
+            delivery_street_no: editForm.street,
+            delivery_house_no: editForm.house,
+            validity_date: editForm.validityDate,
+          }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error((j as { error?: string })?.error || `Failed to save (${res.status})`);
+        }
+
+        toast.dismiss(loadingToast);
+        toast.success("Application details updated");
+        setShowEditModal(false);
+        queryClient.invalidateQueries({ queryKey: ["alumni", "card", "applicants"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["alumni-cards", "status", sapId] });
+      } catch (err) {
+        toast.dismiss(loadingToast);
+        setEditError(err instanceof Error ? err.message : "Failed to save details");
+      } finally {
+        setIsSavingDetails(false);
+      }
+    };
+
+    const MENU_HEIGHT = 240;
+
+    const toggleMenu = () => {
+      if (menuOpen) {
+        setMenuOpen(false);
+        return;
+      }
+      const rect = menuBtnRef.current?.getBoundingClientRect();
+      if (rect) {
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const flip = spaceBelow < MENU_HEIGHT;
+        const top = flip
+          ? Math.max(8, rect.top - MENU_HEIGHT - 6)
+          : rect.bottom + 6;
+        setMenuPos({ top, right: Math.max(8, window.innerWidth - rect.right), flip });
+      }
+      setMenuOpen(true);
+    };
+
+    React.useEffect(() => {
+      if (!menuOpen) return;
+      const onDocMouseDown = (e: MouseEvent) => {
+        const t = e.target as Node;
+        if (menuRef.current?.contains(t) || menuBtnRef.current?.contains(t)) return;
+        setMenuOpen(false);
+      };
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setMenuOpen(false);
+          menuBtnRef.current?.focus();
+        }
+      };
+      const close = () => setMenuOpen(false);
+      document.addEventListener("mousedown", onDocMouseDown);
+      document.addEventListener("keydown", onKey);
+      window.addEventListener("scroll", close, true);
+      window.addEventListener("resize", close);
+      return () => {
+        document.removeEventListener("mousedown", onDocMouseDown);
+        document.removeEventListener("keydown", onKey);
+        window.removeEventListener("scroll", close, true);
+        window.removeEventListener("resize", close);
+      };
+    }, [menuOpen]);
+
+    React.useEffect(() => {
+      if (!menuOpen) return;
+      menuRef.current?.querySelector<HTMLButtonElement>("[role='menuitem']")?.focus();
+    }, [menuOpen]);
+
+    const handleDownloadCardPdf = () => {
+      const url = `/alumni-profile/card-print?sapid=${encodeURIComponent(sapId)}&download=1`;
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        toast.error("Please allow popups to download PDF");
+        return;
+      }
+      toast.success("Downloading PDF...");
+    };
+
+    const runMenuAction = (fn: () => void) => (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setMenuOpen(false);
+      fn();
+    };
+
     const handleEditPicture = async () => {
       if (!sapId || sapId.trim() === "") {
         toast.error("Invalid SAP ID");
@@ -965,6 +1129,35 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
     };
 
+    const menuItems: Array<{
+      key: string;
+      label: string;
+      icon: React.FC<{ className?: string }>;
+      tint: string;
+      disabled: boolean;
+      run: () => void;
+    }> = [
+      ...(canEdit
+        ? [
+            { key: "view", label: "View profile", icon: EyeIcon, tint: "group-hover:text-blue-600 dark:group-hover:text-blue-400", disabled: false, run: handleView },
+            { key: "edit", label: isLoadingDetails ? "Loading…" : "Edit application", icon: PencilIcon, tint: "group-hover:text-amber-600 dark:group-hover:text-amber-400", disabled: isLoadingDetails, run: () => void handleEdit() },
+          ]
+        : []),
+      { key: "download", label: "Download card PDF", icon: DownloadIcon, tint: "group-hover:text-gray-700 dark:group-hover:text-gray-200", disabled: false, run: handleDownloadCardPdf },
+      ...(canEdit
+        ? [
+            { key: "edit-picture", label: isSavingPicture ? "Loading…" : "Edit picture", icon: FileIcon, tint: "group-hover:text-success-600 dark:group-hover:text-success-400", disabled: isSavingPicture, run: () => void handleEditPicture() },
+          ]
+        : []),
+    ];
+
+    const menuListVariants = reducedMotion
+      ? undefined
+      : { hidden: {}, show: { transition: { staggerChildren: 0.025 } } };
+    const menuItemVariants = reducedMotion
+      ? undefined
+      : { hidden: { opacity: 0, y: -4 }, show: { opacity: 1, y: 0, transition: { duration: 0.12 } } };
+
     return (
       <>
         <PassportPhotoCropModal
@@ -981,54 +1174,84 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           }}
           title="Edit Card Picture"
         />
-        <div role="group" aria-label="Row actions" className=" items-center gap-2 flex flex-row justify-start flex-wrap">
-          {canEdit && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleView();
-              }}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              aria-label="View Profile"
-              title="View Profile"
-            >
-              <EyeIcon className="h-4 w-4" />
-            </button>
-          )}
-          {canPreview && (
-            <PrintCardButton sapId={sapId} studentName={studentName} registrationNo={alumItem.registrationno} />
-          )}
-          {canEdit && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEditPicture();
-              }}
-              disabled={isSavingPicture || isDeleting}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-success-500 focus-visible:ring-offset-1 hover:text-success-600 hover:bg-success-50 dark:hover:bg-success-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Edit Picture"
-              title="Edit Picture"
-            >
-              <FileIcon className="h-4 w-4" />
-            </button>
-          )}
-          {canEdit && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDeleteModal(true);
-              }}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-              aria-label="Delete Card"
-              title="Delete Card"
-            >
-              <TrashBinIcon className="h-4 w-4" />
-            </button>
-          )}
+        <div className="relative inline-flex items-center justify-end">
+          <button
+            ref={menuBtnRef}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMenu();
+            }}
+            disabled={isDeleting}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+              menuOpen
+                ? "bg-gray-100 text-gray-800 shadow-inner dark:bg-gray-800 dark:text-gray-200"
+                : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            }`}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label={`Actions for ${studentName}`}
+            title="Actions"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5.5h.01M12 12h.01M12 18.5h.01" />
+            </svg>
+          </button>
         </div>
+
+        {typeof document !== "undefined" && createPortal(
+          <AnimatePresence>
+            {menuOpen && menuPos && (
+              <motion.div
+                ref={menuRef}
+                role="menu"
+                aria-label={`Actions for ${studentName}`}
+                initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: menuPos.flip ? 5 : -5 }}
+                animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: menuPos.flip ? 4 : -4 }}
+                transition={{ duration: 0.14, ease: "easeOut" }}
+                className="fixed z-[100] w-48 rounded-xl border border-gray-200/80 bg-white p-1 shadow-[0_8px_30px_-6px_rgba(15,23,42,0.18),0_1px_3px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.04] dark:border-gray-700 dark:bg-gray-800"
+                style={{
+                  top: menuPos.top,
+                  right: menuPos.right,
+                  transformOrigin: menuPos.flip ? "bottom right" : "top right",
+                }}
+              >
+                <motion.div variants={menuListVariants} initial="hidden" animate="show">
+                  {menuItems.map(({ key, label, icon: ItemIcon, tint, disabled, run }) => (
+                    <motion.div key={key} variants={menuItemVariants}>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={runMenuAction(run)}
+                        disabled={disabled}
+                        className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-200 dark:hover:bg-gray-700/60"
+                      >
+                        <ItemIcon className={`h-4 w-4 shrink-0 text-gray-400 transition-colors ${tint}`} />
+                        {label}
+                      </button>
+                    </motion.div>
+                  ))}
+                </motion.div>
+
+                {canEdit && (
+                  <>
+                    <div role="separator" className="mx-1 my-1 border-t border-gray-100 dark:border-gray-700" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={runMenuAction(() => setShowDeleteModal(true))}
+                      className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus-visible:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    >
+                      <TrashBinIcon className="h-4 w-4 shrink-0" /> Delete card
+                    </button>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
         
         <Modal
           isOpen={showDeleteModal}
@@ -1075,6 +1298,175 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDeleting ? "Deleting..." : "Delete Card"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditError(null);
+          }}
+          showCloseButton={true}
+          className="max-w-xl mx-auto"
+        >
+          <div className="p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Edit Alumni Card Application
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              {studentName} (SAP ID: {sapId})
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor={`edit-cnic-${sapId}`}
+                  className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  CNIC / Passport No.
+                </label>
+                <input
+                  id={`edit-cnic-${sapId}`}
+                  type="text"
+                  value={editForm.cnicno}
+                  onChange={(e) => setEditForm((f) => ({ ...f, cnicno: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor={`edit-preference-${sapId}`}
+                  className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Delivery preference
+                </label>
+                <select
+                  id={`edit-preference-${sapId}`}
+                  value={editForm.preference}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, preference: e.target.value as "collect" | "deliver" }))
+                  }
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="collect">Collect from Campus</option>
+                  <option value="deliver">Deliver to address</option>
+                </select>
+              </div>
+
+              {editForm.preference === "deliver" && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor={`edit-house-${sapId}`}
+                      className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      House number <span className="text-error-500">*</span>
+                    </label>
+                    <input
+                      id={`edit-house-${sapId}`}
+                      type="text"
+                      value={editForm.house}
+                      onChange={(e) => setEditForm((f) => ({ ...f, house: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`edit-street-${sapId}`}
+                      className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Street No. <span className="text-error-500">*</span>
+                    </label>
+                    <input
+                      id={`edit-street-${sapId}`}
+                      type="text"
+                      value={editForm.street}
+                      onChange={(e) => setEditForm((f) => ({ ...f, street: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`edit-society-${sapId}`}
+                      className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Society name <span className="text-error-500">*</span>
+                    </label>
+                    <input
+                      id={`edit-society-${sapId}`}
+                      type="text"
+                      value={editForm.society}
+                      onChange={(e) => setEditForm((f) => ({ ...f, society: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`edit-city-${sapId}`}
+                      className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      City <span className="text-error-500">*</span>
+                    </label>
+                    <input
+                      id={`edit-city-${sapId}`}
+                      type="text"
+                      value={editForm.city}
+                      onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label
+                  htmlFor={`edit-validity-${sapId}`}
+                  className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Validity date
+                </label>
+                <input
+                  id={`edit-validity-${sapId}`}
+                  type="date"
+                  value={editForm.validityDate}
+                  onChange={(e) => setEditForm((f) => ({ ...f, validityDate: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Leave empty to keep the current validity date.
+                </p>
+              </div>
+            </div>
+
+            {editError && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800/50 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+                {editError}
+              </div>
+            )}
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditError(null);
+                }}
+                disabled={isSavingDetails}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={isSavingDetails}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingDetails ? "Saving..." : "Save changes"}
               </button>
             </div>
           </div>
@@ -1156,23 +1548,24 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       </div>
   
       {/* ─── Main Table Container ─── */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xl shadow-gray-200/50 dark:border-gray-800 dark:bg-gray-900 dark:shadow-none">
-        {/* Synced Scrollbar */}
-        <div 
+      <div className="relative overflow-hidden rounded-2xl bg-white ring-1 ring-gray-950/[0.08] shadow-[0_1px_2px_rgba(16,24,40,0.05),0_24px_48px_-32px_rgba(16,24,40,0.35)] dark:bg-gray-900 dark:ring-white/10 dark:shadow-none">
+        {/* Synced top scrollbar — slim pan rail mirroring the table's horizontal position */}
+        <div
           ref={topScrollbarRef}
-          className="top-horizontal-scrollbar w-full overflow-x-auto overflow-y-hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+          aria-hidden="true"
+          className="relative w-full overflow-x-auto overflow-y-hidden border-b border-gray-200/70 bg-gradient-to-b from-gray-50 to-white dark:border-white/10 dark:from-gray-900/70 dark:to-gray-900"
           style={{
-            height: "24px",
-            scrollbarWidth: "auto",
-            scrollbarColor: "#1c8353 #e5e7eb",
+            height: "14px",
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(28, 131, 83, 0.5) rgba(148, 163, 184, 0.12)",
           }}
         >
           <div className="table-scrollbar-content h-full" style={{ minWidth: "800px" }} />
         </div>
-  
-        <div 
+
+        <div
           ref={tableContainerRef}
-          className="max-w-full overflow-x-auto custom-scrollbar max-h-[680px] overflow-y-auto relative"
+          className="relative max-h-[680px] max-w-full overflow-x-auto overflow-y-auto custom-scrollbar"
           style={{
             scrollbarWidth: "none",
             msOverflowStyle: "none",
@@ -1183,106 +1576,106 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             <table className="min-w-full border-collapse">
               {/* ─── Table Header ─── */}
               <thead className="sticky top-0 z-20">
-                <tr className="bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
-                  <th className="w-12 px-4 py-4 text-left">
+                <tr className="bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200/90 dark:border-white/10 [&>th]:py-3.5">
+                  <th className="w-12 px-4 text-left">
                     <span className="sr-only">Expand</span>
                   </th>
-                  
-                  <SortableHeader 
-                    label="Full Name" 
-                    sortKey="name" 
-                    currentSort={sortKey} 
-                    sortDir={sortDir} 
+
+                  <SortableHeader
+                    label="Full Name"
+                    sortKey="name"
+                    currentSort={sortKey}
+                    sortDir={sortDir}
                     onSort={toggleSort}
                     className="min-w-[180px]"
                   />
-                  
-                  <SortableHeader 
-                    label="SAP ID / Reg. No" 
-                    sortKey="id" 
-                    currentSort={sortKey} 
-                    sortDir={sortDir} 
+
+                  <SortableHeader
+                    label="SAP ID / Reg. No"
+                    sortKey="id"
+                    currentSort={sortKey}
+                    sortDir={sortDir}
                     onSort={toggleSort}
                     className="min-w-[140px]"
                   />
-                  
-                  <SortableHeader 
-                    label="Email" 
-                    sortKey="contact" 
-                    currentSort={sortKey} 
-                    sortDir={sortDir} 
+
+                  <SortableHeader
+                    label="Email"
+                    sortKey="contact"
+                    currentSort={sortKey}
+                    sortDir={sortDir}
                     onSort={toggleSort}
                     className="min-w-[220px] hidden lg:table-cell"
                   />
-                  
-                  <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[240px] hidden lg:table-cell">
+
+                  <th className="px-4 text-left text-[11px] font-semibold text-gray-500/90 dark:text-gray-400 uppercase tracking-[0.14em] min-w-[200px] hidden lg:table-cell">
                     Home Address
                   </th>
-                  
-                  <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[240px] hidden lg:table-cell">
+
+                  <th className="px-4 text-left text-[11px] font-semibold text-gray-500/90 dark:text-gray-400 uppercase tracking-[0.14em] min-w-[200px] hidden lg:table-cell">
                     Delivery Address
                   </th>
-                  
-                  <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[130px] hidden lg:table-cell">
+
+                  <th className="px-4 text-left text-[11px] font-semibold text-gray-500/90 dark:text-gray-400 uppercase tracking-[0.14em] min-w-[130px] hidden lg:table-cell">
                     Applied On
                   </th>
-                  
-                  <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px]">
+
+                  <th className="px-4 text-left text-[11px] font-semibold text-gray-500/90 dark:text-gray-400 uppercase tracking-[0.14em] min-w-[140px]">
                     Status
                   </th>
-                  
-                  <SortableHeader 
-                    label="Faculty" 
-                    sortKey="faculty" 
-                    currentSort={sortKey} 
-                    sortDir={sortDir} 
+
+                  <SortableHeader
+                    label="Faculty"
+                    sortKey="faculty"
+                    currentSort={sortKey}
+                    sortDir={sortDir}
                     onSort={toggleSort}
                     className="min-w-[160px] hidden md:table-cell"
                   />
-                  
-                  <SortableHeader 
-                    label="Department" 
-                    sortKey="department" 
-                    currentSort={sortKey} 
-                    sortDir={sortDir} 
+
+                  <SortableHeader
+                    label="Department"
+                    sortKey="department"
+                    currentSort={sortKey}
+                    sortDir={sortDir}
                     onSort={toggleSort}
                     className="min-w-[160px] hidden md:table-cell"
                   />
-                  
-                  <SortableHeader 
-                    label="Program" 
-                    sortKey="program" 
-                    currentSort={sortKey} 
-                    sortDir={sortDir} 
+
+                  <SortableHeader
+                    label="Program"
+                    sortKey="program"
+                    currentSort={sortKey}
+                    sortDir={sortDir}
                     onSort={toggleSort}
                     className="min-w-[180px] hidden md:table-cell"
                   />
-                  
-                  <th className="px-4 py-4 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[100px]">
-                    <span className="inline-flex items-center gap-1.5">
+
+                  <th className="px-4 text-center text-[11px] font-semibold text-gray-500/90 dark:text-gray-400 uppercase tracking-[0.14em] min-w-[100px]">
+                    <span className="inline-flex items-center justify-center gap-1.5">
                       <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       Overdue
                     </span>
                   </th>
-                  
-                  <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px] sticky right-0 bg-gray-50 dark:bg-gray-900 z-30 shadow-[-4px_0_12px_-6px_rgba(0,0,0,0.1)]">
+
+                  <th className="px-4 text-right text-[11px] font-semibold text-gray-500/90 dark:text-gray-400 uppercase tracking-[0.14em] min-w-[140px] sticky right-0 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md z-30 shadow-[-12px_0_16px_-10px_rgba(15,23,42,0.18)]">
                     Actions
                   </th>
                 </tr>
               </thead>
-  
+
               {/* ─── Table Body ─── */}
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800/60">
                 {effectiveLoading && <TableSkeletons pageSize={pageSize} />}
-                
+
                 {!effectiveLoading && effectiveError && <ErrorState message={effectiveError} />}
-                
+
                 {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
                   <EmptyState query={debouncedQuery} />
                 )}
-  
+
                 {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => (
                   <AlumniTableRow
                     key={`${alum.id}-${idx}`}
@@ -1305,32 +1698,32 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             </table>
           </div>
         </div>
-  
+
         {/* ─── Table Footer ─── */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-4 border-t border-gray-200/80 bg-gradient-to-b from-white to-gray-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:from-gray-900 dark:to-gray-900/70">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              <span className="font-semibold text-gray-700 dark:text-gray-300">
-                {total > 0 ? ((currentPage - 1) * pageSize + 1).toLocaleString() : 0}
+              Showing{" "}
+              <span className="font-semibold tabular-nums text-gray-800 dark:text-gray-200">
+                {total > 0 ? ((currentPage - 1) * pageSize + 1).toLocaleString() : 0}–{Math.min(currentPage * pageSize, total).toLocaleString()}
               </span>
-              {" - "}
-              <span className="font-semibold text-gray-700 dark:text-gray-300">
-                {Math.min(currentPage * pageSize, total).toLocaleString()}
+              {" "}of{" "}
+              <span className="font-semibold tabular-nums text-gray-900 dark:text-white">
+                {total.toLocaleString()}
               </span>
-              {" of "}
-              <span className="font-semibold text-gray-900 dark:text-white">{total.toLocaleString()}</span>
-              {" results"}
+              {" "}applications
             </span>
             {debouncedQuery && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium dark:bg-blue-900/20 dark:text-blue-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50/80 py-1 pl-3 pr-1.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-200/60 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-400/20">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                {debouncedQuery}
-                <button 
+                <span className="max-w-[200px] truncate">{debouncedQuery}</span>
+                <button
+                  type="button"
                   onClick={() => setQuery("")}
-                  className="ml-1 hover:text-blue-900"
-                  aria-label="Clear filter"
+                  className="rounded-full p-0.5 text-blue-400 transition-colors hover:bg-blue-100 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-blue-500/20 dark:hover:text-blue-200"
+                  aria-label="Clear search filter"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1479,7 +1872,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     
     return (
       <th 
-        className={`px-4 py-4 text-left cursor-pointer group transition-colors hover:bg-gray-100/50 dark:hover:bg-gray-800/50 ${className}`}
+        className={`px-4 py-3 text-left cursor-pointer group transition-colors hover:bg-gray-100/50 dark:hover:bg-gray-800/50 ${className}`}
         onClick={() => onSort(sortKey)}
         aria-sort={isActive ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
       >
@@ -1659,6 +2052,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       alum.deliveryStreetNo,
       alum.deliveryHouseNo
     );
+    const deliveryLine = deliveryParts
+      .filter((p) => p.value !== "-")
+      .map((p) => p.value)
+      .join(", ");
     const deliveryCopyText = deliveryParts
       .filter((p) => p.value !== "-")
       .map((p) => `${p.label.charAt(0).toUpperCase() + p.label.slice(1)}: ${p.value}`)
@@ -1682,7 +2079,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           onClick={onSelect}
           aria-selected={isSelected}
         >
-          <td className="px-4 py-4">
+          <td className="px-4 py-3">
             <button
               type="button"
               onClick={(e) => {
@@ -1700,7 +2097,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             </button>
           </td>
           
-          <td className="px-4 py-4">
+          <td className="px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-100 to-brand-100 flex items-center justify-center text-xs font-bold text-blue-700 dark:from-blue-900/30 dark:to-brand-900/30 dark:text-blue-400">
                 {alum.name.charAt(0).toUpperCase()}
@@ -1718,7 +2115,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             </div>
           </td>
           
-          <td className="px-4 py-4">
+          <td className="px-4 py-3">
             <div className="font-mono text-xs text-gray-700 dark:text-gray-300">
               {formatSapId(alum.id)}
             </div>
@@ -1727,7 +2124,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             )}
           </td>
           
-          <td className="px-4 py-4 hidden lg:table-cell">
+          <td className="px-4 py-3 hidden lg:table-cell">
             <a 
               href={alum.email ? `mailto:${alum.email}` : undefined}
               className={`text-sm ${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium" : "text-gray-400"} transition-colors`}
@@ -1736,45 +2133,40 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             </a>
           </td>
           
-          <td className="px-4 py-4 hidden lg:table-cell">
-            <div className="max-w-[260px] text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2">
-              {alum.cardaddress?.trim() || "-"}
-            </div>
-          </td>
-          
-          <td className="px-4 py-4 hidden lg:table-cell">
-            <button
-              type="button"
-              onClick={handleCopyDeliveryAddress}
-              disabled={!deliveryCopyText}
-              title={deliveryCopyText ? "Click to copy delivery address" : undefined}
-              className={`group/copy relative block w-full max-w-[260px] rounded-md px-2 py-1 -mx-2 -my-1 text-left transition-colors ${
-                deliveryCopyText
-                  ? "cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-900/10"
-                  : "cursor-default"
-              }`}
+          <td className="px-4 py-3 hidden lg:table-cell">
+            <span
+              className="block max-w-[220px] truncate text-sm text-gray-600 dark:text-gray-400"
+              title={alum.cardaddress?.trim() || undefined}
             >
-              <div className="space-y-0.5 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                {deliveryParts.map(({ label, value }) => (
-                  <div key={label} className="line-clamp-1">
-                    <span className="font-medium text-gray-500 dark:text-gray-500">{label}.</span>{" "}
-                    <span className={value === "-" ? "text-gray-400 dark:text-gray-500" : ""}>{value}</span>
-                  </div>
-                ))}
-              </div>
-              {deliveryCopyText && (
-                <CopyIcon className="absolute right-1 top-1 h-3 w-3 text-cyan-600 opacity-0 transition-opacity group-hover/copy:opacity-100 dark:text-cyan-400" />
-              )}
-            </button>
+              {alum.cardaddress?.trim() || "—"}
+            </span>
+          </td>
+
+          <td className="px-4 py-3 hidden lg:table-cell">
+            {deliveryLine ? (
+              <button
+                type="button"
+                onClick={handleCopyDeliveryAddress}
+                title="Copy delivery address"
+                className="group/copy relative block w-full max-w-[220px] text-left"
+              >
+                <span className="block truncate pr-4 text-sm text-gray-600 dark:text-gray-400">
+                  {deliveryLine}
+                </span>
+                <CopyIcon className="pointer-events-none absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 text-cyan-600 opacity-0 transition-opacity group-hover/copy:opacity-100 dark:text-cyan-400" />
+              </button>
+            ) : (
+              <span className="text-sm text-gray-300 dark:text-gray-600">—</span>
+            )}
           </td>
           
-          <td className="px-4 py-4 hidden lg:table-cell">
+          <td className="px-4 py-3 hidden lg:table-cell">
             <span className="text-sm text-gray-600 dark:text-gray-400 tabular-nums">
               {formatApplicationDate(alum.createdAt)}
             </span>
           </td>
           
-          <td className="px-4 py-4">
+          <td className="px-4 py-3">
             <CardStatusSelect
               sapId={alum.id}
               alumniId={alum.alumniid ?? null}
@@ -1786,25 +2178,25 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             />
           </td>
           
-          <td className="px-4 py-4 hidden md:table-cell">
+          <td className="px-4 py-3 hidden md:table-cell">
             <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
               {alum.faculty || "-"}
             </span>
           </td>
           
-          <td className="px-4 py-4 hidden md:table-cell">
+          <td className="px-4 py-3 hidden md:table-cell">
             <span className="text-sm text-gray-600 dark:text-gray-400">
               {alum.department || "-"}
             </span>
           </td>
           
-          <td className="px-4 py-4 hidden md:table-cell">
+          <td className="px-4 py-3 hidden md:table-cell">
             <span className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">
               {alum.program || "-"}
             </span>
           </td>
           
-          <td className="px-4 py-4 text-center">
+          <td className="px-4 py-3 text-center">
             <label className="relative inline-flex items-center cursor-pointer group/check">
               <input
                 type="checkbox"
@@ -1828,7 +2220,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             </label>
           </td>
           
-          <td className={`px-4 py-4 text-right sticky right-0 z-10 transition-colors ${
+          <td className={`px-4 py-3 text-right sticky right-0 z-10 transition-colors ${
             isSelected 
               ? "bg-blue-50 dark:bg-blue-900" 
               : idx % 2 === 0 

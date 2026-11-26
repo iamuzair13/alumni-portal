@@ -9,6 +9,7 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { getCardImageCandidates, resolvePreferredCardImage } from "@/lib/alumniCardImage";
 import { ALUMNI_CARD_VALIDITY_ISO } from "@/lib/cardValidity";
+import { composeCardDeliveryAddress } from "@/lib/cardDeliveryAddress";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -133,7 +134,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     }
 
     // Parse request body with better error handling
-    let body: { status?: string; reason_onhold?: string } = {};
+    let body: {
+      status?: string;
+      reason_onhold?: string;
+      action?: string;
+      deliveryPreference?: string;
+      cnicno?: string;
+      delivery_city?: string;
+      delivery_society_name?: string;
+      delivery_street_no?: string;
+      delivery_house_no?: string;
+      validity_date?: string;
+    } = {};
     try {
       const rawBody = await req.text();
       body = JSON.parse(rawBody);
@@ -141,6 +153,88 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       return NextResponse.json({ 
         error: "Invalid request body. Expected JSON with 'status' field." 
       }, { status: 400 });
+    }
+
+    // Admin edit of application details (address/delivery, CNIC, validity)
+    if (body && typeof body === "object" && body.action === "update_details") {
+      const detailSapid = String(sapid || "").trim();
+      if (!detailSapid) {
+        return NextResponse.json({ error: "Invalid SAP ID" }, { status: 400 });
+      }
+
+      const preference = String(body.deliveryPreference || "").trim().toLowerCase();
+      if (preference !== "collect" && preference !== "deliver") {
+        return NextResponse.json({ error: "Invalid deliveryPreference. Use 'collect' or 'deliver'." }, { status: 400 });
+      }
+
+      const city = String(body.delivery_city ?? "").trim();
+      const society = String(body.delivery_society_name ?? "").trim();
+      const street = String(body.delivery_street_no ?? "").trim();
+      const house = String(body.delivery_house_no ?? "").trim();
+
+      if (preference === "deliver" && (!city || !society || !street || !house)) {
+        return NextResponse.json(
+          { error: "Delivery address requires city, society name, street number, and house number." },
+          { status: 400 },
+        );
+      }
+
+      const cardaddress =
+        preference === "collect"
+          ? "Collect from Campus"
+          : composeCardDeliveryAddress(city, society, street, house);
+      if (preference === "deliver" && cardaddress.length < 10) {
+        return NextResponse.json({ error: "Delivery address is too short." }, { status: 400 });
+      }
+
+      const cnicno = String(body.cnicno ?? "").trim() || null;
+      const validityDate = String(body.validity_date ?? "").trim();
+      if (validityDate && !/^\d{4}-\d{2}-\d{2}$/.test(validityDate)) {
+        return NextResponse.json({ error: "Invalid validity_date. Expected YYYY-MM-DD." }, { status: 400 });
+      }
+
+      const detailRows = await sql/* sql */`
+        UPDATE public.tblcard c
+        SET
+          cnicno = ${cnicno},
+          cardaddress = ${cardaddress},
+          delivery_city = ${preference === "deliver" ? city : null},
+          delivery_society_name = ${preference === "deliver" ? society : null},
+          delivery_street_no = ${preference === "deliver" ? street : null},
+          delivery_house_no = ${preference === "deliver" ? house : null},
+          validity_date = COALESCE(${validityDate || null}::date, c.validity_date)
+        FROM public.tbl_alumni a
+        WHERE a.alumniid = c.alumniid
+          AND (
+            TRIM(COALESCE(a.sapid, '')) = ${detailSapid}
+            OR TRIM(COALESCE(a.registrationno, '')) = ${detailSapid}
+          )
+        RETURNING c.cardid, c.alumniid
+      `;
+
+      if (!detailRows[0]) {
+        return NextResponse.json({ message: "Card not found or update failed" }, { status: 404 });
+      }
+
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "alumni_cards.update_details",
+          entityType: "tblcard",
+          entityId: detailRows[0].cardid,
+          metadata: {
+            sapid: detailSapid,
+            alumniId: detailRows[0].alumniid,
+            deliveryPreference: preference,
+            cardaddress,
+            cnicno,
+            validityDate: validityDate || null,
+          },
+        },
+      });
+
+      return NextResponse.json({ card: detailRows[0] }, { status: 200 });
     }
 
     // Validate status field exists
