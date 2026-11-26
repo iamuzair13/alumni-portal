@@ -35,9 +35,10 @@ type Props = {
 const schema = z.object({
   pictureName: z.string().min(1, "Profile picture is required"),
   comment: z.string().optional(),
-  addressPreference: z.enum(["Collect", "Deliver"], {
-    message: "Please select an address preference",
-  }),
+  addressPreference: z.string().refine(
+    (v) => v === "Collect" || v === "Deliver",
+    { message: "Please select a delivery preference" },
+  ),
   deliveryCity: z.string().optional(),
   deliverySocietyName: z.string().optional(),
   deliveryStreetNo: z.string().optional(),
@@ -142,7 +143,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
     resolver: zodResolver(schema),
     defaultValues: {
       comment: "",
-      addressPreference: "Collect",
+      addressPreference: "",
       deliveryCity: "",
       deliverySocietyName: "",
       deliveryStreetNo: "",
@@ -300,7 +301,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       setSelectedFile(null);
       setValue("pictureName", "");
       setValue("comment", "");
-      setValue("addressPreference", "Collect");
+      setValue("addressPreference", "");
       setValue("deliveryCity", "");
       setValue("deliverySocietyName", "");
       setValue("deliveryStreetNo", "");
@@ -433,6 +434,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
               {...register("addressPreference")}
               aria-label="Address preference"
             >
+              <option value="" disabled>Select</option>
               <option value="Collect">Collect from Campus</option>
               <option value="Deliver">Deliver to my below address</option>
             </Select>
@@ -510,6 +512,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
         </div>
       </FormSection>
 
+      {(addressPreference === "Collect" || addressPreference === "Deliver") && (
       <FormSection
         title={addressPreference === "Collect" ? "Collection terms" : "Delivery terms"}
       >
@@ -533,6 +536,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
           </AcknowledgmentCheckbox>
         )}
       </FormSection>
+      )}
 
       <FormActions
         submitLabel="Submit application"
