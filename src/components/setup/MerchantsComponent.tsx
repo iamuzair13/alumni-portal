@@ -12,6 +12,13 @@ import { PencilIcon, TrashBinIcon } from "@/icons";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
+import MerchantCategoriesComponent from "@/components/setup/MerchantCategoriesComponent";
+import { MerchantCategoryChipList } from "@/components/common/MerchantCategoryChip";
+import {
+  MERCHANT_CATEGORIES_QUERY_KEY,
+  fetchMerchantCategories,
+} from "@/components/setup/merchantCategoryApi";
+import type { MerchantCategoryRef } from "@/app/api/merchants/route";
 
 type Merchant = {
   id: number;
@@ -23,6 +30,7 @@ type Merchant = {
   status: "active" | "expired";
   location: string | null;
   banner_url: string | null;
+  categories: MerchantCategoryRef[];
   created_at: string;
   updated_at: string;
 };
@@ -35,6 +43,7 @@ type MerchantFormDraft = {
   discountPct: string;
   status: "active" | "expired";
   location: string;
+  categoryIds: number[];
 };
 
 type MerchantFormPayload = {
@@ -50,6 +59,7 @@ const EMPTY_DRAFT: MerchantFormDraft = {
   discountPct: "",
   status: "active",
   location: "",
+  categoryIds: [],
 };
 
 function formatDate(iso: string): string {
@@ -88,6 +98,7 @@ function buildMerchantFormData(payload: MerchantFormPayload, id?: number): FormD
   fd.set("discountPct", String(Number(draft.discountPct)));
   fd.set("status", draft.status);
   fd.set("location", draft.location);
+  fd.set("categoryIds", JSON.stringify(draft.categoryIds));
   if (banner) fd.set("banner", banner);
   return fd;
 }
@@ -160,6 +171,7 @@ function MerchantForm({
   mode,
   initial,
   initialBannerUrl,
+  categories,
   onCancel,
   onSubmit,
   saving,
@@ -167,6 +179,7 @@ function MerchantForm({
   mode: "add" | "edit";
   initial?: MerchantFormDraft;
   initialBannerUrl?: string | null;
+  categories: MerchantCategoryRef[];
   onCancel: () => void;
   onSubmit: (payload: MerchantFormPayload) => void;
   saving: boolean;
@@ -188,6 +201,15 @@ function MerchantForm({
       return next;
     });
     setErrors((e) => ({ ...e, [key]: undefined }));
+  };
+
+  const toggleCategory = (id: number) => {
+    setDraft((d) => ({
+      ...d,
+      categoryIds: d.categoryIds.includes(id)
+        ? d.categoryIds.filter((c) => c !== id)
+        : [...d.categoryIds, id],
+    }));
   };
 
   const validate = (): boolean => {
@@ -342,6 +364,55 @@ function MerchantForm({
           />
         </div>
 
+        <div className="md:col-span-2">
+          <Label>Categories</Label>
+          {categories.length === 0 ? (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              No categories yet — create them in the Categories view of this tab.
+            </p>
+          ) : (
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {categories.map((c) => {
+                const selected = draft.categoryIds.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    disabled={saving}
+                    aria-pressed={selected}
+                    onClick={() => toggleCategory(c.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 disabled:opacity-50 ${
+                      selected
+                        ? "border-current"
+                        : "border-gray-300 text-gray-600 hover:border-gray-400 dark:border-gray-600 dark:text-gray-400"
+                    }`}
+                    style={
+                      selected
+                        ? {
+                            color: c.color,
+                            backgroundColor: `${c.color}1F`,
+                            borderColor: c.color,
+                          }
+                        : undefined
+                    }
+                  >
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: c.color }}
+                    />
+                    {c.name}
+                    {selected && (
+                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div>
           <Label>Discount Status</Label>
           <div className="mt-2 flex items-center gap-3">
@@ -431,6 +502,7 @@ function ViewModal({
   const fields: { label: string; value: React.ReactNode }[] = [
     { label: "Business Name", value: merchant.business_name },
     { label: "Discount Type", value: merchant.discount_type },
+    { label: "Categories", value: <MerchantCategoryChipList categories={merchant.categories} size="sm" /> },
     { label: "Location", value: merchant.location || "—" },
     { label: "Start Date", value: formatDate(merchant.start_date) },
     { label: "End Date", value: formatDate(merchant.end_date) },
@@ -478,8 +550,10 @@ export default function MerchantsComponent() {
 
   const queryClient = useQueryClient();
 
+  const [view, setView] = useState<"merchants" | "categories">("merchants");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
+  const [categoryFilter, setCategoryFilter] = useState<number | "all">("all");
   const [sortField, setSortField] = useState<SortField>("business_name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -492,6 +566,13 @@ export default function MerchantsComponent() {
   const { data: merchants = [], isLoading } = useQuery({
     queryKey: ["merchants"],
     queryFn: fetchMerchants,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: MERCHANT_CATEGORIES_QUERY_KEY,
+    queryFn: fetchMerchantCategories,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
@@ -558,6 +639,10 @@ export default function MerchantsComponent() {
       list = list.filter((m) => m.status === statusFilter);
     }
 
+    if (categoryFilter !== "all") {
+      list = list.filter((m) => m.categories.some((c) => c.id === categoryFilter));
+    }
+
     list = [...list].sort((a, b) => {
       let aVal: string | number = "";
       let bVal: string | number = "";
@@ -591,7 +676,7 @@ export default function MerchantsComponent() {
     });
 
     return list;
-  }, [merchants, search, statusFilter, sortField, sortDir]);
+  }, [merchants, search, statusFilter, categoryFilter, sortField, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -602,7 +687,7 @@ export default function MerchantsComponent() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, categoryFilter]);
 
   const thClass =
     "px-4 py-3 text-left text-[13px] font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700/60";
@@ -612,8 +697,11 @@ export default function MerchantsComponent() {
     [merchants]
   );
   const expiredCount = merchants.length - activeCount;
-  const filtersActive = search.trim() !== "" || statusFilter !== "all";
-  const activeFilterCount = (search.trim() !== "" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0);
+  const filtersActive = search.trim() !== "" || statusFilter !== "all" || categoryFilter !== "all";
+  const activeFilterCount =
+    (search.trim() !== "" ? 1 : 0) +
+    (statusFilter !== "all" ? 1 : 0) +
+    (categoryFilter !== "all" ? 1 : 0);
 
   return (
     <div>
@@ -627,7 +715,7 @@ export default function MerchantsComponent() {
           { label: "Expired", value: expiredCount, tone: "danger" },
         ]}
         action={
-          canModify ? (
+          canModify && view === "merchants" ? (
             <Button size="sm" onClick={() => setAddOpen(true)}>
               + Add Merchant
             </Button>
@@ -635,6 +723,38 @@ export default function MerchantsComponent() {
         }
       />
 
+      {/* View switcher: merchants list vs. category management */}
+      <div
+        className="mb-4 inline-flex items-center rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800/60"
+        role="tablist"
+        aria-label="Merchants views"
+      >
+        {(
+          [
+            { key: "merchants", label: "Merchants" },
+            { key: "categories", label: "Categories" },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.key}
+            role="tab"
+            aria-selected={view === tab.key}
+            onClick={() => setView(tab.key)}
+            className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 ${
+              view === tab.key
+                ? "bg-white text-gray-900 shadow-sm dark:bg-gray-900 dark:text-white"
+                : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {view === "categories" ? (
+        <MerchantCategoriesComponent canModify={canModify} />
+      ) : (
+      <>
       {/* Toolbar */}
       <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center">
         <div className="relative flex-1">
@@ -673,10 +793,24 @@ export default function MerchantsComponent() {
           <option value="active">Active</option>
           <option value="expired">Expired</option>
         </select>
+        <select
+          value={categoryFilter === "all" ? "all" : String(categoryFilter)}
+          onChange={(e) =>
+            setCategoryFilter(e.target.value === "all" ? "all" : Number(e.target.value))
+          }
+          className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-accent-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+        >
+          <option value="all">All categories</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
         {filtersActive && (
           <button
             type="button"
-            onClick={() => { setSearch(""); setStatusFilter("all"); }}
+            onClick={() => { setSearch(""); setStatusFilter("all"); setCategoryFilter("all"); }}
             className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-accent-700 hover:bg-accent-50 dark:text-accent-300 dark:hover:bg-accent-900/30 whitespace-nowrap"
           >
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -738,6 +872,12 @@ export default function MerchantsComponent() {
                   >
                     Discount Type
                     <SortIcon field="discount_type" active={sortField === "discount_type"} dir={sortDir} />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-[13px] font-medium text-gray-600 dark:text-gray-300 select-none whitespace-nowrap"
+                  >
+                    Categories
                   </th>
                   <th
                     scope="col"
@@ -814,6 +954,9 @@ export default function MerchantsComponent() {
                     </td>
                     <td className="px-4 py-3 text-[13px] text-gray-700 dark:text-gray-300">
                       {m.discount_type}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-700 dark:text-gray-300">
+                      <MerchantCategoryChipList categories={m.categories} size="sm" />
                     </td>
                     <td className="px-4 py-3 text-[13px] text-gray-700 dark:text-gray-300">
                       {m.location || "—"}
@@ -901,6 +1044,8 @@ export default function MerchantsComponent() {
           )}
         </>
       )}
+      </>
+      )}
 
       {/* Add Merchant Modal */}
       <Modal
@@ -916,6 +1061,7 @@ export default function MerchantsComponent() {
         </div>
         <MerchantForm
           mode="add"
+          categories={categories}
           onCancel={() => setAddOpen(false)}
           onSubmit={(draft) => createMutation.mutate(draft)}
           saving={createMutation.isPending}
@@ -966,7 +1112,9 @@ export default function MerchantsComponent() {
               discountPct: String(editMerchant.discount_pct),
               status: editMerchant.status,
               location: editMerchant.location ?? "",
+              categoryIds: editMerchant.categories.map((c) => c.id),
             }}
+            categories={categories}
             initialBannerUrl={editMerchant.banner_url}
             onCancel={() => setEditMerchant(null)}
             onSubmit={(payload) =>

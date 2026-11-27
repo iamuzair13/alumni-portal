@@ -10,6 +10,13 @@ import { getUploadsImagesDir } from "@/lib/uploadsDir";
 import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 import { isPortraitImage } from "@/lib/imageDimensions";
 
+export type MerchantCategoryRef = {
+  id: number;
+  name: string;
+  slug: string;
+  color: string;
+};
+
 export type Merchant = {
   id: number;
   business_name: string;
@@ -20,6 +27,7 @@ export type Merchant = {
   status: "active" | "expired";
   location: string | null;
   banner_url: string | null;
+  categories: MerchantCategoryRef[];
   created_at: string;
   updated_at: string;
 };
@@ -86,6 +94,7 @@ type MerchantBody = {
   discountPct?: number;
   status?: string;
   location?: string | null;
+  categoryIds?: number[] | string;
 };
 
 async function readMerchantBody(req: NextRequest): Promise<{
@@ -106,6 +115,7 @@ async function readMerchantBody(req: NextRequest): Promise<{
         discountPct: fd.get("discountPct") != null ? Number(fd.get("discountPct")) : undefined,
         status: String(fd.get("status") ?? "").trim() || undefined,
         location: fd.get("location") != null ? String(fd.get("location")).trim() : undefined,
+        categoryIds: fd.get("categoryIds") != null ? String(fd.get("categoryIds")) : undefined,
       },
       bannerFile: banner && banner.size > 0 ? banner : null,
     };
@@ -121,6 +131,26 @@ function toISODate(value: unknown): string {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function parseCategoriesJson(raw: unknown): MerchantCategoryRef[] {
+  let arr: unknown[] = [];
+  if (Array.isArray(raw)) {
+    arr = raw;
+  } else if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) arr = parsed;
+    } catch {
+      return [];
+    }
+  }
+  return (arr as Record<string, unknown>[]).map((c) => ({
+    id: Number(c.id),
+    name: String(c.name ?? ""),
+    slug: String(c.slug ?? ""),
+    color: String(c.color ?? "#64748B"),
+  }));
 }
 
 function mapMerchant(row: Record<string, unknown>): Merchant {
@@ -141,9 +171,62 @@ function mapMerchant(row: Record<string, unknown>): Merchant {
     status,
     location: row.location != null ? String(row.location) : null,
     banner_url: row.banner_url != null ? String(row.banner_url) : null,
+    categories: parseCategoriesJson(row.categories),
     created_at: String(row.created_at ?? ""),
     updated_at: String(row.updated_at ?? ""),
   };
+}
+
+const categoriesSql = () => sql/* sql */`
+  COALESCE(
+    (SELECT json_agg(json_build_object(
+              'id', c.id, 'name', c.name, 'slug', c.slug, 'color', c.color)
+            ORDER BY c.name)
+     FROM public.merchant_category_map mm
+     JOIN public.merchant_categories c ON c.id = mm.category_id
+     WHERE mm.merchant_id = m.id),
+    '[]'::json
+  ) AS categories
+`;
+
+function parseCategoryIds(raw: number[] | string | undefined): number[] | undefined {
+  if (raw === undefined) return undefined;
+  let arr: unknown[] = [];
+  if (Array.isArray(raw)) {
+    arr = raw;
+  } else {
+    try {
+      const parsed = JSON.parse(String(raw));
+      if (!Array.isArray(parsed)) return undefined;
+      arr = parsed;
+    } catch {
+      return undefined;
+    }
+  }
+  const ids = arr
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n) && n > 0);
+  return [...new Set(ids)];
+}
+
+async function filterValidCategoryIds(ids: number[] | undefined): Promise<number[]> {
+  if (!ids || ids.length === 0) return [];
+  const rows = await sql/* sql */`
+    SELECT id FROM public.merchant_categories WHERE id = ANY(${ids}::int[])
+  `;
+  return (rows as Record<string, unknown>[]).map((r) => Number(r.id));
+}
+
+async function setMerchantCategories(merchantId: number, categoryIds: number[]) {
+  await sql/* sql */`
+    DELETE FROM public.merchant_category_map WHERE merchant_id = ${merchantId}
+  `;
+  if (categoryIds.length === 0) return;
+  await sql/* sql */`
+    INSERT INTO public.merchant_category_map (merchant_id, category_id)
+    SELECT ${merchantId}, unnest(${categoryIds}::int[])
+    ON CONFLICT DO NOTHING
+  `;
 }
 
 export async function GET(req: NextRequest) {
@@ -154,10 +237,11 @@ export async function GET(req: NextRequest) {
     }
 
     const rows = await sql/* sql */`
-      SELECT id, business_name, discount_type, start_date, end_date,
-             discount_pct, status, location, banner_url, created_at, updated_at
-      FROM public.merchants
-      ORDER BY created_at DESC, id DESC
+      SELECT m.id, m.business_name, m.discount_type, m.start_date, m.end_date,
+             m.discount_pct, m.status, m.location, m.banner_url, m.created_at, m.updated_at,
+             ${categoriesSql()}
+      FROM public.merchants m
+      ORDER BY m.created_at DESC, m.id DESC
     `;
 
     const items = (rows as Record<string, unknown>[]).map(mapMerchant);
@@ -212,6 +296,7 @@ export async function POST(req: NextRequest) {
       ? String(body.location).trim().slice(0, 500)
       : null;
     const banner = bannerFile ? await saveMerchantBanner(bannerFile) : null;
+    const categoryIds = await filterValidCategoryIds(parseCategoryIds(body.categoryIds));
 
     const rows = await sql/* sql */`
       INSERT INTO public.merchants (
@@ -222,11 +307,23 @@ export async function POST(req: NextRequest) {
         ${businessName}, ${discountType}, ${startDate}::date, ${endDate}::date,
         ${discountPct}, ${status}, ${location}, ${banner ? banner.url : null}, NOW()
       )
-      RETURNING id, business_name, discount_type, start_date, end_date,
-                discount_pct, status, location, banner_url, created_at, updated_at
+      RETURNING id
     `;
 
-    const created = mapMerchant((rows?.[0] as Record<string, unknown>) ?? {});
+    const newId = Number((rows?.[0] as Record<string, unknown> | undefined)?.id ?? 0);
+    if (categoryIds.length > 0 && newId > 0) {
+      await setMerchantCategories(newId, categoryIds);
+    }
+
+    const createdRows = await sql/* sql */`
+      SELECT m.id, m.business_name, m.discount_type, m.start_date, m.end_date,
+             m.discount_pct, m.status, m.location, m.banner_url, m.created_at, m.updated_at,
+             ${categoriesSql()}
+      FROM public.merchants m
+      WHERE m.id = ${newId}
+      LIMIT 1
+    `;
+    const created = mapMerchant((createdRows?.[0] as Record<string, unknown>) ?? {});
     await logAdminAction({
       session,
       req,
@@ -326,7 +423,7 @@ export async function PUT(req: NextRequest) {
     const banner = bannerFile ? await saveMerchantBanner(bannerFile) : null;
     const bannerUrl = banner ? banner.url : (cur.banner_url != null ? String(cur.banner_url) : null);
 
-    const rows = await sql/* sql */`
+    await sql/* sql */`
       UPDATE public.merchants
       SET
         business_name = ${businessName},
@@ -339,8 +436,21 @@ export async function PUT(req: NextRequest) {
         banner_url    = ${bannerUrl},
         updated_at    = NOW()
       WHERE id = ${id}
-      RETURNING id, business_name, discount_type, start_date, end_date,
-                discount_pct, status, location, banner_url, created_at, updated_at
+    `;
+
+    const parsedCategoryIds = parseCategoryIds(body.categoryIds);
+    if (parsedCategoryIds !== undefined) {
+      const validIds = await filterValidCategoryIds(parsedCategoryIds);
+      await setMerchantCategories(id, validIds);
+    }
+
+    const rows = await sql/* sql */`
+      SELECT m.id, m.business_name, m.discount_type, m.start_date, m.end_date,
+             m.discount_pct, m.status, m.location, m.banner_url, m.created_at, m.updated_at,
+             ${categoriesSql()}
+      FROM public.merchants m
+      WHERE m.id = ${id}
+      LIMIT 1
     `;
 
     const updated = mapMerchant((rows?.[0] as Record<string, unknown>) ?? {});

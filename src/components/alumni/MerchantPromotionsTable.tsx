@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Merchant } from "@/app/api/merchants/route";
+import type { Merchant, MerchantCategoryRef } from "@/app/api/merchants/route";
+import { MerchantCategoryChipList } from "@/components/common/MerchantCategoryChip";
 
 function formatDate(iso: string): string {
   if (!iso) return "—";
@@ -50,6 +51,7 @@ async function fetchMerchants(): Promise<Merchant[]> {
 export function MerchantPromotionsTable() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
+  const [categoryFilter, setCategoryFilter] = useState<number | "all">("all");
 
   const { data: merchants = [], isLoading, isError } = useQuery({
     queryKey: ["merchants-public"],
@@ -58,10 +60,24 @@ export function MerchantPromotionsTable() {
     refetchOnWindowFocus: false,
   });
 
+  // Only categories actually used by listed merchants become filter chips.
+  const categories = useMemo<MerchantCategoryRef[]>(() => {
+    const seen = new Map<number, MerchantCategoryRef>();
+    for (const m of merchants) {
+      for (const c of m.categories ?? []) {
+        if (!seen.has(c.id)) seen.set(c.id, c);
+      }
+    }
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [merchants]);
+
   const filtered = merchants
     .map((m) => ({ ...m, status: deriveStatus(m.end_date) }))
     .filter((m) => {
       if (statusFilter !== "all" && m.status !== statusFilter) return false;
+      if (categoryFilter !== "all" && !(m.categories ?? []).some((c) => c.id === categoryFilter)) {
+        return false;
+      }
       if (search.trim()) {
         const q = search.toLowerCase();
         return m.business_name.toLowerCase().includes(q) || m.discount_type.toLowerCase().includes(q);
@@ -133,6 +149,48 @@ export function MerchantPromotionsTable() {
         </div>
       </div>
 
+      {/* Category chips — only shown when merchants carry categories */}
+      {categories.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setCategoryFilter("all")}
+            aria-pressed={categoryFilter === "all"}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 ${
+              categoryFilter === "all"
+                ? "border-orange-500 bg-orange-500 text-white shadow-sm"
+                : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+            }`}
+          >
+            All
+          </button>
+          {categories.map((c) => {
+            const selected = categoryFilter === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setCategoryFilter(selected ? "all" : c.id)}
+                aria-pressed={selected}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 ${
+                  selected
+                    ? "text-white shadow-sm"
+                    : "bg-white text-gray-600 hover:text-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+                }`}
+                style={
+                  selected
+                    ? { backgroundColor: c.color, borderColor: c.color }
+                    : { borderColor: `${c.color}55` }
+                }
+              >
+                {!selected && (
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c.color }} />
+                )}
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         {isLoading ? (
@@ -163,6 +221,9 @@ export function MerchantPromotionsTable() {
                   </th>
                   <th className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Business / Partner
+                  </th>
+                  <th className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Category
                   </th>
                   <th className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Offer / Discount Type
@@ -196,6 +257,9 @@ export function MerchantPromotionsTable() {
                     </td>
                     <td className="px-5 py-4">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{m.business_name}</p>
+                    </td>
+                    <td className="px-5 py-4">
+                      <MerchantCategoryChipList categories={m.categories ?? []} size="sm" />
                     </td>
                     <td className="px-5 py-4">
                       <p className="text-sm text-gray-600 dark:text-gray-400">{m.discount_type}</p>

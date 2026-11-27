@@ -1391,6 +1391,34 @@ ALTER TABLE public.merchants
 CREATE INDEX IF NOT EXISTS idx_merchants_status ON public.merchants (status);
 CREATE INDEX IF NOT EXISTS idx_merchants_end_date ON public.merchants (end_date);
 
+-- Migration: Merchant categories (many-to-many via merchant_category_map)
+CREATE TABLE IF NOT EXISTS public.merchant_categories (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(100) NOT NULL UNIQUE,
+  slug        VARCHAR(120) NOT NULL UNIQUE,
+  color       VARCHAR(7)   NOT NULL DEFAULT '#64748B',
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.merchant_category_map (
+  merchant_id INTEGER NOT NULL REFERENCES public.merchants(id) ON DELETE CASCADE,
+  category_id INTEGER NOT NULL REFERENCES public.merchant_categories(id) ON DELETE CASCADE,
+  PRIMARY KEY (merchant_id, category_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_merchant_category_map_category
+  ON public.merchant_category_map (category_id);
+
+INSERT INTO public.merchant_categories (name, slug, color) VALUES
+  ('Food & Dining',       'food-dining',       '#EA580C'),
+  ('Entertainment',       'entertainment',     '#7C3AED'),
+  ('Shopping & Retail',   'shopping-retail',   '#0D9488'),
+  ('Health & Wellness',   'health-wellness',   '#059669'),
+  ('Travel & Hospitality','travel-hospitality','#2563EB'),
+  ('Services',            'services',          '#64748B')
+ON CONFLICT (slug) DO NOTHING;
+
 
 -- Migration: Create membership settings table for campus facility membership configuration
 CREATE TABLE IF NOT EXISTS public.membership_settings (
